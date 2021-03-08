@@ -8,8 +8,12 @@ def explode_column(df, mcl):
     
     for c in mcl:
         # loop to explode all mcl columns in list
+        
         column = (c + '.label')
         mcl_column = df[[column]]
         mcl_column_exp = mcl_column.explode(column)
+        mcl_column_exp['uid'] = df['uid']
+        mcl_column_exp.set_index('uid')
+        mcl_column_exp.reindex(columns =mcl_column_exp.columns)
         column_name = ("exploded_"+column)
         create_table(mcl_column_exp, column_name)

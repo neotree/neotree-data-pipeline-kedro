@@ -41,4 +41,4 @@ def inject_sql(sql_script, file_name):
 
 def create_table(df, table_name):
     # create tables in derived schema
-    df.to_sql(table_name, con=engine, schema='derived', if_exists='replace')
+    df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)

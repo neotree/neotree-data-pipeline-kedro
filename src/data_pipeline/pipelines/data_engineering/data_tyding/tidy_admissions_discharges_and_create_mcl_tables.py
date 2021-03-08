@@ -56,13 +56,21 @@ def tidy_tables():
     try:
 
         adm_df = pd.json_normalize(adm_new_entries)
+        adm_df.set_index(['uid'])
         dis_df = pd.json_normalize(dis_new_entries)
+        dis_df.set_index(['uid'])
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
+        if "uid" in mat_outcomes_df:
+            mat_outcomes_df.set_index(['uid'])
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
+        if "uid" in vit_signs_df:
+            vit_signs_df.set_index(['uid'])
  
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
         # admissions tables
         #Fix Missing Data Issues Emanating from eronous version published
+        
+
         if 'DateHIVtest.value' not in adm_df.columns:
              adm_df['DateHIVtest.value']=None
              adm_df['DateHIVtest.label']=None
