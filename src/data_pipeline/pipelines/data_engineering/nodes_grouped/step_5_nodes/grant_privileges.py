@@ -12,10 +12,11 @@ import time
 
 #Pass Convinience Views Output as it is the last step in the data pipeline process
 cron_log = open("/var/log/data_pipeline_cron.log","a+")
-def grant_privileges(create_convinience_views_output):
+#cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/Chiedza\/Data\/data_pipeline_cron.log","a+")
+def grant_privileges(create_summary_counts_output):
     try:
         #Test If Previous Node Has Completed Successfully
-        if create_convinience_views_output:
+        if create_summary_counts_output:
             cwd = os.getcwd()
             file_name = Path(
             cwd+"/src/data_pipeline/pipelines/data_engineering/queries/3-grant-usage-on-tables.sql");

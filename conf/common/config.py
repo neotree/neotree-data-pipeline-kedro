@@ -8,13 +8,16 @@ import os
 import stat
 from pathlib import Path
 
-
-if len(sys.argv) > 3:
-    env = sys.argv[3]
-    env = env.split(':')
+env = None
+if len(sys.argv) >= 3:
+    env = sys.argv[2]
+    env = env.split('=')
     if(len(env)) >1:
         env = env[1];
-        
+else:
+    logging.error("Please include environment arguement (e.g. $ kedro run --env=dev)")
+    sys.exit()
+if env is not None:       
     def config(filename='conf/local/database.ini'):
         if env == "prod":
             section = 'postgresql_prod'
@@ -24,7 +27,7 @@ if len(sys.argv) > 3:
             section = 'postgresql_dev'
 
         else:
-            logging.error("{0} is not a valid arguement: Valid arguements are (dev stage or prod)".format(env))
+            logging.error("{0} is not a valid arguement: Valid arguements are (dev or stage or prod)".format(env))
             sys.exit()
 
          # create a parser
@@ -45,6 +48,5 @@ if len(sys.argv) > 3:
             logging.error('Section {0} not found in the {1} file'.format(section, filename))
             sys.exit()
         return db
-else:
-    logging.error("Please include environment arguement (e.g. $ python data_pipeline.py prod)")
-    sys.exit()
+
+   

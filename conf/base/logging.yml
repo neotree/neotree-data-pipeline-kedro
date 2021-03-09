@@ -19,6 +19,7 @@ handlers:
         level: INFO
         formatter: simple
         filename: /var/log/kedro_info.log
+        #filename: C:\/Users\/morris\/Documents\/BRTI\/Chiedza\/Data\/kedro_info.log
         maxBytes: 10485760 # 10MB
         backupCount: 20
         encoding: utf8
@@ -29,6 +30,7 @@ handlers:
         level: ERROR
         formatter: simple
         filename: /var/log/kedro_errors.log
+        #filename: C:\/Users\/morris\/Documents\/BRTI\/Chiedza\/Data\/kedro_errors.log
         maxBytes: 10485760 # 10MB
         backupCount: 20
         encoding: utf8
@@ -38,6 +40,7 @@ handlers:
         class: kedro.versioning.journal.JournalFileHandler
         level: INFO
         base_dir: /var/log/journals
+        #base_dir: C:\/Users\/morris\/Documents\/BRTI\/Chiedza\/Data
         formatter: json_formatter
 
 loggers:
