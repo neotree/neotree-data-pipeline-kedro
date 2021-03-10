@@ -36,6 +36,7 @@ CREATE TABLE derived.summary_joined_admissions_discharges AS
       	CASE 
          WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Death%%' THEN 1 
          WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%NND%%' THEN 1 
+         WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%BID%%' THEN 1
        	end AS "DeathCount",
        	CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' Then 1 end AS "AbscondedCount",
        	CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Transferred to other hospital' Then 1 end AS "TransferredOutCount",
@@ -43,7 +44,9 @@ CREATE TABLE derived.summary_joined_admissions_discharges AS
        	CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" IN ('Death (at LESS than 24 hrs of age)', 'NND less than 24 hrs old' ) Then 1 end AS "Death<24hrsCount",
         CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" IN ('Death (at MORE than 24 hrs of age)', 'NND more than 24 hrs old' ) Then 1 end AS "Death>24hrsCount",
         CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'NND' Then 1 end AS "NNDCount",
-       	CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" IS NOT NULL THEN 1 end AS "DischargeCount",
+        CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Stillbirth' Then 1 end AS "StillBirthCount",
+        CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'BID - Brought in dead' Then 1 end AS "BIDCount",
+       	CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Discharged' Then 1 end AS "DischargeCount",
        	CASE WHEN derived.joined_admissions_discharges."BWGroup.value" IS NOT NULL THEN 1 end AS "BirthWeightCount",
        	CASE WHEN derived.joined_admissions_discharges."AWGroup.value" IS NOT NULL THEN 1 end AS "AdmissionWeightCount",
        	CASE WHEN derived.joined_admissions_discharges."GestGroup.value" IS NOT NULL THEN 1 end AS "GestationCount",
