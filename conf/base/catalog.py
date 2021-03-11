@@ -75,13 +75,13 @@ catalog = DataCatalog(
          #Read Derived Admissions
         "read_derived_admissions": SQLQueryDataSet(
             sql= derived_admissions_query,
-            load_args= dict(index_col="uid"),
+            #load_args= dict(index_col="uid"),
             credentials=dict(con=con)
          ),
          #Read Derived Discharges
          "read_derived_discharges": SQLQueryDataSet(
             sql= derived_discharges_query,
-            load_args= dict(index_col="uid"),
+            #load_args= dict(index_col="uid"),
             credentials=dict(con=con)
          ),
          #Read Maternal Outcomes
