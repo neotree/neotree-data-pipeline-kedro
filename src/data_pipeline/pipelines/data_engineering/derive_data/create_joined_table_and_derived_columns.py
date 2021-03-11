@@ -32,8 +32,7 @@ def join_table():
     try:
         
         # join admissions and discharges
-        jn_adm_dis = adm_df.merge(dis_df, how='outer', left_index=True, on='uid',
-                                  right_index=True,suffixes=('','_discharge'))
+        jn_adm_dis = adm_df.merge(dis_df, how='outer', on='uid',suffixes=('','_discharge'))
 
         jn_adm_dis['LengthOfStay.value'] = None
         jn_adm_dis['LengthOfStay.label'] = None
