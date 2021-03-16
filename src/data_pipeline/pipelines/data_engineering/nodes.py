@@ -2,6 +2,7 @@ from kedro.pipeline import node
 from .nodes_grouped.step_1_nodes.deduplicate_admissions import deduplicate_admissions
 from .nodes_grouped.step_1_nodes.deduplicate_discharges import deduplicate_discharges
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data
+from .nodes_grouped.step_2_nodes.summary_maternal_outcomes import create_summary_maternal_outcomes
 from .nodes_grouped.step_3_nodes.manually_fix_admissions_records import manually_fix_admissions
 from .nodes_grouped.step_3_nodes.manually_fix_discharge_records import manually_fix_discharges
 from .nodes_grouped.step_4_nodes.convenience_views import create_convenience_views
@@ -27,6 +28,11 @@ deduplicate_discharges_node = node(
 # Create A Data Tyding Node And Pass OutPut From Deduplication
 tidy_data_node = node(
     tidy_data,  inputs=["deduplicate_discharges_output","deduplicate_admissions_output"], outputs ="tidy_data_output"
+)
+
+#Create Summary Maternal Outcomes  
+create_summary_maternal_outcomes_node = node(
+    create_summary_maternal_outcomes, inputs= "tidy_data_output", outputs = "create_summary_maternal_outcomes_output"
 )
 
 # Create Manually Fixing Admisiions Node And Pass Data Tyding Output as input
