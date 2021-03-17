@@ -9,6 +9,17 @@ con = 'postgresql+psycopg2://' + \
 params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
 
+#Country Defaults To Malawi
+mat_outcomes_script_id = '-MOAjJ_In4TOoe0l_Gl5'
+adm_script_id = '-KO1TK4zMvLhxTw6eKia'
+disc_script_id = '-KYDiO2BTM4kSGZDVXAO'
+#Default To UID Which is The Malawi Column Name
+#discharges_uid_column = 'uid'
+
+if('country' in params and str(params['country']).lower()) =='zim':
+   adm_script_id = '-ZO1TK4zMvLhxTw6eKia'
+   disc_script_id = '-ZYDiO2BTM4kSGZDVXAO'
+
 read_admissions_query = '''
             select 
             uid,
@@ -17,7 +28,57 @@ read_admissions_query = '''
             "data"->'entries' as "entries"
             from scratch.deduplicated_admissions;
             '''
+deduplicate_admissions_query ='''
+drop table if exists scratch.deduplicated_admissions cascade;
+create table scratch.deduplicated_admissions as 
+(
+  with earliest_admissions as (
+    select
+      scriptid,
+      uid, 
+      min(id) as id -- This takes the first upload 
+                    -- of the session as the deduplicated record. 
+                    -- We could replace with max(id) to take the 
+                    -- most recently uploaded
+     from public.sessions
+     where scriptid = '{}' -- only pull out admissions
+    group by 1,2
+  )
+  select
+    earliest_admissions.scriptid,
+    earliest_admissions.uid,
+    earliest_admissions.id,
+    sessions.ingested_at,
+    data
+  from earliest_admissions join sessions
+  on earliest_admissions.id = sessions.id
+); '''.format(adm_script_id)
 
+deduplicate_discharges_query = '''
+drop table if exists scratch.deduplicated_discharges cascade;
+create table scratch.deduplicated_discharges as 
+(
+  with earliest_discharges as (
+    select
+      scriptid,
+      uid, 
+      min(id) as id -- This takes the first upload 
+                    -- of the session as the deduplicated record. 
+                    -- We could replace with max(id) to take the 
+                    -- most recently uploaded
+    from public.sessions
+    where scriptid = '{0}' -- only pull out discharges
+    group by 1,2
+  )
+  select
+    earliest_discharges.scriptid,
+    earliest_discharges.uid,
+    earliest_discharges.id,
+    sessions.ingested_at,
+    data
+  from earliest_discharges join sessions
+  on earliest_discharges.id = sessions.id
+); '''.format(disc_script_id)
 read_discharges_query = '''
             select 
                 uid,
@@ -34,8 +95,8 @@ read_maternal_outcome_query = '''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries"
-            from public.sessions where scriptid ='-MOAjJ_In4TOoe0l_Gl5'
-        '''
+            from public.sessions where scriptid = '{}' '''.format(mat_outcomes_script_id)
+
 read_vitalsigns_query = '''
             select 
             scriptid,

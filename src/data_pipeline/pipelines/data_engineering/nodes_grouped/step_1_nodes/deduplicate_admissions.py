@@ -4,6 +4,7 @@ from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
 import logging
 from conf.common.config import config
+from conf.base.catalog import deduplicate_admissions_query,deduplicate_discharges_query
 from pathlib import Path,PureWindowsPath
 import time
 from datetime import datetime
@@ -15,12 +16,8 @@ cron_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
 mode = params['env']
 #Not passing any Input To Allow Concurrent running of independent Nodes
 def deduplicate_admissions():
-    cwd = os.getcwd()
     try:
-        file_name = Path(cwd+"/src/data_pipeline/pipelines/data_engineering/queries/1-deduplicate-admissions.sql");
-        sql_file = open(file_name, "r")
-        sql_script = sql_file.read()
-        sql_file.close()
+        sql_script = deduplicate_admissions_query
         inject_sql(sql_script, "deduplicate-admissions")
         #Add Return Value For Kedro Not To Throw Data Error
         return dict(

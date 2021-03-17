@@ -100,9 +100,10 @@ def tidy_tables():
             lambda x: str(x)[:-4])
         adm_df['DateTimeAdmission.value'] = pd.to_datetime(
             adm_df['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-        adm_df['EndScriptDatetime.value'] = adm_df['EndScriptDatetime.value'].map(
+        if 'EndScriptDatetime.value' in adm_df and adm_df['EndScriptDatetime.value'] is not None:
+            adm_df['EndScriptDatetime.value'] = adm_df['EndScriptDatetime.value'].map(
             lambda x: str(x)[:-4])
-        adm_df['EndScriptDatetime.value'] = pd.to_datetime(
+            adm_df['EndScriptDatetime.value'] = pd.to_datetime(
             adm_df['EndScriptDatetime.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
         if  adm_df['DateHIVtest.value'] is not None:
             adm_df['DateHIVtest.value'] = adm_df['DateHIVtest.value'].map(lambda x: str(x)[
@@ -126,33 +127,41 @@ def tidy_tables():
             adm_df.drop('BW .value', axis='columns', inplace=True)
 
         # discharges tables
-        dis_df['DateAdmissionDC.value'] = dis_df['DateAdmissionDC.value'].map(
+        if 'DateAdmissionDC.value' in dis_df:
+            dis_df['DateAdmissionDC.value'] = dis_df['DateAdmissionDC.value'].map(
             lambda x: str(x)[:-4])
-        dis_df['DateAdmissionDC.value'] = pd.to_datetime(
+            dis_df['DateAdmissionDC.value'] = pd.to_datetime(
             dis_df['DateAdmissionDC.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-        dis_df['DateDischVitals.value'] = dis_df['DateDischVitals.value'].map(
+        if 'DateDischVitals.value'  in dis_df and dis_df['DateDischVitals.value'] is not None :
+            dis_df['DateDischVitals.value'] = dis_df['DateDischVitals.value'].map(
             lambda x: str(x)[:-4])
-        dis_df['DateDischVitals.value'] = pd.to_datetime(
+            dis_df['DateDischVitals.value'] = pd.to_datetime(
             dis_df['DateDischVitals.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-        dis_df['DateDischWeight.value'] = dis_df['DateDischWeight.value'].map(
+        if 'DateDischWeight.value' in dis_df and dis_df['DateDischWeight.value'] is not None:
+            dis_df['DateDischWeight.value'] = dis_df['DateDischWeight.value'].map(
             lambda x: str(x)[:-4])
-        dis_df['DateDischWeight.value'] = pd.to_datetime(
+            dis_df['DateDischWeight.value'] = pd.to_datetime(
             dis_df['DateDischWeight.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-        dis_df['DateTimeDischarge.value'] = dis_df['DateTimeDischarge.value'].map(
+        if 'DateTimeDischarge.value' in dis_df and  dis_df['DateTimeDischarge.value'] is not None:
+            dis_df['DateTimeDischarge.value'] = dis_df['DateTimeDischarge.value'].map(
             lambda x: str(x)[:-4])
-        dis_df['DateTimeDischarge.value'] = pd.to_datetime(
+            dis_df['DateTimeDischarge.value'] = pd.to_datetime(
             dis_df['DateTimeDischarge.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-        dis_df['EndScriptDatetime.value'] = dis_df['EndScriptDatetime.value'].map(
+        if 'EndScriptDatetime.value' in dis_df:
+            dis_df['EndScriptDatetime.value'] = dis_df['EndScriptDatetime.value'].map(
             lambda x: str(x)[:-4])
-        dis_df['EndScriptDatetime.value'] = pd.to_datetime(
+       
+            dis_df['EndScriptDatetime.value'] = pd.to_datetime(
             dis_df['EndScriptDatetime.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-        dis_df['DateWeaned.value'] = dis_df['DateWeaned.value'].map(lambda x: str(x)[
+        if 'DateWeaned.value' in dis_df and  dis_df['DateWeaned.value']  is not None :
+            dis_df['DateWeaned.value'] = dis_df['DateWeaned.value'].map(lambda x: str(x)[
                                                                     :-4])
-        dis_df['DateWeaned.value'] = pd.to_datetime(
+            dis_df['DateWeaned.value'] = pd.to_datetime(
             dis_df['DateWeaned.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-        dis_df['DateTimeDeath.value'] = dis_df['DateTimeDeath.value'].map(
+        if 'DateTimeDeath.value' in dis_df and dis_df['DateTimeDeath.value'] is not None:
+            dis_df['DateTimeDeath.value'] = dis_df['DateTimeDeath.value'].map(
             lambda x: str(x)[:-4])
-        dis_df['DateTimeDeath.value'] = pd.to_datetime(
+            dis_df['DateTimeDeath.value'] = pd.to_datetime(
             dis_df['DateTimeDeath.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
 
             

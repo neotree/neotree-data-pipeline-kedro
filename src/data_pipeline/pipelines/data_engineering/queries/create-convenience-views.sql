@@ -10,7 +10,8 @@ CREATE TABLE derived.summary_joined_admissions_discharges AS
         derived.joined_admissions_discharges."AWGroup.value" AS "AdmissionWeightGroup", 
         derived.joined_admissions_discharges."BW.value" AS "BirthWeight", 
         derived.joined_admissions_discharges."BWGroup.value" AS "BirthWeightGroup",
-        derived.joined_admissions_discharges."Genitalia.value" AS "Gestation", 
+        derived.joined_admissions_discharges."Genitalia.value" AS "Genitalia",
+        derived.joined_admissions_discharges."Gestation.value" AS "Gestation",
         derived.joined_admissions_discharges."MethodEstGest.label" AS "ModeOfEsttimating", 
         derived.joined_admissions_discharges."AgeCat.label" AS "AgeCategory",
         derived.joined_admissions_discharges."MatHIVtest.label" AS "MotherHIVTest", 
@@ -35,6 +36,7 @@ CREATE TABLE derived.summary_joined_admissions_discharges AS
         CASE WHEN derived.joined_admissions_discharges."GestGroup.value" <> 'Term' THEN 1 END AS "PretermCount",
       	CASE 
          WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Death%%' THEN 1 
+         WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Died%%' THEN 1
          WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%NND%%' THEN 1 
          WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%BID%%' THEN 1
        	end AS "DeathCount",

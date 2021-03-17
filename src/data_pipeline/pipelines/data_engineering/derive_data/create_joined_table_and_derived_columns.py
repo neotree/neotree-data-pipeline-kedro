@@ -43,26 +43,26 @@ def join_table():
         date_format = "%Y-%m-%d"
         for index, row in jn_adm_dis.iterrows():
 
-            jn_adm_dis['LengthOfStay.label'][index] ="Length of Stay"
+            jn_adm_dis['LengthOfStay.label'].iloc[index] ="Length of Stay"
             if (is_date(str(row['DateTimeDischarge.value']))
                 and is_date(str(row['DateTimeAdmission.value']))):
                 DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:-14].strip(),date_format)
                 DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(),date_format)
                 delta_los = DateTimeDischarge -DateTimeAdmission
-                jn_adm_dis['LengthOfStay.value'][index] = delta_los.days
+                jn_adm_dis['LengthOfStay.value'].iloc[index] = delta_los.days
 
             else:
-                jn_adm_dis['LengthOfStay.value'][index] = None
+                jn_adm_dis['LengthOfStay.value'].iloc[index] = None
         
-            jn_adm_dis['LengthOfLife.label'][index] ="Length of Life"
-            if (is_date(str(row['DateTimeDeath.value']))
+            jn_adm_dis['LengthOfLife.label'].iloc[index] ="Length of Life"
+            if 'DateTimeDeath.value' in row and (is_date(str(row['DateTimeDeath.value']))
                 and is_date(str(row['DateTimeAdmission.value']))): 
                 DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:-14].strip(), date_format)
                 DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(), date_format)
                 delta_lol = DateTimeDeath - DateTimeAdmission
-                jn_adm_dis['LengthOfLife.value'][index] = delta_lol.days;
+                jn_adm_dis['LengthOfLife.value'].iloc[index] = delta_lol.days;
             else:
-                jn_adm_dis['LengthOfLife.value'][index] = None;
+                jn_adm_dis['LengthOfLife.value'].iloc[index] = None;
 
 
     except Exception as e:

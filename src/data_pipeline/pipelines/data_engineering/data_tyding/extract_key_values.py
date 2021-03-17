@@ -15,7 +15,7 @@ def get_key_values(data_raw):
         if(app_version!=None and app_version!=''):
             #Remove any Other Characters that are non-numeric
             app_version = int(''.join(d for d in app_version if d.isdigit()))
-
+        
         new_entries['uid'] = rows['uid']
         if 'ingested_at_admission' in rows:
             new_entries['ingested_at'] = rows['ingested_at_admission']
@@ -27,10 +27,17 @@ def get_key_values(data_raw):
            
             #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
             if(app_version!='' and app_version!=None and app_version>454):   
-                k, v, mcl = restructure_new_format(c,rows['entries'][c], mcl)     
+                k, v, mcl = restructure_new_format(c,rows['entries'][c], mcl)
+                #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
+                if(k=='NeoTreeID' and new_entries['uid'] is None):
+                     new_entries['uid'] = v.value;
+
             #ELSE USE THE OLD FORMAT
             else:
                k, v, mcl = restructure(c, mcl)
+               #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
+               if(k=='NeoTreeID' and new_entries['uid'] is None):
+                     new_entries['uid'] = v.value;
             new_entries[k] = v
         # for each row add all the keys & values to a list
         data_new.append(new_entries)
