@@ -16,7 +16,7 @@ env = params['env']
 where = " "
 #Else Remove All Records That Were Created In App Mode Dev
 if(env=="prod"):
-       where = " \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
+       where = " and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
        
        
 #Country Defaults To Malawi
@@ -50,7 +50,7 @@ create table scratch.deduplicated_admissions as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
      from public.sessions
-     where scriptid = '{0}' and {1} -- only pull out admissions
+     where scriptid = '{0}' {1} -- only pull out admissions
     group by 1,2
   )
   select
@@ -76,7 +76,7 @@ create table scratch.deduplicated_discharges as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
     from public.sessions
-    where scriptid = '{0}' and {1} -- only pull out discharges
+    where scriptid = '{0}' {1} -- only pull out discharges
     group by 1,2
   )
   select
