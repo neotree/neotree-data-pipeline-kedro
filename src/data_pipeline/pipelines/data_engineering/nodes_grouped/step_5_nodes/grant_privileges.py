@@ -11,13 +11,25 @@ import logging
 import time
 
 #Pass Convinience Views Output as it is the last step in the data pipeline process
-cron_log = open("/var/log/data_pipeline_cron.log","a+")
-#cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/Chiedza\/Data\/data_pipeline_cron.log","a+")
+
+
+cwd = os.getcwd()
+logs_dir = str(cwd+"/logs")
+
+
+#Prefered Log Var for Ubuntu
+ubuntu_log_dir = "/var/log"
+if Path(ubuntu_log_dir).exists():
+    logs_dir = ubuntu_log_dir
+    
+cron_log_file = Path(logs_dir+'/data_pipeline_cron.log')
+cron_log_file.touch(exist_ok=True);
+cron_log = open(cron_log_file,"a+")
 def grant_privileges(create_summary_counts_output):
     try:
         #Test If Previous Node Has Completed Successfully
         if create_summary_counts_output:
-            cwd = os.getcwd()
+            
             file_name = Path(
             cwd+"/src/data_pipeline/pipelines/data_engineering/queries/3-grant-usage-on-tables.sql");
 

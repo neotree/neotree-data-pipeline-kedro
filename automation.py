@@ -3,15 +3,13 @@ from conf.common.format_error import formatError
 from crontab import CronTab
 import logging
 import sys
+import os
 
 params = config()
 
 mode = params['env']
 interval = 6
-#The home directory of the data_pipeline.py file as set in the database.ini file
-cronDir = '/home/ubuntu/neotree-datapipeline-kedro/'
-if 'cron_dir' in params:
-    cronDir = params['cron_dir']
+cronDir = os.getcwd();
 #The number of hours before next execution of the next job as set in the database.ini file
 if 'cron_interval'in params:
     interval = int(params['cron_interval'])

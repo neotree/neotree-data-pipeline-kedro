@@ -4,9 +4,19 @@ from configparser import ConfigParser
 #import libraries
 import sys
 import logging
+from logging.handlers import RotatingFileHandler
+from kedro.versioning.journal import JournalFileHandler
 import os
 import stat
 from pathlib import Path
+from pythonjsonlogger import jsonlogger
+
+#Configure General Logging
+
+
+log = logging.getLogger('');
+
+#Defaults To The General Logs Directory
 
 env = None
 if len(sys.argv) >= 3:
@@ -15,10 +25,13 @@ if len(sys.argv) >= 3:
     if(len(env)) >1:
         env = env[1];
 else:
-    logging.error("Please include environment arguement (e.g. $ kedro run --env=dev)")
+    log.error("Please include environment arguement (e.g. $ kedro run --env=dev)")
     sys.exit()
 if env is not None:       
     def config(filename='conf/local/database.ini'):
+        cwd = os.getcwd();
+        #logs_dir = str(cwd+'/logs')
+        
         if env == "prod":
             section = 'postgresql_prod'
         elif env == "stage":
@@ -27,7 +40,7 @@ if env is not None:
             section = 'postgresql_dev'
 
         else:
-            logging.error("{0} is not a valid arguement: Valid arguements are (dev or stage or prod)".format(env))
+            log.error("{0} is not a valid arguement: Valid arguements are (dev or stage or prod)".format(env))
             sys.exit()
 
          # create a parser
@@ -43,9 +56,9 @@ if env is not None:
         # add environment to global params for use by other functions
             db['env'] = env
             for param in params:
-                db[param[0]] = param[1]
+                db[param[0]] = param[1];
         else:
-            logging.error('Section {0} not found in the {1} file'.format(section, filename))
+            log.error('Section {0} not found in the {1} file'.format(section, filename))
             sys.exit()
         return db
 
