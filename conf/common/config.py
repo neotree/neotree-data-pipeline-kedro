@@ -16,7 +16,12 @@ from pythonjsonlogger import jsonlogger
 
 log = logging.getLogger('');
 
-#Defaults To The General Logs Directory
+#Create Default Logs Directory If It doesnt Exist
+if Path(os.getcwd()+'/logs').exists() and Path(os.getcwd()+'/logs').is_dir():
+    print()
+else:
+    logs_dir = Path(str(os.getcwd()+'/logs'))
+    logs_dir.mkdir(exist_ok=True);
 
 env = None
 if len(sys.argv) >= 3:

@@ -21,9 +21,7 @@ logs_dir = str(cwd+"/logs")
 ubuntu_log_dir = "/var/log"
 if Path(ubuntu_log_dir).exists():
     logs_dir = ubuntu_log_dir
-    
-cron_log_file = Path(logs_dir+'/data_pipeline_cron.log')
-cron_log_file.touch(exist_ok=True);
+cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
 cron_log = open(cron_log_file,"a+")
 def grant_privileges(create_summary_counts_output):
     try:
