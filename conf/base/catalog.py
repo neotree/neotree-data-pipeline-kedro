@@ -8,13 +8,22 @@ params = config()
 con = 'postgresql+psycopg2://' + \
 params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
+env = params['env']
 
+#Remove Dev Data From Production Instance:
+
+#Take Everything (Applies To Dev And Stage Ebnvironments)
+where = " "
+#Else Remove All Records That Were Created In App Mode Dev
+if(env=="prod"):
+       where = " \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
+       
+       
 #Country Defaults To Malawi
 mat_outcomes_script_id = '-MOAjJ_In4TOoe0l_Gl5'
 adm_script_id = '-KO1TK4zMvLhxTw6eKia'
 disc_script_id = '-KYDiO2BTM4kSGZDVXAO'
-#Default To UID Which is The Malawi Column Name
-#discharges_uid_column = 'uid'
+
 
 if('country' in params and str(params['country']).lower()) =='zim':
    adm_script_id = '-ZO1TK4zMvLhxTw6eKia'
@@ -26,7 +35,7 @@ read_admissions_query = '''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries"
-            from scratch.deduplicated_admissions;
+            from scratch.deduplicated_admissions ;
             '''
 deduplicate_admissions_query ='''
 drop table if exists scratch.deduplicated_admissions cascade;
@@ -41,7 +50,7 @@ create table scratch.deduplicated_admissions as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
      from public.sessions
-     where scriptid = '{}' -- only pull out admissions
+     where scriptid = '{0}' and {1} -- only pull out admissions
     group by 1,2
   )
   select
@@ -52,7 +61,7 @@ create table scratch.deduplicated_admissions as
     data
   from earliest_admissions join sessions
   on earliest_admissions.id = sessions.id
-); '''.format(adm_script_id)
+); '''.format(adm_script_id,where)
 
 deduplicate_discharges_query = '''
 drop table if exists scratch.deduplicated_discharges cascade;
@@ -67,7 +76,7 @@ create table scratch.deduplicated_discharges as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
     from public.sessions
-    where scriptid = '{0}' -- only pull out discharges
+    where scriptid = '{0}' and {1} -- only pull out discharges
     group by 1,2
   )
   select
@@ -78,7 +87,7 @@ create table scratch.deduplicated_discharges as
     data
   from earliest_discharges join sessions
   on earliest_discharges.id = sessions.id
-); '''.format(disc_script_id)
+); '''.format(disc_script_id,where)
 read_discharges_query = '''
             select 
                 uid,

@@ -19,6 +19,14 @@ def create_columns(table: pd.DataFrame):
         table['AdmittedFrom.value'] = None
     if 'AdmittedFrom.label' not in table:
         table['AdmittedFrom.label'] = None
+    if 'ReferredFrom.label' not in table:
+         table['ReferredFrom.label'] = None
+    if 'ReferredFrom.value' not in table:
+         table['ReferredFrom.value'] = None
+    if 'ReferredFrom2.label' not in table:
+         table['ReferredFrom2.label'] = None
+    if 'ReferredFrom2.value' not in table:
+         table['ReferredFrom2.value'] = None
         
     table['AdmittedFrom.value'].fillna("ER", inplace=True)
     table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
