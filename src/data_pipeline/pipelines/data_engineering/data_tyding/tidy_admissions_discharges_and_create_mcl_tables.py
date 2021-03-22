@@ -1,4 +1,5 @@
 # Import created modules (need to be stored in the same directory as notebook)
+import sys
 from .extract_key_values import get_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
@@ -56,15 +57,22 @@ def tidy_tables():
     try:
 
         adm_df = pd.json_normalize(adm_new_entries)
-        adm_df.set_index(['uid'])
+        if "uid" in adm_df:
+            adm_df.set_index(['uid'])
         dis_df = pd.json_normalize(dis_new_entries)
-        dis_df.set_index(['uid'])
+        if "uid" in dis_df:
+            dis_df.set_index(['uid'])
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
         if "uid" in mat_outcomes_df:
             mat_outcomes_df.set_index(['uid'])
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
         if "uid" in vit_signs_df:
             vit_signs_df.set_index(['uid'])
+        
+        if adm_df.empty and dis_df.empty:
+            logging.error(
+            "Admissions and Discharges Can Not Be Empty::Please Check If You Have Set The Correct Country In database.ini ")
+            sys.exit(1)
  
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
         # admissions tables
@@ -95,10 +103,14 @@ def tidy_tables():
             adm_df['NVPgiven.value']=None
             adm_df['NVPgiven.label']=None
         # remove timezone in string to fix issues caused by converting to UTC
-        
-        adm_df['DateTimeAdmission.value'] = adm_df['DateTimeAdmission.value'].map(
+        if 'DateTimeAdmission.value' not in adm_df.columns:
+            adm_df['DateTimeAdmission.value']=None
+            adm_df['DateTimeAdmission.label']=None
+
+        if adm_df['DateTimeAdmission.value'] is not None:
+            adm_df['DateTimeAdmission.value'] = adm_df['DateTimeAdmission.value'].map(
             lambda x: str(x)[:-4])
-        adm_df['DateTimeAdmission.value'] = pd.to_datetime(
+            adm_df['DateTimeAdmission.value'] = pd.to_datetime(
             adm_df['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
         if 'EndScriptDatetime.value' in adm_df and adm_df['EndScriptDatetime.value'] is not None:
             adm_df['EndScriptDatetime.value'] = adm_df['EndScriptDatetime.value'].map(
@@ -171,11 +183,13 @@ def tidy_tables():
             mat_outcomes_df['DateAdmission.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
             mat_outcomes_df['DateAdmission.value'] = mat_outcomes_df['DateAdmission.value'].map(
             lambda x: str(x)[:-4])
-        if 'BirthDateDis.value' in mat_outcomes_df :
+        if 'BirthDateDis.value' in mat_outcomes_df  and "BirthDateDis.vale" is not None:
             mat_outcomes_df['BirthDateDis.value'] =  pd.to_datetime(
             mat_outcomes_df['BirthDateDis.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
             mat_outcomes_df['BirthDateDis.value'] = mat_outcomes_df['BirthDateDis.value'].map(
             lambda x: str(x)[:-4])
+        else:
+            mat_outcomes_df["BirthDateDis.value"] = None
         #Vital Signs Table
         if 'D1Date.value' in vit_signs_df :
             vit_signs_df['D1Date.value'] =  pd.to_datetime(
@@ -220,9 +234,11 @@ def tidy_tables():
        
     
         #Save Derived Admissions To The DataBase Using Kedro
-        catalog.save('create_derived_admissions',adm_df)
+        if not adm_df.empty:
+            catalog.save('create_derived_admissions',adm_df)
         #Save Derived Admissions To The DataBase Using Kedro
-        catalog.save('create_derived_discharges',dis_df)
+        if not dis_df.empty:
+            catalog.save('create_derived_discharges',dis_df)
         #Save Derived Maternal Outcomes To Database Using Kedro
         if not mat_outcomes_df.empty:
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
@@ -230,8 +246,7 @@ def tidy_tables():
         if not vit_signs_df.empty:
             catalog.save('create_derived_vital_signs',vit_signs_df)
 
-      
-       
+
 
     except Exception as e:
         logging.error(

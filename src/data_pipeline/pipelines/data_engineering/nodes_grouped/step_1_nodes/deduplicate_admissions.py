@@ -15,15 +15,20 @@ params = config()
 cron_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
 mode = params['env']
 #Not passing any Input To Allow Concurrent running of independent Nodes
-def deduplicate_admissions():
+def deduplicate_admissions(data_import_output):
     try:
-        sql_script = deduplicate_admissions_query
-        inject_sql(sql_script, "deduplicate-admissions")
-        #Add Return Value For Kedro Not To Throw Data Error
-        return dict(
-            status='Success',
-            message = "Admissions Deduplication Complete"
-        )
+        if data_import_output is not None:
+            sql_script = deduplicate_admissions_query
+            inject_sql(sql_script, "deduplicate-admissions")
+            #Add Return Value For Kedro Not To Throw Data Error
+            return dict(
+                status='Success',
+                message = "Admissions Deduplication Complete"
+            )
+        else:
+            logging.error(
+                    "Data Importation Did Not Execute To Completion")
+            return None
 
     except Exception as e:
         logging.error(

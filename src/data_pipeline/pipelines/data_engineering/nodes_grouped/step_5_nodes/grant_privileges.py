@@ -4,7 +4,7 @@ sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql_procedure
 from conf.common.format_error import formatError
 from conf.common.config import config
-from pathlib import Path,PureWindowsPath
+from pathlib import Path
 from datetime import datetime
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time, start
 import logging

@@ -1,4 +1,5 @@
 from kedro.pipeline import node
+from .nodes_grouped.data_impotation_nodes.import_from_raw_json import import_json_files
 from .nodes_grouped.step_1_nodes.deduplicate_admissions import deduplicate_admissions
 from .nodes_grouped.step_1_nodes.deduplicate_discharges import deduplicate_discharges
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data
@@ -14,15 +15,17 @@ from kedro.io import CachedDataSet
 
 #A File That is used to create all the nodes that make up the data pipeline
 
-
+import_raw_json_files_node = node(
+    import_json_files,inputs=None,outputs ="data_import_output"
+)
 #Create A Deduplicating Admissions Node
 deduplicate_admissions_node = node(
-    deduplicate_admissions, inputs=None, outputs="deduplicate_admissions_output"
+    deduplicate_admissions, inputs="data_import_output", outputs="deduplicate_admissions_output"
 )
 
 #Create A Deduplicating Discharges Node
 deduplicate_discharges_node = node(
-    deduplicate_discharges, inputs=None, outputs="deduplicate_discharges_output"
+    deduplicate_discharges, inputs="data_import_output", outputs="deduplicate_discharges_output"
 )
 
 # Create A Data Tyding Node And Pass OutPut From Deduplication

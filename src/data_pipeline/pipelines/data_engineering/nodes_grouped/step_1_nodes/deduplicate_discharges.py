@@ -8,15 +8,21 @@ from pathlib import Path,PureWindowsPath
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 #Not passing any Input To Allow Concurrent running of independent Nodes
-def deduplicate_discharges():
+def deduplicate_discharges(data_import_output):
     try:
-        sql_script = deduplicate_discharges_query
-        inject_sql(sql_script, "deduplicate-discharges")
-        #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
-        return dict(
-            status='Success',
-            message = "Discharges Deduplication Complete"
-        )
+        if data_import_output is not None:
+            sql_script = deduplicate_discharges_query
+            inject_sql(sql_script, "deduplicate-discharges")
+            #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
+            return dict(
+                status='Success',
+                message = "Discharges Deduplication Complete"
+            )
+        else:
+            logging.error(
+                    "Data Importation Did Not Execute To Completion")
+            return None
+            
     except Exception as e:
         logging.error(
             "!!! An error occured deduplicating discharges: ")

@@ -9,6 +9,15 @@ from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.dedupli
 
 cwd = os.getcwd()
 
+logs_dir = str(cwd+"/logs")
+
+
+#Prefered Log Var for Ubuntu
+ubuntu_log_dir = "/var/log"
+if Path(ubuntu_log_dir).exists():
+    logs_dir = ubuntu_log_dir
+cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
+
 #Pass Convinience Views Output
 def create_summary_maternal_outcomes(tidy_data_output):
     maternal_outcomes_count = 0
@@ -40,7 +49,7 @@ def create_summary_maternal_outcomes(tidy_data_output):
 
         except Exception as e:
             logging.error("!!! An error occured creating summary Maternal Outcomes: ")
-            cron_log = open("/var/log/data_pipeline_cron.log","a+")
+            cron_log = open(cron_log_file,"a+")
             #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
             cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Maternal Outcomes ".format(cron_time,mode))
             cron_log.close()

@@ -28,6 +28,7 @@ disc_script_id = '-KYDiO2BTM4kSGZDVXAO'
 if('country' in params and str(params['country']).lower()) =='zim':
    adm_script_id = '-ZO1TK4zMvLhxTw6eKia'
    disc_script_id = '-ZYDiO2BTM4kSGZDVXAO'
+   mat_outcomes_script_id ='-MDPYzHcFVHt02D1Tz4Z'
 
 read_admissions_query = '''
             select 
