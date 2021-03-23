@@ -138,6 +138,11 @@ def tidy_tables():
             adm_df['BW.value'] = adm_df['BW .value']
             adm_df.drop('BW .value', axis='columns', inplace=True)
 
+        if 'ROMLength.label' not in adm_df.columns:
+            adm_df['ROMLength.label'] = None;
+        if  'ROMLength.value' not in adm_df.columns:
+            adm_df['ROMLength.value'] = None;
+
         # discharges tables
         if 'DateAdmissionDC.value' in dis_df:
             dis_df['DateAdmissionDC.value'] = dis_df['DateAdmissionDC.value'].map(
