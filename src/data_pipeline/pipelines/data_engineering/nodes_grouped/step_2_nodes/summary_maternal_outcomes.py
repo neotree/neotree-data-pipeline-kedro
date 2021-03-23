@@ -53,7 +53,7 @@ def create_summary_maternal_outcomes(tidy_data_output):
             #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
             cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Maternal Outcomes ".format(cron_time,mode))
             cron_log.close()
-            logging.error(formatError(e))
+            logging.error(e.with_traceback())
             sys.exit(1)
     else:
         return dict(

@@ -190,6 +190,26 @@ def tidy_tables():
             lambda x: str(x)[:-4])
         else:
             mat_outcomes_df["BirthDateDis.value"] = None
+        if "TypeBirth.label" not in mat_outcomes_df:
+            mat_outcomes_df["TypeBirth.label"] = None
+        if "Presentation.label" not in mat_outcomes_df:
+            mat_outcomes_df["Presentation.label"] = None
+        if "BabyNursery.label" not in mat_outcomes_df:
+            mat_outcomes_df["BabyNursery.label"] = None
+        if "Reason.label" not in mat_outcomes_df:
+            mat_outcomes_df["Reason.label"] = None
+        if "ReasonOther.label" not in mat_outcomes_df:
+            mat_outcomes_df["ReasonOther.label"] = None
+        if "CryBirth.label" not in mat_outcomes_df:
+            mat_outcomes_df["CryBirth.label"] = None
+        if "Apgar1.value" not in mat_outcomes_df:
+                mat_outcomes_df["Apgar1.value"] = None
+        if "Apgar5.value" not in mat_outcomes_df:
+                mat_outcomes_df["Apgar5.value"] = None
+        if "Apgar10.value" not in mat_outcomes_df:
+                mat_outcomes_df["Apgar10.value"] = None
+        if "PregConditions.label" not in mat_outcomes_df:
+                mat_outcomes_df["PregConditions.label"] = None
         #Vital Signs Table
         if 'D1Date.value' in vit_signs_df :
             vit_signs_df['D1Date.value'] =  pd.to_datetime(
