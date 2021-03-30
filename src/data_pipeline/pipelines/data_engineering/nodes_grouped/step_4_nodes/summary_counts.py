@@ -14,7 +14,6 @@ def create_summary_counts(convinience_views_output):
         #Test If Previous Node Has Completed Successfully
         if convinience_views_output is not None:
             sql_script = summary_counts_query();
-            print("THE QUERY=",sql_script)
             inject_sql(sql_script, "create-summary-counts")
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
