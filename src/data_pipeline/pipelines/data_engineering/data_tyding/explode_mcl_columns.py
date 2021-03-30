@@ -7,10 +7,12 @@ from conf.common.sql_functions import create_table
 def explode_column(df, mcl):
     
     for c in mcl:
-        # loop to explode all mcl columns in list
-        
+        # loop to explode all mcl columns in list    
         column = (c + '.label')
-        mcl_column = df[[column]]
+        #Get The Actual Value For Other Field
+        if c =='AdmReasonOth' or c == 'DiagnosesOth':
+            column = (c+'.value')
+        mcl_column = df[[column]] 
         mcl_column_exp = mcl_column.explode(column)
         mcl_column_exp['uid'] = df['uid']
         mcl_column_exp.set_index('uid')
