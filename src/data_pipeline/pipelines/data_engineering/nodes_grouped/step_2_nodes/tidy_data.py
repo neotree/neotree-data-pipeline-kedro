@@ -2,7 +2,7 @@ import logging
 import sys,os
 from  data_pipeline.pipelines.data_engineering.data_tyding.tidy_admissions_discharges_and_create_mcl_tables import tidy_tables
 from  conf.common.format_error import formatError
-from conf.base.catalog import catalog
+from conf.base.catalog import catalog,cron_log_file
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 
@@ -27,7 +27,7 @@ def tidy_data(deduplicate_discharges_output,deduplicate_admissions_output):
     except Exception as e:
         logging.error("!!! An error occured tidying or creating MCL tables: ")
         logging.error(e.with_traceback())
-        cron_log = open("/var/log/data_pipeline_cron.log","a+")
+        cron_log = open(cron_log_file,"a+")
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Tyding Data ".format(cron_time,mode))
         cron_log.close()

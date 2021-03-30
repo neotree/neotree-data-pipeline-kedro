@@ -2,7 +2,7 @@ import os, sys
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
-from conf.base.catalog import deduplicate_discharges_query
+from conf.base.catalog import deduplicate_discharges_query,cron_log_file
 import logging
 from pathlib import Path,PureWindowsPath
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
@@ -26,7 +26,7 @@ def deduplicate_discharges(data_import_output):
     except Exception as e:
         logging.error(
             "!!! An error occured deduplicating discharges: ")
-        cron_log = open("/var/log/data_pipeline_cron.log","a+")
+        cron_log = open(cron_log_file,"a+")
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Deduplicating Discharges ".format(cron_time,mode))
         cron_log.close()

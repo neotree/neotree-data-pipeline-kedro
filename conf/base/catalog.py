@@ -1,14 +1,25 @@
 from kedro.extras.datasets.pandas import (
     SQLQueryDataSet,SQLTableDataSet)
 from kedro.io import DataCatalog
+from pathlib import Path
 from conf.common.config import config
-import sys
+import sys,os
 
 params = config()
 con = 'postgresql+psycopg2://' + \
 params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
 env = params['env']
+
+cwd = os.getcwd()
+logs_dir = str(cwd+"/logs")
+
+
+#Prefered Log Var for Ubuntu
+ubuntu_log_dir = "/var/log"
+if Path(ubuntu_log_dir).exists():
+    logs_dir = ubuntu_log_dir
+cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
 
 #Remove Dev Data From Production Instance:
 

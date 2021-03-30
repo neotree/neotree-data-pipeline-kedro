@@ -3,20 +3,12 @@ import sys,os
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
-from pathlib import Path,PureWindowsPath
-from conf.base.catalog import catalog
+from conf.base.catalog import catalog,cron_log_file
+from data_pipeline.pipelines.data_engineering.queries.create_summary_maternal_outcomes_sql import summary_maternal_outcomes_query
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 cwd = os.getcwd()
 
-logs_dir = str(cwd+"/logs")
-
-
-#Prefered Log Var for Ubuntu
-ubuntu_log_dir = "/var/log"
-if Path(ubuntu_log_dir).exists():
-    logs_dir = ubuntu_log_dir
-cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
 
 #Pass Convinience Views Output
 def create_summary_maternal_outcomes(tidy_data_output):
@@ -31,11 +23,7 @@ def create_summary_maternal_outcomes(tidy_data_output):
         try:
              #Test If Previous Node Has Completed Successfully
             if tidy_data_output is not None:
-                file_name = Path(
-                cwd+"/src/data_pipeline/pipelines/data_engineering/queries/create-summary-maternal-outcomes.sql");
-                sql_file = open(file_name, "r")
-                sql_script = sql_file.read()
-                sql_file.close()
+                sql_script = summary_maternal_outcomes_query()
                 inject_sql(sql_script, "create-summary-maternal-outcomes")
                 #Add Return Value For Kedro Not To Throw Data Error
                 return dict(
@@ -50,7 +38,6 @@ def create_summary_maternal_outcomes(tidy_data_output):
         except Exception as e:
             logging.error("!!! An error occured creating summary Maternal Outcomes: ")
             cron_log = open(cron_log_file,"a+")
-            #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
             cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Maternal Outcomes ".format(cron_time,mode))
             cron_log.close()
             logging.error(e.with_traceback())
