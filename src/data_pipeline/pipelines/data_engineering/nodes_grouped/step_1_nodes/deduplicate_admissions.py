@@ -3,15 +3,13 @@ sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
 import logging
-from conf.common.config import config
-from conf.base.catalog import deduplicate_admissions_query,deduplicate_discharges_query
+from conf.base.catalog import deduplicate_admissions_query,params
 from pathlib import Path,PureWindowsPath
 import time
 from datetime import datetime
 
 
 start = time.time()
-params = config()
 cron_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
 mode = params['env']
 #Not passing any Input To Allow Concurrent running of independent Nodes

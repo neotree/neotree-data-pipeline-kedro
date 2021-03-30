@@ -17,7 +17,7 @@ derived.summary_joined_admissions_discharges."AdmissionMonthYear" AS "AdmissionM
         sum(derived.summary_joined_admissions_discharges."HypothermiaCount") AS "TotalHypothemiaBabies", 
         sum(derived.summary_joined_admissions_discharges."Less28wks/1kgCount") AS "TotalBabiesWith<28wksAnd1kgs"
 FROM derived.summary_joined_admissions_discharges
-GROUP BY derived.summary_joined_admissions_discharges."AdmissionMonthYear", 
+GROUP BY derived.summary_joined_admissions_discharges."AdmissionMonthYear",
 derived.summary_joined_admissions_discharges."AdmissionMonthYearSort"
 ORDER BY derived.summary_joined_admissions_discharges."AdmissionMonthYearSort" ASC, 
 derived.summary_joined_admissions_discharges."AdmissionMonthYear" ASC;

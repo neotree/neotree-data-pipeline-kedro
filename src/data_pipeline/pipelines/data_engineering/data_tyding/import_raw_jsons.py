@@ -1,5 +1,5 @@
 import logging
-from conf.common.config import config
+from conf.base.catalog import params
 from pathlib import Path
 import json
 import ast
@@ -11,9 +11,169 @@ def createAdmissionsAndDischargesFromRawData():
     data = formatRawData()
     if data is not None:
         distinct_sessions = []
+        copy_data = [
+'F665-0602',
+'F665-0601',
+'EF78-0721',
+'EF78-0708',
+'EF78-0707',
+'EF78-0703',
+'EBEF-0065',
+'EBEF-0063',
+'EBEF-0062',
+'EBEF-0061',
+'EBEF-0060',
+'EBEF-0059',
+'EBEF-0049',
+'EBEF-0045',
+'EBEF-0042',
+'EBEF-0039',
+'EBEF-0038',
+'EBEF-0035',
+'EBEF-0032',
+'EBEF-0024',
+'EBEF-0022',
+'EBEF-0009',
+'EBEF-0005',
+'D667-0059',
+'D667-0051',
+'D667-0050',
+'D667-0049',
+'D667-0048',
+'D667-0037',
+'D667-0035',
+'D667-0028',
+'D667-0027',
+'D667-0019',
+'D667-0018',
+'D667-0010',
+'D667-0003',
+'CF1D-0128',
+'CBD9-0097',
+'CBD9-0095',
+'CBD9-0094',
+'CBD9-0090',
+'CBD9-0089',
+'CBD9-0088',
+'CBD9-0086',
+'CBD9-0083',
+'CBD9-0082',
+'CBD9-0080',
+'CBD9-0064',
+'CBD9-0058',
+'CBD9-0045',
+'CBD9-0014',
+'CBD9-0012',
+'B5E6-0087',
+'B5E6-0086',
+'B5E6-0085',
+'B5E6-0080',
+'B5E6-0075',
+'B5E6-0073',
+'B5E6-0069',
+'B5E6-0063',
+'B5E6-0062',
+'B5E6-0061',
+'B5E6-0058',
+'B5E6-0055',
+'B5E6-0054',
+'B5E6-0053',
+'B5E6-0051',
+'B5E6-0039',
+'B5E6-0038',
+'B5E6-0036',
+'B5E6-0031',
+'B5E6-0030',
+'B5E6-0029',
+'B5E6-0023',
+'B5E6-0014',
+'B5E6-0013',
+'7D17-0718',
+'7D17-0715',
+'72E1-0029',
+'72E1-0028',
+'72E1-0027',
+'72E1-0025',
+'72E1-0008',
+'71D1-0680',
+'6909-0086',
+'6909-0085',
+'6909-0083',
+'6909-0061',
+'6909-0057',
+'6909-0056',
+'6909-0054',
+'6909-0053',
+'6909-0051',
+'6909-0044',
+'6909-0030',
+'6909-0026',
+'6909-0025',
+'6909-0020',
+'6909-0019',
+'6909-0018',
+'6909-0017',
+'6909-0013',
+'6909-0009',
+'6909-0008',
+'6716-0058',
+'6716-0056',
+'6716-0053',
+'6716-0052',
+'6716-0050',
+'6716-0049',
+'6716-0047',
+'6716-0044',
+'6716-0038',
+'6716-0037',
+'6716-0036',
+'6716-0034',
+'6716-0033',
+'6716-0020',
+'6716-0009',
+'6716-0006',
+'5528-0106',
+'51D4-0070',
+'51D4-0068',
+'51D4-0053',
+'51D4-0052',
+'51D4-0025',
+'51D4-0021',
+'45C7-0067',
+'45C7-0066',
+'45C7-0065',
+'45C7-0046',
+'45C7-0045',
+'45C7-0026',
+'45C7-0025',
+'45C7-0023',
+'45C7-0022',
+'45C7-0021',
+'45C7-0018',
+'45C7-0017',
+'45C7-0015',
+'45C7-0014',
+'45C7-0011',
+'4441-0015',
+'4441-0014',
+'4441-0011',
+'4441-0009',
+'4441-0008',
+'2653-0198',
+'2653-0189',
+'2474-0008',
+'0E05-0714',
+'0E05-0704',
+'0028-4140',
+'0028-2485']
         #Duplicates Key Should Be In Data To Show That It has Validated Availability of Duplicates(It can be Empty)
         if "sessions"  in data and "duplicates" in data:
             possible_duplicates = data["duplicates"];
+            uids = []
+            for item in data["duplicates"]:
+                if(item["script"]["id"]=='-ZYDiO2BTM4kSGZDVXAO'):
+                    uids.append(item["uid"])
+           
             if len(possible_duplicates) >0:
                 for session in data["sessions"]:
                     if dict(uid=session["uid"],script=session["script"]) in possible_duplicates:
@@ -22,8 +182,7 @@ def createAdmissionsAndDischargesFromRawData():
                         distinct_sessions.append(session) 
             else:
                 distinct_sessions = data["sessions"]
-                print("###---",len(distinct_sessions))
-
+               
             for sess in distinct_sessions:
                 insertion_data = json.dumps(sess);
                 json_string = insertion_data.replace("'s","s")
@@ -32,6 +191,8 @@ def createAdmissionsAndDischargesFromRawData():
                 ingested_at = datetime.now()
                 scriptId = sess["script"]["id"]
                 uid = sess["uid"]
+                if(scriptId !="-ZO1TK4zMvLhxTw6eKia" and scriptId!="-ZYDiO2BTM4kSGZDVXAO"):
+                    print("sid=",scriptId, "-uid=",uid)
                 insertion_query = '''INSERT INTO public.sessions (ingested_at,uid, scriptid,data) VALUES('{0}','{1}','{2}','{3}');'''.format(ingested_at,uid,scriptId,json_string)
                 inject_sql(insertion_query,"DATA INSERTION")
     else:
@@ -40,7 +201,7 @@ def createAdmissionsAndDischargesFromRawData():
 
 #Restructure All Data To Suit A Format That Is Easy To Read And Export To Dbase
 def formatRawData():
-    params = config()
+
     if(params is not None and params["mode"] is not None and params["mode"]=="import"):
         if 'files_dir' in params:
             files_dir = Path(params['files_dir'])
@@ -161,6 +322,7 @@ def formatRawData():
                                                     formatedSessions.append(session) 
                                                     #Add uid To list for duplicates check 
                                                     uids.append(session["uid"])
+                                   
                 
                             json_file.close();
                     #Check If There Exist A Record With The Same UID in The Database

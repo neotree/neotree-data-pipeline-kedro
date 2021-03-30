@@ -1,9 +1,8 @@
 import os, sys
 sys.path.append(os.getcwd())
-from conf.common.config import config
+from conf.base.catalog import params
 from data_pipeline.pipelines.data_engineering.data_tyding.import_raw_jsons import createAdmissionsAndDischargesFromRawData;
 
-params = config()
 mode = None
 if "mode" in params:
     mode = params["mode"]

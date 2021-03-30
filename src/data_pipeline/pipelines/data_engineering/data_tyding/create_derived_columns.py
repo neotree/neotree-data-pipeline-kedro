@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime as dt
+from conf.base.catalog import params
 
 
 def create_columns(table: pd.DataFrame):
@@ -89,13 +90,28 @@ def create_columns(table: pd.DataFrame):
               31.5, 'TempGroup.value'] = "30.5-31.5"
     table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
 
-    # order of statements matters
-    table.loc[table['Temperature.value'] >= 37.5,
-              'TempThermia.value'] = "Hyperthermia"
-    table.loc[table['Temperature.value'] < 37.5,
+  
+    if('country' in params and str(params['country']).lower()) =='zim':
+        table.loc[table['Temperature.value'] >37.5,
+              'TempThermia.value'] = "Fever"
+        table.loc[(table['Temperature.value'] >= 36.5) & (table['Temperature.value'] <= 37.5),
               'TempThermia.value'] = "Normothermia"
-    table.loc[table['Temperature.value'] < 36.5,
+        table.loc[(table['Temperature.value'] >= 36.0) & (table['Temperature.value'] <= 36.4),
+              'TempThermia.value'] = "Mild Hypothermia"
+        table.loc[(table['Temperature.value'] >= 32.1) & (table['Temperature.value'] <= 35.9),
+              'TempThermia.value'] = "Moderate Hypothermia"
+        table.loc[table['Temperature.value'] <= 32,
+              'TempThermia.value'] = "Severe Hypothermia"
+        
+        
+    else:
+        table.loc[table['Temperature.value'] >= 37.5,
+              'TempThermia.value'] = "Hyperthermia"
+        table.loc[table['Temperature.value'] < 37.5,
+              'TempThermia.value'] = "Normothermia"
+        table.loc[table['Temperature.value'] < 36.5,
               'TempThermia.value'] = "Hypothermia"
+
 
     table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
                                  ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
