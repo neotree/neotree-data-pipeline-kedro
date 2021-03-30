@@ -102,6 +102,8 @@ def create_columns(table: pd.DataFrame):
               'TempThermia.value'] = "Moderate Hypothermia"
         table.loc[table['Temperature.value'] <= 32,
               'TempThermia.value'] = "Severe Hypothermia"
+        table.loc[table['Temperature.value'].isnull(),
+              'TempThermia.value'] = "Unknown"
         
         
     else:
