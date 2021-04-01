@@ -142,6 +142,8 @@ derived_discharges_query = '''
         '''
 #Query To Validate If It is necessary to run Maternal OutComes Summary        
 count_maternal_outcomes = ''' select count(*) from derived.maternal_outcomes'''
+
+vital_signs_count = ''' select count(*) from derived.vitalsigns '''
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
         {
@@ -180,6 +182,11 @@ catalog = DataCatalog(
          #Count Maternal Outcomes
          "count_maternal_outcomes": SQLQueryDataSet(
             sql= count_maternal_outcomes,
+            credentials=dict(con=con)
+         ),
+          #Count Vital Signs
+         "vital_signs_count": SQLQueryDataSet(
+            sql= vital_signs_count,
             credentials=dict(con=con)
          ),
          #Make Use Of Save Method To Create Tables

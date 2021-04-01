@@ -4,6 +4,7 @@ from .nodes_grouped.step_1_nodes.deduplicate_admissions import deduplicate_admis
 from .nodes_grouped.step_1_nodes.deduplicate_discharges import deduplicate_discharges
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data
 from .nodes_grouped.step_2_nodes.summary_maternal_outcomes import create_summary_maternal_outcomes
+from .nodes_grouped.step_2_nodes.summary_vitalsigns import create_summary_vitalsigns
 from .nodes_grouped.step_3_nodes.manually_fix_admissions_records import manually_fix_admissions
 from .nodes_grouped.step_3_nodes.manually_fix_discharge_records import manually_fix_discharges
 from .nodes_grouped.step_4_nodes.convenience_views import create_convenience_views
@@ -37,7 +38,10 @@ tidy_data_node = node(
 create_summary_maternal_outcomes_node = node(
     create_summary_maternal_outcomes, inputs= "tidy_data_output", outputs = "create_summary_maternal_outcomes_output"
 )
-
+#Create Summary VitalSigns  
+create_summary_vitalsigns_node = node(
+    create_summary_vitalsigns, inputs= "tidy_data_output", outputs = "create_summary_vitalsigns_output"
+)
 # Create Manually Fixing Admisiions Node And Pass Data Tyding Output as input
 manually_fix_admissions_node = node(
     manually_fix_admissions,  inputs="tidy_data_output", outputs ="manually_Fix_admissions_output"
