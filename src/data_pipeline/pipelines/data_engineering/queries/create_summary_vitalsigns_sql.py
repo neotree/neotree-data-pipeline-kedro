@@ -1,5 +1,7 @@
 def summary_vital_signs_query():
-    return ''' SELECT "derived"."vitalsigns"."uid" AS "NeoTreeID",
+    return ''' DROP TABLE IF EXISTS derived.summary_vitalsigns;
+            CREATE TABLE derived.summary_vitalsigns AS 
+            SELECT "derived"."vitalsigns"."uid" AS "NeoTreeID",
             derived.vitalsigns."LengthOfStay.value" AS "LengthOfStayInDays",
             derived.vitalsigns."NSS.label" AS "NeonateSepsisStudy",
             DATE(derived.vitalsigns."D1Date.value") AS "Day1Date",
