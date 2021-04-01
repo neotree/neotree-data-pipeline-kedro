@@ -38,4 +38,4 @@ def summary_vital_signs_query():
             derived.vitalsigns."TimeTemp1.value" AS "TimeOfTemperature1",
             derived.vitalsigns."Temp2done.label" AS "WasFollowUpTemperatureDone",
             derived.vitalsigns."Temp2.value" AS "Temperature2",
-            derived.vitalsigns."TimeTemp2.value" AS "TimeOfTemperature2"FROM derived.vitalsigns '''
+            derived.vitalsigns."TimeTemp2.value" AS "TimeOfTemperature2"FROM derived.vitalsigns; '''
