@@ -10,6 +10,7 @@ create_summary_counts_node,
 join_tables_node,grant_privileges_node,
 create_summary_maternal_outcomes_node,
 import_raw_json_files_node,
+create_summary_discharge_diagnosis_node,
 create_summary_vitalsigns_node)
 
 
@@ -26,6 +27,7 @@ def create_pipeline(**kwargs):
         manually_fix_discharges_node,
         join_tables_node,
         create_convenience_views_node,
+        create_summary_discharge_diagnosis_node,
         create_summary_counts_node,
         grant_privileges_node
         ]

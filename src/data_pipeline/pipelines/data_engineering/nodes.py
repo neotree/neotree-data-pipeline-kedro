@@ -11,6 +11,7 @@ from .nodes_grouped.step_4_nodes.convenience_views import create_convenience_vie
 from .nodes_grouped.step_4_nodes.join_tables import join_tables
 from .nodes_grouped.step_5_nodes.grant_privileges import grant_privileges
 from .nodes_grouped.step_4_nodes.summary_counts import create_summary_counts
+from .nodes_grouped.step_4_nodes.summary_discharge_diagnosis import create_summary_diagnosis
 from kedro.io import CachedDataSet
 
 
@@ -63,6 +64,12 @@ create_convenience_views_node = node(
 )
 
 #Create Convinience Views and Pass Joining Tables Output 
+create_summary_discharge_diagnosis_node = node(
+    create_summary_diagnosis, inputs= "join_tables_output", outputs = "create_summary_discharge_diagnosis_output"
+)
+
+
+#Create Summary Counts and Pass Convinience Views Tables Output 
 create_summary_counts_node = node(
     create_summary_counts, inputs= "create_convinience_views_output", outputs = "create_summary_counts_output"
 )
