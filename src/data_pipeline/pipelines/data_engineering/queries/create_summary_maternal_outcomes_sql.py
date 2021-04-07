@@ -2,8 +2,18 @@ def summary_maternal_outcomes_query():
     return '''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;
         CREATE TABLE derived.summary_maternal_outcomes AS 
         SELECT derived.maternal_outcomes."uid" AS "NeoTreeID",
-        DATE(derived.maternal_outcomes."DateAdmission.value") AS "Date of Admission",
-        DATE(derived.maternal_outcomes."BirthDateDis.value") AS "Birth Date",
+        CASE
+        WHEN derived.maternal_outcomes."DateAdmission.value" IS NULL THEN NULL
+        WHEN derived.maternal_outcomes."DateAdmission.value" = '' THEN NULL
+        ELSE
+        DATE(derived.maternal_outcomes."DateAdmission.value") 
+        END AS "Date of Admission",
+        CASE 
+        WHEN derived.maternal_outcomes."BirthDateDis.value" IS NULL THEN NULL
+        WHEN derived.maternal_outcomes."BirthDateDis.value" = '' THEN NULL
+        ELSE
+        DATE(derived.maternal_outcomes."BirthDateDis.value") 
+        END AS "Birth Date",
         derived.maternal_outcomes."SexDis.label" AS "Gender",
         derived.maternal_outcomes."TypeBirth.label" AS "Type of Birth",
         derived.maternal_outcomes."Gestation.value" AS "Gestation",

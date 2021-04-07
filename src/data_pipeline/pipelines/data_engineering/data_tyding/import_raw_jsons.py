@@ -31,13 +31,10 @@ def createAdmissionsAndDischargesFromRawData():
             for sess in distinct_sessions:
                 insertion_data = json.dumps(sess);
                 json_string = insertion_data.replace("'s","s")
-
-                #Convert The Date To Strtime 
+                
                 ingested_at = datetime.now()
                 scriptId = sess["script"]["id"]
                 uid = sess["uid"]
-                if(scriptId !="-ZO1TK4zMvLhxTw6eKia" and scriptId!="-ZYDiO2BTM4kSGZDVXAO"):
-                    print("sid=",scriptId, "-uid=",uid)
                 insertion_query = '''INSERT INTO public.sessions (ingested_at,uid, scriptid,data) VALUES('{0}','{1}','{2}','{3}');'''.format(ingested_at,uid,scriptId,json_string)
                 inject_sql(insertion_query,"DATA INSERTION")
     else:
