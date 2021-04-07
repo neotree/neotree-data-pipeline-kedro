@@ -18,6 +18,7 @@ def createAdmissionsAndDischargesFromRawData():
             if len(possible_duplicates) >0:
                 for session in data["sessions"]:
                     if dict(uid=session["uid"],script=session["script"]) in possible_duplicates:
+                        print("uid=",session["uid"])
                         pass;
                     else:
                         print("uid=",session["uid"])
