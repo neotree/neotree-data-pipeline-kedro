@@ -14,16 +14,13 @@ def createAdmissionsAndDischargesFromRawData():
         #Duplicates Key Should Be In Data To Show That It has Validated Availability of Duplicates(It can be Empty)
         if "sessions"  in data and "duplicates" in data:
             possible_duplicates = data["duplicates"];
-            uids = []
-            for item in data["duplicates"]:
-                if(item["script"]["id"]=='-ZYDiO2BTM4kSGZDVXAO'):
-                    uids.append(item["uid"])
-           
+          
             if len(possible_duplicates) >0:
                 for session in data["sessions"]:
                     if dict(uid=session["uid"],script=session["script"]) in possible_duplicates:
                         pass;
                     else:
+                        print("uid=",session["uid"])
                         distinct_sessions.append(session) 
             else:
                 distinct_sessions = data["sessions"]
