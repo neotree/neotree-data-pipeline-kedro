@@ -47,7 +47,7 @@ read_admissions_query = '''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries"
-            from scratch.deduplicated_admissions ;
+            from scratch.deduplicated_admissions;
             '''
 deduplicate_admissions_query ='''
 drop table if exists scratch.deduplicated_admissions cascade;
