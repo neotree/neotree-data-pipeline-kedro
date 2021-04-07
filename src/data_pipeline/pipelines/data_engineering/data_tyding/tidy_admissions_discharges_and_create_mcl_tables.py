@@ -263,7 +263,6 @@ def tidy_tables():
             catalog.save('create_derived_admissions',adm_df)
         #Save Derived Admissions To The DataBase Using Kedro
         if not dis_df.empty:
-            print("#####ISNOT#####")
             catalog.save('create_derived_discharges',dis_df)
         #Save Derived Maternal Outcomes To Database Using Kedro
         if not mat_outcomes_df.empty:

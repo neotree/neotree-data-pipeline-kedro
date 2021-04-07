@@ -106,7 +106,7 @@ read_discharges_query = '''
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
                 "data"->'entries' as "entries"
-            from scratch.deduplicated_discharges;
+            from scratch.deduplicated_discharges where uid!='null';
         '''
 read_maternal_outcome_query = '''
             select 
@@ -116,7 +116,7 @@ read_maternal_outcome_query = '''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries"
-            from public.sessions where scriptid = '{}' '''.format(mat_outcomes_script_id)
+            from public.sessions where scriptid = '{}' and uid!='null' '''.format(mat_outcomes_script_id)
 
 read_vitalsigns_query = '''
             select 
@@ -126,19 +126,19 @@ read_vitalsigns_query = '''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries"
-            from public.sessions where scriptid = '-LAeXX-JCxWLkIrQxVLD'
+            from public.sessions where scriptid = '-LAeXX-JCxWLkIrQxVLD' and uid!='null'
 '''
 
 derived_admissions_query = '''
                 select 
                     *
-                from derived.admissions;
+                from derived.admissions where uid!='null';
             '''
 
 derived_discharges_query = '''
             select 
                 *
-            from derived.discharges;
+            from derived.discharges where uid!='null';
         '''
 #Query To Validate If It is necessary to run Maternal OutComes Summary        
 count_maternal_outcomes = ''' select count(*) from derived.maternal_outcomes'''
