@@ -286,8 +286,8 @@ def tidy_tables():
         explode_column(vit_signs_df,vit_signs_mcl)
          ##Exploding Other Columns
         ## Run This After Parent Column Exploding Otherwise You May Face Table Exist Error If This Explodes First
-        explode_other_column(adm_df, adm_mcl)
-        explode_other_column(dis_df, dis_mcl)   
+        # explode_other_column(adm_df, adm_mcl)
+        # explode_other_column(dis_df, dis_mcl)   
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")
         raise e
