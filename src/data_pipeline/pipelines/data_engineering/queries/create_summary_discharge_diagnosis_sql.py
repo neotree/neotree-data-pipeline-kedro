@@ -3,8 +3,8 @@ def summary_discharge_diagnosis_query():
         CREATE TABLE derived.summary_discharge_diagnosis AS 
         SELECT derived.joined_admissions_discharges."uid" AS "uid",
         CASE WHEN derived.joined_admissions_discharges."DIAGDIS1.value" ='OTH' THEN 
-        CROSS APPLY STRING_SPLIT(derived.joined_admissions_discharges."DIAGDIS1OTH.value",',')
+        unnest(string_to_array(derived.joined_admissions_discharges."DIAGDIS1OTH.value",',')) 
         ELSE
-        CROSS APPLY STRING_SPLIT(derived.joined_admissions_discharges."DIAGDIS1.label",',')
+        unnest(string_to_array(derived.joined_admissions_discharges."DIAGDIS1.label",','))
         END AS "Diagnosis"
         FROM derived.joined_admissions_discharges; '''
