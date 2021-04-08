@@ -283,14 +283,19 @@ def tidy_tables():
         explode_column(adm_df, adm_mcl)
         explode_column(dis_df, dis_mcl)
         explode_column(mat_outcomes_df,mat_outcomes_mcl)
-        explode_column(vit_signs_df,vit_signs_mcl)
+        explode_column(vit_signs_df,vit_signs_mcl)   
+    except Exception as e:
+        logging.error("!!! An error occured exploding MCL  columns: ")
+        raise e
+    try:
         ##Exploding Other Columns
         ## Run This After Parent Column Exploding Otherwise You May Face Table Exist Error If This Explodes First
         explode_other_column(adm_df, adm_mcl)
         explode_other_column(dis_df, dis_mcl)
-        
     except Exception as e:
-        logging.error("!!! An error occured creating MCL count tables: ")
+        logging.error("!!! An error occured while exploding 'Other' columns: ")
         raise e
 
     logging.info("... Tidy script completed!")
+
+
