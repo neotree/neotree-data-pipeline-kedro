@@ -43,6 +43,10 @@ def create_table(df, table_name):
     # create tables in derived schema
     df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)
 
+def append_data(df,table_name):
+    #Add Data To An Existing Table
+    df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False)
+
 def inject_sql_with_return(sql_script):
     data = []
     try:
