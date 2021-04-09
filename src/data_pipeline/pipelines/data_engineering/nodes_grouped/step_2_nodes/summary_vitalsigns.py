@@ -9,12 +9,12 @@ def create_summary_vitalsigns(tidy_data_output):
     vital_signs_count = 0
     tble_exists = False
     try:
-        tble_exists = table_exists('derived','maternal_outcomes');
+        tble_exists = table_exists('derived','vitalsigns');
         if table_exists:
             vital_signs_count_df = catalog.load('vital_signs_count')
             if 'count' in vital_signs_count_df:
                 vital_signs_count = vital_signs_count_df['count'].values[0]
-                
+
     except Exception as e:
         raise e
     if (vital_signs_count> 0):
