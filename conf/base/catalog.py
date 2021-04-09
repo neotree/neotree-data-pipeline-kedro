@@ -49,8 +49,8 @@ read_admissions_query = '''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries"
-            from scratch.deduplicated_admissions where uid!='null';
-            '''
+            from scratch.deduplicated_admissions where uid!='null' and scriptId = '{}';
+            '''.format(adm_script_id)
 deduplicate_admissions_query ='''
 drop table if exists scratch.deduplicated_admissions cascade;
 create table scratch.deduplicated_admissions as 
@@ -108,8 +108,8 @@ read_discharges_query = '''
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
                 "data"->'entries' as "entries"
-            from scratch.deduplicated_discharges where uid!='null';
-        '''
+            from scratch.deduplicated_discharges where uid!='null' and scriptId = '{}';
+        '''.format(disc_script_id)
 read_maternal_outcome_query = '''
             select 
             scriptid,
