@@ -1,7 +1,7 @@
 # Import created modules (need to be stored in the same directory as notebook)
 import sys
 from .extract_key_values import get_key_values
-from .explode_mcl_columns import explode_column,explode_other_column
+from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
@@ -297,10 +297,7 @@ def tidy_tables():
         explode_column(dis_df, dis_mcl)
         explode_column(mat_outcomes_df,mat_outcomes_mcl)
         explode_column(vit_signs_df,vit_signs_mcl)
-         ##Exploding Other Columns
-        ## Run This After Parent Column Exploding Otherwise You May Face Table Exist Error If This Explodes First
-        explode_other_column(adm_df, adm_mcl)
-        explode_other_column(dis_df, dis_mcl)   
+       
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")
         raise e

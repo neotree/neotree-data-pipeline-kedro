@@ -7,4 +7,9 @@ def table_exists(schema, table_name):
                 AND    table_name   = '{1}'
                 );'''.format(schema,table_name)
     query_result = inject_sql_with_return(query);
-    print("@@@@@@@@@@@@@@---",query_result,table_name)
+    if len(query_result) >0:
+        result = query_result[0];
+        if 'exists' in result.keys():
+            return result['exists']
+        else:
+            return False
