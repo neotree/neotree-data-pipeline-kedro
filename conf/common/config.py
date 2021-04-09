@@ -18,7 +18,7 @@ log = logging.getLogger('');
 
 #Create Default Logs Directory If It doesnt Exist
 if Path(os.getcwd()+'/logs').exists() and Path(os.getcwd()+'/logs').is_dir():
-    print()
+    pass;
 else:
     logs_dir = Path(str(os.getcwd()+'/logs'))
     logs_dir.mkdir(exist_ok=True);

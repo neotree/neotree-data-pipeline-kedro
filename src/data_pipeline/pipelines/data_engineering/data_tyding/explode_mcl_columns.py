@@ -6,7 +6,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 
 
 def explode_column(df, mcl):
-    
+    created_tables = []
     for c in mcl:
         # loop to explode all mcl columns in list 
         parent_column = None
@@ -29,15 +29,16 @@ def explode_column(df, mcl):
             mcl_column_exp.set_index('uid')
             column_name = ("exploded_"+parent_column)
             schema = 'derived'
-            tbl_exists = table_exists(schema,column_name)  
             if str(c).endswith('Oth'):
                 mcl_column_exp.drop(column,axis='columns',inplace=True)
             mcl_column_exp.reindex(columns =mcl_column_exp.columns)
-
-            if table_exists:
-              create_table(mcl_column_exp, column_name) 
-            else:
+            #Check If Table Has Already been Created: To Be Used To Append 'Other' Values
+            if column_name in created_tables:
                append_data(mcl_column_exp, column_name) 
+            else: 
+               create_table(mcl_column_exp, column_name)
+            #To Be Used To Track Already Created Tables So As To Avoid Trying To Recreate A Table Or Append Data To A Non Existing Table    
+            created_tables.append(column_name)
 
             
 
