@@ -25,8 +25,8 @@ def tidy_tables():
     
     try:
         #Delete Schema inorder To Avoid caching of deleted exploded_tables and duplication when appending data
-        sql_script = drop_derived_tables();
-        inject_sql(sql_script, "drop-derived-tables")
+        # sql_script = drop_derived_tables();
+        # inject_sql(sql_script, "drop-derived-tables")
         #Read Admisiions From The Kedro Catalog
         adm_raw = catalog.load('read_admissions');
         #Read Discharges From The Kedro Catalog
@@ -35,6 +35,8 @@ def tidy_tables():
         mat_outcomes_raw = catalog.load('read_maternal_outcomes')
         #Read Vital Signs from Kedro Catalog
         vit_signs_raw = catalog.load('read_vital_signs')
+        #Read Neo Lab Data from Kedro Catalog
+        neolab_raw = catalog.load('read_neolab_data')
 
     
     except Exception as e:
@@ -51,6 +53,7 @@ def tidy_tables():
         #Add Newly Added Scripts On The Malawi Case
         mat_outcomes_new_entries,mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
         vit_signs_new_entries,vit_signs_mcl = get_key_values(vit_signs_raw)
+        neolab_new_entries,noelab_mcl = get_key_values(neolab_raw)
         
 
     except Exception as e:
@@ -74,7 +77,10 @@ def tidy_tables():
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
         if "uid" in vit_signs_df:
             vit_signs_df.set_index(['uid'])
-        
+        neolab_df = pd.json_normalize(neolab_new_entries)
+        if "uid" in neolab_df:
+            neolab_df.set_index(['uid'])
+
         if adm_df.empty and dis_df.empty:
             logging.error(
             "Admissions and Discharges Can Not Be Empty::Please Check If You Have Set The Correct Country In database.ini ")
@@ -269,9 +275,14 @@ def tidy_tables():
         #Save Derived Admissions To The DataBase Using Kedro
         catalog.save('create_derived_discharges',dis_df)
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
-        catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
+        if not mat_outcomes_df.empty:
+            catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
          #Save Derived Vital Signs To The DataBase Using Kedro
-        catalog.save('create_derived_vital_signs',vit_signs_df)
+        if not vit_signs_df.empty:
+            catalog.save('create_derived_vital_signs',vit_signs_df)
+        #Save Derived NeoLab To The DataBase Using Kedro
+        if  not neolab_df.empty:
+            catalog.save('create_derived_neolab',neolab_df)
 
 
 

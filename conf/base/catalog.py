@@ -34,12 +34,14 @@ if(env=="prod"):
 mat_outcomes_script_id = '-MOAjJ_In4TOoe0l_Gl5'
 adm_script_id = '-KO1TK4zMvLhxTw6eKia'
 disc_script_id = '-KYDiO2BTM4kSGZDVXAO'
+neo_lab_id = '-MO_MFKCgx8634jhjLId'
 
 
 if('country' in params and str(params['country']).lower()) =='zim':
    adm_script_id = '-ZO1TK4zMvLhxTw6eKia'
    disc_script_id = '-ZYDiO2BTM4kSGZDVXAO'
-   mat_outcomes_script_id ='-MDPYzHcFVHt02D1Tz4Z'
+   mat_outcomes_script_id ='-MDPYzHcFVHt02D1Tz4Z' 
+   neo_lab_id = '-LfOH5fWtWEKk1yJPwfo'
 
 read_admissions_query = '''
             select 
@@ -144,6 +146,17 @@ derived_discharges_query = '''
 count_maternal_outcomes = ''' select count(*) from derived.maternal_outcomes'''
 
 vital_signs_count = ''' select count(*) from derived.vitalsigns '''
+
+read_noelab_query = '''
+            select 
+            scriptid,
+            uid,
+            id,
+            ingested_at,
+            "data"->'appVersion' as "appVersion",
+            "data"->'entries' as "entries"
+            from public.sessions where scriptid = '{}'
+'''.format(neo_lab_id)
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
         {
@@ -177,6 +190,10 @@ catalog = DataCatalog(
          #Read Vital Signs
          "read_vital_signs": SQLQueryDataSet(
             sql= read_vitalsigns_query,
+            credentials=dict(con=con)
+         ),
+         "read_neolab_data": SQLQueryDataSet(
+            sql= read_noelab_query,
             credentials=dict(con=con)
          ),
          #Count Maternal Outcomes
@@ -215,6 +232,11 @@ catalog = DataCatalog(
          ),
           "create_derived_vital_signs": SQLTableDataSet(
             table_name='vitalsigns',
+            credentials=dict(con=con),
+            save_args = dict(schema='derived',if_exists='replace')
+         ),
+         "create_derived_neolab": SQLTableDataSet(
+            table_name='noelab',
             credentials=dict(con=con),
             save_args = dict(schema='derived',if_exists='replace')
          )
