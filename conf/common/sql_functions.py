@@ -7,7 +7,7 @@ from kedro.extras.datasets.pandas import (
 from .config import config
 from sqlalchemy import event, create_engine,text
 import sys
-
+from sqlalchemy.types import TEXT
 
 params = config()
 #Postgres Connection String
@@ -15,6 +15,7 @@ con = 'postgresql+psycopg2://' + \
 params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
 engine = create_engine(con, executemany_mode='batch')
+
 
 #Inject SQL Procedures
 def inject_sql_procedure(sql_script, file_name):
@@ -42,6 +43,10 @@ def inject_sql(sql_script, file_name):
 def create_table(df, table_name):
     # create tables in derived schema
     df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)
+
+def create_exploded_table(df, table_name):
+    # create tables in derived schema and restrict all columns to Text
+    df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False,dtype={col_name: TEXT for col_name in df})
 
 def append_data(df,table_name):
     #Add Data To An Existing Table

@@ -1,4 +1,4 @@
-from conf.common.sql_functions import create_table,append_data
+from conf.common.sql_functions import create_exploded_table,append_data
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 # this function explodes all mcl columns and creates respective tables
 # This input is a set of columns that need to be exploded
@@ -37,7 +37,7 @@ def explode_column(df, mcl):
             if column_name in created_tables:
                append_data(mcl_column_exp, column_name) 
             else: 
-               create_table(mcl_column_exp, column_name)
+               create_exploded_table(mcl_column_exp, column_name)
             #To Be Used To Track Already Created Tables So As To Avoid Trying To Recreate A Table Or Append Data To A Non Existing Table    
             created_tables.append(column_name)
 
