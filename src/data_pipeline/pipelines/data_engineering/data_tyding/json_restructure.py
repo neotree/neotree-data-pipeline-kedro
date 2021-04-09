@@ -26,8 +26,8 @@ def restructure(c, mcl):
     else:
         k = c['key']
         v = c['values'][0]
-        #Add Other Values T MCL Columns For Exploding
-        if str(k).endswith('Oth'):
+        #Add Other Values T MCL Columns For Exploding and Adm Reason
+        if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)
 
     return k, v, mcl
@@ -46,7 +46,7 @@ def restructure_new_format(k,v,mcl):
         #  Unpack The Values Object To Get Single Values
         v = {'label':v['values']['label'][0],'value':v['values']['value'][0]}
         # #Add Other Values T MCL Columns For Exploding
-        if str(k).endswith('Oth'):
+        if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k) 
 
     return k, v, mcl

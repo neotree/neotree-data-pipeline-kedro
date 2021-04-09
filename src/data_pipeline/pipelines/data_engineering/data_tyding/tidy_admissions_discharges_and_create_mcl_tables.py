@@ -4,6 +4,8 @@ from .extract_key_values import get_key_values
 from .explode_mcl_columns import explode_column,explode_other_column
 from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
+from conf.common.sql_functions import inject_sql
+from data_pipeline.pipelines.data_engineering.queries.drop_derived_tables_sql import drop_derived_tables
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from conf.common.sql_functions import create_table
 
@@ -20,7 +22,11 @@ import logging
 def tidy_tables():
     # Read the raw admissions and discharge data into dataframes
     logging.info("... Fetching raw admission and discharge data")
+    
     try:
+        #Delete Schema inorder To Avoid caching of deleted exploded_tables and duplication when appending data
+        sql_script = drop_derived_tables();
+        inject_sql(sql_script, "drop-derived-tables")
         #Read Admisiions From The Kedro Catalog
         adm_raw = catalog.load('read_admissions');
         #Read Discharges From The Kedro Catalog
@@ -259,17 +265,13 @@ def tidy_tables():
        
     
         #Save Derived Admissions To The DataBase Using Kedro
-        if not adm_df.empty:
-            catalog.save('create_derived_admissions',adm_df)
+        catalog.save('create_derived_admissions',adm_df)
         #Save Derived Admissions To The DataBase Using Kedro
-        if not dis_df.empty:
-            catalog.save('create_derived_discharges',dis_df)
-        #Save Derived Maternal Outcomes To Database Using Kedro
-        if not mat_outcomes_df.empty:
-            catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
-        #Save Derived Vital Signs To Database Using Kedro
-        if not vit_signs_df.empty:
-            catalog.save('create_derived_vital_signs',vit_signs_df)
+        catalog.save('create_derived_discharges',dis_df)
+        #Save Derived Maternal Outcomes To The DataBase Using Kedro
+        catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
+         #Save Derived Vital Signs To The DataBase Using Kedro
+        catalog.save('create_derived_vital_signs',vit_signs_df)
 
 
 
@@ -286,8 +288,8 @@ def tidy_tables():
         explode_column(vit_signs_df,vit_signs_mcl)
          ##Exploding Other Columns
         ## Run This After Parent Column Exploding Otherwise You May Face Table Exist Error If This Explodes First
-        # explode_other_column(adm_df, adm_mcl)
-        # explode_other_column(dis_df, dis_mcl)   
+        explode_other_column(adm_df, adm_mcl)
+        explode_other_column(dis_df, dis_mcl)   
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")
         raise e

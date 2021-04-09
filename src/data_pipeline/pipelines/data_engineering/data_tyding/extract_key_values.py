@@ -29,7 +29,7 @@ def get_key_values(data_raw):
             if(app_version!='' and app_version!=None and app_version>454):   
                 k, v, mcl = restructure_new_format(c,rows['entries'][c], mcl)
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
-                if((k=='NeoTreeID' or k=='NUID_BC') and new_entries['uid'] is None):
+                if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M') and new_entries['uid'] is None):
                      new_entries['uid'] = v.value;
 
             #ELSE USE THE OLD FORMAT
