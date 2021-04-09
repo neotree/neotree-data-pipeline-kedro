@@ -278,11 +278,11 @@ def tidy_tables():
         
         catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
          #Save Derived Vital Signs To The DataBase Using Kedro
-        
-        catalog.save('create_derived_vital_signs',vit_signs_df)
+        if vit_signs_df.empty:
+            catalog.save('create_derived_vital_signs',vit_signs_df)
         #Save Derived NeoLab To The DataBase Using Kedro
-        
-        catalog.save('create_derived_neolab',neolab_df)
+        if neolab_df.empty:
+            catalog.save('create_derived_neolab',neolab_df)
 
 
 
