@@ -16,7 +16,7 @@ def create_summary_maternal_outcomes(tidy_data_output):
     maternal_outcomes_count = 0
     tble_exists = False;
     try:
-        tble_exists = table_exists();
+        tble_exists = table_exists('derived','maternal_outcomes');
         if table_exists:
             mat_outcomes_count_df = catalog.load('count_maternal_outcomes')
             if 'count' in mat_outcomes_count_df:
