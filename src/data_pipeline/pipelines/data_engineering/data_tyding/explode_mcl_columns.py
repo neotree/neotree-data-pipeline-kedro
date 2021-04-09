@@ -25,7 +25,8 @@ def explode_column(df, mcl):
             mcl_column_exp['uid'] = df['uid']
             mcl_column_exp[parent_column] = mcl_column_exp[column]
             #Drop All Rows With Label Other, The Values Will Be Collected In The Method Explode_Other_Columns
-            mcl_column_exp = mcl_column_exp.loc[(mcl_column_exp[column] != "Other") & (mcl_column_exp[column].notna())]
+            mcl_column_exp = mcl_column_exp.loc[(mcl_column_exp[column] != "Other") &
+             (mcl_column_exp[column].notna()) & (mcl_column_exp[column] is not None)]
             mcl_column_exp.set_index('uid')
             column_name = ("exploded_"+parent_column)
             schema = 'derived'
