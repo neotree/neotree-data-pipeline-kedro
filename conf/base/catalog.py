@@ -236,7 +236,7 @@ catalog = DataCatalog(
             save_args = dict(schema='derived',if_exists='replace')
          ),
          "create_derived_neolab": SQLTableDataSet(
-            table_name='noelab',
+            table_name='neolab',
             credentials=dict(con=con),
             save_args = dict(schema='derived',if_exists='replace')
          )
