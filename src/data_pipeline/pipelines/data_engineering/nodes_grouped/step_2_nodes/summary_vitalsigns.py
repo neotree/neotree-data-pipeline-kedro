@@ -1,4 +1,5 @@
 from conf.base.catalog import catalog,cron_log_file
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.queries.create_summary_vitalsigns_sql import summary_vital_signs_query
 from conf.common.sql_functions import inject_sql
 import logging
@@ -6,10 +7,14 @@ import sys
 
 def create_summary_vitalsigns(tidy_data_output):
     vital_signs_count = 0
+    tble_exists = False
     try:
-        vital_signs_count_df = catalog.load('vital_signs_count')
-        if 'count' in vital_signs_count_df:
-            vital_signs_count = vital_signs_count_df['count'].values[0]
+        tble_exists = table_exists('derived','maternal_outcomes');
+        if table_exists:
+            vital_signs_count_df = catalog.load('vital_signs_count')
+            if 'count' in vital_signs_count_df:
+                vital_signs_count = vital_signs_count_df['count'].values[0]
+                
     except Exception as e:
         raise e
     if (vital_signs_count> 0):
