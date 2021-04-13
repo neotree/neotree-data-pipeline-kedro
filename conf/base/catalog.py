@@ -31,26 +31,32 @@ if(env=="prod"):
        
        
 #Country Defaults To Malawi
-mat_outcomes_script_id = '-MOAjJ_In4TOoe0l_Gl5'
-adm_script_id = '-KO1TK4zMvLhxTw6eKia'
-disc_script_id = '-KYDiO2BTM4kSGZDVXAO'
-neo_lab_id = '-MO_MFKCgx8634jhjLId'
+mat_outcomes_script_ids = ('-MOAjJ_In4TOoe0l_Gl5')
+adm_script_ids = ('-KO1TK4zMvLhxTw6eKia')
+disc_script_ids = ('-KYDiO2BTM4kSGZDVXAO')
+neo_lab_ids = ('-MO_MFKCgx8634jhjLId')
+vital_signs_ids = ('-LAeXX-JCxWLkIrQxVLD')
+
 
 
 if('country' in params and str(params['country']).lower()) =='zim':
-   adm_script_id = '-ZO1TK4zMvLhxTw6eKia'
-   disc_script_id = '-ZYDiO2BTM4kSGZDVXAO'
-   mat_outcomes_script_id ='-MDPYzHcFVHt02D1Tz4Z' 
-   neo_lab_id = '-LfOH5fWtWEKk1yJPwfo'
+   adm_script_ids = ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK')
+   disc_script_ids = ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka')
+   mat_outcomes_script_ids =('-MDPYzHcFVHt02D1Tz4Z') 
+   neo_lab_ids = ('-LfOH5fWtWEKk1yJPwfo')
 
 read_admissions_query = '''
             select 
             uid,
             ingested_at,
             "data"->'appVersion' as "appVersion",
-            "data"->'entries' as "entries"
-            from scratch.deduplicated_admissions where uid!='null' and scriptId = '{}';
-            '''.format(adm_script_id)
+            "data"->'entries' as "entries",
+            CASE WHEN scriptId ='-ZO1TK4zMvLhxTw6eKia' THEN 'SMCH'
+            CASE WHEN scriptId ='-MJBnoLY0YLDqLUhPgkK' THEN 'CCH'
+            CASE WHEN scriptId = '-KO1TK4zMvLhxTw6eKia' THEN 'KCH'
+            END AS 'facility'
+            from scratch.deduplicated_admissions where uid!='null' and scriptId in {};
+            '''.format(adm_script_ids)
 deduplicate_admissions_query ='''
 drop table if exists scratch.deduplicated_admissions cascade;
 create table scratch.deduplicated_admissions as 
@@ -75,7 +81,7 @@ create table scratch.deduplicated_admissions as
     data
   from earliest_admissions join sessions
   on earliest_admissions.id = sessions.id
-); '''.format(adm_script_id,where)
+); '''.format(adm_script_ids,where)
 
 deduplicate_discharges_query = '''
 drop table if exists scratch.deduplicated_discharges cascade;
@@ -90,7 +96,7 @@ create table scratch.deduplicated_discharges as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
     from public.sessions
-    where scriptid = '{0}' {1} -- only pull out discharges
+    where scriptid in {0} {1} -- only pull out discharges
     group by 1,2
   )
   select
@@ -101,15 +107,19 @@ create table scratch.deduplicated_discharges as
     data
   from earliest_discharges join sessions
   on earliest_discharges.id = sessions.id
-); '''.format(disc_script_id,where)
+); '''.format(disc_script_ids,where)
 read_discharges_query = '''
             select 
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
-                "data"->'entries' as "entries"
-            from scratch.deduplicated_discharges where uid!='null' and scriptId = '{}';
-        '''.format(disc_script_id)
+                "data"->'entries' as "entries",
+                CASE WHEN scriptId ='-ZYDiO2BTM4kSGZDVXAO' THEN 'SMCH'
+                CASE WHEN scriptId ='-MJCntWHvPaIuxZp35ka' THEN 'CCH'
+                CASE WHEN scriptId = '-KYDiO2BTM4kSGZDVXAO' THEN 'KCH'
+                END AS 'facility'
+            from scratch.deduplicated_discharges where uid!='null' and scriptId in {};
+        '''.format(disc_script_ids)
 read_maternal_outcome_query = '''
             select 
             scriptid,
@@ -117,8 +127,11 @@ read_maternal_outcome_query = '''
             id,
             ingested_at,
             "data"->'appVersion' as "appVersion",
-            "data"->'entries' as "entries"
-            from public.sessions where scriptid = '{}' and uid!='null' '''.format(mat_outcomes_script_id)
+            "data"->'entries' as "entries",
+            CASE WHEN scriptid ='-MDPYzHcFVHt02D1Tz4Z' THEN 'SMCH'
+            CASE WHEN scriptid ='-MOAjJ_In4TOoe0l_Gl5' THEN 'KCH'
+            END AS 'facility'
+            from public.sessions where scriptid in {} and uid!='null' '''.format(mat_outcomes_script_ids)
 
 read_vitalsigns_query = '''
             select 
@@ -127,9 +140,11 @@ read_vitalsigns_query = '''
             id,
             ingested_at,
             "data"->'appVersion' as "appVersion",
-            "data"->'entries' as "entries"
-            from public.sessions where scriptid = '-LAeXX-JCxWLkIrQxVLD' and uid!='null'
-'''
+            "data"->'entries' as "entries",
+            CASE WHEN scriptid ='-LAeXX-JCxWLkIrQxVLD' THEN 'KCH'
+            END AS 'facility'
+            from public.sessions where scriptid in {} and uid!='null'
+'''.format(vital_signs_ids)
 
 derived_admissions_query = '''
                 select 
@@ -154,9 +169,12 @@ read_noelab_query = '''
             id,
             ingested_at,
             "data"->'appVersion' as "appVersion",
-            "data"->'entries' as "entries"
-            from public.sessions where scriptid = '{}'
-'''.format(neo_lab_id)
+            "data"->'entries' as "entries",
+            CASE WHEN script_id = '-MO_MFKCgx8634jhjLId' THEN 'KCH'
+            CASE WHEN script_id = '-LfOH5fWtWEKk1yJPwfo' THEN 'SMCH'
+            END AS 'facility'
+            from public.sessions where scriptid in {}
+'''.format(neo_lab_ids)
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
         {

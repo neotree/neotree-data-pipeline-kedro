@@ -23,6 +23,7 @@ def explode_column(df, mcl):
             mcl_column = df[[column]] 
             mcl_column_exp = mcl_column.explode(column)
             mcl_column_exp['uid'] = df['uid']
+            mcl_column_exp['facility'] = df['facility']
             mcl_column_exp[parent_column] = mcl_column_exp[column]
             #Drop All Rows With Label Other, The Values Will Be Collected In The Method Explode_Other_Columns
             mcl_column_exp = mcl_column_exp.loc[(mcl_column_exp[column] != "Other") &
