@@ -30,5 +30,5 @@ def deduplicate_discharges(data_import_output):
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Deduplicating Discharges ".format(cron_time,mode))
         cron_log.close()
-        logging.error(formatError(e))
+        logging.error(e.with_traceback())
         sys.exit(1)

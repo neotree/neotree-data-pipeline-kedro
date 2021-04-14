@@ -2,6 +2,7 @@ def summary_maternal_outcomes_query():
     return '''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;
         CREATE TABLE derived.summary_maternal_outcomes AS 
         SELECT derived.maternal_outcomes."uid" AS "NeoTreeID",
+        derived.maternal_outcomes."facility" AS "facility",
         CASE
         WHEN derived.maternal_outcomes."DateAdmission.value" IS NULL THEN NULL
         WHEN derived.maternal_outcomes."DateAdmission.value" = '' THEN NULL

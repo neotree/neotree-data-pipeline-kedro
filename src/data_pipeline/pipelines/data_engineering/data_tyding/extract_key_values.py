@@ -15,6 +15,8 @@ def get_key_values(data_raw):
         if(app_version!=None and app_version!=''):
             #Remove any Other Characters that are non-numeric
             app_version = int(''.join(d for d in app_version if d.isdigit()))
+        if 'facility' in rows:
+            new_entries['facility'] = rows['facility']
         
         new_entries['uid'] = rows['uid']
         if 'ingested_at_admission' in rows:
@@ -40,6 +42,7 @@ def get_key_values(data_raw):
                      new_entries['uid'] = v.value;
             new_entries[k] = v
         # for each row add all the keys & values to a list
+          
         data_new.append(new_entries)
 
     return data_new, set(mcl)

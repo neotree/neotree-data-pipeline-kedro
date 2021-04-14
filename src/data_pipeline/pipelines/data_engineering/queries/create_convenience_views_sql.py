@@ -2,6 +2,7 @@ def create_convinience_views_query():
   return ''' DROP TABLE IF EXISTS derived.summary_joined_admissions_discharges;
     CREATE TABLE derived.summary_joined_admissions_discharges AS
     SELECT derived.joined_admissions_discharges."uid" AS "uid", 
+        derived.joined_admissions_discharges."facility" AS "facility", 
         derived.joined_admissions_discharges."DateTimeAdmission.value" AS "AdmissionDateTime",
         derived.joined_admissions_discharges."Readmission.label" AS "Readmitted", 
         derived.joined_admissions_discharges."AdmittedFrom.label" AS "admission_source",

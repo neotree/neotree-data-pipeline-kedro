@@ -42,22 +42,24 @@ vital_signs_ids = ('-LAeXX-JCxWLkIrQxVLD')
 if('country' in params and str(params['country']).lower()) =='zim':
    adm_script_ids = ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK')
    disc_script_ids = ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka')
-   mat_outcomes_script_ids =('-MDPYzHcFVHt02D1Tz4Z') 
-   neo_lab_ids = ('-LfOH5fWtWEKk1yJPwfo')
+   mat_outcomes_script_ids =('-MDPYzHcFVHt02D1Tz4Z','-DUMMY-')
+   neo_lab_ids = ('-LfOH5fWtWEKk1yJPwfo','-DUMMY-')
+   #To Pass The Parameter As A Tuple, it requires at least 2 items, hence the use of '-DUMMY-' As IDs
+   vital_signs_ids = ('-DUMMY-','-DUMMY-')
 
-read_admissions_query = '''
+read_admissions_query = f'''
             select 
             uid,
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries",
-            CASE WHEN scriptId ='-ZO1TK4zMvLhxTw6eKia' THEN 'SMCH'
-            CASE WHEN scriptId ='-MJBnoLY0YLDqLUhPgkK' THEN 'CCH'
-            CASE WHEN scriptId = '-KO1TK4zMvLhxTw6eKia' THEN 'KCH'
-            END AS 'facility'
-            from scratch.deduplicated_admissions where uid!='null' and scriptId in {};
-            '''.format(adm_script_ids)
-deduplicate_admissions_query ='''
+            CASE WHEN scriptid ='-ZO1TK4zMvLhxTw6eKia' THEN 'SMCH'
+            WHEN scriptid ='-MJBnoLY0YLDqLUhPgkK' THEN 'CCH'
+            WHEN scriptid = '-KO1TK4zMvLhxTw6eKia' THEN 'KCH'
+            END AS "facility"
+            from scratch.deduplicated_admissions where uid!='null' and scriptid in {adm_script_ids};
+            '''
+deduplicate_admissions_query =f'''
 drop table if exists scratch.deduplicated_admissions cascade;
 create table scratch.deduplicated_admissions as 
 (
@@ -70,7 +72,7 @@ create table scratch.deduplicated_admissions as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
      from public.sessions
-     where scriptid = '{0}' {1} -- only pull out admissions
+     where scriptid in {adm_script_ids} {where} -- only pull out admissions
     group by 1,2
   )
   select
@@ -81,9 +83,9 @@ create table scratch.deduplicated_admissions as
     data
   from earliest_admissions join sessions
   on earliest_admissions.id = sessions.id
-); '''.format(adm_script_ids,where)
+); '''
 
-deduplicate_discharges_query = '''
+deduplicate_discharges_query = f'''
 drop table if exists scratch.deduplicated_discharges cascade;
 create table scratch.deduplicated_discharges as 
 (
@@ -96,7 +98,7 @@ create table scratch.deduplicated_discharges as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
     from public.sessions
-    where scriptid in {0} {1} -- only pull out discharges
+    where scriptid in {disc_script_ids} {where} -- only pull out discharges
     group by 1,2
   )
   select
@@ -107,20 +109,20 @@ create table scratch.deduplicated_discharges as
     data
   from earliest_discharges join sessions
   on earliest_discharges.id = sessions.id
-); '''.format(disc_script_ids,where)
-read_discharges_query = '''
+); '''
+read_discharges_query = f'''
             select 
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
                 "data"->'entries' as "entries",
-                CASE WHEN scriptId ='-ZYDiO2BTM4kSGZDVXAO' THEN 'SMCH'
-                CASE WHEN scriptId ='-MJCntWHvPaIuxZp35ka' THEN 'CCH'
-                CASE WHEN scriptId = '-KYDiO2BTM4kSGZDVXAO' THEN 'KCH'
-                END AS 'facility'
-            from scratch.deduplicated_discharges where uid!='null' and scriptId in {};
-        '''.format(disc_script_ids)
-read_maternal_outcome_query = '''
+                CASE WHEN scriptid ='-ZYDiO2BTM4kSGZDVXAO' THEN 'SMCH'
+                WHEN scriptid ='-MJCntWHvPaIuxZp35ka' THEN 'CCH'
+                WHEN scriptid = '-KYDiO2BTM4kSGZDVXAO' THEN 'KCH'
+                END AS "facility"
+            from scratch.deduplicated_discharges where uid!='null' and scriptid in {disc_script_ids};
+        '''
+read_maternal_outcome_query = f'''
             select 
             scriptid,
             uid,
@@ -129,11 +131,11 @@ read_maternal_outcome_query = '''
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries",
             CASE WHEN scriptid ='-MDPYzHcFVHt02D1Tz4Z' THEN 'SMCH'
-            CASE WHEN scriptid ='-MOAjJ_In4TOoe0l_Gl5' THEN 'KCH'
-            END AS 'facility'
-            from public.sessions where scriptid in {} and uid!='null' '''.format(mat_outcomes_script_ids)
+            WHEN scriptid ='-MOAjJ_In4TOoe0l_Gl5' THEN 'KCH'
+            END AS "facility"
+            from public.sessions where scriptid in {mat_outcomes_script_ids} and uid!='null'; '''
 
-read_vitalsigns_query = '''
+read_vitalsigns_query = f'''
             select 
             scriptid,
             uid,
@@ -142,9 +144,9 @@ read_vitalsigns_query = '''
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries",
             CASE WHEN scriptid ='-LAeXX-JCxWLkIrQxVLD' THEN 'KCH'
-            END AS 'facility'
-            from public.sessions where scriptid in {} and uid!='null'
-'''.format(vital_signs_ids)
+            END AS "facility"
+            from public.sessions where scriptid in {vital_signs_ids} and uid!='null';
+'''
 
 derived_admissions_query = '''
                 select 
@@ -162,7 +164,7 @@ count_maternal_outcomes = ''' select count(*) from derived.maternal_outcomes'''
 
 vital_signs_count = ''' select count(*) from derived.vitalsigns '''
 
-read_noelab_query = '''
+read_noelab_query = f'''
             select 
             scriptid,
             uid,
@@ -170,11 +172,11 @@ read_noelab_query = '''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries",
-            CASE WHEN script_id = '-MO_MFKCgx8634jhjLId' THEN 'KCH'
-            CASE WHEN script_id = '-LfOH5fWtWEKk1yJPwfo' THEN 'SMCH'
-            END AS 'facility'
-            from public.sessions where scriptid in {}
-'''.format(neo_lab_ids)
+            CASE WHEN scriptid = '-MO_MFKCgx8634jhjLId' THEN 'KCH'
+            WHEN scriptid = '-LfOH5fWtWEKk1yJPwfo' THEN 'SMCH'
+            END AS "facility"
+            from public.sessions where scriptid in {neo_lab_ids}
+'''
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
         {

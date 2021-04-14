@@ -5,7 +5,6 @@ from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
-from data_pipeline.pipelines.data_engineering.queries.drop_derived_tables_sql import drop_derived_tables
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from conf.common.sql_functions import create_table
 
@@ -295,10 +294,14 @@ def tidy_tables():
 
     logging.info("... Creating MCL count tables")
     try:
-        explode_column(adm_df, adm_mcl)
-        explode_column(dis_df, dis_mcl)
-        explode_column(mat_outcomes_df,mat_outcomes_mcl)
-        explode_column(vit_signs_df,vit_signs_mcl)
+        if not adm_df.empty:
+            explode_column(adm_df, adm_mcl)
+        if not dis_df.empty:
+            explode_column(dis_df, dis_mcl)
+        if not mat_outcomes_df.empty:
+            explode_column(mat_outcomes_df,mat_outcomes_mcl)
+        if not vit_signs_df.empty:
+            explode_column(vit_signs_df,vit_signs_mcl)
        
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")

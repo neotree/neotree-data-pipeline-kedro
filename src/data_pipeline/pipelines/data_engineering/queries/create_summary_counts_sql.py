@@ -13,6 +13,7 @@ def summary_counts_query():
                 CREATE TABLE derived.summary_counts AS
                 SELECT  
                 derived.summary_joined_admissions_discharges."AdmissionMonthYear" AS "AdmissionMonthYear",
+                derived.summary_joined_admissions_discharges."facility" AS "facility",
                 derived.summary_joined_admissions_discharges."AdmissionMonthYearSort" AS "AdmissionMonthYearSort", 
                 sum(derived.summary_joined_admissions_discharges."AdmissionCount") AS "TotalAdmissions", 
                 sum(derived.summary_joined_admissions_discharges."DischargeCount") AS "TotalDischarges", {0}
@@ -29,6 +30,7 @@ def summary_counts_query():
                 sum(derived.summary_joined_admissions_discharges."Less28wks/1kgCount") AS "TotalBabiesWith<28wksAnd1kgs"
                 FROM derived.summary_joined_admissions_discharges
                 GROUP BY derived.summary_joined_admissions_discharges."AdmissionMonthYear",
+                summary_joined_admissions_discharges."facility",
                 derived.summary_joined_admissions_discharges."AdmissionMonthYearSort" {1} 
                  ORDER BY derived.summary_joined_admissions_discharges."AdmissionMonthYearSort" ASC, 
                 derived.summary_joined_admissions_discharges."AdmissionMonthYear" ASC;
