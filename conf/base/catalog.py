@@ -31,11 +31,17 @@ if(env=="prod"):
        
        
 #Country Defaults To Malawi
-mat_outcomes_script_ids = ('-MOAjJ_In4TOoe0l_Gl5')
-adm_script_ids = ('-KO1TK4zMvLhxTw6eKia')
-disc_script_ids = ('-KYDiO2BTM4kSGZDVXAO')
-neo_lab_ids = ('-MO_MFKCgx8634jhjLId')
-vital_signs_ids = ('-LAeXX-JCxWLkIrQxVLD')
+#Maternal Outcomes Script IDs
+#REMOVE DUMMY IF TUPPLE HAS AT LEAST 2 VALID IDS
+mat_outcomes_script_ids = ('-MOAjJ_In4TOoe0l_Gl5','-DUMMY-')
+#Admissions Script IDs
+adm_script_ids = ('-KO1TK4zMvLhxTw6eKia','-DUMMY-')
+#Discharges Script IDs
+disc_script_ids = ('-KYDiO2BTM4kSGZDVXAO','-DUMMY-')
+#NeoLab Script IDs
+neo_lab_ids = ('-MO_MFKCgx8634jhjLId','-DUMMY-')
+#Vital Signs Script IDs
+vital_signs_ids = ('-LAeXX-JCxWLkIrQxVLD','-DUMMY-')
 
 
 
