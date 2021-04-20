@@ -8,7 +8,7 @@ import os
 params = config()
 
 mode = params['env']
-interval = 6
+interval = 1
 cronDir = os.getcwd();
 #The number of hours before next execution of the next job as set in the database.ini file
 if 'cron_interval'in params:
