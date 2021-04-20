@@ -1,3 +1,4 @@
+# Query To Manually correct Admissions with the specified UIDS
 def manually_fix_admissions_query():
     return '''update derived.admissions set "AW.value" = 1640 WHERE "uid" ='F55F-0513';
             update derived.admissions set "AW.value" = 2000 WHERE "uid" ='6367-0975';

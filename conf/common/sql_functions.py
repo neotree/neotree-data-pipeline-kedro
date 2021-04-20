@@ -16,7 +16,7 @@ params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
 engine = create_engine(con, executemany_mode='batch')
 
-
+#Useful functions to inject sql queries
 #Inject SQL Procedures
 def inject_sql_procedure(sql_script, file_name):
         try:

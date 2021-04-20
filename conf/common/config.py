@@ -13,7 +13,6 @@ from pythonjsonlogger import jsonlogger
 
 #Configure General Logging
 
-
 log = logging.getLogger('');
 
 #Create Default Logs Directory If It doesnt Exist

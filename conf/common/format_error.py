@@ -1,3 +1,4 @@
+#Format error messages to get rid of verbosity
 def formatError(e):
     trace = {}
     tb = e.__traceback__

@@ -11,10 +11,7 @@ from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.dedupli
 import logging
 import time
 
-#Pass Convinience Views Output as it is the last step in the data pipeline process
-
-
-
+#This file calls the query to grant privileges to users on the generated tables
 cron_log = open(cron_log_file,"a+")
 def grant_privileges(create_summary_counts_output):
     try:

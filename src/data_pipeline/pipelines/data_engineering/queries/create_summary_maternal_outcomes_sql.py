@@ -1,3 +1,4 @@
+#Query to create summary_maternala_outcomes table
 def summary_maternal_outcomes_query():
     return '''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;
         CREATE TABLE derived.summary_maternal_outcomes AS 

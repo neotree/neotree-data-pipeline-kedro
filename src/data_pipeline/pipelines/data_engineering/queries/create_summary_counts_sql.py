@@ -1,5 +1,6 @@
 from conf.base.catalog import params
 
+#Query to create the summary_counts table
 def summary_counts_query():
         #Customise Queries For different Use Cases
         outcome_month_year = ' '

@@ -1,5 +1,6 @@
 from conf.common.sql_functions import inject_sql_with_return
-
+# Query To check if a table exists on the specified schema 
+# This is helpful in preventing errors that comes with trying to query tables which do not exist
 def table_exists(schema, table_name):
     query = ''' SELECT EXISTS (
                 SELECT FROM information_schema.tables 

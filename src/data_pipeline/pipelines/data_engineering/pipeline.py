@@ -13,7 +13,7 @@ import_raw_json_files_node,
 create_summary_discharge_diagnosis_node,
 create_summary_vitalsigns_node)
 
-
+# The Pipeline Connecting All The Nodes For The Data Pipeline
 def create_pipeline(**kwargs):
     return Pipeline(
         [
