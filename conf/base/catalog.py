@@ -48,7 +48,7 @@ vital_signs_ids = ('-LAeXX-JCxWLkIrQxVLD','-DUMMY-')
 if('country' in params and str(params['country']).lower()) =='zim':
    adm_script_ids = ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK')
    disc_script_ids = ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka')
-   mat_outcomes_script_ids =('-MDPYzHcFVHt02D1Tz4Z','-DUMMY-')
+   mat_outcomes_script_ids =('-MDPYzHcFVHt02D1Tz4Z','-MYk0A3-Z_QjaXYU5MsS')
    neo_lab_ids = ('-LfOH5fWtWEKk1yJPwfo','-DUMMY-')
    #To Pass The Parameter As A Tuple, it requires at least 2 items, hence the use of '-DUMMY-' As IDs
    vital_signs_ids = ('-DUMMY-','-DUMMY-')
@@ -137,6 +137,7 @@ read_maternal_outcome_query = f'''
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries",
             CASE WHEN scriptid ='-MDPYzHcFVHt02D1Tz4Z' THEN 'SMCH'
+            WHEN scriptid = '-MYk0A3-Z_QjaXYU5MsS' THEN 'CCH'
             WHEN scriptid ='-MOAjJ_In4TOoe0l_Gl5' THEN 'KCH'
             END AS "facility"
             from public.sessions where scriptid in {mat_outcomes_script_ids} and uid!='null'; '''

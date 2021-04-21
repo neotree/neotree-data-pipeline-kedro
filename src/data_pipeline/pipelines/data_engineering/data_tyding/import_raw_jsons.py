@@ -47,6 +47,7 @@ def formatRawData():
                 uids = []
                 if(any(files_dir.iterdir())):
                     for filename in list(files_dir.glob(r"*.json")):
+                            chc_uids = []
                             json_file = open(filename,'r');
                             json_script = json_file.read();
                             json_sessions = json.loads(json_script);
@@ -159,8 +160,9 @@ def formatRawData():
                                                     formatedSessions.append(session) 
                                                     #Add uid To list for duplicates check 
                                                     uids.append(session["uid"])
-                                   
-                
+                        
+                                    # if str(filename).endswith('20210414603-Zimbabwe_Maternity_Outcome_.json'):
+                                    #     chc_uids.append(session["uid"])
                             json_file.close();
                     #Check If There Exist A Record With The Same UID in The Database
                     potential_duplicates = checkDuplicateDatabaseRecord(uids);
