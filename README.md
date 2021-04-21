@@ -99,7 +99,7 @@ After running the above command, logs should start appearing on your screen, det
 3. Run the command `python automation.py kedro --env=specified_env` where `specified_env` is the environment as specified in the `SECTION` part of the `database.ini` file. e.g `python automation.py kedro --env=dev` or 
 `python automation.py kedro --env=stage`
 *Note*: You can run the automation script on the same machine for all the 3 available environments i.e (`dev,stage,prod`) if the configurations are available.All you have to do is to run the command in point `3` changing the variable `env` to suit the required environment.
-4. To confirm that your entries have been writtent to the crontab file, run `crontab -e` then check if your entries are available
+4. To confirm that your entries have been written to the crontab file, run `crontab -e` then check if your entries are available
 >It is important to specify the time zone in the `crontab` file before starting to run the automation script so that you won't have challenges with differences in server time against the time zone that you want the automation script to run.
 >To set the time zone append the following line at the top of your `crontab` file: `TZ="SPECIFY_TIMEZONE` e.g `TZ= "Africa/Harare"`
 
