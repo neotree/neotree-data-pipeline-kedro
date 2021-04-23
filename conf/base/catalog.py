@@ -34,6 +34,8 @@ if(env=="prod"):
 #Maternal Outcomes Script IDs
 #REMOVE DUMMY IF TUPPLE HAS AT LEAST 2 VALID IDS
 mat_outcomes_script_ids = ('-MOAjJ_In4TOoe0l_Gl5','-DUMMY-')
+if(env =='dev'):
+   mat_outcomes_script_ids = ('-MOAjJ_In4TOoe0l_Gl5','-MNwjrpe8Ju-BQUKFMZ-')  
 #Admissions Script IDs
 adm_script_ids = ('-KO1TK4zMvLhxTw6eKia','-DUMMY-')
 #Discharges Script IDs
@@ -139,6 +141,7 @@ read_maternal_outcome_query = f'''
             CASE WHEN scriptid ='-MDPYzHcFVHt02D1Tz4Z' THEN 'SMCH'
             WHEN scriptid = '-MYk0A3-Z_QjaXYU5MsS' THEN 'CCH'
             WHEN scriptid ='-MOAjJ_In4TOoe0l_Gl5' THEN 'KCH'
+            WHEN scriptid ='-MNwjrpe8Ju-BQUKFMZ-' THEN 'KCH'
             END AS "facility"
             from public.sessions where scriptid in {mat_outcomes_script_ids} and uid!='null'; '''
 
