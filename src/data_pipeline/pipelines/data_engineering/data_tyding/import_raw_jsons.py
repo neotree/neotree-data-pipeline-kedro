@@ -46,8 +46,9 @@ def formatRawData():
                 formatedSessions = []
                 uids = []
                 if(any(files_dir.iterdir())):
+                    chc_uids = []
                     for filename in list(files_dir.glob(r"*.json")):
-                            chc_uids = []
+                            
                             json_file = open(filename,'r');
                             json_script = json_file.read();
                             json_sessions = json.loads(json_script);
@@ -91,6 +92,20 @@ def formatRawData():
                                                                             session["uid"] = None;
                                                                     else:
                                                                         session["uid"] = None;
+
+                                                                if entry["key"] =="NeoTreeIDBC":
+                                                                    if "values" in entry.keys():
+                                                                        values = entry["values"];
+                                                                        if len(values)>0:
+                                                                            value = values[0]
+                                                                            if "value" in value.keys():
+                                                                                session["uid"] = value["value"];
+                                                                            else:
+                                                                                session["uid"] = None;
+                                                                        else:
+                                                                            session["uid"] = None;
+                                                                    else:
+                                                                        session["uid"] = None;
                                                     
                                                         
                                                 #Where New Format Is Dictionary                        
@@ -115,6 +130,16 @@ def formatRawData():
                                                                 value = values["value"];
                                                                 if type(value) is list:
                                                                     session["uid"] = value[0];
+                                                    ##For Items Without UID Field But Have NeoTreeIDBC In The Entries 
+                                                    if "NeoTreeIDBC" in entries.keys():
+                                                        neotree_id = entries["NeoTreeIDBC"]
+                                                        if "values" in neotree_id.keys():
+                                                            values = neotree_id["values"]
+                                                            if "value" in values.keys():
+                                                                value = values["value"];
+                                                                if type(value) is list:
+                                                                    session["uid"] = value[0];
+                                                
                                                     
                                     else:
                                         if "entries" in session:
@@ -150,6 +175,21 @@ def formatRawData():
                                                                     session["uid"] = None;
                                                             else:
                                                                 session["uid"] = None;
+
+                                                        if entry["key"] =="NeoTreeIDBC":
+                                                            if "values" in entry.keys():
+                                                                values = entry["values"];
+                                                                if len(values)>0:
+                                                                    value = values[0]
+                                                                    if "value" in value.keys():
+                                                                        session["uid"] = value["value"];
+                                                                    else:
+                                                                        session["uid"] = None;
+                                                                else:
+                                                                    session["uid"] = None;
+                                                            else:
+                                                                session["uid"] = None;
+                                                        
                                                         
                                     if "uid"in session.keys() and session["uid"] is not None:                            
                                         if "script" in session.keys():
@@ -160,10 +200,10 @@ def formatRawData():
                                                     formatedSessions.append(session) 
                                                     #Add uid To list for duplicates check 
                                                     uids.append(session["uid"])
-                        
-                                    # if str(filename).endswith('20210414603-Zimbabwe_Maternity_Outcome_.json'):
-                                    #     chc_uids.append(session["uid"])
+                                    # if str(filename).endswith('Zimbabwe_Maternity_Outcome_.json'):
+                                    #     chc_uids.append(session["uid"])         
                             json_file.close();
+                    ##print("###UIDS--",chc_uids);
                     #Check If There Exist A Record With The Same UID in The Database
                     potential_duplicates = checkDuplicateDatabaseRecord(uids);
                     return dict(sessions=formatedSessions,duplicates=potential_duplicates);        
