@@ -62,7 +62,7 @@ read_admissions_query = f'''
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries",
             CASE WHEN scriptid ='-ZO1TK4zMvLhxTw6eKia' THEN 'SMCH'
-            WHEN scriptid ='-MJBnoLY0YLDqLUhPgkK' THEN 'CCH'
+            WHEN scriptid ='-MJBnoLY0YLDqLUhPgkK' THEN 'CPH'
             WHEN scriptid = '-KO1TK4zMvLhxTw6eKia' THEN 'KCH'
             END AS "facility"
             from scratch.deduplicated_admissions where uid!='null' and scriptid in {adm_script_ids};
@@ -125,7 +125,7 @@ read_discharges_query = f'''
                 "data"->'appVersion' as "appVersion",
                 "data"->'entries' as "entries",
                 CASE WHEN scriptid ='-ZYDiO2BTM4kSGZDVXAO' THEN 'SMCH'
-                WHEN scriptid ='-MJCntWHvPaIuxZp35ka' THEN 'CCH'
+                WHEN scriptid ='-MJCntWHvPaIuxZp35ka' THEN 'CPH'
                 WHEN scriptid = '-KYDiO2BTM4kSGZDVXAO' THEN 'KCH'
                 END AS "facility"
             from scratch.deduplicated_discharges where uid!='null' and scriptid in {disc_script_ids};
@@ -139,7 +139,7 @@ read_maternal_outcome_query = f'''
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries",
             CASE WHEN scriptid ='-MDPYzHcFVHt02D1Tz4Z' THEN 'SMCH'
-            WHEN scriptid = '-MYk0A3-Z_QjaXYU5MsS' THEN 'CCH'
+            WHEN scriptid = '-MYk0A3-Z_QjaXYU5MsS' THEN 'CPH'
             WHEN scriptid ='-MOAjJ_In4TOoe0l_Gl5' THEN 'KCH'
             WHEN scriptid ='-MNwjrpe8Ju-BQUKFMZ-' THEN 'KCH'
             END AS "facility"
