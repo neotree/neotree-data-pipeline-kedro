@@ -40,7 +40,11 @@ def create_columns(table: pd.DataFrame):
 
     # order of statements matters
     if 'Gestation.value' in table.keys():
-      if('country' in params and str(params['country']).lower()) =='zim':
+          pass;
+    else:
+        table['Gestation.value'] = float('nan') 
+         
+    if('country' in params and str(params['country']).lower()) =='zim':
             table.loc[table['Gestation.value'].isnull(
             ), 'GestGroup.value'] = float('nan')
             table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
