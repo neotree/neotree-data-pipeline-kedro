@@ -39,7 +39,7 @@ def create_columns(table: pd.DataFrame):
         pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), float('nan'))
 
     # order of statements matters
-    if 'Gestation.value' in table.keys:
+    if 'Gestation.value' in table.keys():
       if('country' in params and str(params['country']).lower()) =='zim':
             table.loc[table['Gestation.value'].isnull(
             ), 'GestGroup.value'] = float('nan')
