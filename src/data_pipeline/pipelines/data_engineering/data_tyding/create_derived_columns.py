@@ -39,23 +39,23 @@ def create_columns(table: pd.DataFrame):
         pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), float('nan'))
 
     # order of statements matters
-    
-    if('country' in params and str(params['country']).lower()) =='zim':
-      table.loc[table['Gestation.value'].isnull(
-      ), 'GestGroup.value'] = float('nan')
-      table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
-      table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
-      table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
-      table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
-      table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
+    if 'Gestation.value' in table.keys:
+      if('country' in params and str(params['country']).lower()) =='zim':
+            table.loc[table['Gestation.value'].isnull(
+            ), 'GestGroup.value'] = float('nan')
+            table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
+            table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
+            table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
+            table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
+            table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
     else:
-      table.loc[table['Gestation.value'].isnull(
-      ), 'GestGroup.value'] = float('nan')
-      table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
-      table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
-      table.loc[table['Gestation.value'] < 34, 'GestGroup.value'] = "32-34 wks"
-      table.loc[table['Gestation.value'] < 32, 'GestGroup.value'] = "28-32 wks"
-      table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"   
+            table.loc[table['Gestation.value'].isnull(
+            ), 'GestGroup.value'] = float('nan')
+            table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
+            table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
+            table.loc[table['Gestation.value'] < 34, 'GestGroup.value'] = "32-34 wks"
+            table.loc[table['Gestation.value'] < 32, 'GestGroup.value'] = "28-32 wks"
+            table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"   
 
 
     # order of statements matters
