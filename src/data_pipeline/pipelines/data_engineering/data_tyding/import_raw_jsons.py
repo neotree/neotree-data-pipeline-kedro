@@ -203,7 +203,7 @@ def formatRawData():
                                     # if str(filename).endswith('Zimbabwe_Maternity_Outcome_.json'):
                                     #     chc_uids.append(session["uid"])         
                             json_file.close();
-                    ##print("###UIDS--",chc_uids);
+                    # print("###UIDS--",chc_uids);
                     #Check If There Exist A Record With The Same UID in The Database
                     potential_duplicates = checkDuplicateDatabaseRecord(uids);
                     return dict(sessions=formatedSessions,duplicates=potential_duplicates);        
