@@ -36,6 +36,8 @@ def tidy_tables():
         vit_signs_raw = catalog.load('read_vital_signs')
         #Read Neo Lab Data from Kedro Catalog
         neolab_raw = catalog.load('read_neolab_data')
+        #Read Baseline Data from Kedro Catalog
+        baseline_raw = catalog.load('read_baseline_data')
 
     
     except Exception as e:
@@ -53,6 +55,7 @@ def tidy_tables():
         mat_outcomes_new_entries,mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
         vit_signs_new_entries,vit_signs_mcl = get_key_values(vit_signs_raw)
         neolab_new_entries,noelab_mcl = get_key_values(neolab_raw)
+        baseline_new_entries,baseline_mcl = get_key_values(baseline_raw)
         
 
     except Exception as e:
@@ -79,6 +82,10 @@ def tidy_tables():
         neolab_df = pd.json_normalize(neolab_new_entries)
         if "uid" in neolab_df:
             neolab_df.set_index(['uid'])
+
+        baseline_df = pd.json_normalize(baseline_new_entries)
+        if "uid" in baseline_df:
+            baseline_df.set_index(['uid'])
 
         if adm_df.empty and dis_df.empty:
             logging.error(
@@ -284,6 +291,9 @@ def tidy_tables():
         #Save Derived NeoLab To The DataBase Using Kedro
         if not neolab_df.empty:
             catalog.save('create_derived_neolab',neolab_df)
+        #Save Derived Baseline To The DataBase Using Kedro
+        if not baseline_df.empty:
+            catalog.save('create_derived_baselines',baseline_df)
 
 
 
@@ -302,6 +312,9 @@ def tidy_tables():
             explode_column(mat_outcomes_df,mat_outcomes_mcl)
         if not vit_signs_df.empty:
             explode_column(vit_signs_df,vit_signs_mcl)
+
+        if not baseline_df.empty:
+            explode_column(baseline_df,baseline_mcl)
        
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")

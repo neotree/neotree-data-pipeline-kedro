@@ -30,7 +30,9 @@ disc_script_ids = ["DUMMY-"]
 #NeoLab Script IDs
 neo_lab_ids = ["DUMMY-"]
 #Vital Signs Script IDs
-vital_signs_ids = ["DUMMY-"]                                     
+vital_signs_ids = ["DUMMY-"]   
+#Vital Signs Script IDs
+baseline_ids = ["DUMMY-"]                                   
 
 
 
@@ -39,12 +41,12 @@ hospital_scripts = hospital_conf()
 
 if hospital_scripts:
        # Declare Dynamic Switch Cases
-       
        admissions_case = ', CASE '
        dicharges_case = ', CASE '
        maternal_case = ', CASE '
        vitals_case = ', CASE '
        neolabs_case = ', CASE '
+       baseline_case = ', CASE '
 
        
        for hospital in hospital_scripts:
@@ -108,6 +110,15 @@ if hospital_scripts:
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         neo_lab_ids.append('-DUMMY-')
+
+                  if 'baselines' in ids.keys():
+                     baseline_id = ids['baselines']
+                     if (baseline_id!=''):
+                        baseline_ids.append(neolab_script_id)
+                        baseline_case = baseline_case + " WHEN scriptid ='{0}' THEN '{1}' ".format(baseline_id,hospital)
+                     else:
+                        #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
+                        baseline_ids.append('-DUMMY-')
                      
             
             else:
@@ -146,6 +157,7 @@ disc_script_ids_tuple = tuple(disc_script_ids)
 mat_outcomes_script_ids_tuple = tuple(mat_outcomes_script_ids)
 vital_signs_ids_tuple = tuple(vital_signs_ids)
 neo_lab_ids_tuple = tuple(neo_lab_ids)
+baseline_ids_tuple = tuple(baseline_ids)
 
 read_admissions_query = f'''
             select 
@@ -241,6 +253,16 @@ read_vitalsigns_query = f'''
             "data"->'entries' as "entries" {vitals_case}
             from public.sessions where scriptid in {vital_signs_ids_tuple} and uid!='null';
 '''
+read_baselines_query = f'''
+            select 
+            scriptid,
+            uid,
+            id,
+            ingested_at,
+            "data"->'appVersion' as "appVersion",
+            "data"->'entries' as "entries" {baseline_case}
+            from public.sessions where scriptid in {baseline_ids_tuple} and uid!='null';
+'''
 
 derived_admissions_query = '''
                 select 
@@ -307,6 +329,10 @@ catalog = DataCatalog(
             sql= read_noelab_query,
             credentials=dict(con=con)
          ),
+         "read_baseline_data": SQLQueryDataSet(
+            sql= read_baselines_query,
+            credentials=dict(con=con)
+         ),
          #Count Maternal Outcomes
          "count_maternal_outcomes": SQLQueryDataSet(
             sql= count_maternal_outcomes,
@@ -350,7 +376,14 @@ catalog = DataCatalog(
             table_name='neolab',
             credentials=dict(con=con),
             save_args = dict(schema='derived',if_exists='replace')
-         )
+         ),
+           #Make Use Of Save Method To Create Tables
+         "create_derived_baselines": SQLTableDataSet(
+            table_name="baseline",
+            credentials=dict(con=con),
+            save_args = dict(schema="derived",if_exists="replace")
+         ),
+         
 
         }
         )
