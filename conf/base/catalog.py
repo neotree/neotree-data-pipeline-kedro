@@ -61,8 +61,8 @@ if hospital_scripts:
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         adm_script_ids.append('-DUMMY-')
-               else:
-                  adm_script_ids.append('-DUMMY-') 
+                  else:
+                     adm_script_ids.append('-DUMMY-') 
                      
 
                   if 'discharges' in ids.keys():
