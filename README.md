@@ -34,8 +34,11 @@ At this stage the assumption is that we have cloned the code base to our local m
 The `conf/local` folder should be used for configuration that is either user-specific (e.g. IDE configuration) or protected (e.g. security keys).
 
 * *Note:* Please do not check in any local configuration to version control.
-In the case of this repository, this folder contains the important file known as `database.ini`
-The `database.ini` file contains all sensitive and user specific configurations some which are optional and some which are required
+In the case of this repository, this folder contains the important files known as `database.ini` and `hospitals.ini`
+The `database.ini` file contains all sensitive and user specific configurations some which are optional and some which are required.
+The `hospitals.ini` file contains hospitals script ids configurations
+*Note* BOTH FILES ARE MANDATORY
+## DATABASE.INI 
 > ## Configuration Items:
 * *Note:* You can define multiple Environments in the same `database.ini` file
 1. Section:    Determines The Environment To Be Used, Valid section Names Are (`[postgresql_dev]`,`][postgresql_stage]` and `[postgresql_prod]`)
@@ -45,8 +48,8 @@ The `database.ini` file contains all sensitive and user specific configurations 
 3. database:  The database name  e.g `neotree_data` -- REQUIRED FIELD
 4. user :     The username used to connect to the database e.g `neotree_postgres_user` -- REQUIRED FIELD
 5. password:  Connection password for the database user e.g `connection_pw1@5Fi` -- REQUIRED
-6. country:   The country for which you are running the pipeline. Currently valid options are `zim` for Zimbabwe and                `malawi` for Malawi. *This Field is `OPTIONAL` and if not included , the pipeline will default to                     `Malawi`*. The country of choice determines which script ids to look for as mapped in the 
-              `conf/base/catalog`
+6. country:   The country for which you are running the pipeline. Currently valid options are `zimbabwe` for Zimbabwe and                `malawi` for Malawi. *This Field is `MANDATORY` and should exactly match the country of choice specified in the            `hospitals.ini` file so that the correct scripts for the country of choice are picked.
+
 7. mode:       This is the mode to be used when running the pipeline. *This field is `OPTIONAL` and if it is not                     included the pipeline will default to the `no_import` mode*. If mode = `import` the pipeline will look                at the specified `files_dir` to look for new data to import into the database before starting to run                  the stages of the datapipeline. I.E if set to `import` the pipeline will check if there are any new                   scripts in the `files_dir` that are not in the database , then import those first. *Please note that                  it looks at `scripts` not files , hence all duplicate scripts are eliminated during the importation                   stage*
 8. files_dir:  Works hand in hand with the `mode` field. It is the path to the directory containing scripts that                     need to be imported into the database. The path should be specified using the path pattern of the                     operating system being in use. By Default it is `OPTIONAL` however it becomes `REQUIRED` the moment we                set `mode` to `import`
 
@@ -61,8 +64,47 @@ The `database.ini` file contains all sensitive and user specific configurations 
     country = zim
     mode = import
     #DIRECTORY FOR RAW JSON FILES
-    files_dir = C:\/Users\/morris\/Documents\/Data ### WINDOWS EXAMPLE, FOR OTHER OSs USE THE OSs PATH PATTERNS       cron_interval = 5                                                   
+    files_dir = C:\/Users\/morris\/Documents\/Data ### WINDOWS EXAMPLE, FOR OTHER OSs USE THE OSs PATH PATTERNS       cron_interval = 5  
 
+## HOSPITALS.INI 
+This contains all configurations for new hospitals
+Initialy it should contain a set of configuration files for at least one hospital
+The hospital's initials are used as the section name, and will be used as the facility in the database
+Hence it is mandatory to have unique hospitals initials
+> ## Configuration Items:
+1. Section :  The initials of the hospital, enclosed in square brackets e.g `[SMCH]`
+2. name    :  The full name of the hospital e.g `Sally Mugabe Central Hospital`
+3. country :  The country name as specified in the `database.ini` file eg `zimbabwe`
+4. admissions : Script Id For Admissions Script
+5. discharges : Script Id For Discharges Script
+6. maternals  : Script Id For Maternal Script
+7. vital_signs : Script Id For Vital Signs Script
+8. neolabs     : Script Id For Neolab Data
+9. baselines   : Script Id For Baseline Data
+10. maternal_dev: Script Id For Maternal Outcomes Dev (Special Case, else Dev Script Ids Should Be The Same As Prod Ones)
+>Where the item doesn't have a value, please put the item, an equal sign and nothing after, as demonstrated in the example below
+
+## EXAMPLE OF FULL `hospitals.ini` FILE:
+
+[PGH]
+name= Parirenyatwa Group of Hospitals
+country=  zimbabwe
+admissions = DNPARDEMOSERTDOOO
+discharges=  DEOMENOEDEMODEOIO
+maternals =  -JEKIO12OKDEMOdDE
+vital_signs = -DEjSKILOKOLLLS-
+neolabs =   -SJKKKDDKKKKSSSLS-
+baselines = 
+
+[BPH]
+name= Bindura Provincial Hospital
+country=  zimbabwe
+admissions = -GGCDEMO122DKK0W
+discharges=  -GGCDEMO122DKK0W
+maternals = 
+vital_signs =
+neolabs = 
+baselines = -MHDEMODEMO9nmtfb
 
 > ## BASE CONFIGURATION:
 
@@ -74,7 +116,7 @@ The `conf/base` folder is for shared configuration, such as non-sensitive and pr
 1. You have installed kedro
 2. You have installed all dependencies
 3. You have a working postgres database, and a valid username and password to connect to the database, and your          database consists of at least 3 schemas i.e `public`,`derived` and `scratch`
-4. You have setup your configurations in `database.ini`
+4. You have setup your configurations in `database.ini` and `hosptals.ini`
 5. You have data in `sessions` table which should be in the `public` schema, (or if the table is empty, you have some     json files in your `files_dir` and your `mode` is set to `import`
 6. You have activated the virtual environment that you created earlier and (*MAKE SURE THIS IS THE VIRTUAL                ENVIRONMENT IN WHICH YOU HAVE INSTALLED YOUR DEPENDENCIES*)
 > If all the above mentioned requirements are met then:
@@ -110,6 +152,7 @@ After running the above command, logs should start appearing on your screen, det
 3. Run `crontab -e` and a file to write your automation command will be opened. *Please Note:**When you first open the file, it will prompt you on the text editor that you want to use for opening the file, and that will be used as the default editor during subsequent opening of the file
 4. Set Time zone as specified in the section above.
 5. Write your automantion command, save your changes and exit.
+
 ## THE AUTOMATION SCRIPT COMMAND ##
 >The automation command follows the general cron format containing the time,as well as the command to be run
 >The time is specified in the format `mm hh dd MM yy` where :
