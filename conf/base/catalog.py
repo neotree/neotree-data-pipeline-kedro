@@ -61,7 +61,8 @@ if hospital_scripts:
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         adm_script_ids.append('-DUMMY-')
-                     #CONVERT LIST TO TUPLE   
+               else:
+                  adm_script_ids.append('-DUMMY-') 
                      
 
                   if 'discharges' in ids.keys():
@@ -73,6 +74,8 @@ if hospital_scripts:
                      else:
                        #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         disc_script_ids.append('-DUMMY-')
+                  else:
+                     disc_script_ids.append('-DUMMY-')
                      
                   if 'maternals' in ids.keys():
                      mat_script_id = ids['maternals']
@@ -82,7 +85,8 @@ if hospital_scripts:
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         mat_outcomes_script_ids.append('-DUMMY-')
-                     
+                  else:
+                     mat_outcomes_script_ids.append('-DUMMY-')  
 
                   ## ADD SCRIPT IDS WHERE THE DEV SCRIPTID IS DIFFERENT FROM PRODUCTION ONE (SHOULDN'T BE THE CASE)
                   if 'maternals_dev' in ids.keys() and env=='dev':
@@ -100,7 +104,8 @@ if hospital_scripts:
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         vital_signs_ids.append('-DUMMY-')
-                     
+                  else:
+                     vital_signs_ids.append('-DUMMY-')
 
                   if 'neolabs' in ids.keys():
                      neolab_script_id = ids['neolabs']
@@ -110,6 +115,8 @@ if hospital_scripts:
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         neo_lab_ids.append('-DUMMY-')
+                  else:
+                     neo_lab_ids.append('-DUMMY-') 
 
                   if 'baselines' in ids.keys(): 
                      baseline_id = ids['baselines']
@@ -119,7 +126,8 @@ if hospital_scripts:
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         baseline_ids.append('-DUMMY-')
-                     
+                  else:
+                     baseline_ids.append('-DUMMY-')
             
             else:
                log.error("Please specify country in both `database.ini` and `hospitals.ini` files")
