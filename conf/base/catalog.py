@@ -111,10 +111,10 @@ if hospital_scripts:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
                         neo_lab_ids.append('-DUMMY-')
 
-                  if 'baselines' in ids.keys():
+                  if 'baselines' in ids.keys(): 
                      baseline_id = ids['baselines']
                      if (baseline_id!=''):
-                        baseline_ids.append(neolab_script_id)
+                        baseline_ids.append(baseline_id)
                         baseline_case = baseline_case + " WHEN scriptid ='{0}' THEN '{1}' ".format(baseline_id,hospital)
                      else:
                         #ADD DUMMY SO THAT IN WORST CASE SCENARIO WE WILL HAVE AT LEAST 2 DUMMIES IN THE TUPLE,MAKING IT A VALID TUPLE
@@ -150,7 +150,12 @@ if hospital_scripts:
        if  neolabs_case.strip() ==', CASE':
            neolabs_case = ''
        else:
-         neolabs_case = neolabs_case + facility_case_end     
+         neolabs_case = neolabs_case + facility_case_end   
+
+       if  baseline_case.strip() ==', CASE':
+           baseline_case = ''
+       else:
+         baseline_case = baseline_case + facility_case_end    
 #CONVERT LISTS TO TUPLE
 adm_script_ids_tuple = tuple(adm_script_ids) 
 disc_script_ids_tuple = tuple(disc_script_ids)
