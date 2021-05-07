@@ -173,7 +173,7 @@ baseline_ids_tuple = tuple(baseline_ids)
 
 #DEFINE FROM SECTION TO AVOID ERROR FROM NON-EXISTING TABLE
 generic_from = 'public.sessions'
-mat_outcomes_from = 'scratch.deduplicated_baseline'
+mat_outcomes_from = 'scratch.deduplicated_maternals'
 neolab_from = 'scratch.deduplicated_neolabs'
 baseline_from = 'scratch.deduplicated_baseline'
 vital_signs_from = 'scratch.deduplicated_vitals'
