@@ -2,6 +2,7 @@ from kedro.pipeline import node
 from .nodes_grouped.data_impotation_nodes.import_from_raw_json import import_json_files
 from .nodes_grouped.step_1_nodes.deduplicate_admissions import deduplicate_admissions
 from .nodes_grouped.step_1_nodes.deduplicate_discharges import deduplicate_discharges
+from .nodes_grouped.step_1_nodes.deduplicate_other_data import deduplicate_other_data
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data
 from .nodes_grouped.step_2_nodes.summary_maternal_outcomes import create_summary_maternal_outcomes
 from .nodes_grouped.step_2_nodes.summary_vitalsigns import create_summary_vitalsigns
@@ -29,6 +30,12 @@ deduplicate_admissions_node = node(
 deduplicate_discharges_node = node(
     deduplicate_discharges, inputs="data_import_output", outputs="deduplicate_discharges_output"
 )
+
+#Create A Deduplicating  Node
+deduplicate_other_data_node = node(
+    deduplicate_other_data, inputs="data_import_output", outputs="deduplicate_data_output"
+)
+
 
 # Create A Data Tyding Node And Pass OutPut From Deduplication
 tidy_data_node = node(

@@ -24,16 +24,15 @@ cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
 
 mat_outcomes_script_ids = ["DUMMY-"] 
 #Admissions Script IDs
-adm_script_ids = ["DUMMY-"] 
+adm_script_ids = ["-DUMMY-"] 
 #Discharges Script IDs
-disc_script_ids = ["DUMMY-"]
+disc_script_ids = ["-DUMMY-"]
 #NeoLab Script IDs
-neo_lab_ids = ["DUMMY-"]
+neo_lab_ids = ["-DUMMY-"]
 #Vital Signs Script IDs
-vital_signs_ids = ["DUMMY-"]   
+vital_signs_ids = ["-DUMMY-"]   
 #Vital Signs Script IDs
-baseline_ids = ["DUMMY-"]                                   
-
+baseline_ids = ["-DUMMY-"]                                   
 
 
 # Hospital Scripts Configs
@@ -172,6 +171,24 @@ vital_signs_ids_tuple = tuple(vital_signs_ids)
 neo_lab_ids_tuple = tuple(neo_lab_ids)
 baseline_ids_tuple = tuple(baseline_ids)
 
+#DEFINE FROM SECTION TO AVOID ERROR FROM NON-EXISTING TABLE
+generic_from = 'public.sessions'
+mat_outcomes_from = 'scratch.deduplicated_baseline'
+neolab_from = 'scratch.deduplicated_neolabs'
+baseline_from = 'scratch.deduplicated_baseline'
+vital_signs_from = 'scratch.deduplicated_vitals'
+ 
+if any(map(lambda ele: ele is not "-DUMMY-", mat_outcomes_script_ids_tuple)):
+   mat_outcomes_from = generic_from
+if any(map(lambda ele: ele is not "-DUMMY-", neo_lab_ids_tuple)):
+   neolab_from = generic_from
+if any(map(lambda ele: ele is not "-DUMMY-", vital_signs_ids_tuple)):
+   vital_signs_from = generic_from
+if any(map(lambda ele: ele is not "-DUMMY-", baseline_ids_tuple)):  
+   baseline_from = generic_from
+       
+
+
 read_admissions_query = f'''
             select 
             uid,
@@ -212,6 +229,111 @@ create table scratch.deduplicated_admissions as
   from earliest_admissions join sessions
   on earliest_admissions.id = sessions.id
 ); '''
+
+deduplicate_baseline_query =f'''
+drop table if exists scratch.deduplicated_baseline cascade;
+create table scratch.deduplicated_baseline as 
+(
+  with earliest_baseline as (
+    select
+      scriptid,
+      uid, 
+      min(id) as id -- This takes the first upload 
+                    -- of the session as the deduplicated record. 
+                    -- We could replace with max(id) to take the 
+                    -- most recently uploaded
+     from public.sessions
+     where scriptid in {baseline_ids_tuple} {where} -- only pull out baseline
+    group by 1,2
+  )
+  select
+    earliest_baseline.scriptid,
+    earliest_baseline.uid,
+    earliest_baseline.id,
+    sessions.ingested_at,
+    data
+  from earliest_baseline join sessions
+  on earliest_baseline.id = sessions.id
+); '''
+
+deduplicate_vitals_query =f'''
+drop table if exists scratch.deduplicated_vitals cascade;
+create table scratch.deduplicated_vitals as 
+(
+  with earliest_vitals as (
+    select
+      scriptid,
+      uid, 
+      min(id) as id -- This takes the first upload 
+                    -- of the session as the deduplicated record. 
+                    -- We could replace with max(id) to take the 
+                    -- most recently uploaded
+     from public.sessions
+     where scriptid in {vital_signs_ids_tuple} {where} -- only pull out vitals
+    group by 1,2
+  )
+  select
+    earliest_vitals.scriptid,
+    earliest_vitals.uid,
+    earliest_vitals.id,
+    sessions.ingested_at,
+    data
+  from earliest_vitals join sessions
+  on earliest_vitals.id = sessions.id
+); '''
+
+deduplicate_neolab_query =f'''
+drop table if exists scratch.deduplicated_neolabs cascade;
+create table scratch.deduplicated_neolabs as 
+(
+  with earliest_neolab as (
+    select
+      scriptid,
+      uid, 
+      min(id) as id -- This takes the first upload 
+                    -- of the session as the deduplicated record. 
+                    -- We could replace with max(id) to take the 
+                    -- most recently uploaded
+     from public.sessions
+     where scriptid in {neo_lab_ids_tuple} {where} -- only pull out neloab data
+    group by 1,2
+  )
+  select
+    earliest_neolab.scriptid,
+    earliest_neolab.uid,
+    earliest_neolab.id,
+    sessions.ingested_at,
+    data
+  from earliest_neolab join sessions
+  on earliest_neolab.id = sessions.id
+); '''
+
+deduplicate_maternal_query =f'''
+drop table if exists scratch.deduplicated_maternals cascade;
+create table scratch.deduplicated_maternals as 
+(
+  with earliest_maternal as (
+    select
+      scriptid,
+      uid, 
+      min(id) as id -- This takes the first upload 
+                    -- of the session as the deduplicated record. 
+                    -- We could replace with max(id) to take the 
+                    -- most recently uploaded
+     from public.sessions
+     where scriptid in {mat_outcomes_script_ids_tuple} {where} -- only pull out maternal  data
+    group by 1,2
+  )
+  select
+    earliest_maternal.scriptid,
+    earliest_maternal.uid,
+    earliest_maternal.id,
+    sessions.ingested_at,
+    data
+  from earliest_maternal join sessions
+  on earliest_maternal.id = sessions.id
+); '''
+
 
 deduplicate_discharges_query = f'''
 drop table if exists scratch.deduplicated_discharges cascade;
@@ -254,7 +376,7 @@ read_maternal_outcome_query = f'''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries" {maternal_case}
-            from public.sessions where scriptid in {mat_outcomes_script_ids_tuple} and uid!='null'; '''
+            from {mat_outcomes_from} where scriptid in {mat_outcomes_script_ids_tuple} and uid!='null'; '''
 
 read_vitalsigns_query = f'''
             select 
@@ -264,7 +386,7 @@ read_vitalsigns_query = f'''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries" {vitals_case}
-            from public.sessions where scriptid in {vital_signs_ids_tuple} and uid!='null';
+            from {vital_signs_from} where scriptid in {vital_signs_ids_tuple} and uid!='null';
 '''
 read_baselines_query = f'''
             select 
@@ -274,7 +396,7 @@ read_baselines_query = f'''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries" {baseline_case}
-            from public.sessions where scriptid in {baseline_ids_tuple} and uid!='null';
+            from {baseline_from} where scriptid in {baseline_ids_tuple} and uid!='null';
 '''
 
 derived_admissions_query = '''
@@ -301,7 +423,7 @@ read_noelab_query = f'''
             ingested_at,
             "data"->'appVersion' as "appVersion",
             "data"->'entries' as "entries" {neolabs_case}
-            from public.sessions where scriptid in {neo_lab_ids_tuple}
+            from {neolab_from} where scriptid in {neo_lab_ids_tuple}
 '''
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
