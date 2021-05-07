@@ -305,16 +305,16 @@ def tidy_tables():
     logging.info("... Creating MCL count tables")
     try:
         if not adm_df.empty:
-            explode_column(adm_df, adm_mcl)
+            explode_column(adm_df, adm_mcl,"")
         if not dis_df.empty:
-            explode_column(dis_df, dis_mcl)
+            explode_column(dis_df, dis_mcl,"disc_")
         if not mat_outcomes_df.empty:
-            explode_column(mat_outcomes_df,mat_outcomes_mcl)
+            explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
         if not vit_signs_df.empty:
-            explode_column(vit_signs_df,vit_signs_mcl)
+            explode_column(vit_signs_df,vit_signs_mcl,"vit_")
 
         if not baseline_df.empty:
-            explode_column(baseline_df,baseline_mcl)
+            explode_column(baseline_df,baseline_mcl,"bsl_")
        
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")

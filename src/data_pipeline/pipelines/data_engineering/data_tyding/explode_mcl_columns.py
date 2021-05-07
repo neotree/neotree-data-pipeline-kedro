@@ -5,7 +5,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 # no output but tables in postgres are created, tables names are the same as mcl column titles
 
 
-def explode_column(df, mcl):
+def explode_column(df, mcl,db):
     created_tables = []
     for c in mcl:
         # loop to explode all mcl columns in list 
@@ -29,7 +29,7 @@ def explode_column(df, mcl):
             mcl_column_exp = mcl_column_exp.loc[(mcl_column_exp[column] != "Other") &
              (mcl_column_exp[column].notna()) & (mcl_column_exp[column] is not None)]
             mcl_column_exp.set_index('uid')
-            column_name = ("exploded_"+parent_column)
+            column_name = ("exploded_"+db+parent_column)
             schema = 'derived'
             if str(c).endswith('Oth'):
                 mcl_column_exp.drop(column,axis='columns',inplace=True)
