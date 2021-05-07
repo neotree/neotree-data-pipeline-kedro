@@ -22,7 +22,7 @@ if Path(ubuntu_log_dir).exists():
     logs_dir = ubuntu_log_dir
 cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
 
-mat_outcomes_script_ids = ["DUMMY-"] 
+mat_outcomes_script_ids = ["-DUMMY-"] 
 #Admissions Script IDs
 adm_script_ids = ["-DUMMY-"] 
 #Discharges Script IDs
@@ -179,12 +179,20 @@ baseline_from = 'scratch.deduplicated_baseline'
 vital_signs_from = 'scratch.deduplicated_vitals'
  
 if any(map(lambda ele: ele is not "-DUMMY-", mat_outcomes_script_ids_tuple)):
+   pass;
+else:
    mat_outcomes_from = generic_from
 if any(map(lambda ele: ele is not "-DUMMY-", neo_lab_ids_tuple)):
+   pass;
+else:
    neolab_from = generic_from
 if any(map(lambda ele: ele is not "-DUMMY-", vital_signs_ids_tuple)):
+   pass;
+else:
    vital_signs_from = generic_from
 if any(map(lambda ele: ele is not "-DUMMY-", baseline_ids_tuple)):  
+   pass;
+else:
    baseline_from = generic_from
        
 
@@ -425,6 +433,8 @@ read_noelab_query = f'''
             "data"->'entries' as "entries" {neolabs_case}
             from {neolab_from} where scriptid in {neo_lab_ids_tuple}
 '''
+
+print("$$$--NL--",neolab_from,"$$--mater-",mat_outcomes_from,"$$$--vit--",vital_signs_from,"$$-BASE-",baseline_from)
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
         {
