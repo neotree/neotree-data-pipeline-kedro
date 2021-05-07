@@ -14,7 +14,6 @@ def manually_fix_admissions_query():
             update derived.admissions set "AW.value" = 4200 WHERE "uid" ='A7C6-0350'; 
             update derived.admissions set "AW.value" = 4200 WHERE "uid" ='A7C6-0378'; 
 
-
             update derived.admissions set "BW.value" =1000 WHERE uid='A7C6-0022'; 
             update derived.admissions set "BW.value" =1000 WHERE uid='6367-1109';
             update derived.admissions set "BW.value" =1385 WHERE uid='F55F-0343';
@@ -32,4 +31,6 @@ def manually_fix_admissions_query():
             update derived.admissions set "BW.value" =3180 WHERE uid='C22B-0117';
             update derived.admissions set "BW.value" =3600 WHERE uid='F55F-0467';
             update derived.admissions set "BW.value" =3800 WHERE uid='A7C6-0350';
-            update derived.admissions set "BW.value" =3800 WHERE uid='A7C6-0378'; '''
+            update derived.admissions set "BW.value" =3800 WHERE uid='A7C6-0378'; 
+            update derived.admissions set "InOrOut.label" ='Within SMCH' WHERE "InOrOut.label" = 'Within HCH';
+            update derived.admissions set "InOrOut.label" ='Outside SMCH' WHERE "InOrOut.label" = 'Outside HCH'; '''
