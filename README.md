@@ -61,7 +61,7 @@ The `hospitals.ini` file contains hospitals script ids configurations
     database=  neotree_data
     user= user
     password= password
-    country = zim
+    country = zimbabwe
     mode = import
     #DIRECTORY FOR RAW JSON FILES
     files_dir = C:\/Users\/morris\/Documents\/Data ### WINDOWS EXAMPLE, FOR OTHER OSs USE THE OSs PATH PATTERNS       cron_interval = 5  

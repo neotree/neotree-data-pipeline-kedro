@@ -6,7 +6,7 @@ def summary_counts_query():
         outcome_month_year = ' '
         group_by_additional_columns = ' '
         
-        if('country' in params and str(params['country']).lower()) =='zim':
+        if('country' in params and str(params['country']).lower()) =='zimbabwe':
            #Add Outcome Year Month For Zim Use Case
            outcome_month_year ='derived.summary_joined_admissions_discharges."OutcomeMonthYear" AS "OutcomeMonthYear",'   
            group_by_additional_columns = ',derived.summary_joined_admissions_discharges."OutcomeMonthYear" '

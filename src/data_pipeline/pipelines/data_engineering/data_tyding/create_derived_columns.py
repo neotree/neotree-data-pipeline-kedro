@@ -44,7 +44,7 @@ def create_columns(table: pd.DataFrame):
     else:
         table['Gestation.value'] = float('nan') 
          
-    if('country' in params and str(params['country']).lower()) =='zim':
+    if('country' in params and str(params['country']).lower()) =='zimbabwe':
             table.loc[table['Gestation.value'].isnull(
             ), 'GestGroup.value'] = float('nan')
             table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
@@ -105,7 +105,7 @@ def create_columns(table: pd.DataFrame):
     table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
 
   
-    if('country' in params and str(params['country']).lower()) =='zim':
+    if('country' in params and str(params['country']).lower()) =='zimbabwe':
         table.loc[table['Temperature.value'] >37.5,
               'TempThermia.value'] = "Fever"
         table.loc[(table['Temperature.value'] >= 36.5) & (table['Temperature.value'] <= 37.5),
