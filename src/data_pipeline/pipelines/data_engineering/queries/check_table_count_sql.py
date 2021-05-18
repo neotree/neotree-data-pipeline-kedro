@@ -8,7 +8,9 @@ def table_data_count(schema, table_name):
     query_result = inject_sql_with_return(query);
     if len(query_result) >0:
         result = query_result[0];
+        print("$$$--",result)
         if 'count' in result.keys():
+            print("##--#$--",result['count'])
             return result['count']
         else:
             return 0
