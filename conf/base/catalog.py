@@ -177,19 +177,23 @@ mat_outcomes_from = 'scratch.deduplicated_maternals'
 neolab_from = 'scratch.deduplicated_neolabs'
 baseline_from = 'scratch.deduplicated_baseline'
 vital_signs_from = 'scratch.deduplicated_vitals'
- 
+
+#Check If Tuple contains at least one valid ID (i.e at least one id not equal to '-DUMMY-') 
 if any(map(lambda ele: ele is not "-DUMMY-", mat_outcomes_script_ids_tuple)):
    pass;
 else:
    mat_outcomes_from = generic_from
+#Check If Tuple contains at least one valid ID (i.e at least one id not equal to '-DUMMY-') 
 if any(map(lambda ele: ele is not "-DUMMY-", neo_lab_ids_tuple)):
    pass;
 else:
    neolab_from = generic_from
+#Check If Tuple contains at least one valid ID (i.e at least one id not equal to '-DUMMY-') 
 if any(map(lambda ele: ele is not "-DUMMY-", vital_signs_ids_tuple)):
    pass;
 else:
    vital_signs_from = generic_from
+#Check If Tuple contains at least one valid ID (i.e at least one id not equal to '-DUMMY-') 
 if any(map(lambda ele: ele is not "-DUMMY-", baseline_ids_tuple)):  
    pass;
 else:
@@ -418,8 +422,6 @@ derived_discharges_query = '''
                 *
             from derived.discharges where uid!='null';
         '''
-#Query To Validate If It is necessary to run Maternal OutComes Summary        
-count_maternal_outcomes = ''' select count(*) from derived.maternal_outcomes'''
 
 vital_signs_count = ''' select count(*) from derived.vitalsigns '''
 
@@ -433,12 +435,20 @@ read_noelab_query = f'''
             "data"->'entries' as "entries" {neolabs_case}
             from {neolab_from} where scriptid in {neo_lab_ids_tuple}
 '''
+#Query To Read Admissions Diagnoses Data
+read_admissions_diagnoses_query = f'''
+            select 
+                uid,
+                ingested_at,
+                "data"->'appVersion' as "appVersion",
+                "data"->'diagnoses' as "diagnoses" {admissions_case}
+            from scratch.deduplicated_admissions where uid!='null' and scriptid in {adm_script_ids_tuple};
+'''
 
-print("$$$--NL--",neolab_from,"$$--mater-",mat_outcomes_from,"$$$--vit--",vital_signs_from,"$$-BASE-",baseline_from)
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
         {
-         #Read 
+         #Read Admissions
          "read_admissions": SQLQueryDataSet(
             sql= read_admissions_query,
             credentials=dict(con=con)
@@ -470,22 +480,19 @@ catalog = DataCatalog(
             sql= read_vitalsigns_query,
             credentials=dict(con=con)
          ),
+         #Read Neolab Data
          "read_neolab_data": SQLQueryDataSet(
             sql= read_noelab_query,
             credentials=dict(con=con)
          ),
+         #Read Baseline Data
          "read_baseline_data": SQLQueryDataSet(
             sql= read_baselines_query,
             credentials=dict(con=con)
          ),
-         #Count Maternal Outcomes
-         "count_maternal_outcomes": SQLQueryDataSet(
-            sql= count_maternal_outcomes,
-            credentials=dict(con=con)
-         ),
-          #Count Vital Signs
-         "vital_signs_count": SQLQueryDataSet(
-            sql= vital_signs_count,
+         #Read Admissions Diagnosis
+         "read_adm_diagnoses_data": SQLQueryDataSet(
+            sql= read_admissions_diagnoses_query,
             credentials=dict(con=con)
          ),
          #Make Use Of Save Method To Create Tables

@@ -4,6 +4,7 @@ sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from data_pipeline.pipelines.data_engineering.queries.check_table_count_sql import table_data_count
 from conf.base.catalog import catalog,cron_log_file
 from data_pipeline.pipelines.data_engineering.queries.create_summary_maternal_outcomes_sql import summary_maternal_outcomes_query
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
@@ -18,9 +19,7 @@ def create_summary_maternal_outcomes(tidy_data_output):
     try:
         tble_exists = table_exists('derived','maternal_outcomes');
         if table_exists:
-            mat_outcomes_count_df = catalog.load('count_maternal_outcomes')
-            if 'count' in mat_outcomes_count_df:
-                maternal_outcomes_count = mat_outcomes_count_df['count'].values[0]
+            maternal_outcomes_count = table_data_count('derived','maternal_outcomes')
     except Exception as e:
         raise e
     if (maternal_outcomes_count> 0):

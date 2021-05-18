@@ -1,12 +1,12 @@
 #Query to create the Summary_Joined_Admissions_Discharges table.
 def create_convinience_views_query():
   return ''' DROP TABLE IF EXISTS derived.summary_joined_admissions_discharges;
-    CREATE TABLE derived.summary_joined_admissions_discharges AS
-    SELECT derived.joined_admissions_discharges."uid" AS "uid", 
-        derived.joined_admissions_discharges."facility" AS "facility", 
-        derived.joined_admissions_discharges."DateTimeAdmission.value" AS "AdmissionDateTime",
-        derived.joined_admissions_discharges."Readmission.label" AS "Readmitted", 
-        derived.joined_admissions_discharges."AdmittedFrom.label" AS "admission_source",
+            CREATE TABLE derived.summary_joined_admissions_discharges AS
+            SELECT derived.joined_admissions_discharges."uid" AS "uid", 
+            derived.joined_admissions_discharges."facility" AS "facility", 
+            derived.joined_admissions_discharges."DateTimeAdmission.value" AS "AdmissionDateTime",
+            derived.joined_admissions_discharges."Readmission.label" AS "Readmitted", 
+            derived.joined_admissions_discharges."AdmittedFrom.label" AS "admission_source",
             derived.joined_admissions_discharges."ReferredFrom2.label" AS "referredFrom", 
             derived.joined_admissions_discharges."Gender.label" AS "Gender", 
             derived.joined_admissions_discharges."AW.value" AS "AdmissionWeight", 
@@ -86,8 +86,8 @@ def create_convinience_views_query():
             CASE WHEN derived.joined_admissions_discharges."TempThermia.value" = 'Hypothermia' Then 1
             WHEN derived.joined_admissions_discharges."TempThermia.value" = 'Normothermia' Then 2
             WHEN derived.joined_admissions_discharges."TempThermia.value" = 'Hyperthermia' Then 3
-        End AS "TempThermiaSort",
-        CASE 
+            End AS "TempThermiaSort",
+            CASE 
             WHEN derived.joined_admissions_discharges."AWGroup.value" = '<1000g' THEN 1
             WHEN derived.joined_admissions_discharges."AWGroup.value" = '1000-1500g' THEN 2
             WHEN derived.joined_admissions_discharges."AWGroup.value" = '1500-2500g' THEN 3
@@ -116,5 +116,5 @@ def create_convinience_views_query():
                 WHEN derived.joined_admissions_discharges."AgeCat.label" = 'Infant (2 days - 2 days 23 hrs old)' THEN 4
                 WHEN derived.joined_admissions_discharges."AgeCat.label" = 'Infant (> 3 days old)' THEN 5
             END AS "AgeCatSort"
-    FROM derived.joined_admissions_discharges
-    ORDER BY derived.joined_admissions_discharges."uid" ASC; '''
+            FROM derived.joined_admissions_discharges
+            ORDER BY derived.joined_admissions_discharges."uid" ASC; '''
