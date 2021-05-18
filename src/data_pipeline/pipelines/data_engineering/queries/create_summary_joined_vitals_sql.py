@@ -293,5 +293,5 @@ substring("derived"."vitalsigns"."D3Time6.value" from (position('T' in "derived"
 case
 when "derived"."vitalsigns"."D1Date.value" IS NOT NULL THEN 3
 end As "Day"
-FROM "derived"."vitalsigns") "source3"
+FROM "derived"."vitalsigns") "source3";
         '''

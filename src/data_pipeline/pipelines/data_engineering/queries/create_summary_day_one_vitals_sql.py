@@ -35,5 +35,5 @@ def summary_day_one_vitals_query():
         "derived"."vitalsigns"."Temp2done.value" AS "Temperature 2 done",
         "derived"."vitalsigns"."Temp2.value" AS "Temperature2",
         "derived"."vitalsigns"."TimeTemp2.value" AS "Temperature2 Time",
-        CASE WHEN "derived"."vitalsigns"."D1Date.value" IS NOT NULL THEN 1 END AS "Day" FROM "derived"."vitalsigns" 
+        CASE WHEN "derived"."vitalsigns"."D1Date.value" IS NOT NULL THEN 1 END AS "Day" FROM "derived"."vitalsigns";
         '''
