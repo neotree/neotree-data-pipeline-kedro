@@ -4,7 +4,7 @@ def summary_day_three_vitals_query():
         CREATE TABLE derived.summary_day3_vitals AS 
        SELECT "derived"."vitalsigns"."facility" AS "Facility Name",
 "derived"."vitalsigns"."uid" AS "NeoTreeID",
-Date("derived"."vitalsigns"."D2Date.value") AS "Date",
+Date("derived"."vitalsigns"."D3Date.value") AS "Date",
 "derived"."vitalsigns"."LengthOfStay.value" AS "Length of stay",
 "derived"."vitalsigns"."NSS.label" AS "Neonatal Sepsis Study",
 case
@@ -37,7 +37,7 @@ substring("derived"."vitalsigns"."D3Time6.value" from (position('T' in "derived"
 "derived"."vitalsigns"."Temp2.value" AS "Temperature2",
 "derived"."vitalsigns"."TimeTemp2.value" AS "Temperature2 Time",
 case
-when "derived"."vitalsigns"."D1Date.value" IS NOT NULL THEN 3
+when "derived"."vitalsigns"."D3Date.value" IS NOT NULL THEN 3
 end As "Day"
 FROM "derived"."vitalsigns"; 
         '''

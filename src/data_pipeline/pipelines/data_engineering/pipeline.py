@@ -13,7 +13,8 @@ join_tables_node,grant_privileges_node,
 create_summary_maternal_outcomes_node,
 import_raw_json_files_node,
 create_summary_discharge_diagnosis_node,
-create_summary_vitalsigns_node)
+create_summary_vitalsigns_node,
+create_summary_joined_vitalsigns_node)
 
 # The Pipeline Connecting All The Nodes For The Data Pipeline
 def create_pipeline(**kwargs):
@@ -26,6 +27,7 @@ def create_pipeline(**kwargs):
         tidy_data_node,
         create_summary_maternal_outcomes_node,
         create_summary_vitalsigns_node,
+        create_summary_joined_vitalsigns_node,
         manually_fix_admissions_node,
         manually_fix_discharges_node,
         join_tables_node,

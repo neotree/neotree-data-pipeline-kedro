@@ -6,14 +6,14 @@ from .nodes_grouped.step_1_nodes.deduplicate_other_data import deduplicate_other
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data
 from .nodes_grouped.step_2_nodes.summary_maternal_outcomes import create_summary_maternal_outcomes
 from .nodes_grouped.step_2_nodes.summary_vitalsigns import create_summary_vitalsigns
+from .nodes_grouped.step_2_nodes.summary_joined_vitalsigns import create_summary_joined_vitalsigns
 from .nodes_grouped.step_3_nodes.manually_fix_admissions_records import manually_fix_admissions
 from .nodes_grouped.step_3_nodes.manually_fix_discharge_records import manually_fix_discharges
 from .nodes_grouped.step_4_nodes.convenience_views import create_convenience_views
 from .nodes_grouped.step_4_nodes.join_tables import join_tables
-from .nodes_grouped.step_5_nodes.grant_privileges import grant_privileges
 from .nodes_grouped.step_4_nodes.summary_counts import create_summary_counts
 from .nodes_grouped.step_4_nodes.summary_discharge_diagnosis import create_summary_diagnosis
-from kedro.io import CachedDataSet
+from .nodes_grouped.step_5_nodes.grant_privileges import grant_privileges
 
 
 #A File That is used to create all the nodes that make up the data pipeline
@@ -49,6 +49,10 @@ create_summary_maternal_outcomes_node = node(
 #Create Summary VitalSigns  
 create_summary_vitalsigns_node = node(
     create_summary_vitalsigns, inputs= "tidy_data_output", outputs = "create_summary_vitalsigns_output"
+)
+#Create Joined  VitalSigns
+create_summary_joined_vitalsigns_node = node(
+    create_summary_joined_vitalsigns, inputs= "create_summary_vitalsigns_output", outputs = "create_summary_joined_vitalsigns_output"
 )
 # Create Manually Fixing Admisiions Node And Pass Data Tyding Output as input
 manually_fix_admissions_node = node(
