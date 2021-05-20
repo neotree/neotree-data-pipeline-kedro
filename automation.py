@@ -19,7 +19,7 @@ try:
     cron = CronTab(user=True)
 # Set The Command To Run The Data Pipeline script and activate the virtual environment
     if cronDir is not None:
-        job = cron.new(command='cd {0} && env/bin/python -m kedro run --env={1}'.format(cronDir,mode))
+        job = cron.new(command='cd {0} && env/bin/python -m kedro run --env={1} --parallel'.format(cronDir,mode))
     else:
         logging.info('Please specify directory to find your kedro project in your database.ini file')
         sys.exit()
