@@ -122,9 +122,11 @@ The `conf/base` folder is for shared configuration, such as non-sensitive and pr
 6. You have activated the virtual environment that you created earlier and (*MAKE SURE THIS IS THE VIRTUAL                ENVIRONMENT IN WHICH YOU HAVE INSTALLED YOUR DEPENDENCIES*)
 > If all the above mentioned requirements are met then:
 1. cd into the Project directory
-2. Run the command `kedro run --env=specified_env --parallel` where `specified_env` is the environment as specified in the         `SECTION` part of the `database.ini` file.
-Using the example of the `database.ini` specified in the section `EXAMPLE OF FULL `database.ini` FILE` my command will be as follows:      `kedro run --env=dev --parallel`
--- The `parallel` flag is used for multiprocessing
+2. Run the command `kedro run --env=specified_env ` where `specified_env` is the environment as specified in the         `SECTION` part of the `database.ini` file.
+Using the example of the `database.ini` specified in the section `EXAMPLE OF FULL `database.ini` FILE` my command will be as follows:      `kedro run --env=dev `
+> You can add the `--parallel` flag to enable multiprocessing e.g `kedro run --env=dev --parallel`
+> By default without the `--parallel` flag the pipeline will run in `sequential` mode
+> The `--parallel` flag can be used where the server is capable of handling multiple processes without resource constraining other processes, else use the low resource consuming default.
 After running the above command, logs should start appearing on your screen, detailing the steps that are being run.
 > On completion, we should check in the logs if the number of steps that have been run tallies with the total number    of steps expected to run. For Example, if you are expecting 13 steps to run, there should be a line in the logs showing on your screen which shows the statement `Completed 13 out of 13 tasks`
 > After a successful running of the pipeline, if you login to your `postgresql database` you should expect to see some derived tables and exploded tables in the `derived` schema of the database.
@@ -171,7 +173,8 @@ After running the above command, logs should start appearing on your screen, det
 3. The kedro command to run the pipeline, specifying the environment specified in the `database.ini` file
 
 ## EXAMPLE OF THE COMPLETE AUTOMATION SCRIPT COMMAND
-` 0 */6 * * *  cd /home/ubuntu/neotree-datapipeline-kedro  env/bin/python -m kedro run --env=specified_env --parallel` where `specified_env` is an environment specified in the `database.ini` file. 
+` 0 */6 * * *  cd /home/ubuntu/neotree-datapipeline-kedro  env/bin/python -m kedro run --env=specified_env` where `specified_env` is an environment specified in the `database.ini` file. 
+> You can also add the `--parallel` flag to the automation script to enable concurrency
 *NOTE*: *Your python environment should be named `env` else change the command `env/bin/python` to suit the name of your environment*
 *NOTE*: *The automation scripts should be set or run after all the setup process including the installation of dependencies has been completed*
 
