@@ -12,11 +12,7 @@ def create_summary_joined_vitalsigns(create_summary_vitalsigns_output):
     try:
         tble_exists = (table_exists('derived','vitalsigns') and table_exists('derived','summary_day1_vitals') 
                       and table_exists('derived','summary_day2_vitals') and table_exists('derived','summary_day3_vitals')) ;
-       
-        print("999===",tble_exists)
-        print("9899===",table_exists('derived','summary_day1_vitals') )
-        print("98888===",table_exists('derived','summary_day2_vitals'))
-        print("7777===",table_exists('derived','summary_day3_vitals'))
+    
         if tble_exists:
                 vital_signs_count = table_data_count('derived','vitalsigns')
 

@@ -88,5 +88,5 @@ Date("derived"."summary_day3_vitals"."Date") AS "Date",
 "derived"."summary_day3_vitals"."Temperature2" AS "Temperature2",
 "derived"."summary_day3_vitals"."Temperature2 Time" AS "Temperature2 Time",
 "derived"."summary_day3_vitals"."Day" AS "Day"
-FROM "derived"."summary_day3_vitals"
+FROM "derived"."summary_day3_vitals";
 '''
