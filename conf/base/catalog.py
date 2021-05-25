@@ -436,7 +436,7 @@ read_noelab_query = f'''
             from {neolab_from} where scriptid in {neo_lab_ids_tuple}
 '''
 #Query To Read Admissions Diagnoses Data
-read_admissions_diagnoses_query = f'''
+read_diagnoses_query = f'''
             select 
                 uid,
                 ingested_at,
@@ -490,9 +490,9 @@ catalog = DataCatalog(
             sql= read_baselines_query,
             credentials=dict(con=con)
          ),
-         #Read Admissions Diagnosis
-         "read_adm_diagnoses_data": SQLQueryDataSet(
-            sql= read_admissions_diagnoses_query,
+         #Read  Diagnoses Data
+         "read_diagnoses_data": SQLQueryDataSet(
+            sql= read_diagnoses_query,
             credentials=dict(con=con)
          ),
          #Make Use Of Save Method To Create Tables
@@ -529,12 +529,18 @@ catalog = DataCatalog(
             credentials=dict(con=con),
             save_args = dict(schema='derived',if_exists='replace')
          ),
-           #Make Use Of Save Method To Create Tables
+          
          "create_derived_baselines": SQLTableDataSet(
             table_name="baseline",
             credentials=dict(con=con),
             save_args = dict(schema="derived",if_exists="replace")
          ),
+
+         "create_derived_diagnoses": SQLTableDataSet(
+            table_name="diagnoses",
+            credentials=dict(con=con),
+            save_args = dict(schema="derived",if_exists="replace")
+         )
          
 
         }

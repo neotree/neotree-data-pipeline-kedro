@@ -2,6 +2,7 @@
 # A number of if statements have been used to manage different scenarios
 # These include: MCL, empty lists and list with one element
 # The input is the raw json data and the output is a reformed json (newentrieslist)
+import re
 
 def restructure(c, mcl):
     # branch to manage MCL
@@ -51,4 +52,13 @@ def restructure_new_format(k,v,mcl):
 
     return k, v, mcl
 
+def restructure_array(parent_key,value,child_key):
+    
+    # Create columns acceptable by postgres
 
+    if child_key is not None and parent_key is not None:
+    
+        k = re.sub('[^A-Za-z0-9_ ]+', '',str(parent_key).replace(" ","_").replace('-','_'))+"."+child_key
+        v = value
+
+    return k, v

@@ -1,6 +1,6 @@
 # Import created modules (need to be stored in the same directory as notebook)
 import sys
-from .extract_key_values import get_key_values
+from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
@@ -23,9 +23,7 @@ def tidy_tables():
     logging.info("... Fetching raw admission and discharge data")
     
     try:
-        #Delete Schema inorder To Avoid caching of deleted exploded_tables and duplication when appending data
-        # sql_script = drop_derived_tables();
-        # inject_sql(sql_script, "drop-derived-tables")
+    
         #Read Admisiions From The Kedro Catalog
         adm_raw = catalog.load('read_admissions');
         #Read Discharges From The Kedro Catalog
@@ -38,6 +36,9 @@ def tidy_tables():
         neolab_raw = catalog.load('read_neolab_data')
         #Read Baseline Data from Kedro Catalog
         baseline_raw = catalog.load('read_baseline_data')
+        #Read Diagnoses Data from Kedro Catalog
+        diagnoses_raw = catalog.load('read_diagnoses_data') 
+
 
     
     except Exception as e:
@@ -51,11 +52,11 @@ def tidy_tables():
         
         adm_new_entries, adm_mcl = get_key_values(adm_raw)
         dis_new_entries, dis_mcl = get_key_values(dis_raw)
-        #Add Newly Added Scripts On The Malawi Case
         mat_outcomes_new_entries,mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
         vit_signs_new_entries,vit_signs_mcl = get_key_values(vit_signs_raw)
         neolab_new_entries,noelab_mcl = get_key_values(neolab_raw)
         baseline_new_entries,baseline_mcl = get_key_values(baseline_raw)
+        diagnoses_new_entries = get_diagnoses_key_values(diagnoses_raw)
         
 
     except Exception as e:
@@ -87,11 +88,10 @@ def tidy_tables():
         if "uid" in baseline_df:
             baseline_df.set_index(['uid'])
 
-        if adm_df.empty and dis_df.empty:
-            logging.error(
-            "Admissions and Discharges Can Not Be Empty::Please Check If You Have Set The Correct Country In database.ini ")
-            sys.exit(1)
- 
+        diagnoses_df = pd.json_normalize(diagnoses_new_entries)
+        if "uid" in diagnoses_df:
+            diagnoses_df.set_index(['uid'])
+
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
         # admissions tables
         #Fix Missing Data Issues Emanating from eronous version published
@@ -294,6 +294,10 @@ def tidy_tables():
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
             catalog.save('create_derived_baselines',baseline_df)
+
+         #Save Derived Diagnoses To The DataBase Using Kedro
+        if not diagnoses_df.empty:
+            catalog.save('create_derived_diagnoses',diagnoses_df)
 
 
 
