@@ -85,7 +85,7 @@ def get_diagnoses_key_values(data_raw):
                 for child_key in values:
                     k, v = restructure_array(parent_key,values[child_key],child_key)
 
-                new_entries[k] = v
+                    new_entries[k] = v
             # for each row add all the keys & values to a list
             
             data_new.append(new_entries)
