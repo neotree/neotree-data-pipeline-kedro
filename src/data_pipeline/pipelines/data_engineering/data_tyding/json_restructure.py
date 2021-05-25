@@ -58,7 +58,7 @@ def restructure_array(parent_key,value,child_key):
 
     if child_key is not None and parent_key is not None:
     
-        k = re.sub('[^A-Za-z0-9_ ]+', '',str(parent_key).replace(" ","_").replace('-','_'))+"."+child_key
+        k = re.sub('[^A-Za-z0-9_ ]+', '',str(parent_key).replace('-','_').replace(" ",""))+"."+child_key
         v = value
 
     return k, v
