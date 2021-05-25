@@ -75,18 +75,19 @@ def get_diagnoses_key_values(data_raw):
                 new_entries['ingested_at'] = rows['ingested_at']
 
             #Convert List to dictionary
-            values_dict=reduce(lambda a, b: {**a, **b}, rows['diagnoses'])
+            if rows['diagnoses'] is not None and len(rows['diagnoses'])> 0:
+                values_dict=reduce(lambda a, b: {**a, **b}, rows['diagnoses'])
 
-            # iterate through parent keys
-            for parent_key in values_dict:
+                # iterate through parent keys
+                for parent_key in values_dict:
+                    
+                    values = values_dict[parent_key]
+                    # iterate through child/inner keys
+                    for child_key in values:
+                        k, v = restructure_array(parent_key,values[child_key],child_key)
+
+                        new_entries[k] = v
+                # for each row add all the keys & values to a list
                 
-                values = values_dict[parent_key]
-                # iterate through child/inner keys
-                for child_key in values:
-                    k, v = restructure_array(parent_key,values[child_key],child_key)
-
-                    new_entries[k] = v
-            # for each row add all the keys & values to a list
-            
-            data_new.append(new_entries)
+                data_new.append(new_entries)
     return data_new
