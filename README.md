@@ -1,5 +1,7 @@
 # NEOTREE DATAPIPELINE KEDRO VERSION
 
+Note that this project is part of the overall [Neotree System](https://github.com/neotree/neotree), an open source technology platform for supporting health care workers provide neonatal care in low resource settings. For more information see the [main repo](https://github.com/neotree/neotree) .
+
 ## OVERVIEW
 This is a python code base used to manipulate raw exported scripts data from postgres database into derived tables that are easier to injest for business intelligence tools like Metabase.
 This code base should run on any operating system that can run python, but comprehensive tests have been run on Ubuntu 18.04 and Windows 10.
