@@ -1,6 +1,28 @@
+from conf.base.catalog import params
 #Query to create summary_maternala_outcomes table
 def summary_maternal_outcomes_query():
-    return '''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;
+    #Defaulting to Malawi Case 
+    gestation_case = f''' CASE
+        WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN '<28wks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 28 AND derived.maternal_outcomes."Gestation.value" < 32 THEN '28-32wks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 32 AND derived.maternal_outcomes."Gestation.value" < 34 THEN '34-34wks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 34 AND derived.maternal_outcomes."Gestation.value" < 37 THEN '34-36wks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 37 AND derived.maternal_outcomes."Gestation.value" < 42 THEN 'Term'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 42 THEN 'Post Term'
+        WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unknown'
+        END AS "GestationGroup" '''
+    if('country' in params and str(params['country']).lower()) =='zimbabwe':
+        gestation_case= f''' CASE
+        WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN '<28 weeks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 28 AND derived.maternal_outcomes."Gestation.value" < 32 THEN '28-31 weeks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 32 AND derived.maternal_outcomes."Gestation.value" < 34 THEN '32-33 weeks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 34 AND derived.maternal_outcomes."Gestation.value" < 37 THEN '34-36 weeks'
+        WHEN derived.maternal_outcomes."Gestation.value" >= 37 AND derived.maternal_outcomes."Gestation.value" < 40 THEN '37-39 weeks'
+        WHEN derived.maternal_outcomes."Gestation.value" >=40 AND derived.maternal_outcomes."Gestation.value" <= 44 THEN '40-44 weeks'
+        WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unknown'
+        END AS "GestationGroup"
+        '''
+    return f'''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;
         CREATE TABLE derived.summary_maternal_outcomes AS 
         SELECT derived.maternal_outcomes."uid" AS "NeoTreeID",
         derived.maternal_outcomes."facility" AS "facility",
@@ -33,15 +55,7 @@ def summary_maternal_outcomes_query():
         derived.maternal_outcomes."Apgar10.value" AS "Apgar at 10min",
         derived.maternal_outcomes."PregConditions.label" AS "Conditions in Pregnancy",
         case when derived.maternal_outcomes."DateAdmission.value" IS NOT NULL THEN 1 End AS "BirthCount",
-        case
-        WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN '<28wks'
-        WHEN derived.maternal_outcomes."Gestation.value" >= 28 AND derived.maternal_outcomes."Gestation.value" < 32 THEN '28-32wks'
-        WHEN derived.maternal_outcomes."Gestation.value" >= 32 AND derived.maternal_outcomes."Gestation.value" < 34 THEN '34-34wks'
-        WHEN derived.maternal_outcomes."Gestation.value" >= 34 AND derived.maternal_outcomes."Gestation.value" < 37 THEN '34-36wks'
-        WHEN derived.maternal_outcomes."Gestation.value" >= 37 AND derived.maternal_outcomes."Gestation.value" < 42 THEN 'Term'
-        WHEN derived.maternal_outcomes."Gestation.value" >= 42 THEN 'Post Term'
-        WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unknown'
-        END AS "GestationGroup",
+        {gestation_case},
         CASE
         WHEN derived.maternal_outcomes."BWTDis.value" < 1000 THEN '<1000g'
         WHEN derived.maternal_outcomes."BWTDis.value" >= 1000 AND derived.maternal_outcomes."BWTDis.value" < 1500 THEN '1000-1500g'
