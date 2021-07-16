@@ -92,10 +92,35 @@ def tidy_tables():
         if "uid" in diagnoses_df:
             diagnoses_df.set_index(['uid'])
 
+        # ADD TIME SPENT TO ALL DFs
+        if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
+            diagnoses_df['time_spent'] = (diagnoses_df['started_at'] - diagnoses_df['completed_at']).total_seconds() /60.0
+
+        if "started_at" in adm_df and 'completed_at' in adm_df :
+            adm_df['time_spent'] = (adm_df['started_at'] - adm_df['completed_at']).total_seconds() /60.0
+        
+        if "started_at" in dis_df and 'completed_at' in dis_df :
+            dis_df['time_spent'] = (dis_df['started_at'] - dis_df['completed_at']).total_seconds() /60.0
+        
+        if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
+            mat_outcomes_df['time_spent'] = (mat_outcomes_df['started_at'] - mat_outcomes_df['completed_at']).total_seconds() /60.0
+
+        if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
+            vit_signs_df['time_spent'] = (vit_signs_df['started_at'] - vit_signs_df['completed_at']).total_seconds() /60.0
+        
+        if "started_at" in neolab_df and 'completed_at' in neolab_df :
+            neolab_df['time_spent'] = (neolab_df['started_at'] - neolab_df['completed_at']).total_seconds() /60.0
+
+        if "started_at" in baseline_df and 'completed_at' in baseline_df :
+            baseline_df['time_spent'] = (baseline_df['started_at'] - baseline_df['completed_at']).total_seconds() /60.0
+
+        if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
+            diagnoses_df['time_spent'] = (diagnoses_df['started_at'] - diagnoses_df['completed_at']).total_seconds() /60.0
+
+
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
         # admissions tables
         #Fix Missing Data Issues Emanating from eronous version published
-        
 
         if 'DateHIVtest.value' not in adm_df.columns:
              adm_df['DateHIVtest.value']=None
