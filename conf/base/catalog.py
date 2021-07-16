@@ -201,14 +201,7 @@ else:
        
 
 
-read_admissions_query = f'''
-            select 
-            uid,
-            ingested_at,
-            "data"->'appVersion' as "appVersion",
-            "data"->'entries' as "entries" {admissions_case} 
-            from scratch.deduplicated_admissions where uid!='null' and scriptid in {adm_script_ids_tuple};
-            '''
+
 #Remove Dev Data From Production Instance:
 #Take Everything (Applies To Dev And Stage Environments)
 where = " "
@@ -372,11 +365,24 @@ create table scratch.deduplicated_discharges as
   from earliest_discharges join sessions
   on earliest_discharges.id = sessions.id
 ); '''
+
+read_admissions_query = f'''
+            select 
+            uid,
+            ingested_at,
+            "data"->'appVersion' as "appVersion",
+            "data"->'started_at' as "started_at",
+            "data"->'completed_at' as "completed_at",
+            "data"->'entries' as "entries" {admissions_case} 
+            from scratch.deduplicated_admissions where uid!='null' and scriptid in {adm_script_ids_tuple};
+            '''
 read_discharges_query = f'''
             select 
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'started_at' as "started_at",
+                "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {dicharges_case}
             from scratch.deduplicated_discharges where uid!='null' and scriptid in {disc_script_ids_tuple};
         '''
@@ -387,6 +393,8 @@ read_maternal_outcome_query = f'''
             id,
             ingested_at,
             "data"->'appVersion' as "appVersion",
+            "data"->'started_at' as "started_at",
+                "data"->'completed_at' as "completed_at",
             "data"->'entries' as "entries" {maternal_case}
             from {mat_outcomes_from} where scriptid in {mat_outcomes_script_ids_tuple} and uid!='null'; '''
 
@@ -397,6 +405,8 @@ read_vitalsigns_query = f'''
             id,
             ingested_at,
             "data"->'appVersion' as "appVersion",
+            "data"->'started_at' as "started_at",
+            "data"->'completed_at' as "completed_at",
             "data"->'entries' as "entries" {vitals_case}
             from {vital_signs_from} where scriptid in {vital_signs_ids_tuple} and uid!='null';
 '''
@@ -407,6 +417,8 @@ read_baselines_query = f'''
             id,
             ingested_at,
             "data"->'appVersion' as "appVersion",
+            "data"->'started_at' as "started_at",
+            "data"->'completed_at' as "completed_at",
             "data"->'entries' as "entries" {baseline_case}
             from {baseline_from} where scriptid in {baseline_ids_tuple} and uid!='null';
 '''
@@ -432,6 +444,8 @@ read_noelab_query = f'''
             id,
             ingested_at,
             "data"->'appVersion' as "appVersion",
+            "data"->'started_at' as "started_at",
+                "data"->'completed_at' as "completed_at",
             "data"->'entries' as "entries" {neolabs_case}
             from {neolab_from} where scriptid in {neo_lab_ids_tuple}
 '''
@@ -441,6 +455,8 @@ read_diagnoses_query = f'''
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'started_at' as "started_at",
+                "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case}
             from scratch.deduplicated_admissions where uid!='null' and scriptid in {adm_script_ids_tuple};
 '''
