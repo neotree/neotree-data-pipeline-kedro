@@ -97,56 +97,56 @@ def tidy_tables():
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
            format_date(diagnoses_df,'time_spent'); 
            format_date(diagnoses_df,'completed_at'); 
-           diagnoses_df['time_spent']= (pd.Timestamp(diagnoses_df['completed_at'])-pd.Timestamp(diagnoses_df['started_at'])).astype('timedelta64[m]')
+           diagnoses_df['time_spent']= (diagnoses_df['completed_at']-diagnoses_df['started_at']).astype('timedelta64[m]')
         else:
             diagnoses_df['time_spent'] = None
 
         if "started_at" in adm_df and 'completed_at' in adm_df :
             format_date(adm_df,'started_at'); 
             format_date(adm_df,'completed_at'); 
-            adm_df['time_spent'] = (pd.Timestamp(adm_df['completed_at']) - pd.Timestamp(adm_df['started_at'])).astype('timedelta64[m]')
+            adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).astype('timedelta64[m]')
         else:
             adm_df['time_spent'] = None
         
         if "started_at" in dis_df and 'completed_at' in dis_df :
             format_date(dis_df,'started_at'); 
             format_date(dis_df,'completed_at'); 
-            dis_df['time_spent'] = (pd.Timestamp(dis_df['completed_at']) -pd.Timestamp(dis_df['started_at'])).astype('timedelta64[m]')
+            dis_df['time_spent'] = (dis_df['completed_at'] -dis_df['started_at']).astype('timedelta64[m]')
         else:
             dis_df['time_spent'] = None
         
         if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
             format_date(mat_outcomes_df,'started_at'); 
             format_date(mat_outcomes_df,'completed_at'); 
-            mat_outcomes_df['time_spent'] = (pd.Timestamp(mat_outcomes_df['completed_at']) - pd.Timestamp(mat_outcomes_df['started_at'])).astype('timedelta64[m]')
+            mat_outcomes_df['time_spent'] = (mat_outcomes_df['completed_at'] - mat_outcomes_df['started_at']).astype('timedelta64[m]')
         else:
             mat_outcomes_df['time_spent'] = None
 
         if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
             format_date(vit_signs_df,'started_at'); 
             format_date(vit_signs_df,'completed_at'); 
-            vit_signs_df['time_spent'] = (pd.Timestamp(vit_signs_df['completed_at']) -pd.Timestamp(vit_signs_df['started_at'])).astype('timedelta64[m]')
+            vit_signs_df['time_spent'] = (vit_signs_df['completed_at']-vit_signs_df['started_at']).astype('timedelta64[m]')
         else:
             vit_signs_df['time_spent'] = None
         
         if "started_at" in neolab_df and 'completed_at' in neolab_df :
             format_date(neolab_df,'started_at'); 
             format_date(neolab_df,'completed_at'); 
-            neolab_df['time_spent'] = (pd.Timestamp(neolab_df['completed_at']) - pd.Timestamp(neolab_df['started_at'])).astype('timedelta64[m]')
+            neolab_df['time_spent'] = (neolab_df['completed_at'] - neolab_df['started_at']).astype('timedelta64[m]')
         else:
             neolab_df['time_spent'] = None
 
         if "started_at" in baseline_df and 'completed_at' in baseline_df :
             format_date(baseline_df,'started_at'); 
             format_date(baseline_df,'completed_at'); 
-            baseline_df['time_spent'] = (pd.Timestamp(baseline_df['completed_at']) - pd.Timestamp(baseline_df['started_at'])).astype('timedelta64[m]')
+            baseline_df['time_spent'] = (baseline_df['completed_at'] -baseline_df['started_at']).astype('timedelta64[m]')
         else:
             baseline_df['time_spent'] = None
 
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
             format_date(diagnoses_df,'started_at'); 
             format_date(diagnoses_df,'completed_at'); 
-            diagnoses_df['time_spent'] =  (pd.Timestamp(diagnoses_df['completed_at']) - pd.Timestamp(diagnoses_df['started_at'])).astype('timedelta64[m]')
+            diagnoses_df['time_spent'] =  (diagnoses_df['completed_at'] - diagnoses_df['started_at']).astype('timedelta64[m]')
         else:
             diagnoses_df['time_spent'] = None
 
