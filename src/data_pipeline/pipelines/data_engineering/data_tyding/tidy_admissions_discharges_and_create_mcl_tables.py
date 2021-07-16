@@ -7,6 +7,7 @@ from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from conf.common.sql_functions import create_table
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date
 
 
 
@@ -94,27 +95,43 @@ def tidy_tables():
 
         # ADD TIME SPENT TO ALL DFs
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
-            diagnoses_df['time_spent'] = (diagnoses_df['started_at'] - diagnoses_df['completed_at']).total_seconds() /60.0
+           format_date(diagnoses_df,'time_spent'); 
+           format_date(diagnoses_df,'completed_at'); 
+           diagnoses_df['time_spent']= (diagnoses_df['started_at'] - diagnoses_df['completed_at']).total_seconds() /60.0
 
         if "started_at" in adm_df and 'completed_at' in adm_df :
+            format_date(adm_df,'started_at'); 
+            format_date(adm_df,'completed_at'); 
             adm_df['time_spent'] = (adm_df['started_at'] - adm_df['completed_at']).total_seconds() /60.0
         
         if "started_at" in dis_df and 'completed_at' in dis_df :
+            format_date(dis_df,'started_at'); 
+            format_date(dis_df,'completed_at'); 
             dis_df['time_spent'] = (dis_df['started_at'] - dis_df['completed_at']).total_seconds() /60.0
         
         if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
+            format_date(mat_outcomes_df,'started_at'); 
+            format_date(mat_outcomes_df,'completed_at'); 
             mat_outcomes_df['time_spent'] = (mat_outcomes_df['started_at'] - mat_outcomes_df['completed_at']).total_seconds() /60.0
 
         if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
+            format_date(vit_signs_df,'started_at'); 
+            format_date(vit_signs_df,'completed_at'); 
             vit_signs_df['time_spent'] = (vit_signs_df['started_at'] - vit_signs_df['completed_at']).total_seconds() /60.0
         
         if "started_at" in neolab_df and 'completed_at' in neolab_df :
+            format_date(neolab_df,'started_at'); 
+            format_date(neolab_df,'completed_at'); 
             neolab_df['time_spent'] = (neolab_df['started_at'] - neolab_df['completed_at']).total_seconds() /60.0
 
         if "started_at" in baseline_df and 'completed_at' in baseline_df :
+            format_date(baseline_df,'started_at'); 
+            format_date(baseline_df,'completed_at'); 
             baseline_df['time_spent'] = (baseline_df['started_at'] - baseline_df['completed_at']).total_seconds() /60.0
 
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
+            format_date(diagnoses_df,'started_at'); 
+            format_date(diagnoses_df,'completed_at'); 
             diagnoses_df['time_spent'] = (diagnoses_df['started_at'] - diagnoses_df['completed_at']).total_seconds() /60.0
 
 
@@ -151,26 +168,14 @@ def tidy_tables():
             adm_df['DateTimeAdmission.label']=None
 
         if adm_df['DateTimeAdmission.value'] is not None:
-            adm_df['DateTimeAdmission.value'] = adm_df['DateTimeAdmission.value'].map(
-            lambda x: str(x)[:-4])
-            adm_df['DateTimeAdmission.value'] = pd.to_datetime(
-            adm_df['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(adm_df,'DateTimeAdmission.value')
         if 'EndScriptDatetime.value' in adm_df and adm_df['EndScriptDatetime.value'] is not None:
-            adm_df['EndScriptDatetime.value'] = adm_df['EndScriptDatetime.value'].map(
-            lambda x: str(x)[:-4])
-            adm_df['EndScriptDatetime.value'] = pd.to_datetime(
-            adm_df['EndScriptDatetime.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(adm_df,'EndScriptDatetime.value')
         if  adm_df['DateHIVtest.value'] is not None:
-            adm_df['DateHIVtest.value'] = adm_df['DateHIVtest.value'].map(lambda x: str(x)[
-                                                                      :-4])
-            adm_df['DateHIVtest.value'] = pd.to_datetime(
-            adm_df['DateHIVtest.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(adm_df,'DateHIVtest.value')
             
         if adm_df['ANVDRLDate.value'] is not None:
-            adm_df['ANVDRLDate.value'] = adm_df['ANVDRLDate.value'].map(lambda x: str(x)[
-                                                                    :-4])
-            adm_df['ANVDRLDate.value'] = pd.to_datetime(
-            adm_df['ANVDRLDate.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(adm_df,'ANVDRLDate.value')
 
         # Remove Space From BW.Value :: Issue Was Affecting Dev Database
         if 'BW .label' in adm_df.columns: 
@@ -188,54 +193,25 @@ def tidy_tables():
 
         # discharges tables
         if 'DateAdmissionDC.value' in dis_df:
-            dis_df['DateAdmissionDC.value'] = dis_df['DateAdmissionDC.value'].map(
-            lambda x: str(x)[:-4])
-            dis_df['DateAdmissionDC.value'] = pd.to_datetime(
-            dis_df['DateAdmissionDC.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(dis_df,'DateAdmissionDC.value')
         if 'DateDischVitals.value'  in dis_df and dis_df['DateDischVitals.value'] is not None :
-            dis_df['DateDischVitals.value'] = dis_df['DateDischVitals.value'].map(
-            lambda x: str(x)[:-4])
-            dis_df['DateDischVitals.value'] = pd.to_datetime(
-            dis_df['DateDischVitals.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(dis_df,'DateDischVitals.value')
         if 'DateDischWeight.value' in dis_df and dis_df['DateDischWeight.value'] is not None:
-            dis_df['DateDischWeight.value'] = dis_df['DateDischWeight.value'].map(
-            lambda x: str(x)[:-4])
-            dis_df['DateDischWeight.value'] = pd.to_datetime(
-            dis_df['DateDischWeight.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(dis_df,'DateDischWeight.value')
         if 'DateTimeDischarge.value' in dis_df and  dis_df['DateTimeDischarge.value'] is not None:
-            dis_df['DateTimeDischarge.value'] = dis_df['DateTimeDischarge.value'].map(
-            lambda x: str(x)[:-4])
-            dis_df['DateTimeDischarge.value'] = pd.to_datetime(
-            dis_df['DateTimeDischarge.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(dis_df,'DateTimeDischarge.value')
         if 'EndScriptDatetime.value' in dis_df:
-            dis_df['EndScriptDatetime.value'] = dis_df['EndScriptDatetime.value'].map(
-            lambda x: str(x)[:-4])
-       
-            dis_df['EndScriptDatetime.value'] = pd.to_datetime(
-            dis_df['EndScriptDatetime.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+            format_date(dis_df,'EndScriptDatetime.value')
         if 'DateWeaned.value' in dis_df and  dis_df['DateWeaned.value']  is not None :
-            dis_df['DateWeaned.value'] = dis_df['DateWeaned.value'].map(lambda x: str(x)[
-                                                                    :-4])
-            dis_df['DateWeaned.value'] = pd.to_datetime(
-            dis_df['DateWeaned.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
+           format_date(dis_df,'DateWeaned.value')
         if 'DateTimeDeath.value' in dis_df and dis_df['DateTimeDeath.value'] is not None:
-            dis_df['DateTimeDeath.value'] = dis_df['DateTimeDeath.value'].map(
-            lambda x: str(x)[:-4])
-            dis_df['DateTimeDeath.value'] = pd.to_datetime(
-            dis_df['DateTimeDeath.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-
+            format_date(dis_df,'DateTimeDeath.value')
             
         #Maternal OutComes Table
         if 'DateAdmission.value' in mat_outcomes_df:
-            mat_outcomes_df['DateAdmission.value'] =  pd.to_datetime(
-            mat_outcomes_df['DateAdmission.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-            mat_outcomes_df['DateAdmission.value'] = mat_outcomes_df['DateAdmission.value'].map(
-            lambda x: str(x)[:-4])
+            format_date(dis_df,'DateAdmission.value')
         if 'BirthDateDis.value' in mat_outcomes_df  and "BirthDateDis.vale" is not None:
-            mat_outcomes_df['BirthDateDis.value'] =  pd.to_datetime(
-            mat_outcomes_df['BirthDateDis.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-            mat_outcomes_df['BirthDateDis.value'] = mat_outcomes_df['BirthDateDis.value'].map(
-            lambda x: str(x)[:-4])
+            format_date(dis_df,'BirthDateDis.value')
         else:
             mat_outcomes_df["BirthDateDis.value"] = None
         if "TypeBirth.label" not in mat_outcomes_df:
@@ -260,31 +236,18 @@ def tidy_tables():
                 mat_outcomes_df["PregConditions.label"] = None
         #Vital Signs Table
         if 'D1Date.value' in vit_signs_df :
-            vit_signs_df['D1Date.value'] =  pd.to_datetime(
-            vit_signs_df['D1Date.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-            vit_signs_df['D1Date.value'] = vit_signs_df['D1Date.value'].map(
-            lambda x: str(x)[:-4])
+            format_date(vit_signs_df,'D1Date.value')
 
     
        
         if 'TimeTemp1.value' in vit_signs_df:
-            vit_signs_df['TimeTemp1.value'] =  pd.to_datetime(
-            vit_signs_df['TimeTemp1.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-            vit_signs_df['TimeTemp1.value'] = vit_signs_df['TimeTemp1.value'].map(
-            lambda x: str(x)[:-4])
+            format_date(vit_signs_df,'TimeTemp1.value')
             
         if 'TimeTemp2.value' in vit_signs_df:
-            vit_signs_df['TimeTemp2.value'] =  pd.to_datetime(
-            vit_signs_df['TimeTemp2.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-            vit_signs_df['TimeTemp2.value'] = vit_signs_df['TimeTemp2.value'].map(
-            lambda x: str(x)[:-4])
+            format_date(vit_signs_df,'TimeTemp2.value')
 
         if 'EndScriptDatetime.value' in vit_signs_df:
-            vit_signs_df['EndScriptDatetime.value'] =  pd.to_datetime(
-            vit_signs_df['EndScriptDatetime.value'], format='%Y-%m-%dT%H:%M:%S', utc=True)
-            vit_signs_df['EndScriptDatetime.value'] = vit_signs_df['EndScriptDatetime.value'].map(
-            lambda x: str(x)[:-4])
-
+            format_date(vit_signs_df,'EndScriptDatetime.value')
 
         # Make changes to admissions to match fields in power bi
 
