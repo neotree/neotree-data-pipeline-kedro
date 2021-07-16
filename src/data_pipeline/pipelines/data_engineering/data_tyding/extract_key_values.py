@@ -24,8 +24,15 @@ def get_key_values(data_raw):
             new_entries['ingested_at'] = rows['ingested_at_admission']
         if 'ingested_at_discharge' in rows:
             new_entries['ingested_at'] = rows['ingested_at_discharge']
-        if 'ingested_at' in rows:
-             new_entries['ingested_at'] = rows['ingested_at']
+
+        if 'started_at' in rows:
+            new_entries['started_at'] = rows['started_at']
+
+        if 'started_at' in rows:
+            new_entries['started_at'] = rows['started_at']
+
+        if 'completed_at' in rows:
+             new_entries['completed_at'] = rows['completed_at']
 
         # iterate through key, value and add to dict
         for c in rows['entries']:
