@@ -102,37 +102,37 @@ def tidy_tables():
         if "started_at" in adm_df and 'completed_at' in adm_df :
             format_date(adm_df,'started_at'); 
             format_date(adm_df,'completed_at'); 
-            adm_df['time_spent'] = (adm_df['started_at'] - adm_df['completed_at']).total_seconds() /60.0
+            adm_df['time_spent'] = (adm_df['started_at'] - adm_df['completed_at'])
         
         if "started_at" in dis_df and 'completed_at' in dis_df :
             format_date(dis_df,'started_at'); 
             format_date(dis_df,'completed_at'); 
-            dis_df['time_spent'] = (dis_df['started_at'] - dis_df['completed_at']).total_seconds() /60.0
+            dis_df['time_spent'] = (dis_df['started_at'] - dis_df['completed_at'])
         
         if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
             format_date(mat_outcomes_df,'started_at'); 
             format_date(mat_outcomes_df,'completed_at'); 
-            mat_outcomes_df['time_spent'] = (mat_outcomes_df['started_at'] - mat_outcomes_df['completed_at']).total_seconds() /60.0
+            mat_outcomes_df['time_spent'] = (mat_outcomes_df['started_at'] - mat_outcomes_df['completed_at'])
 
         if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
             format_date(vit_signs_df,'started_at'); 
             format_date(vit_signs_df,'completed_at'); 
-            vit_signs_df['time_spent'] = (vit_signs_df['started_at'] - vit_signs_df['completed_at']).total_seconds() /60.0
+            vit_signs_df['time_spent'] = (vit_signs_df['started_at'] - vit_signs_df['completed_at'])
         
         if "started_at" in neolab_df and 'completed_at' in neolab_df :
             format_date(neolab_df,'started_at'); 
             format_date(neolab_df,'completed_at'); 
-            neolab_df['time_spent'] = (neolab_df['started_at'] - neolab_df['completed_at']).total_seconds() /60.0
+            neolab_df['time_spent'] = (neolab_df['started_at'] - neolab_df['completed_at'])
 
         if "started_at" in baseline_df and 'completed_at' in baseline_df :
             format_date(baseline_df,'started_at'); 
             format_date(baseline_df,'completed_at'); 
-            baseline_df['time_spent'] = (baseline_df['started_at'] - baseline_df['completed_at']).total_seconds() /60.0
+            baseline_df['time_spent'] = (baseline_df['started_at'] - baseline_df['completed_at'])
 
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
             format_date(diagnoses_df,'started_at'); 
             format_date(diagnoses_df,'completed_at'); 
-            diagnoses_df['time_spent'] = (diagnoses_df['started_at'] - diagnoses_df['completed_at']).total_seconds() /60.0
+            diagnoses_df['time_spent'] = (diagnoses_df['started_at'] - diagnoses_df['completed_at'])
 
 
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
