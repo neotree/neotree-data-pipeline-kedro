@@ -2,7 +2,7 @@ from kedro.extras.datasets.pandas import (
     SQLQueryDataSet, SQLTableDataSet)
 from kedro.io import DataCatalog
 from pathlib import Path
-from conf.common.config import config
+from  conf.common.config import config
 from conf.common.hospital_config import hospital_conf
 import sys
 import os
