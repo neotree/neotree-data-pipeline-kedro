@@ -1,4 +1,4 @@
-# Query to create summary day one vitals table
+#Query to create summary day one vitals table
 def summary_day_two_vitals_query():
     return '''DROP TABLE IF EXISTS derived.summary_day2_vitals;
         CREATE TABLE derived.summary_day2_vitals AS 

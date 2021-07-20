@@ -1,6 +1,6 @@
 #Query to create the Summary_Joined_Admissions_Discharges table.
 def create_convinience_views_query():
-  return ''' DROP TABLE IF EXISTS derived.summary_joined_admissions_discharges CASCADE;
+  return ''' DROP TABLE IF EXISTS derived.summary_joined_admissions_discharges;
             CREATE TABLE derived.summary_joined_admissions_discharges AS
             SELECT derived.joined_admissions_discharges."uid" AS "uid", 
             derived.joined_admissions_discharges."facility" AS "facility", 
