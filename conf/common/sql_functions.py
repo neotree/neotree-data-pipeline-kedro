@@ -62,3 +62,15 @@ def inject_sql_with_return(sql_script):
         return data
     except Exception as e:
         raise e
+
+def get_table_columns(table_name,table_schema):
+    query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}' ''';
+    return inject_sql_with_return(query);
+
+def create_union_views(view_name,table1,table2,columns, where):
+    query = f''' DROP VIEW  if exists derived.{view_name} cascade;
+                 CREATE VIEW derived.{view_name} AS (
+                  SELECT {columns} FROM derived.{table1} {where} union all
+                  SELECT {columns} FROM derived.{table2}
+                 );'''
+    inject_sql(query,"union-views");
