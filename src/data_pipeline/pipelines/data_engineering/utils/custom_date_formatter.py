@@ -8,8 +8,10 @@ def format_date(df,field_name):
     :param field_name: field in dataframe
     """
     try: 
-        if field_name in df:
+        if  df[field_name] is not None:
             df[field_name] = df[field_name].map(lambda x: str(x)[:-4])
             df[field_name] = pd.to_datetime(df[field_name], format='%Y-%m-%dT%H:%M:%S', utc=True)
+        else:
+            df[field_name]= None;
     except Exception as e:
         pass

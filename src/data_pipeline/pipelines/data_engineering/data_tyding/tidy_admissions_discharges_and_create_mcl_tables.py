@@ -183,14 +183,14 @@ def tidy_tables():
             adm_df['DateTimeAdmission.value']=None
             adm_df['DateTimeAdmission.label']=None
 
-        if adm_df['DateTimeAdmission.value'] is not None:
+        if 'DateTimeAdmission.value' in adm_df:
             format_date(adm_df,'DateTimeAdmission.value')
-        if 'EndScriptDatetime.value' in adm_df and adm_df['EndScriptDatetime.value'] is not None:
+        if 'EndScriptDatetime.value' in adm_df:
             format_date(adm_df,'EndScriptDatetime.value')
-        if  adm_df['DateHIVtest.value'] is not None:
+        if  'DateHIVtest.value' in adm_df:
             format_date(adm_df,'DateHIVtest.value')
             
-        if adm_df['ANVDRLDate.value'] is not None:
+        if 'ANVDRLDate.value' in adm_df:
             format_date(adm_df,'ANVDRLDate.value')
 
         # Remove Space From BW.Value :: Issue Was Affecting Dev Database
@@ -226,7 +226,7 @@ def tidy_tables():
         #Maternal OutComes Table
         if 'DateAdmission.value' in mat_outcomes_df:
             format_date(dis_df,'DateAdmission.value')
-        if 'BirthDateDis.value' in mat_outcomes_df  and "BirthDateDis.vale" is not None:
+        if 'BirthDateDis.value' in mat_outcomes_df :
             format_date(dis_df,'BirthDateDis.value')
         else:
             mat_outcomes_df["BirthDateDis.value"] = None
@@ -250,6 +250,14 @@ def tidy_tables():
                 mat_outcomes_df["Apgar10.value"] = None
         if "PregConditions.label" not in mat_outcomes_df:
                 mat_outcomes_df["PregConditions.label"] = None
+
+        # Baselines Tables
+        if "DateTimeAdmission.value" in baseline_df:
+            format_date(baseline_df,'DateTimeAdmission.value')
+        if "DateTimeDischarge.value" in baseline_df:
+            format_date(baseline_df,'DateTimeDischarge.value')
+        if "DateTimeDeath.value" in baseline_df:
+            format_date(baseline_df,'DateTimeDeath.value')
         #Vital Signs Table
         if 'D1Date.value' in vit_signs_df :
             format_date(vit_signs_df,'D1Date.value')
