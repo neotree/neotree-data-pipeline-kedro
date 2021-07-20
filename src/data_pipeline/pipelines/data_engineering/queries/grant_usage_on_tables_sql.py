@@ -1,4 +1,4 @@
-# Query for granting privileges
+#Query for granting privileges
 def grant_usage_query():
     return '''DO $do$
                 BEGIN

@@ -1,4 +1,4 @@
-# Query to create summary_vitalsigns table
+#Query to create summary_vitalsigns table
 def summary_vital_signs_query():
     return ''' DROP TABLE IF EXISTS derived.summary_vitalsigns;
             CREATE TABLE derived.summary_vitalsigns AS 

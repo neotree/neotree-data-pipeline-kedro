@@ -1,7 +1,7 @@
-# Query to create summary day one vitals table
+#Query to create summary day one vitals table
 def summary_joined_vitals_query():
     return '''
-    DROP TABLE IF EXISTS derived.summary_joined_vitals CASCADE;
+    DROP TABLE IF EXISTS derived.summary_joined_vitals;
     CREATE TABLE derived.summary_joined_vitals AS 
         SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
 "derived"."summary_day1_vitals"."NeoTreeID" AS "NeoTreeID",
