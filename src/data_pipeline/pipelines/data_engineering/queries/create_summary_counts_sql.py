@@ -1,16 +1,18 @@
 from conf.base.catalog import params
 
-#Query to create the summary_counts table
+# Query to create the summary_counts table
+
+
 def summary_counts_query():
-        #Customise Queries For different Use Cases
-        outcome_month_year = ' '
-        group_by_additional_columns = ' '
-        
-        if('country' in params and str(params['country']).lower()) =='zimbabwe':
-           #Add Outcome Year Month For Zim Use Case
-           outcome_month_year ='derived.summary_joined_admissions_discharges."OutcomeMonthYear" AS "OutcomeMonthYear",'   
-           group_by_additional_columns = ',derived.summary_joined_admissions_discharges."OutcomeMonthYear" '
-        return '''DROP TABLE IF EXISTS derived.summary_counts;
+    # Customise Queries For different Use Cases
+    outcome_month_year = ' '
+    group_by_additional_columns = ' '
+
+    if('country' in params and str(params['country']).lower()) == 'zimbabwe':
+        # Add Outcome Year Month For Zim Use Case
+        outcome_month_year = 'derived.summary_joined_admissions_discharges."OutcomeMonthYear" AS "OutcomeMonthYear",'
+        group_by_additional_columns = ',derived.summary_joined_admissions_discharges."OutcomeMonthYear" '
+    return '''DROP TABLE IF EXISTS derived.summary_counts;
                 CREATE TABLE derived.summary_counts AS
                 SELECT  
                 derived.summary_joined_admissions_discharges."AdmissionMonthYear" AS "AdmissionMonthYear",

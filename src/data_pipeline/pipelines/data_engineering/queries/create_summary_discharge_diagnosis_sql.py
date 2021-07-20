@@ -1,4 +1,4 @@
-#Query to create summary_discharge_diagnosis table
+# Query to create summary_discharge_diagnosis table
 def summary_discharge_diagnosis_query():
     return '''DROP TABLE IF EXISTS derived.summary_discharge_diagnosis;
         CREATE TABLE derived.summary_discharge_diagnosis AS 
