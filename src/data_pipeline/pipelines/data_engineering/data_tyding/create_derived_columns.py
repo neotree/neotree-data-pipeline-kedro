@@ -63,68 +63,72 @@ def create_columns(table: pd.DataFrame):
 
 
     # order of statements matters
-
-    table.loc[table['BW.value'].isnull(), 'BWGroup.value'] = "Unknown"
-    table.loc[table['BW.value'] >= 4000, 'BWGroup.value'] = "HBW"
-    table.loc[table['BW.value'] < 4000, 'BWGroup.value'] = "NBW"
-    table.loc[table['BW.value'] < 2500, 'BWGroup.value'] = "LBW"
-    table.loc[table['BW.value'] < 1500, 'BWGroup.value'] = "VLBW"
-    table.loc[table['BW.value'] < 1000, 'BWGroup.value'] = "ELBW"
+    if 'BW.value' in table:
+      table.loc[table['BW.value'].isnull(), 'BWGroup.value'] = "Unknown"
+      table.loc[table['BW.value'] >= 4000, 'BWGroup.value'] = "HBW"
+      table.loc[table['BW.value'] < 4000, 'BWGroup.value'] = "NBW"
+      table.loc[table['BW.value'] < 2500, 'BWGroup.value'] = "LBW"
+      table.loc[table['BW.value'] < 1500, 'BWGroup.value'] = "VLBW"
+      table.loc[table['BW.value'] < 1000, 'BWGroup.value'] = "ELBW"
 
     # For Baseline Tables
-    table.loc[table['Bw.value'].isnull(), 'BWGroup.value'] = "Unknown"
-    table.loc[table['Bw.value'] >= 4000, 'BWGroup.value'] = "HBW"
-    table.loc[table['Bw.value'] < 4000, 'BWGroup.value'] = "NBW"
-    table.loc[table['Bw.value'] < 2500, 'BWGroup.value'] = "LBW"
-    table.loc[table['Bw.value'] < 1500, 'BWGroup.value'] = "VLBW"
-    table.loc[table['Bw.value'] < 1000, 'BWGroup.value'] = "ELBW"
+    if 'Bw.value' in table:
+      table.loc[table['Bw.value'].isnull(), 'BWGroup.value'] = "Unknown"
+      table.loc[table['Bw.value'] >= 4000, 'BWGroup.value'] = "HBW"
+      table.loc[table['Bw.value'] < 4000, 'BWGroup.value'] = "NBW"
+      table.loc[table['Bw.value'] < 2500, 'BWGroup.value'] = "LBW"
+      table.loc[table['Bw.value'] < 1500, 'BWGroup.value'] = "VLBW"
+      table.loc[table['Bw.value'] < 1000, 'BWGroup.value'] = "ELBW"
 
     # order of statements matters
-    table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
-    table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
-    table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
-    table.loc[table['AW.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
-    table.loc[table['AW.value'] < 1000, 'AWGroup.value'] = "<1000g"
+    if 'AW.value' in table:
+      table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
+      table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
+      table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
+      table.loc[table['AW.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
+      table.loc[table['AW.value'] < 1000, 'AWGroup.value'] = "<1000g"
 
     # order of statements matters
-    table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
-    table.loc[table['Temperature.value'] <
-              41.5, 'TempGroup.value'] = "40.5-41.5"
-    table.loc[table['Temperature.value'] <
-              40.5, 'TempGroup.value'] = "39.5-40.5"
-    table.loc[table['Temperature.value'] <
-              39.5, 'TempGroup.value'] = "38.5-39.5"
-    table.loc[table['Temperature.value'] <
-              38.5, 'TempGroup.value'] = "37.5-38.5"
-    table.loc[table['Temperature.value'] <
-              37.5, 'TempGroup.value'] = "36.5-37.5"
-    table.loc[table['Temperature.value'] <
-              36.5, 'TempGroup.value'] = "35.5-36.5"
-    table.loc[table['Temperature.value'] <
-              35.5, 'TempGroup.value'] = "34.5-35.5"
-    table.loc[table['Temperature.value'] <
-              34.5, 'TempGroup.value'] = "33.5-34.5"
-    table.loc[table['Temperature.value'] <
-              33.5, 'TempGroup.value'] = "32.5-33.5"
-    table.loc[table['Temperature.value'] <
-              32.5, 'TempGroup.value'] = "31.5-32.5"
-    table.loc[table['Temperature.value'] <
-              31.5, 'TempGroup.value'] = "30.5-31.5"
-    table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
+    if 'Temperature.value' in table:
+      table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
+      table.loc[table['Temperature.value'] <
+                  41.5, 'TempGroup.value'] = "40.5-41.5"
+      table.loc[table['Temperature.value'] <
+                  40.5, 'TempGroup.value'] = "39.5-40.5"
+      table.loc[table['Temperature.value'] <
+                  39.5, 'TempGroup.value'] = "38.5-39.5"
+      table.loc[table['Temperature.value'] <
+                  38.5, 'TempGroup.value'] = "37.5-38.5"
+      table.loc[table['Temperature.value'] <
+                  37.5, 'TempGroup.value'] = "36.5-37.5"
+      table.loc[table['Temperature.value'] <
+                  36.5, 'TempGroup.value'] = "35.5-36.5"
+      table.loc[table['Temperature.value'] <
+                  35.5, 'TempGroup.value'] = "34.5-35.5"
+      table.loc[table['Temperature.value'] <
+                  34.5, 'TempGroup.value'] = "33.5-34.5"
+      table.loc[table['Temperature.value'] <
+                  33.5, 'TempGroup.value'] = "32.5-33.5"
+      table.loc[table['Temperature.value'] <
+                  32.5, 'TempGroup.value'] = "31.5-32.5"
+      table.loc[table['Temperature.value'] <
+                  31.5, 'TempGroup.value'] = "30.5-31.5"
+      table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
 
   
     if('country' in params and str(params['country']).lower()) =='zimbabwe':
-        table.loc[table['Temperature.value'] >37.5,
-              'TempThermia.value'] = "Fever"
-        table.loc[(table['Temperature.value'] >= 36.5) & (table['Temperature.value'] <= 37.5),
-              'TempThermia.value'] = "Normothermia"
-        table.loc[(table['Temperature.value'] >= 36.0) & (table['Temperature.value'] <= 36.4),
-              'TempThermia.value'] = "Mild Hypothermia"
-        table.loc[(table['Temperature.value'] >= 32.1) & (table['Temperature.value'] <= 35.9),
-              'TempThermia.value'] = "Moderate Hypothermia"
-        table.loc[table['Temperature.value'] <= 32,
-              'TempThermia.value'] = "Severe Hypothermia"
-        table.loc[table['Temperature.value'].isnull(),
+        if 'Temperature.value' in table:
+            table.loc[table['Temperature.value'] >37.5,
+                  'TempThermia.value'] = "Fever"
+            table.loc[(table['Temperature.value'] >= 36.5) & (table['Temperature.value'] <= 37.5),
+                  'TempThermia.value'] = "Normothermia"
+            table.loc[(table['Temperature.value'] >= 36.0) & (table['Temperature.value'] <= 36.4),
+                  'TempThermia.value'] = "Mild Hypothermia"
+            table.loc[(table['Temperature.value'] >= 32.1) & (table['Temperature.value'] <= 35.9),
+                  'TempThermia.value'] = "Moderate Hypothermia"
+            table.loc[table['Temperature.value'] <= 32,
+                  'TempThermia.value'] = "Severe Hypothermia"
+            table.loc[table['Temperature.value'].isnull(),
               'TempThermia.value'] = "Unknown"
         
         
@@ -136,12 +140,14 @@ def create_columns(table: pd.DataFrame):
         table.loc[table['Temperature.value'] < 36.5,
               'TempThermia.value'] = "Hypothermia"
 
-
-    table['<28wks/1kg.value'] = (((table['BW.value'] > 0) | (table['Bw.value'] > 0) ) &
-                                 ((table['BW.value'] < 1000) |(table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
-
+    if 'BW.value' in table:
+      table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
+                                 ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
+      table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
+    if 'Bw.value' in table:
+      table['<28wks/1kg.value'] = ((table['Bw.value'] > 0)  &
+                                 ((table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
+      table['LBWBinary']=((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
     # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
-
-    table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500)) or ((table['Bw.value'] > 0) & (table['Bw.value'] < 2500)) 
 
     return table
