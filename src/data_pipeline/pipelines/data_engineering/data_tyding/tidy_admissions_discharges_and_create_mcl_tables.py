@@ -276,6 +276,7 @@ def tidy_tables():
         # Make changes to admissions to match fields in power bi
 
         adm_df = create_columns(adm_df)
+        baseline_df = create_columns(baseline_df)
 
     except Exception as e:
         logging.error(

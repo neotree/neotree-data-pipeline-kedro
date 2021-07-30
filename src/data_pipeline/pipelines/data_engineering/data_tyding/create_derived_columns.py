@@ -71,6 +71,14 @@ def create_columns(table: pd.DataFrame):
     table.loc[table['BW.value'] < 1500, 'BWGroup.value'] = "VLBW"
     table.loc[table['BW.value'] < 1000, 'BWGroup.value'] = "ELBW"
 
+    # For Baseline Tables
+    table.loc[table['Bw.value'].isnull(), 'BWGroup.value'] = "Unknown"
+    table.loc[table['Bw.value'] >= 4000, 'BWGroup.value'] = "HBW"
+    table.loc[table['Bw.value'] < 4000, 'BWGroup.value'] = "NBW"
+    table.loc[table['Bw.value'] < 2500, 'BWGroup.value'] = "LBW"
+    table.loc[table['Bw.value'] < 1500, 'BWGroup.value'] = "VLBW"
+    table.loc[table['Bw.value'] < 1000, 'BWGroup.value'] = "ELBW"
+
     # order of statements matters
     table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
     table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
@@ -129,11 +137,11 @@ def create_columns(table: pd.DataFrame):
               'TempThermia.value'] = "Hypothermia"
 
 
-    table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
-                                 ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
+    table['<28wks/1kg.value'] = (((table['BW.value'] > 0) | (table['Bw.value'] > 0) ) &
+                                 ((table['BW.value'] < 1000) |(table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
 
     # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
 
-    table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
+    table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500)) or ((table['Bw.value'] > 0) & (table['Bw.value'] < 2500)) 
 
     return table
