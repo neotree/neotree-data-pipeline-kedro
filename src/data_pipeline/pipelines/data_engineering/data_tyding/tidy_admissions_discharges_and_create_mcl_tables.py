@@ -171,6 +171,9 @@ def tidy_tables():
             baseline_df['LengthOfLife.label'].iloc[index] ="Length of Life"
             if 'DateTimeDeath.value' in row and (is_date(str(row['DateTimeDeath.value']))
                 and is_date(str(row['DateTimeAdmission.value']))): 
+                print("##0000000====",str(str(row['DateTimeDischarge.value']))[:-14].strip())
+                DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:-14].strip(), date_format)
+                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(), date_format)
                 delta_lol = row['DateTimeDeath.value'] -row['DateTimeAdmission.value']
                 baseline_df['LengthOfLife.value'].iloc[index] = delta_lol.days;
             else:
