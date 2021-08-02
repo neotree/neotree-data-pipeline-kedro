@@ -162,9 +162,7 @@ def tidy_tables():
             baseline_df['LengthOfStay.label'].iloc[index] ="Length of Stay"
             if (is_date(str(row['DateTimeDischarge.value']))
                 and is_date(str(row['DateTimeAdmission.value']))):
-                DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:-14].strip(),date_format)
-                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(),date_format)
-                delta_los = DateTimeDischarge -DateTimeAdmission
+                delta_los = row['DateTimeDischarge.value'] -row['DateTimeAdmission.value']
                 baseline_df['LengthOfStay.value'].iloc[index] = delta_los.days
 
             else:
@@ -173,9 +171,7 @@ def tidy_tables():
             baseline_df['LengthOfLife.label'].iloc[index] ="Length of Life"
             if 'DateTimeDeath.value' in row and (is_date(str(row['DateTimeDeath.value']))
                 and is_date(str(row['DateTimeAdmission.value']))): 
-                DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:-14].strip(), date_format)
-                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(), date_format)
-                delta_lol = DateTimeDeath - DateTimeAdmission
+                delta_lol = row['DateTimeDeath.value'] -row['DateTimeAdmission.value']
                 baseline_df['LengthOfLife.value'].iloc[index] = delta_lol.days;
             else:
                 baseline_df['LengthOfLife.value'].iloc[index] = None;
