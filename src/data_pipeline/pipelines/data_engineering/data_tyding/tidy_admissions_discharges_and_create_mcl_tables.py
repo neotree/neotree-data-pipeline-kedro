@@ -150,6 +150,37 @@ def tidy_tables():
         else:
             diagnoses_df['time_spent'] = None
 
+        baseline_df['LengthOfStay.value'] = None
+        baseline_df['LengthOfStay.label'] = None
+        baseline_df['LengthOfLife.value'] = None
+        baseline_df['LengthOfLife.label'] = None
+        
+        #Length of Life and Length of Stay on Baseline Data
+        date_format = "%Y-%m-%d"
+        for index, row in baseline_df.iterrows():
+
+            baseline_df['LengthOfStay.label'].iloc[index] ="Length of Stay"
+            if (is_date(str(row['DateTimeDischarge.value']))
+                and is_date(str(row['DateTimeAdmission.value']))):
+                DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:-14].strip(),date_format)
+                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(),date_format)
+                delta_los = DateTimeDischarge -DateTimeAdmission
+                baseline_df['LengthOfStay.value'].iloc[index] = delta_los.days
+
+            else:
+                baseline_df['LengthOfStay.value'].iloc[index] = None
+        
+            baseline_df['LengthOfLife.label'].iloc[index] ="Length of Life"
+            if 'DateTimeDeath.value' in row and (is_date(str(row['DateTimeDeath.value']))
+                and is_date(str(row['DateTimeAdmission.value']))): 
+                DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:-14].strip(), date_format)
+                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(), date_format)
+                delta_lol = DateTimeDeath - DateTimeAdmission
+                baseline_df['LengthOfLife.value'].iloc[index] = delta_lol.days;
+            else:
+                baseline_df['LengthOfLife.value'].iloc[index] = None;
+
+
 
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
         # admissions tables

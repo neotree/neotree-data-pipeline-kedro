@@ -11,6 +11,7 @@ from .nodes_grouped.step_2_nodes.summary_joined_vitalsigns import create_summary
 from .nodes_grouped.step_3_nodes.manually_fix_admissions_records import manually_fix_admissions
 from .nodes_grouped.step_3_nodes.manually_fix_discharge_records import manually_fix_discharges
 from .nodes_grouped.step_4_nodes.convenience_views import create_convenience_views
+from .nodes_grouped.step_4_nodes.summary_baseline import create_summary_baseline
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_4_nodes.union_views import create_union_views
 from .nodes_grouped.step_4_nodes.join_tables import join_tables
 from .nodes_grouped.step_4_nodes.summary_counts import create_summary_counts
@@ -88,10 +89,17 @@ create_convenience_views_node = node(
     create_convenience_views, inputs= "join_tables_output", outputs = "create_convinience_views_output"
 )
 
-#Create Convinience Views and Pass Joining Tables Output 
+#Create Summary Discharge Diagnosis and Pass Joining Tables Output 
 create_summary_discharge_diagnosis_node = node(
     create_summary_diagnosis, inputs= "join_tables_output", outputs = "create_summary_discharge_diagnosis_output"
 )
+
+
+#Create Summary Baseline 
+create_summary_baseline_node = node(
+    create_summary_baseline, inputs= "join_tables_output", outputs = "create_summary_baseline_output"
+)
+
 
 
 #Create Summary Counts and Pass Convinience Views Tables Output 
