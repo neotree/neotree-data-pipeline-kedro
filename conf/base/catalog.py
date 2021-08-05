@@ -298,7 +298,7 @@ create table scratch.deduplicated_maternity_completeness as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
      from public.sessions
-     where scriptid in {mat_data_completeness_ids} {where} -- only pull out maternity completeness data
+     where scriptid in {mat_outcomes_script_ids_tuple} {where} -- only pull out maternity completeness data
     group by 1,2
   )
   select
