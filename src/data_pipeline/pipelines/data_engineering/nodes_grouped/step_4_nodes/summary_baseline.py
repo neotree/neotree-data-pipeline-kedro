@@ -31,8 +31,9 @@ def create_summary_baseline(join_tables_output):
                     "Creating Summary Baseline Did Not Execute To Completion")
                 return None
         else:
-            # If table doesn't exist pass this stage
-            pass;
+           return dict(
+               status='Skipped'
+              )
 
     except Exception as e:
         logging.error("!!! An error occured creating summary baseline: ")
