@@ -32,7 +32,9 @@ neo_lab_ids = ["-DUMMY-"]
 #Vital Signs Script IDs
 vital_signs_ids = ["-DUMMY-"]   
 #Vital Signs Script IDs
-baseline_ids = ["-DUMMY-"]                                   
+baseline_ids = ["-DUMMY-"]
+#Maternity Data Completeness
+mat_data_completeness_ids = ["-DUMMY-"]
 
 
 # Hospital Scripts Configs
@@ -46,6 +48,7 @@ if hospital_scripts:
        vitals_case = ', CASE '
        neolabs_case = ', CASE '
        baseline_case = ', CASE '
+       maternity_completeness_case = ', CASE '
 
        
        for hospital in hospital_scripts:
@@ -127,6 +130,15 @@ if hospital_scripts:
                         baseline_ids.append('-DUMMY-')
                   else:
                      baseline_ids.append('-DUMMY-')
+                  
+                  if 'maternity_completeness' in ids.keys():
+                        maternity_completeness_id = ids['maternity_completeness']
+                        if maternity_completeness_id != '':
+                           mat_data_completeness_ids.append(maternity_completeness_id)
+                           maternity_completeness_case = maternity_completeness_case+ f'''WHEN scriptid ='{maternity_completeness_id}' THEN '{hospital}'  '''
+                        else:
+                           mat_data_completeness_ids.append('-DUMMY-')
+                         
             
             else:
                log.error("Please specify country in both `database.ini` and `hospitals.ini` files")
@@ -162,7 +174,12 @@ if hospital_scripts:
        if  baseline_case.strip() ==', CASE':
            baseline_case = ''
        else:
-         baseline_case = baseline_case + facility_case_end    
+         baseline_case = baseline_case + facility_case_end   
+
+       if  maternity_completeness_case.strip() ==', CASE':
+           maternity_completeness_case = ''
+       else:
+         maternity_completeness_case = maternity_completeness_case + facility_case_end     
 #CONVERT LISTS TO TUPLE
 adm_script_ids_tuple = tuple(adm_script_ids) 
 disc_script_ids_tuple = tuple(disc_script_ids)
@@ -170,6 +187,7 @@ mat_outcomes_script_ids_tuple = tuple(mat_outcomes_script_ids)
 vital_signs_ids_tuple = tuple(vital_signs_ids)
 neo_lab_ids_tuple = tuple(neo_lab_ids)
 baseline_ids_tuple = tuple(baseline_ids)
+maternity_completeness_tuple =tuple(mat_data_completeness_ids)
 
 #DEFINE FROM SECTION TO AVOID ERROR FROM NON-EXISTING TABLE
 generic_from = 'public.sessions'
@@ -177,6 +195,7 @@ mat_outcomes_from = 'scratch.deduplicated_maternals'
 neolab_from = 'scratch.deduplicated_neolabs'
 baseline_from = 'scratch.deduplicated_baseline'
 vital_signs_from = 'scratch.deduplicated_vitals'
+mat_completeness_from = 'scratch.deduplicated_maternity_completeness'
 
 #Check If Tuple contains at least one valid ID (i.e at least one id not equal to '-DUMMY-') 
 if any(map(lambda ele: ele is not "-DUMMY-", mat_outcomes_script_ids_tuple)):
@@ -198,6 +217,11 @@ if any(map(lambda ele: ele is not "-DUMMY-", baseline_ids_tuple)):
    pass;
 else:
    baseline_from = generic_from
+
+if any(map(lambda ele: ele is not "-DUMMY-", maternity_completeness_tuple)):  
+   pass;
+else:
+   mat_completeness_from = generic_from
        
 
 
@@ -259,6 +283,32 @@ create table scratch.deduplicated_baseline as
     data
   from earliest_baseline join sessions
   on earliest_baseline.id = sessions.id
+); '''
+
+deduplicate_mat_completeness_query =f'''
+drop table if exists scratch.deduplicated_maternity_completeness cascade;
+create table scratch.deduplicated_maternity_completeness as 
+(
+  with earliest_mat_completeness as (
+    select
+      scriptid,
+      uid, 
+      min(id) as id -- This takes the first upload 
+                    -- of the session as the deduplicated record. 
+                    -- We could replace with max(id) to take the 
+                    -- most recently uploaded
+     from public.sessions
+     where scriptid in {mat_data_completeness_ids} {where} -- only pull out maternity completeness data
+    group by 1,2
+  )
+  select
+    earliest_mat_completeness.scriptid,
+    earliest_mat_completeness.uid,
+    earliest_mat_completeness.id,
+    sessions.ingested_at,
+    data
+  from earliest_mat_completeness join sessions
+  on earliest_mat_completeness.id = sessions.id
 ); '''
 
 deduplicate_vitals_query =f'''
@@ -423,6 +473,19 @@ read_baselines_query = f'''
             from {baseline_from} where scriptid in {baseline_ids_tuple} and uid!='null';
 '''
 
+read_mat_completeness_query = f'''
+            select 
+            scriptid,
+            uid,
+            id,
+            ingested_at,
+            "data"->'appVersion' as "appVersion",
+            "data"->'started_at' as "started_at",
+            "data"->'completed_at' as "completed_at",
+            "data"->'entries' as "entries" {maternity_completeness_case}
+            from {mat_completeness_from} where scriptid in {mat_data_completeness_ids} and uid!='null';
+'''
+
 derived_admissions_query = '''
                 select 
                     *
@@ -511,6 +574,12 @@ catalog = DataCatalog(
             sql= read_diagnoses_query,
             credentials=dict(con=con)
          ),
+          #Read Baseline Data
+         "read_mat_completeness_data": SQLQueryDataSet(
+            sql= read_mat_completeness_query,
+            credentials=dict(con=con)
+         ),
+         
          #Make Use Of Save Method To Create Tables
           "create_derived_admissions": SQLTableDataSet(
             table_name='admissions',
@@ -557,7 +626,13 @@ catalog = DataCatalog(
             credentials=dict(con=con),
             save_args = dict(schema="derived",if_exists="replace")
          )
-         
+         ,
+          #Make Use Of Save Method To Create Tables
+          "create_derived_maternity_completeness": SQLTableDataSet(
+            table_name='maternity_completeness',
+            credentials=dict(con=con),
+            save_args = dict(schema='derived',if_exists='replace')
+         ),
 
         }
         )

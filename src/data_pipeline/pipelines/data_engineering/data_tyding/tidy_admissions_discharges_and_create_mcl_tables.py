@@ -39,6 +39,8 @@ def tidy_tables():
         baseline_raw = catalog.load('read_baseline_data')
         #Read Diagnoses Data from Kedro Catalog
         diagnoses_raw = catalog.load('read_diagnoses_data') 
+        #Read Maternity Completeness Data from Kedro Catalog
+        mat_completeness_raw = catalog.load('read_mat_completeness_data') 
 
 
     
@@ -58,7 +60,7 @@ def tidy_tables():
         neolab_new_entries,noelab_mcl = get_key_values(neolab_raw)
         baseline_new_entries,baseline_mcl = get_key_values(baseline_raw)
         diagnoses_new_entries = get_diagnoses_key_values(diagnoses_raw)
-        
+        mat_completeness_new_entries,mat_completeness_mcl = get_key_values(mat_completeness_raw)
 
     except Exception as e:
         logging.error("!!! An error occured extracting keys: ")
@@ -92,6 +94,10 @@ def tidy_tables():
         diagnoses_df = pd.json_normalize(diagnoses_new_entries)
         if "uid" in diagnoses_df:
             diagnoses_df.set_index(['uid'])
+
+        mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
+        if "uid" in mat_completeness_df:
+            mat_completeness_df.set_index(['uid'])
 
         # ADD TIME SPENT TO ALL DFs
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
@@ -344,6 +350,9 @@ def tidy_tables():
         if not diagnoses_df.empty:
             catalog.save('create_derived_diagnoses',diagnoses_df)
 
+         #Save Derived Maternity Completeness To The DataBase Using Kedro
+        if not mat_completeness_df.empty:
+            catalog.save('create_derived_maternity_completeness',mat_completeness_df)
 
 
     except Exception as e:
@@ -364,6 +373,9 @@ def tidy_tables():
 
         if not baseline_df.empty:
             explode_column(baseline_df,baseline_mcl,"bsl_")
+        
+        if not mat_completeness_df.empty:
+            explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
        
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")

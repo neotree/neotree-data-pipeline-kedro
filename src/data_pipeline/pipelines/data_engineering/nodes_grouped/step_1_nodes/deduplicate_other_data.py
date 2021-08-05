@@ -2,7 +2,9 @@ import os, sys
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
-from conf.base.catalog import deduplicate_baseline_query,deduplicate_maternal_query,deduplicate_neolab_query,deduplicate_vitals_query,cron_log_file
+from conf.base.catalog import (deduplicate_baseline_query,deduplicate_maternal_query,
+                              deduplicate_neolab_query,deduplicate_vitals_query,cron_log_file,
+                              deduplicate_mat_completeness_query)
 import logging
 from pathlib import Path,PureWindowsPath
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
@@ -15,10 +17,12 @@ def deduplicate_other_data(data_import_output):
             vitals_script = deduplicate_vitals_query
             baseline_script = deduplicate_baseline_query
             neolab_script = deduplicate_neolab_query
+            mat_completeness_script = deduplicate_mat_completeness_query
             inject_sql(maternal_script, "deduplicate-maternal")
             inject_sql(vitals_script, "deduplicate-vitals")
             inject_sql(baseline_script, "deduplicate-baseline")
             inject_sql(neolab_script, "deduplicate-neolabs")
+            inject_sql(mat_completeness_script, "deduplicate-mat-completeness")
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
             return dict(
                 status='Success',
