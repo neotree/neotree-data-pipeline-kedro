@@ -229,7 +229,7 @@ def tidy_tables():
             adm_df['BW.label'] = adm_df['BW .label']
             adm_df.drop('BW .label',axis='columns',inplace=True)
 
-        if 'BW .value' in adm_df.columns and adm_df['BW .label'] is not None:
+        if 'BW .value' in adm_df.columns and adm_df['BW .value'] is not None:
             adm_df['BW.value'] = adm_df['BW .value']
             adm_df.drop('BW .value', axis='columns', inplace=True)
 
