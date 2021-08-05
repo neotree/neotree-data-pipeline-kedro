@@ -483,7 +483,7 @@ read_mat_completeness_query = f'''
             "data"->'started_at' as "started_at",
             "data"->'completed_at' as "completed_at",
             "data"->'entries' as "entries" {maternity_completeness_case}
-            from {mat_completeness_from} where scriptid in {mat_data_completeness_ids} and uid!='null';
+            from {mat_completeness_from} where scriptid in {mat_outcomes_script_ids_tuple} and uid!='null';
 '''
 
 derived_admissions_query = '''
