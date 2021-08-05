@@ -180,6 +180,7 @@ if hospital_scripts:
            maternity_completeness_case = ''
        else:
          maternity_completeness_case = maternity_completeness_case + facility_case_end     
+
 #CONVERT LISTS TO TUPLE
 adm_script_ids_tuple = tuple(adm_script_ids) 
 disc_script_ids_tuple = tuple(disc_script_ids)
@@ -298,7 +299,7 @@ create table scratch.deduplicated_maternity_completeness as
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
      from public.sessions
-     where scriptid in {mat_outcomes_script_ids_tuple} {where} -- only pull out maternity completeness data
+     where scriptid in {maternity_completeness_tuple} {where} -- only pull out maternity completeness data
     group by 1,2
   )
   select
