@@ -43,7 +43,7 @@ def restructure_new_format(k,v,mcl):
         mcl.append(k)
 
     else :
-        k = k
+        k = str(k).strip()
         #  Unpack The Values Object To Get Single Values
         v = {'label':v['values']['label'][0],'value':v['values']['value'][0]}
         # #Add Other Values T MCL Columns For Exploding
