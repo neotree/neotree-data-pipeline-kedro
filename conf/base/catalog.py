@@ -132,13 +132,14 @@ if hospital_scripts:
                      baseline_ids.append('-DUMMY-')
                   
                   if 'maternity_completeness' in ids.keys():
-                        maternity_completeness_id = ids['maternity_completeness']
-                        if maternity_completeness_id != '':
-                           mat_data_completeness_ids.append(maternity_completeness_id)
-                           maternity_completeness_case = maternity_completeness_case+ " WHEN scriptid ='{0}' THEN '{1}' ".format(maternity_completeness_id,hospital)
-                        else:
-                           mat_data_completeness_ids.append('-DUMMY-')
-                         
+                     maternity_completeness_id = ids['maternity_completeness']
+                     if (maternity_completeness_id != ''):
+                        mat_data_completeness_ids.append(maternity_completeness_id)
+                        maternity_completeness_case = maternity_completeness_case+ " WHEN scriptid ='{0}' THEN '{1}' ".format(maternity_completeness_id,hospital)
+                     else:
+                        mat_data_completeness_ids.append('-DUMMY-')
+                  else:
+                     mat_data_completeness_ids.append('-DUMMY-')       
             
             else:
                log.error("Please specify country in both `database.ini` and `hospitals.ini` files")
@@ -484,7 +485,7 @@ read_mat_completeness_query = f'''
             "data"->'started_at' as "started_at",
             "data"->'completed_at' as "completed_at",
             "data"->'entries' as "entries" {maternity_completeness_case}
-            from {mat_completeness_from} where scriptid in {mat_outcomes_script_ids_tuple} and uid!='null';
+            from {mat_completeness_from} where scriptid in {maternity_completeness_tuple} and uid!='null';
 '''
 
 derived_admissions_query = '''
