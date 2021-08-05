@@ -79,8 +79,8 @@ def union_views():
                 else:
                     pass
 
-        adm_where = f'''where "DateTimeAdmission.value" >'2021-02-28' '''
-        disc_where = f'''where "DateTimeDischarge.value" >'2021-02-28' or "DateTimeDeath.value">'2021-02-28' '''
+        adm_where = f'''where "DateTimeAdmission.value" >'2021-02-28' AND facility = 'SMCH' '''
+        disc_where = f'''where "DateTimeDischarge.value" >'2021-02-28' or "DateTimeDeath.value">'2021-02-28' AND facility = 'SMCH' '''
         if len(adm_view_columns) > 0:
             create_union_views('old_new_admissions_view', 'admissions', 'old_smch_admissions', str(
                 json.dumps(adm_view_columns))[1:-1], adm_where)
