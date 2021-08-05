@@ -225,11 +225,11 @@ def tidy_tables():
             format_date(adm_df,'ANVDRLDate.value')
 
         # Remove Space From BW.Value :: Issue Was Affecting Dev Database
-        if 'BW .label' in adm_df.columns and not adm_df['BW .label'].isnull(): 
+        if 'BW .label' in adm_df.columns and adm_df['BW .label'].notnull(): 
             adm_df['BW.label'] = adm_df['BW .label']
             adm_df.drop('BW .label',axis='columns',inplace=True)
 
-        if 'BW .value' in adm_df.columns and not adm_df['BW .value'].isnull():
+        if 'BW .value' in adm_df.columns and  adm_df['BW .value'].notnull():
             adm_df['BW.value'] = adm_df['BW .value']
             adm_df.drop('BW .value', axis='columns', inplace=True)
 
