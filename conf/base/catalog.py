@@ -135,7 +135,7 @@ if hospital_scripts:
                         maternity_completeness_id = ids['maternity_completeness']
                         if maternity_completeness_id != '':
                            mat_data_completeness_ids.append(maternity_completeness_id)
-                           maternity_completeness_case = maternity_completeness_case+ f'''WHEN scriptid ='{maternity_completeness_id}' THEN '{hospital}'  '''
+                           maternity_completeness_case = maternity_completeness_case+ " WHEN scriptid ='{0}' THEN '{1}' ".format(maternity_completeness_id,hospital)
                         else:
                            mat_data_completeness_ids.append('-DUMMY-')
                          
