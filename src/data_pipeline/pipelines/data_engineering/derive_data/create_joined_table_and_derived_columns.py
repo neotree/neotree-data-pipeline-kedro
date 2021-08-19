@@ -1,6 +1,6 @@
 from conf.base.catalog import catalog
 from dateutil.parser import parse
-from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
+from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 
 # Import libraries
 import pandas as pd
@@ -46,8 +46,8 @@ def join_table():
             jn_adm_dis['LengthOfStay.label'].iloc[index] ="Length of Stay"
             if (is_date(str(row['DateTimeDischarge.value']))
                 and is_date(str(row['DateTimeAdmission.value']))):
-                DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:-14].strip(),date_format)
-                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(),date_format)
+                DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:10].strip(),date_format)
+                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip(),date_format)
                 delta_los = DateTimeDischarge -DateTimeAdmission
                 jn_adm_dis['LengthOfStay.value'].iloc[index] = delta_los.days
 
@@ -55,10 +55,10 @@ def join_table():
                 jn_adm_dis['LengthOfStay.value'].iloc[index] = None
         
             jn_adm_dis['LengthOfLife.label'].iloc[index] ="Length of Life"
-            if 'DateTimeDeath.value' in row and (is_date(str(row['DateTimeDeath.value']))
-                and is_date(str(row['DateTimeAdmission.value']))): 
-                DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:-14].strip(), date_format)
-                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip(), date_format)
+            if 'DateTimeDeath.value' in row and is_date_formatable(str(row['DateTimeDeath.value']).strip()):
+               
+                DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:10].strip(), date_format)
+                DateTimeAdmission = dt.strptime(str(row['DateTimeAdmission.value'])[:10].strip(), date_format)
                 delta_lol = DateTimeDeath - DateTimeAdmission
                 jn_adm_dis['LengthOfLife.value'].iloc[index] = delta_lol.days;
             else:
@@ -67,7 +67,7 @@ def join_table():
 
     except Exception as e:
         logging.error("!!! An error occured creating joined dataframe: ")
-        raise e
+        raise e.with_traceback()
 
     # Now write the table back to the database
     logging.info("... Writing the output back to the database")

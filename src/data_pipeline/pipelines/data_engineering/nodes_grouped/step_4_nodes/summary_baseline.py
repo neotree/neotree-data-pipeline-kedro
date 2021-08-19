@@ -41,5 +41,6 @@ def create_summary_baseline(join_tables_output):
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Baseline ".format(cron_time,mode))
         cron_log.close()
+        raise e.with_traceback()
         logging.error(formatError(e))
         sys.exit(1)

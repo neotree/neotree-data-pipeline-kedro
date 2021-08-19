@@ -7,7 +7,7 @@ from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from conf.common.sql_functions import create_table
-from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
 
 
 
@@ -101,57 +101,57 @@ def tidy_tables():
 
         # ADD TIME SPENT TO ALL DFs
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
-           format_date(diagnoses_df,'time_spent'); 
-           format_date(diagnoses_df,'completed_at'); 
+           format_date_without_timezone(diagnoses_df,'time_spent'); 
+           format_date_without_timezone(diagnoses_df,'completed_at'); 
            diagnoses_df['time_spent']= (diagnoses_df['completed_at']-diagnoses_df['started_at']).astype('timedelta64[m]')
         else:
             diagnoses_df['time_spent'] = None
 
         if "started_at" in adm_df and 'completed_at' in adm_df :
-            format_date(adm_df,'started_at'); 
-            format_date(adm_df,'completed_at'); 
+            format_date_without_timezone(adm_df,'started_at'); 
+            format_date_without_timezone(adm_df,'completed_at'); 
             adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).astype('timedelta64[m]')
         else:
             adm_df['time_spent'] = None
         
         if "started_at" in dis_df and 'completed_at' in dis_df :
-            format_date(dis_df,'started_at'); 
-            format_date(dis_df,'completed_at'); 
+            format_date_without_timezone(dis_df,'started_at'); 
+            format_date_without_timezone(dis_df,'completed_at'); 
             dis_df['time_spent'] = (dis_df['completed_at'] -dis_df['started_at']).astype('timedelta64[m]')
         else:
             dis_df['time_spent'] = None
         
         if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
-            format_date(mat_outcomes_df,'started_at'); 
-            format_date(mat_outcomes_df,'completed_at'); 
+            format_date_without_timezone(mat_outcomes_df,'started_at'); 
+            format_date_without_timezone(mat_outcomes_df,'completed_at'); 
             mat_outcomes_df['time_spent'] = (mat_outcomes_df['completed_at'] - mat_outcomes_df['started_at']).astype('timedelta64[m]')
         else:
             mat_outcomes_df['time_spent'] = None
 
         if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
-            format_date(vit_signs_df,'started_at'); 
-            format_date(vit_signs_df,'completed_at'); 
+            format_date_without_timezone(vit_signs_df,'started_at'); 
+            format_date_without_timezone(vit_signs_df,'completed_at'); 
             vit_signs_df['time_spent'] = (vit_signs_df['completed_at']-vit_signs_df['started_at']).astype('timedelta64[m]')
         else:
             vit_signs_df['time_spent'] = None
         
         if "started_at" in neolab_df and 'completed_at' in neolab_df :
-            format_date(neolab_df,'started_at'); 
-            format_date(neolab_df,'completed_at'); 
+            format_date_without_timezone(neolab_df,'started_at'); 
+            format_date_without_timezone(neolab_df,'completed_at'); 
             neolab_df['time_spent'] = (neolab_df['completed_at'] - neolab_df['started_at']).astype('timedelta64[m]')
         else:
             neolab_df['time_spent'] = None
 
         if "started_at" in baseline_df and 'completed_at' in baseline_df :
-            format_date(baseline_df,'started_at'); 
-            format_date(baseline_df,'completed_at'); 
+            format_date_without_timezone(baseline_df,'started_at'); 
+            format_date_without_timezone(baseline_df,'completed_at'); 
             baseline_df['time_spent'] = (baseline_df['completed_at'] -baseline_df['started_at']).astype('timedelta64[m]')
         else:
             baseline_df['time_spent'] = None
 
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
-            format_date(diagnoses_df,'started_at'); 
-            format_date(diagnoses_df,'completed_at'); 
+            format_date_without_timezone(diagnoses_df,'started_at'); 
+            format_date_without_timezone(diagnoses_df,'completed_at'); 
             diagnoses_df['time_spent'] =  (diagnoses_df['completed_at'] - diagnoses_df['started_at']).astype('timedelta64[m]')
         else:
             diagnoses_df['time_spent'] = None
@@ -168,8 +168,8 @@ def tidy_tables():
             baseline_df['LengthOfStay.label'].iloc[index] ="Length of Stay"
             if (is_date(str(row['DateTimeDischarge.value']))
                 and is_date(str(row['DateTimeAdmission.value']))):
-                DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:-14].strip().replace('T',''),date_format)
-                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip().replace('T',''),date_format)
+                DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:10].strip().replace('T',''),date_format)
+                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip().replace('T',''),date_format)
                 delta_los = DateTimeDischarge-DateTimeAdmission
                 baseline_df['LengthOfStay.value'].iloc[index] = delta_los.days
 
@@ -179,8 +179,8 @@ def tidy_tables():
             baseline_df['LengthOfLife.label'].iloc[index] ="Length of Life"
             if 'DateTimeDeath.value' in row and (is_date(str(row['DateTimeDeath.value']))
                 and is_date(str(row['DateTimeAdmission.value']))): 
-                DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:-14].strip().replace('T',''), date_format)
-                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:-14].strip().replace('T',''), date_format)
+                DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:10].strip().replace('T',''), date_format)
+                DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip().replace('T',''), date_format)
                 delta_lol = DateTimeDeath - DateTimeAdmission
                 baseline_df['LengthOfLife.value'].iloc[index] = delta_lol.days;
             else:

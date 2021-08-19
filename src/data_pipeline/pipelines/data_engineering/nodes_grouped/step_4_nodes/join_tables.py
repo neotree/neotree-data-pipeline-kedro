@@ -28,5 +28,6 @@ def join_tables(manually_Fix_admissions_output):
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Joint Tables ".format(cron_time,mode))
         cron_log.close()
-        logging.error(formatError(e))
+        raise e.with_traceback()
+        #logging.error(formatError(e))
         sys.exit(1)
