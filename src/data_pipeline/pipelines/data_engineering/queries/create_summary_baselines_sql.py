@@ -1,5 +1,11 @@
+from .column_exists_sql import column_exists
 def summary_baseline_query():
-    return ''' DROP TABLE IF EXISTS derived.summary_baseline;
+
+    ANSteroids = '';
+    if column_exists('derived','baseline','ANSteroids.label'):
+          ANSteroids = 'derived.baseline."ANSteroids.label" As "AntenatalSteroids", '
+          
+    return f''' DROP TABLE IF EXISTS derived.summary_baseline;
             CREATE TABLE derived.summary_baseline AS 
             SELECT derived.baseline."uid" AS "uid", 
             derived.baseline."facility" AS "facility", 
@@ -47,7 +53,7 @@ def summary_baseline_query():
             derived.baseline."DateTimeDeath.value" IS NULL
             ) THEN NULL 
             END AS "OutcomeMonthYear",
-            derived.baseline."ANSteroids.label" As "AntenatalSteroids",
+            {ANSteroids}
             CASE WHEN derived.baseline."Gestation.value" < 28 AND derived.baseline."BW.value" < 1000 then 1 End AS "Less28wks/1kgCount",
             CASE WHEN derived.baseline."GestGroup.value" <> 'Term' THEN 1 END AS "PretermCount",
             CASE 
