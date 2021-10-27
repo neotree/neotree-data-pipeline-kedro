@@ -362,6 +362,7 @@ create table scratch.deduplicated_neolabs as
     earliest_neolab.scriptid,
     earliest_neolab.uid,
     earliest_neolab.id,
+    earliest_neolab."DateBCT",
     sessions.ingested_at,
     data
   from earliest_neolab join sessions
