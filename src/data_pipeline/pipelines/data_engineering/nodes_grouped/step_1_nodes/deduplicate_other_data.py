@@ -1,12 +1,10 @@
 import os, sys
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
-from conf.common.format_error import formatError
 from conf.base.catalog import (deduplicate_baseline_query,deduplicate_maternal_query,
                               deduplicate_neolab_query,deduplicate_vitals_query,cron_log_file,
                               deduplicate_mat_completeness_query)
 import logging
-from pathlib import Path,PureWindowsPath
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 #Not passing any Input To Allow Concurrent running of independent Nodes
