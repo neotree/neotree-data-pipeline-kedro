@@ -258,7 +258,7 @@ create table scratch.deduplicated_admissions as
     sessions.ingested_at,
     data
   from earliest_admissions join sessions
-  on earliest_admissions.id = sessions.id
+  on earliest_admissions.id = sessions.id where in {adm_script_ids_tuple} {where}
 ); '''
 
 deduplicate_baseline_query =f'''
@@ -284,7 +284,7 @@ create table scratch.deduplicated_baseline as
     sessions.ingested_at,
     data
   from earliest_baseline join sessions
-  on earliest_baseline.id = sessions.id
+  on earliest_baseline.id = sessions.id where sessions.scriptid in {baseline_ids_tuple}
 ); '''
 
 deduplicate_mat_completeness_query =f'''
@@ -310,7 +310,7 @@ create table scratch.deduplicated_maternity_completeness as
     sessions.ingested_at,
     data
   from earliest_mat_completeness join sessions
-  on earliest_mat_completeness.id = sessions.id
+  on earliest_mat_completeness.id = sessions.id where sessions.scriptid in {maternity_completeness_tuple}
 ); '''
 
 deduplicate_vitals_query =f'''
@@ -336,7 +336,7 @@ create table scratch.deduplicated_vitals as
     sessions.ingested_at,
     data
   from earliest_vitals join sessions
-  on earliest_vitals.id = sessions.id
+  on earliest_vitals.id = sessions.id where sessions.scriptid in {vital_signs_ids_tuple}
 ); '''
 
 deduplicate_neolab_query =f'''
@@ -362,7 +362,7 @@ create table scratch.deduplicated_neolabs as
     sessions.ingested_at,
     data
   from earliest_neolab join sessions
-  on earliest_neolab.id = sessions.id
+  on earliest_neolab.id = sessions.id where sessions.scriptid in {neo_lab_ids_tuple}
 ); '''
 
 deduplicate_maternal_query =f'''
@@ -388,7 +388,7 @@ create table scratch.deduplicated_maternals as
     sessions.ingested_at,
     data
   from earliest_maternal join sessions
-  on earliest_maternal.id = sessions.id
+  on earliest_maternal.id = sessions.id where sessions.scriptid in {mat_outcomes_script_ids_tuple} 
 ); '''
 
 
@@ -415,7 +415,7 @@ create table scratch.deduplicated_discharges as
     sessions.ingested_at,
     data
   from earliest_discharges join sessions
-  on earliest_discharges.id = sessions.id
+  on earliest_discharges.id = sessions.id where sessions.scriptid in {disc_script_ids_tuple}
 ); '''
 
 read_admissions_query = f'''
