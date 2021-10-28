@@ -258,7 +258,7 @@ create table scratch.deduplicated_admissions as
     sessions.ingested_at,
     data
   from earliest_admissions join sessions
-  on earliest_admissions.id = sessions.id where sessions.scriptid in {adm_script_ids_tuple} {where}
+  on earliest_admissions.id = sessions.id where sessions.scriptid in {adm_script_ids_tuple}
 ); '''
 
 deduplicate_baseline_query =f'''
