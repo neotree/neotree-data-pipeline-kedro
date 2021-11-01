@@ -370,11 +370,11 @@ def tidy_tables():
         if not vit_signs_df.empty:
             catalog.save('create_derived_vital_signs',vit_signs_df)
         #Save Derived NeoLab To The DataBase Using Kedro
-        if not neolab_df.empty:
-            #SET INDEX 
-            if "uid" in neolab_df:
-                neolab_df.set_index(['uid'])
-            catalog.save('create_derived_neolab',neolab_df)
+        # if not neolab_df.empty:
+            # #SET INDEX 
+            # if "uid" in neolab_df:
+            #     neolab_df.set_index(['uid'])
+            # catalog.save('create_derived_neolab',neolab_df)
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
             catalog.save('create_derived_baselines',baseline_df)
