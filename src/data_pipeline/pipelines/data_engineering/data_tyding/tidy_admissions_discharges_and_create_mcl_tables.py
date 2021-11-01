@@ -99,6 +99,9 @@ def tidy_tables():
         if "uid" in mat_completeness_df:
             mat_completeness_df.set_index(['uid'])
 
+        # INITIALISE THE EPISODE COLUMN ON NEOAB DF SO THAT THE COLUMN GETS CREATED
+        
+ 
         # ADD TIME SPENT TO ALL DFs
         if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
            format_date_without_timezone(diagnoses_df,'time_spent'); 
@@ -310,11 +313,44 @@ def tidy_tables():
         if 'EndScriptDatetime.value' in vit_signs_df:
             format_date(vit_signs_df,'EndScriptDatetime.value')
 
-        # Make changes to admissions to match fields in power bi
-
+        # Make changes to admissions and baseline data to match fields in power bi
         adm_df = create_columns(adm_df)
+
         if not baseline_df.empty:
             baseline_df = create_columns(baseline_df)
+
+        # Create Episode Column for Neolab Data
+
+        if neolab_df:
+            # Initialise the column
+            neolab_df['episode'] = 0
+
+            for index in neolab_df.index:
+                control_df = neolab_df.loc[(neolab_df['uid'] == neolab_df[index,'uid'])]
+                if neolab_df[index,'episode'] == 0 and control_df:
+                    for innerIndex in control_df.index:
+                        # Set Episode For first Row
+                        if innerIndex == 0:
+                            neolab_df[index,'episode']= 1
+                            # Set It Also On New DF For Reference In Future Episodes
+                            control_df[innerIndex,'episode'] = 1
+                        else:
+                            if control_df[innerIndex,'DateBCT.value'] == control_df[innerIndex-1,'DateBCT.value']:
+                                control_df[innerIndex, 'episode'] = control_df[innerIndex-1,'episode'];
+                                
+                            else:
+                                control_df[innerIndex, 'episode'] = control_df[innerIndex-1,'episode']+1;
+                        # Set The Episode Value For All Related Episodes        
+                        neolab_df.loc[(neolab_df['uid']
+                                ==control_df[innerIndex,'uid'] & neolab_df['DateBCT.value']
+                                ==control_df[innerIndex,'DateBCT.value']& neolab_df['DateBCR.value']
+                                == control_df[innerIndex,'DateBCR.value'])] and neolab_df.loc[(neolab_df['uid']
+                                ==control_df[innerIndex,'uid'] & neolab_df['DateBCT.value']
+                                ==control_df[innerIndex,'DateBCT.value']& neolab_df['DateBCR.value']
+                                == control_df[innerIndex,'DateBCR.value'])][0]['episode'] = control_df[innerIndex, 'episode']
+
+
+ 
 
     except Exception as e:
         logging.error(
