@@ -321,7 +321,7 @@ def tidy_tables():
 
         # Create Episode Column for Neolab Data
 
-        if neolab_df:
+        if not neolab_df.empty:
             # Initialise the column
             neolab_df['episode'] = 0
 
