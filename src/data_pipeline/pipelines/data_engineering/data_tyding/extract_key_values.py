@@ -1,4 +1,5 @@
 # This module extracts the key-value pairs within a raw json file.
+import logging
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import reduce
 
@@ -34,6 +35,7 @@ def get_key_values(data_raw):
         if 'completed_at' in rows:
              new_entries['completed_at'] = rows['completed_at']
 
+
         # iterate through key, value and add to dict
         for c in rows['entries']:
            
@@ -47,6 +49,8 @@ def get_key_values(data_raw):
             #ELSE USE THE OLD FORMAT
             else:
                k, v, mcl = restructure(c, mcl)
+               if(k== 'DateBCT' or k == 'DateBCR') and rows['uid'] == '0028-0386':
+                   logging.info('---EDDSS---'+str(k)+ "--sRT--"+str(v))
                #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
                if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entries['uid'] is None):
                      new_entries['uid'] = v.value;

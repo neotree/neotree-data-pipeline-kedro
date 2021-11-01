@@ -324,11 +324,9 @@ def tidy_tables():
             neolab_df['episode'] = 0
 
             for index, row in neolab_df.iterrows():
-                logging.info("--BEFORE--", neolab_df[neolab_df['uid']=='0028-0386']['DateBCR.value'])
                 control_df = neolab_df.sort_values(by=['DateBCT.value','DateBCR.value'])
                 control_df = neolab_df[neolab_df['uid'] == row['uid']].reset_index()
                 # If The First Row Has Episode 0 it means the rest of the rows with the same uid have not been touched
-                logging.info("--AFTER--", neolab_df[neolab_df['uid']=='0028-0386']['DateBCR.value'])
                 if neolab_df.at[index,'episode'] == 0 and not control_df.empty:
                     for innerIndex, innerRow in control_df.iterrows() :
                         if innerIndex == 0:
