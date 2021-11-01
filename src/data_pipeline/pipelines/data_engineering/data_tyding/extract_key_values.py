@@ -7,57 +7,57 @@ def get_key_values(data_raw):
     mcl = []
     # Will store the final list of uid, ingested_at & reformed key-value pairs
     data_new = []
-    for index, rows in data_raw.iterrows():
+    for index, row in data_raw.iterrows():
         # to store all the restructured keys & values for each row
-        new_entries = {}
+        new_entry = {}
         # add uid and ingested_at first
         app_version = None
-        if 'appVersion' in rows:
-            app_version = rows['appVersion']
+        if 'appVersion' in row:
+            app_version = row['appVersion']
         if(app_version!=None and app_version!=''):
             #Remove any Other Characters that are non-numeric
             app_version = int(''.join(d for d in app_version if d.isdigit()))
-        if 'facility' in rows:
-            new_entries['facility'] = rows['facility']
+        if 'facility' in row:
+            new_entry['facility'] = row['facility']
         
-        new_entries['uid'] = rows['uid']
-        if 'ingested_at_admission' in rows:
-            new_entries['ingested_at'] = rows['ingested_at_admission']
-        if 'ingested_at_discharge' in rows:
-            new_entries['ingested_at'] = rows['ingested_at_discharge']
+        new_entry['uid'] = row['uid']
+        if 'ingested_at_admission' in row:
+            new_entry['ingested_at'] = row['ingested_at_admission']
+        if 'ingested_at_discharge' in row:
+            new_entry['ingested_at'] = row['ingested_at_discharge']
 
-        if 'started_at' in rows:
-            new_entries['started_at'] = rows['started_at']
+        if 'started_at' in row:
+            new_entry['started_at'] = row['started_at']
 
-        if 'started_at' in rows:
-            new_entries['started_at'] = rows['started_at']
+        if 'started_at' in row:
+            new_entry['started_at'] = row['started_at']
 
-        if 'completed_at' in rows:
-             new_entries['completed_at'] = rows['completed_at']
+        if 'completed_at' in row:
+             new_entry['completed_at'] = row['completed_at']
 
 
         # iterate through key, value and add to dict
-        for c in rows['entries']:
+        for c in row['entries']:
            
             #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
             if(app_version!='' and app_version!=None and app_version>454):   
-                k, v, mcl = restructure_new_format(c,rows['entries'][c], mcl)
+                k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
-                if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entries['uid'] is None):
-                     new_entries['uid'] = v.value;
+                if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
+                     new_entry['uid'] = v.value;
 
             #ELSE USE THE OLD FORMAT
             else:
                k, v, mcl = restructure(c, mcl)
-               if(k== 'DateBCT' or k == 'DateBCR') and rows['uid'] == '0028-0386':
-                   logging.info('---EDDSS---'+str(k)+ "--sRT--"+str(v))
+               if(k== 'DateBCT' or k == 'DateBCR') and row['uid'] == '0028-0386':
+                   logging.info('---EDDSS-FFF--', c)
                #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
-               if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entries['uid'] is None):
-                     new_entries['uid'] = v.value;
-            new_entries[k] = v
+               if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
+                     new_entry['uid'] = v.value;
+            new_entry[k] = v
         # for each row add all the keys & values to a list
           
-        data_new.append(new_entries)
+        data_new.append(new_entry)
 
     return data_new, set(mcl)
 
@@ -65,29 +65,29 @@ def get_diagnoses_key_values(data_raw):
     # Will store the final list of uid, ingested_at & reformed key-value pairs
     data_new = []
    
-    for index, rows in data_raw.iterrows():
-        if "diagnoses" in rows:
+    for index, row in data_raw.iterrows():
+        if "diagnoses" in row:
             new_entries = {}
             # add uid and ingested_at first
             app_version = None
-            if 'appVersion' in rows:
-                app_version = rows['appVersion']
+            if 'appVersion' in row:
+                app_version = row['appVersion']
             if(app_version!=None and app_version!=''):
                 #Remove any Other Characters that are non-numeric
                 app_version = int(''.join(d for d in app_version if d.isdigit()))
-            if 'facility' in rows:
-                new_entries['facility'] = rows['facility']
+            if 'facility' in row:
+                new_entries['facility'] = row['facility']
             
-            new_entries['uid'] = rows['uid']
-            if 'ingested_at_admission' in rows:
-                new_entries['ingested_at'] = rows['ingested_at_admission']
+            new_entries['uid'] = row['uid']
+            if 'ingested_at_admission' in row:
+                new_entries['ingested_at'] = row['ingested_at_admission']
 
-            if 'ingested_at' in rows:
-                new_entries['ingested_at'] = rows['ingested_at']
+            if 'ingested_at' in row:
+                new_entries['ingested_at'] = row['ingested_at']
 
             #Convert List to dictionary
-            if rows['diagnoses'] is not None and len(rows['diagnoses'])> 0:
-                values_dict=reduce(lambda a, b: {**a, **b}, rows['diagnoses'])
+            if row['diagnoses'] is not None and len(row['diagnoses'])> 0:
+                values_dict=reduce(lambda a, b: {**a, **b}, row['diagnoses'])
 
                 # iterate through parent keys
                 for parent_key in values_dict:

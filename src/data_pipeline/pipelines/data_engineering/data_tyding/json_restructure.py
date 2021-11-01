@@ -2,6 +2,7 @@
 # A number of if statements have been used to manage different scenarios
 # These include: MCL, empty lists and list with one element
 # The input is the raw json data and the output is a reformed json (newentrieslist)
+import logging
 import re
 
 def restructure(c, mcl):
