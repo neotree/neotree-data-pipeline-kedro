@@ -321,31 +321,31 @@ def tidy_tables():
 
         # Create Episode Column for Neolab Data
 
-        if not neolab_df.empty:
-            # Initialise the column
-            neolab_df['episode'] = 0
+        # if not neolab_df.empty:
+        #     # Initialise the column
+        #     neolab_df['episode'] = 0
 
-            for index, rows in neolab_df.iterrows():
-                logging.info("--MY INDEX---",index)
-                control_df = rows.loc[(rows['uid'] == rows[index,'uid'])]
-                if rows[index,'episode'] == 0 and control_df:
-                    for innerIndex in control_df.index:
-                        # Set Episode For first Row
-                        if innerIndex == 0:
-                            rows[index,'episode']= 1
-                            # Set It Also On New DF For Reference In Future Episodes
-                            control_df[innerIndex,'episode'] = 1
-                        else:
-                            if control_df[innerIndex,'DateBCT.value'] == control_df[innerIndex-1,'DateBCT.value']:
-                                control_df[innerIndex, 'episode'] = control_df[innerIndex-1,'episode'];
+        #     for index, rows in neolab_df.iterrows():
+        #         logging.info("--MY INDEX---",index)
+        #         control_df = rows.loc[(rows['uid'] == rows[index,'uid'])]
+        #         if rows[index,'episode'] == 0 and control_df:
+        #             for innerIndex in control_df.index:
+        #                 # Set Episode For first Row
+        #                 if innerIndex == 0:
+        #                     rows[index,'episode']= 1
+        #                     # Set It Also On New DF For Reference In Future Episodes
+        #                     control_df[innerIndex,'episode'] = 1
+        #                 else:
+        #                     if control_df[innerIndex,'DateBCT.value'] == control_df[innerIndex-1,'DateBCT.value']:
+        #                         control_df[innerIndex, 'episode'] = control_df[innerIndex-1,'episode'];
                                 
-                            else:
-                                control_df[innerIndex, 'episode'] = control_df[innerIndex-1,'episode']+1;
-                        # Set The Episode Value For All Related Episodes        
-                        rows.loc[(rows['uid']
-                                ==control_df[innerIndex,'uid'] & rows['DateBCT.value']
-                                ==control_df[innerIndex,'DateBCT.value']& rows['DateBCR.value']
-                                == control_df[innerIndex,'DateBCR.value'])][0]['episode'] = control_df[innerIndex, 'episode']
+        #                     else:
+        #                         control_df[innerIndex, 'episode'] = control_df[innerIndex-1,'episode']+1;
+        #                 # Set The Episode Value For All Related Episodes        
+        #                 rows.loc[(rows['uid']
+        #                         ==control_df[innerIndex,'uid'] & rows['DateBCT.value']
+        #                         ==control_df[innerIndex,'DateBCT.value']& rows['DateBCR.value']
+        #                         == control_df[innerIndex,'DateBCR.value'])][0]['episode'] = control_df[innerIndex, 'episode']
 
 
  
