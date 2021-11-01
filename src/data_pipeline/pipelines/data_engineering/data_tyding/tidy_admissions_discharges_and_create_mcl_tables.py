@@ -344,9 +344,6 @@ def tidy_tables():
                         neolab_df.loc[(neolab_df['uid']
                                 ==control_df[innerIndex,'uid'] & neolab_df['DateBCT.value']
                                 ==control_df[innerIndex,'DateBCT.value']& neolab_df['DateBCR.value']
-                                == control_df[innerIndex,'DateBCR.value'])] and neolab_df.loc[(neolab_df['uid']
-                                ==control_df[innerIndex,'uid'] & neolab_df['DateBCT.value']
-                                ==control_df[innerIndex,'DateBCT.value']& neolab_df['DateBCR.value']
                                 == control_df[innerIndex,'DateBCR.value'])][0]['episode'] = control_df[innerIndex, 'episode']
 
 
