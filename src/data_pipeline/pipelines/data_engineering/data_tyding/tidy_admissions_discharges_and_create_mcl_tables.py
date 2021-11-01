@@ -326,6 +326,7 @@ def tidy_tables():
             neolab_df['episode'] = 0
 
             for index in neolab_df.index:
+                logging.info("--MY INDEX---",index)
                 control_df = neolab_df.loc[(neolab_df['uid'] == neolab_df[index,'uid'])]
                 if neolab_df[index,'episode'] == 0 and control_df:
                     for innerIndex in control_df.index:
