@@ -325,14 +325,14 @@ def tidy_tables():
             # Initialise the column
             neolab_df['episode'] = 0
 
-            for index in neolab_df.index:
+            for index, rows in neolab_df.iterrows():
                 logging.info("--MY INDEX---",index)
-                control_df = neolab_df.loc[(neolab_df['uid'] == neolab_df[index,'uid'])]
-                if neolab_df[index,'episode'] == 0 and control_df:
+                control_df = rows.loc[(rows['uid'] == rows[index,'uid'])]
+                if rows[index,'episode'] == 0 and control_df:
                     for innerIndex in control_df.index:
                         # Set Episode For first Row
                         if innerIndex == 0:
-                            neolab_df[index,'episode']= 1
+                            rows[index,'episode']= 1
                             # Set It Also On New DF For Reference In Future Episodes
                             control_df[innerIndex,'episode'] = 1
                         else:
@@ -342,9 +342,9 @@ def tidy_tables():
                             else:
                                 control_df[innerIndex, 'episode'] = control_df[innerIndex-1,'episode']+1;
                         # Set The Episode Value For All Related Episodes        
-                        neolab_df.loc[(neolab_df['uid']
-                                ==control_df[innerIndex,'uid'] & neolab_df['DateBCT.value']
-                                ==control_df[innerIndex,'DateBCT.value']& neolab_df['DateBCR.value']
+                        rows.loc[(rows['uid']
+                                ==control_df[innerIndex,'uid'] & rows['DateBCT.value']
+                                ==control_df[innerIndex,'DateBCT.value']& rows['DateBCR.value']
                                 == control_df[innerIndex,'DateBCR.value'])][0]['episode'] = control_df[innerIndex, 'episode']
 
 
