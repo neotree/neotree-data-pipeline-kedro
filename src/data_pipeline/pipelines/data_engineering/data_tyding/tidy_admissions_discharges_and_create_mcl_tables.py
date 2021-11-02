@@ -332,11 +332,14 @@ def tidy_tables():
                         if innerIndex == 0:
                             control_df.at[innerIndex,'episode'] = 1
                         else:
-                            if control_df.at[innerIndex,'DateBCT.value'] == control_df.at[innerIndex-1,'DateBCT.value']:
-                                control_df.at[innerIndex,'episode'] = control_df.at[innerIndex-1,'episode'];
+                            control_df_date_bct = control_df.at[innerIndex,'DateBCT.value']
+                            prev_control_df_date_bct = control_df.at[innerIndex-1,'DateBCT.value']
+                            if len(str(control_df_date_bct)) >9 and len(str(prev_control_df_date_bct)) > 9 :
+                                if control_df_date_bct.map(lambda x: str(x)[:10]) == prev_control_df_date_bct.map(lambda x: str(x)[:10]):
+                                    control_df.at[innerIndex,'episode'] = control_df.at[innerIndex-1,'episode'];
                                 
-                            else:
-                                control_df.at[innerIndex, 'episode'] = control_df.at[innerIndex-1,'episode']+1;
+                                else:
+                                    control_df.at[innerIndex, 'episode'] = control_df.at[innerIndex-1,'episode']+1;
                         # Set The Episode Value For All Related Episodes  
                         neolab_df.loc[(neolab_df['uid']
                                 ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
