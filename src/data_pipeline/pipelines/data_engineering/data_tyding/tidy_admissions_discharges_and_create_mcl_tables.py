@@ -25,7 +25,6 @@ def tidy_tables():
     logging.info("... Fetching raw admission and discharge data")
     
     try:
-        logging.info("....."+read_noelab_query)
         #Read Admisiions From The Kedro Catalog
         adm_raw = catalog.load('read_admissions');
         #Read Discharges From The Kedro Catalog
@@ -374,11 +373,11 @@ def tidy_tables():
         if not vit_signs_df.empty:
             catalog.save('create_derived_vital_signs',vit_signs_df)
         #Save Derived NeoLab To The DataBase Using Kedro
-        # if not neolab_df.empty:
-            # #SET INDEX 
-            # if "uid" in neolab_df:
-            #     neolab_df.set_index(['uid'])
-            # catalog.save('create_derived_neolab',neolab_df)
+        if not neolab_df.empty:
+            #SET INDEX 
+            if "uid" in neolab_df:
+                neolab_df.set_index(['uid'])
+            catalog.save('create_derived_neolab',neolab_df)
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
             catalog.save('create_derived_baselines',baseline_df)

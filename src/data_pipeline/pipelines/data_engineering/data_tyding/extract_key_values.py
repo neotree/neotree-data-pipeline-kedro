@@ -43,8 +43,6 @@ def get_key_values(data_raw):
             if(app_version!='' and app_version!=None and app_version>454): 
                 
                 k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
-                if( row['uid'] =='0027-4136'):
-                   logging.info('----NEW VESSD---'+str(row['id'])+ "---"+str(k))  
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
                 if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                      new_entry['uid'] = v.value;
@@ -52,16 +50,14 @@ def get_key_values(data_raw):
             #ELSE USE THE OLD FORMAT
             else:
                k, v, mcl = restructure(c, mcl)
-               if( row['uid'] =='0027-4136'):
-                   logging.info('----OLD---'+str(row['id'])+ "---"+str(k))  
                #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
                if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                      new_entry['uid'] = v.value;
             new_entry[k] = v
         # for each row add all the keys & values to a list
-          
+         
         data_new.append(new_entry)
-
+        
     return data_new, set(mcl)
 
 def get_diagnoses_key_values(data_raw):
