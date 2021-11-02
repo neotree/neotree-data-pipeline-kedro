@@ -4,6 +4,7 @@ from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
+from conf.base.catalog import read_noelab_query
 from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from conf.common.sql_functions import create_table
@@ -24,7 +25,7 @@ def tidy_tables():
     logging.info("... Fetching raw admission and discharge data")
     
     try:
-    
+        logging.info("....."+read_noelab_query)
         #Read Admisiions From The Kedro Catalog
         adm_raw = catalog.load('read_admissions');
         #Read Discharges From The Kedro Catalog

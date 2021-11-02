@@ -353,7 +353,7 @@ create table scratch.deduplicated_neolabs as
       CASE WHEN "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null 
             THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  END AS "DateBCR",
-      max(id) as id -- This takes the first upload 
+      max(id) as id -- This takes the last upload 
                     -- of the session as the deduplicated record. 
                     -- We could replace with min(id) to take the 
                     -- first uploaded

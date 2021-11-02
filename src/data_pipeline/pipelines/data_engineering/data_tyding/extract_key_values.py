@@ -35,6 +35,8 @@ def get_key_values(data_raw):
         if 'completed_at' in row:
              new_entry['completed_at'] = row['completed_at']
 
+        if( row['uid'] =='0027-4136'):
+                   logging.info('----RID---'+str(row['id']))
 
         # iterate through key, value and add to dict
         for c in row['entries']:
