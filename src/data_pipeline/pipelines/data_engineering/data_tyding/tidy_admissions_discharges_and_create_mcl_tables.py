@@ -376,6 +376,7 @@ def tidy_tables():
             #SET INDEX 
             if "uid" in neolab_df:
                 neolab_df.set_index(['uid'])
+            neolab_df.sort_values(by=['uid','episode'])  
             catalog.save('create_derived_neolab',neolab_df)
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
