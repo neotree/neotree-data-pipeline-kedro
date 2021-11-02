@@ -35,15 +35,16 @@ def get_key_values(data_raw):
         if 'completed_at' in row:
              new_entry['completed_at'] = row['completed_at']
 
-        if( row['uid'] =='0027-4136'):
-                   logging.info('----RID---'+str(row['id']))
 
         # iterate through key, value and add to dict
         for c in row['entries']:
            
             #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-            if(app_version!='' and app_version!=None and app_version>454):   
+            if(app_version!='' and app_version!=None and app_version>454): 
+                
                 k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
+                if( row['uid'] =='0027-4136'):
+                   logging.info('----NEW VESSD---'+str(row['id'])+ "---"+str(k))  
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
                 if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                      new_entry['uid'] = v.value;
@@ -51,6 +52,8 @@ def get_key_values(data_raw):
             #ELSE USE THE OLD FORMAT
             else:
                k, v, mcl = restructure(c, mcl)
+               if( row['uid'] =='0027-4136'):
+                   logging.info('----OLD---'+str(row['id'])+ "---"+str(k))  
                #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
                if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                      new_entry['uid'] = v.value;
