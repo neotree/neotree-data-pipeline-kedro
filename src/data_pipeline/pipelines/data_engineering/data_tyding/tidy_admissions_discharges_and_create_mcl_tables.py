@@ -335,7 +335,7 @@ def tidy_tables():
                             control_df_date_bct = control_df.at[innerIndex,'DateBCT.value']
                             prev_control_df_date_bct = control_df.at[innerIndex-1,'DateBCT.value']
                             if len(str(control_df_date_bct)) >9 and len(str(prev_control_df_date_bct)) > 9 :
-                                if control_df_date_bct.map(lambda x: str(x)[:10]) == prev_control_df_date_bct.map(lambda x: str(x)[:10]):
+                                if control_df_date_bct[:10] == prev_control_df_date_bct[:10]:
                                     control_df.at[innerIndex,'episode'] = control_df.at[innerIndex-1,'episode'];
                                 
                                 else:
