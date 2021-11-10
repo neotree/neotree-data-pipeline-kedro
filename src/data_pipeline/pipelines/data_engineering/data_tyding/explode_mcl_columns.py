@@ -1,5 +1,4 @@
 from conf.common.sql_functions import create_exploded_table,append_data
-from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 # this function explodes all mcl columns and creates respective tables
 # This input is a set of columns that need to be exploded
 # no output but tables in postgres are created, tables names are the same as mcl column titles

@@ -4,12 +4,9 @@ from configparser import ConfigParser
 #import libraries
 import sys
 import logging
-from logging.handlers import RotatingFileHandler
-from kedro.versioning.journal import JournalFileHandler
 import os
 import stat
 from pathlib import Path
-from pythonjsonlogger import jsonlogger
 
 #Configure General Logging
 

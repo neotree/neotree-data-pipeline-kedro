@@ -1,11 +1,7 @@
-from kedro.io import DataCatalog
 import logging
 from conf.common.format_error import formatError
-from kedro.extras.datasets.pandas import (
-    SQLQueryDataSet,SQLTableDataSet
-)
 from .config import config
-from sqlalchemy import event, create_engine,text
+from sqlalchemy import create_engine,text
 import sys
 from sqlalchemy.types import TEXT
 

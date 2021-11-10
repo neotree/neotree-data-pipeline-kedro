@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from datetime import datetime as dt
 from conf.base.catalog import params
 
 

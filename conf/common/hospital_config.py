@@ -2,12 +2,8 @@ from configparser import ConfigParser
 #import libraries
 import sys
 import logging
-from logging.handlers import RotatingFileHandler
-from kedro.versioning.journal import JournalFileHandler
 import os
-import stat
 from pathlib import Path
-from pythonjsonlogger import jsonlogger
 
 
 log = logging.getLogger('');
@@ -17,8 +13,8 @@ log = logging.getLogger('');
     
 def hospital_conf(filename='conf/local/hospitals.ini'):
         cwd = os.getcwd();
-        #Create Default Logs Directory If It doesnt Exist
-        if Path(os.getcwd()+'/conf/local/hospitals.ini').exists():
+        #Create Default Logs Directory If It doesnt Exists
+        if Path(cwd+'/conf/local/hospitals.ini').exists():
            
             parser = ConfigParser()
              # read config file

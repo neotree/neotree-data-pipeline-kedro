@@ -1,12 +1,9 @@
 from conf.base.catalog import catalog
-from dateutil.parser import parse
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 
 # Import libraries
-import pandas as pd
 import logging
 from datetime import datetime as dt
-import datetime
 
 
 def join_table():

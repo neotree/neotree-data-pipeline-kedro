@@ -1,5 +1,4 @@
 # This module extracts the key-value pairs within a raw json file.
-import logging
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import reduce
 

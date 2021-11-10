@@ -1,13 +1,9 @@
 # Import created modules (need to be stored in the same directory as notebook)
-import sys
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
-from conf.base.catalog import read_noelab_query
-from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
-from conf.common.sql_functions import create_table
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
 
 
@@ -15,8 +11,6 @@ from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import
 # Import libraries
 import pandas as pd
 from datetime import datetime as dt
-import datetime
-import numpy as np
 import logging
 
 
@@ -313,12 +307,69 @@ def tidy_tables():
 
         # Make changes to admissions and baseline data to match fields in power bi
         adm_df = create_columns(adm_df)
+        
+        # CREATE AGE CATEGORIES
 
+        if not adm_df.empty:
+            for position,admission in adm_df.iterrows():
+
+                age_list =[]
+
+                if 'Age.value' in admission and str(admission['Age.value']) != 'nan':
+                # Get The Value which is a string e.g  3 days, 4 hours
+                    age_list = str(admission['Age.value']).split(",")
+                else:
+                    if 'AgeB.value':
+                        age_list = str(admission['AgeB.value']).split(",")
+                # Initialise Hours
+                hours = 0
+                period = 0
+                # If size of List is 1 it either means its days only or hours only
+               
+                if len(age_list) == 1:
+                    age = age_list[0]
+                    # Check if hours or Days
+                    if 'hour' in age:
+
+                        hours= [int(s) for s in age.split() if s.isdigit()]
+                        if len(hours) >0:
+                            period = hours[0]
+                    elif 'day' in age:
+                        hours = [int(s) for s in age.split() if s.isdigit()]
+                        if len(hours) >0:
+                            period = hours[0] * 24
+                    else:
+                        pass;     
+                # Contains Both Hours and Days        
+                elif len(age_list) == 2:
+                    age_days = age_list[0]
+                    age_hours = age_list[1]
+                    if 'day' in age_days and 'hour' in age_hours:
+                        number_hours_days= [int(s) for s in age_days.split() if s.isdigit()]
+                        number_hours = [int(s) for s in age_hours.split() if s.isdigit()]
+                        if (len(number_hours) >0 and len(number_hours_days)>0):
+                            period = (number_hours_days[0]) * 24 +(number_hours[0])
+
+                else:
+                    pass;  
+
+                if period>0:
+                    if period< 2:
+                        adm_df.at[position,'AgeCategory'] = 'Fresh Newborn (< 2 hours old)'
+                    elif period>2 and period<=23:
+                        adm_df.at[position,'AgeCategory'] = 'Newborn (2 - 23 hrs old)'
+                    elif period>23 and period<=47:
+                        adm_df.at[position,'AgeCategory']= 'Newborn (1 day - 1 day 23 hrs old)'
+                    elif period>47 and period<= 71:
+                        adm_df.at[position,'AgeCategory']= 'Infant (2 days - 2 days 23 hrs old)' 
+                    else:
+                        adm_df.at[position,'AgeCategory'] = 'Infant (> 3 days old)' 
+
+                 
         if not baseline_df.empty:
             baseline_df = create_columns(baseline_df)
 
         # Create Episode Column for Neolab Data
-
         if not neolab_df.empty:
             # Initialise the column
             neolab_df['episode'] = 0

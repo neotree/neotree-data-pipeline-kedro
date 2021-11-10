@@ -1,11 +1,9 @@
 """Project hooks."""
-from typing import Any, Dict, Iterable, Optional
+from typing import Iterable
 
 from kedro.config import ConfigLoader
 from kedro.framework.hooks import hook_impl
 from kedro.io import DataCatalog
-from kedro.pipeline import Pipeline
-from kedro.versioning import Journal
 from data_pipeline.pipelines import data_engineering as de
 
 

@@ -2,9 +2,7 @@ import logging
 from conf.base.catalog import params
 from pathlib import Path
 import json
-import ast
 from datetime import datetime
-from re import search
 from conf.common.sql_functions import inject_sql_with_return,inject_sql
 
 def createAdmissionsAndDischargesFromRawData():
