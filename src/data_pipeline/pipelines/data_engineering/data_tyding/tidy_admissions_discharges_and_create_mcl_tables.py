@@ -330,15 +330,26 @@ def tidy_tables():
                     age = age_list[0]
                     # Check if hours or Days
                     if 'hour' in age:
-
-                        hours= [int(s) for s in age.split() if s.isdigit()]
+                       
+                        hours= [int(s) for s in age.replace("-","").split() if s.isdigit()]
+                        # Check if value contains figures
                         if len(hours) >0:
                             period = hours[0]
+                        else:
+                            if "an" in age:
+                                # IF AN HOUR 
+                                period = 1
+
                     elif 'day' in age:
-                        hours = [int(s) for s in age.split() if s.isdigit()]
+                        hours = [int(s) for s in age.replace("-","").split() if s.isdigit()]
                         if len(hours) >0:
                             period = hours[0] * 24
-                    else:
+                    elif 'second' in age:
+                        # FEW SECONDS CAN BE ROUNDED OFF 1 HOUR
+                        period = 1
+                    elif 'minute' in age:
+                        # MINUTES CAN BE ROUNDED OFF 1 HOUR
+                        period = 1
                         pass;     
                 # Contains Both Hours and Days        
                 elif len(age_list) == 2:
