@@ -382,23 +382,22 @@ def tidy_tables():
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
-                if 'BWTDis.value' in discharge and 'BirthWeight.value' not in discharge:
+                if 'BWTDis.value' in discharge and (discharge['BWTDis.value'])!= 'nan':
                     dis_df.at[position,'BirthWeight.value'] = dis_df.at[position,'BWTDis.value']
-                    logging.info("--DDD---"+dis_df.at[position,'BW.value'])
 
-                if 'BirthDateDis.value' in discharge and 'DOBTOB.value' not in discharge:
+                if 'BirthDateDis.value' in discharge and (discharge['BirthDateDis.value'])!= 'nan':
                     dis_df.at[position,'DOBTOB.value'] = dis_df.at[position,'BirthDateDis.value']
 
-                if 'Delivery.value' in discharge and 'ModeDelivery.value' not in discharge:
+                if 'Delivery.value' in discharge and (discharge['Delivery.value'])!= 'nan':
                     dis_df.at[position,'ModeDelivery.value'] = dis_df.at[position,'Delivery.value'] 
 
-                if 'NNUAdmTemp.value' in discharge and 'Temperature.value' not in discharge:
+                if 'NNUAdmTemp.value' in discharge and (discharge['NNUAdmTemp.value'])!= 'nan':
                     dis_df.at[position,'Temperature.value'] = dis_df.at[position,'NNUAdmTemp.value']
 
-                if 'GestBirth.value' in discharge and 'Gestation.value' not in discharge:
+                if 'GestBirth.value' in discharge and (discharge['GestBirth.value'])!= 'nan':
                     dis_df.at[position,'Gestation.value'] = dis_df.at[position,'GestBirth.value'] 
 
-                if 'PresComp.value' in discharge and 'AdmReason.value' not in discharge:
+                if 'PresComp.value' in discharge and (discharge['PresComp.value'])!= 'nan':
                     dis_df.at[position,'AdmReason.value'] = dis_df.at[position,'PresComp.value'] 
                  
         if not baseline_df.empty:
