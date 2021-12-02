@@ -376,8 +376,8 @@ def tidy_tables():
                     else:
                         adm_df.at[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-                if 'BW.value' in admission and 'BirthWeight.value' not in admission:
-                    logging.info("-----"+adm_df.at[position,'BW.value'] )
+                if 'BW.value' in admission and (admission['BW.value']) != 'nan':
+                    
                     adm_df.at[position,'BirthWeight.value'] = adm_df.at[position,'BW.value'] 
 
         if not dis_df.empty:
