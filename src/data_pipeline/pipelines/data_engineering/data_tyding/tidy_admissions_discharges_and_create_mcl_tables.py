@@ -380,9 +380,7 @@ def tidy_tables():
                 if 'BW.value' in admission and (admission['BW.value']) != 'nan':
                     
                     adm_df.at[position,'BirthWeight.value'] = adm_df.at[position,'BW.value'] 
-            if "Age.value" in adm_df:
-                adm_df[["Age.value"]] = adm_df[["Age.value"]].apply(pd.to_numeric)        
-
+          
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
                 if 'BWTDis.value' in discharge and (discharge['BWTDis.value'])!= 'nan':
