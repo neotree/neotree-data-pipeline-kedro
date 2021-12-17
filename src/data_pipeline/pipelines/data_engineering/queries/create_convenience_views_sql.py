@@ -11,7 +11,7 @@ def create_convinience_views_query():
             derived.joined_admissions_discharges."Gender.label" AS "Gender", 
             derived.joined_admissions_discharges."AW.value" AS "AdmissionWeight", 
             derived.joined_admissions_discharges."AWGroup.value" AS "AdmissionWeightGroup", 
-            derived.joined_admissions_discharges."BW.value" AS "BirthWeight", 
+            derived.joined_admissions_discharges."BirthWeight.value" AS "BirthWeight", 
             derived.joined_admissions_discharges."BWGroup.value" AS "BirthWeightGroup",
             derived.joined_admissions_discharges."Genitalia.value" AS "Genitalia",
             derived.joined_admissions_discharges."Gestation.value" AS "Gestation",
