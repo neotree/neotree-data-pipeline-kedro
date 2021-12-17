@@ -366,7 +366,7 @@ def tidy_tables():
 
                 if period>0:
                     adm_df.at[position,'Age.value'] = period
-                    adm_df["Age.value"] = pd.to_numeric(adm_df.at["Age.value"])
+                    adm_df[["Age.value"]] = adm_df[["Age.value"]].apply(pd.to_numeric)
                     if period< 2:
                         adm_df.at[position,'AgeCategory'] = 'Fresh Newborn (< 2 hours old)'
                     elif period>2 and period<=23:
