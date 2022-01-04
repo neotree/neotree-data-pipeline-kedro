@@ -433,7 +433,7 @@ def tidy_tables():
 
                          #Add BCR TYPE TO CONTROL DF
                          # First Sort By Result Date
-                        control_df = control_df.sort_values(by=['DateBCR.value'])
+                        control_df = control_df.sort_values(by=['DateBCR.value']).reset_index()
                         if control_df.at[innerIndex,'BCType'] is None:
                             if (control_df.at[innerIndex,'BCResult.value'] != 'Pos' and control_df.at[innerIndex,'BCResult.value'] != 'Neg'):
                                 control_df.at[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
