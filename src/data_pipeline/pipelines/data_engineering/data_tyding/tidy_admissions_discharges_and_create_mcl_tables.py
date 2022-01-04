@@ -417,20 +417,22 @@ def tidy_tables():
                 
                 
                 if neolab_df.at[index,'episode'] == 0 and not control_df.empty:
+                    episode =1;
                     for innerIndex, innerRow in control_df.iterrows() :
                         if innerIndex == 0:
-                            control_df.at[innerIndex,'episode'] = 1
+                           #Episode Remains 1 
+                           pass;
                         else:
                             control_df_date_bct = control_df.at[innerIndex,'DateBCT.value']
                             prev_control_df_date_bct = control_df.at[innerIndex-1,'DateBCT.value']
                             if len(str(control_df_date_bct)) >9 and len(str(prev_control_df_date_bct)) > 9 :
                                 if control_df_date_bct[:10] == prev_control_df_date_bct[:10]:
-                                    if innerRow['uid'] == '0002-8784':
-                                        logging.info("===VALUE=="+str(innerIndex)+"--0--"+str(control_df.at[innerIndex-1,'episode'] )+"-AT-"+str(control_df.at[0,'episode']));
-                                    control_df.at[innerIndex,'episode'] = control_df.at[innerIndex-1,'episode'];
+                                    # Episode Remains the same as previous Episode
+                                    pass;
                                 
                                 else:
-                                    control_df.at[innerIndex, 'episode'] = control_df.at[innerIndex-1,'episode']+1;
+                                    episode = episode+1;
+                        control_df.at[innerIndex, 'episode'] = episode            
                            
                         # Set The Episode Value For All Related Episodes in the Main DF 
                         
