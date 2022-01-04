@@ -424,7 +424,10 @@ def tidy_tables():
                             if (control_df.at[innerIndex,'BCResult.value'] != 'Pos' and control_df.at[innerIndex,'BCResult.value'] != 'Neg'):
                                 control_df.at[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
                             else:
-                                control_df.at[innerIndex,'BCType'] = "FINAL";
+                                if innerIndex == len(control_df)-1:
+                                    control_df.at[innerIndex,'BCType'] = "FINAL";
+                                else:
+                                    control_df.at[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
 
                         if innerIndex == 0:
                             control_df.at[innerIndex,'episode'] = 1
