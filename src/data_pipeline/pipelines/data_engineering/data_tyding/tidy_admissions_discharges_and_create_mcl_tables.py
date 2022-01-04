@@ -408,7 +408,7 @@ def tidy_tables():
         # Create Episode Column for Neolab Data
         if not neolab_df.empty:
             # Initialise the column
-            neolab_df['episode'] = 0
+            neolab_df['episode'] = 1
             # Initialise BCR TYPE
             neolab_df['BCType']= None
 
@@ -416,7 +416,7 @@ def tidy_tables():
                 control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
                 
                 
-                if neolab_df.at[index,'episode'] == 0 and not control_df.empty:
+                if row['episode'] == 0 and not control_df.empty:
                     episode =1;
                     for innerIndex, innerRow in control_df.iterrows() :
                         if innerIndex == 0:
