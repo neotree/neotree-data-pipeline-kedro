@@ -431,6 +431,13 @@ def tidy_tables():
                                 else:
                                     control_df.at[innerIndex, 'episode'] = control_df.at[innerIndex-1,'episode']+1;
 
+                        # Set The Episode Value For All Related Episodes in the Main DF 
+                        if control_df.at[innerIndex,'episode'] != 0:
+                            neolab_df.loc[(neolab_df['uid']
+                                ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
+                                ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
+                                == control_df.at[innerIndex,'DateBCR.value']),'episode'] = control_df.at[innerIndex,'episode']
+
                          #Add BCR TYPE TO CONTROL DF
                          # First Sort By Result Date
                         control_df = control_df.sort_values(by=['DateBCR.value']).reset_index(drop=True)
@@ -442,13 +449,6 @@ def tidy_tables():
                                     control_df.at[innerIndex,'BCType'] = "FINAL";
                                 else:
                                     control_df.at[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
-
-                        # Set The Episode Value For All Related Episodes in the Main DF 
-                        if control_df.at[innerIndex,'episode'] != 0:
-                            neolab_df.loc[(neolab_df['uid']
-                                ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
-                                ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
-                                == control_df.at[innerIndex,'DateBCR.value']),'episode'] = control_df.at[innerIndex,'episode']
 
                         # Set The BCR Type For All Related Records in the Main DFclear
                         if control_df.at[innerIndex,'BCType'] is not None:
