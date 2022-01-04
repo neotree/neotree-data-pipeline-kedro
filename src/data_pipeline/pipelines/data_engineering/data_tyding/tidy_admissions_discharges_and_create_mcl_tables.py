@@ -413,7 +413,7 @@ def tidy_tables():
             neolab_df['BCType']= None
 
             for index, row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCR.value']).reset_index()
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
                 
 
                 # If The First Row Has Episode 0 it means the rest of the rows with the same uid have not been touched
