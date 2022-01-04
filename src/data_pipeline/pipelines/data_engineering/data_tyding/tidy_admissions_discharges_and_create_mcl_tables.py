@@ -410,7 +410,7 @@ def tidy_tables():
             # Initialise the column
             neolab_df['episode'] = 0
             # Initialise BCR TYPE
-            neolab_df['BCRType']= None
+            neolab_df['BCType']= None
 
             for index, row in neolab_df.iterrows():
                 control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value','DateBCR.value']).reset_index()
@@ -420,12 +420,14 @@ def tidy_tables():
                 if neolab_df.at[index,'episode'] == 0 and not control_df.empty:
                     for innerIndex, innerRow in control_df.iterrows() :
                         #Add BCR TYPE TO CONTROL DF
-                        if control_df.at[innerIndex,'BCRType'] is None:
+                        logging.info("====I AM FIRST====",control_df.at[innerIndex,'BCType'] is None)
+                        if control_df.at[innerIndex,'BCType'] == None:
+                            logging.info("====I AM NONE====")
                             if (control_df.at[innerIndex,'BCResult.value'] != 'Pos' and 
                             control_df.at[innerIndex,'BCResult.value'] != 'Neg'):
-                                control_df[innerIndex,'BCRType'] = "PRELIMINARY-"+str(innerIndex+1);
+                                control_df[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
                             else:
-                                control_df[innerIndex,'BCRType'] = "FINAL";
+                                control_df[innerIndex,'BCType'] = "FINAL";
 
                         if innerIndex == 0:
                             control_df.at[innerIndex,'episode'] = 1
@@ -448,7 +450,7 @@ def tidy_tables():
                         neolab_df.loc[(neolab_df['uid']
                                 ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
                                 ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
-                                == control_df.at[innerIndex,'DateBCR.value']),'BCRType'] = control_df.at[innerIndex,'BCRType']
+                                == control_df.at[innerIndex,'DateBCR.value']),'BCType'] = control_df.at[innerIndex,'BCType']
 
  
 
