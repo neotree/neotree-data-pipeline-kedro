@@ -413,7 +413,7 @@ def tidy_tables():
             neolab_df['BCType']= None
 
             for index, row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value','DateBCR.value']).reset_index()
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCR.value']).reset_index()
                 
 
                 # If The First Row Has Episode 0 it means the rest of the rows with the same uid have not been touched
@@ -421,11 +421,10 @@ def tidy_tables():
                     for innerIndex, innerRow in control_df.iterrows() :
                         #Add BCR TYPE TO CONTROL DF
                         if control_df.at[innerIndex,'BCType'] is None:
-                            logging.info("====I AM NONE====")
                             if (control_df.at[innerIndex,'BCResult.value'] != 'Pos' and control_df.at[innerIndex,'BCResult.value'] != 'Neg'):
-                                control_df[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
+                                control_df.at[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
                             else:
-                                control_df[innerIndex,'BCType'] = "FINAL";
+                                control_df.at[innerIndex,'BCType'] = "FINAL";
 
                         if innerIndex == 0:
                             control_df.at[innerIndex,'episode'] = 1
@@ -445,9 +444,8 @@ def tidy_tables():
                                 ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
                                 == control_df.at[innerIndex,'DateBCR.value']),'episode'] = control_df.at[innerIndex,'episode']
 
-                        # Set The BCR Type For All Related Records in the Main DF
+                        # Set The BCR Type For All Related Records in the Main DFclear
                         if control_df.at[innerIndex,'BCType'] is not None:
-                            logging.info("ODD=="+str(control_df.at[innerIndex,'BCType']))
                             neolab_df.loc[(neolab_df['uid']
                                 ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
                                 ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
