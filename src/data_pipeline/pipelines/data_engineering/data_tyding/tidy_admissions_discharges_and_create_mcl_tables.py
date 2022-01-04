@@ -432,14 +432,11 @@ def tidy_tables():
                                 
                                 else:
                                     episode = episode+1;
-                        control_df.at[innerIndex, 'episode'] = episode            
-                           
-                        # Set The Episode Value For All Related Episodes in the Main DF 
-                        
+                         # Set The Episode Value For All Related Episodes in the Main DF 
                         neolab_df.loc[(neolab_df['uid']
                             ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
                             ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
-                            == control_df.at[innerIndex,'DateBCR.value']),'episode'] = control_df.at[innerIndex,'episode']
+                            == control_df.at[innerIndex,'DateBCR.value']),'episode'] = episode                              
 
                          #Add BCR TYPE TO CONTROL DF
                          # First Sort By Result Date
