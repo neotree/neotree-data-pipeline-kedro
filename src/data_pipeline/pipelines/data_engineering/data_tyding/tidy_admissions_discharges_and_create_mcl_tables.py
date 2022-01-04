@@ -415,12 +415,11 @@ def tidy_tables():
             for index, row in neolab_df.iterrows():
                 control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
                 
-
                 # If The First Row Has Episode 0 it means the rest of the rows with the same uid have not been touched
                 if neolab_df.at[index,'episode'] == 0 and not control_df.empty:
                     for innerIndex, innerRow in control_df.iterrows() :
                         if innerRow['uid'] == '0002-8784':
-                            logging.info("====="+str(innerIndex));
+                            logging.info("====INDEX="+str(innerIndex)+"--LEN--"+str(len(control_df)));
                         if innerIndex == 0:
                             control_df.at[innerIndex,'episode'] = 1
                         else:
@@ -433,7 +432,7 @@ def tidy_tables():
                                 else:
                                     control_df.at[innerIndex, 'episode'] = control_df.at[innerIndex-1,'episode']+1;
                         if innerRow['uid'] == '0002-8784':
-                            logging.info("====="+str(control_df.at[innerIndex,'episode'] ));
+                            logging.info("===VALUE=="+str(control_df.at[innerIndex,'episode'] ));
                         # Set The Episode Value For All Related Episodes in the Main DF 
                         
                         neolab_df.loc[(neolab_df['uid']
