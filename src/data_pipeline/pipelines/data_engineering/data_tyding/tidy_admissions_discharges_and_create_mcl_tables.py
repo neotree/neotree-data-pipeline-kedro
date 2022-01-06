@@ -413,12 +413,13 @@ def tidy_tables():
             neolab_df['BCType']= None
 
             for index, row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 
                 
-                if row['episode']==1 and not control_df.empty:
+                if not control_df.empty:
                     episode =1;
                     for innerIndex, innerRow in control_df.iterrows() :
+                        
                         if innerIndex == 0:
                            #Episode Remains 1 
                            pass;
@@ -442,7 +443,8 @@ def tidy_tables():
                          # First Sort By Result Date
                         control_df = control_df.sort_values(by=['DateBCR.value']).reset_index(drop=True)
                         if control_df.at[innerIndex,'BCType'] is None:
-                            if (control_df.at[innerIndex,'BCResult.value'] != 'Pos' and control_df.at[innerIndex,'BCResult.value'] != 'Neg'):
+                            if (control_df.at[innerIndex,'BCResult.value'] != 'Pos' and control_df.at[innerIndex,'BCResult.value'] != 'Neg'
+                                and control_df.at[innerIndex,'BCResult.value'] != 'PC'):
                                 control_df.at[innerIndex,'BCType'] = "PRELIMINARY-"+str(innerIndex+1);
                             else:
                                 if innerIndex == len(control_df)-1:
