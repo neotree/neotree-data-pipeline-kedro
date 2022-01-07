@@ -110,11 +110,11 @@ def create_convinience_views_query():
                 WHEN derived.joined_admissions_discharges."GestGroup.value" = 'Term' THEN 5
             END AS "GestSort",
             CASE
-                WHEN derived.joined_admissions_discharges."AgeCat.label" = 'Fresh Newborn (< 2 hours old)' THEN 1
-                WHEN derived.joined_admissions_discharges."AgeCat.label" = 'Newborn (2 - 23 hrs old)' THEN 2
-                WHEN derived.joined_admissions_discharges."AgeCat.label" = 'Newborn (1 day - 1 day 23 hrs old)' THEN 3
-                WHEN derived.joined_admissions_discharges."AgeCat.label" = 'Infant (2 days - 2 days 23 hrs old)' THEN 4
-                WHEN derived.joined_admissions_discharges."AgeCat.label" = 'Infant (> 3 days old)' THEN 5
+                WHEN derived.joined_admissions_discharges."AgeCategory" = 'Fresh Newborn (< 2 hours old)' THEN 1
+                WHEN derived.joined_admissions_discharges."AgeCategory" = 'Newborn (2 - 23 hrs old)' THEN 2
+                WHEN derived.joined_admissions_discharges."AgeCategory" = 'Newborn (1 day - 1 day 23 hrs old)' THEN 3
+                WHEN derived.joined_admissions_discharges."AgeCategory" = 'Infant (2 days - 2 days 23 hrs old)' THEN 4
+                WHEN derived.joined_admissions_discharges."AAgeCategory" = 'Infant (> 3 days old)' THEN 5
             END AS "AgeCatSort"
             FROM derived.joined_admissions_discharges
             ORDER BY derived.joined_admissions_discharges."uid" ASC; '''

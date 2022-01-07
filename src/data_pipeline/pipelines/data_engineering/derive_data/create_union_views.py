@@ -83,12 +83,19 @@ def union_views():
         adm_where = f'''where TO_DATE("DateTimeAdmission.value",'YYYY-MM-DD') >='2021-02-01' AND facility = 'SMCH' '''
         disc_where = f'''where TO_DATE("DateTimeDischarge.value",'YYYY-MM-DD') >='2021-02-01' or TO_DATE("DateTimeDeath.value",'YYYY-MM-DD')>'2021-02-01'  AND facility = 'SMCH' '''
         if len(adm_view_columns) > 0:
+            logging.info("ADM-COLS--"+str(
+                json.dumps(adm_view_columns))[1:-1]+" "+ adm_where);
             create_union_views('old_new_admissions_view', 'admissions', 'old_smch_admissions', str(
-                json.dumps(adm_view_columns))[1:-1], adm_where)
+                json.dumps(adm_view_columns))[1:-1]+" "+adm_where)
         if len(dis_view_columns) > 0:
+            logging.info('--DIS-COLS--'+str(
+                json.dumps(dis_view_columns))[1:-1]+" "+ disc_where);
             create_union_views('old_new_discharges_view', 'discharges', 'old_smch_discharges', str(
                 json.dumps(dis_view_columns))[1:-1], disc_where)
         if len(matched_view_columns) > 0:
+            logging.info('--MATCHED-COLS--'+str(
+                json.dumps(matched_view_columns))[1:-1]+" " +adm_where)
+
             create_union_views('old_new_matched_view', 'joined_admissions_discharges', 'old_smch_matched_admissions_discharges', str(
                 json.dumps(matched_view_columns))[1:-1], adm_where)
 
