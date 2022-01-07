@@ -101,3 +101,4 @@ def union_views():
 
     except Exception as ex:
         logging.error("!!! An error occured creating union views: ")
+        logging.error(ex.with_traceback())
