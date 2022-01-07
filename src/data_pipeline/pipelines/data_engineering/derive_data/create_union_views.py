@@ -30,10 +30,11 @@ def union_views():
                 if col_name == row2['column_name']:
                     if(data_type == row2['data_type']):
                         adm_view_columns.append(col_name)
-                    elif 'double' in data_type and 'timestamp' in row2['data_type']:
+                    elif 'double' in data_type and 'timestamp' in row2['data_type'] or ('double' in data_type and 'text' in row2['data_type']):
                         pass
+                  
                     else:
-                        if 'timestamp' in data_type:
+                        if 'timestamp' in data_type :
                             using = f'''USING "{col_name}"::{data_type}'''
                         query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};'''
                         inject_sql(query,"OLD ADMISSIONS")
@@ -42,14 +43,14 @@ def union_views():
                     pass
 
         for index, row in disc_cols.iterrows():
-            col_name = row['column_name']
+            col_name = str(row['column_name']).strip()
             data_type = row['data_type']
             using = ''
             for index2, row2 in old_disc_cols.iterrows():
                 if col_name == row2['column_name']:
                     if(data_type == row2['data_type']):
                         dis_view_columns.append(col_name)
-                    elif 'double' in data_type and 'timestamp' in row2['data_type']:
+                    elif 'double' in data_type and 'timestamp' in row2['data_type'] or ('double' in data_type and 'text' in row2['data_type']):
                         pass
                     else:
                         if 'timestamp' in str(data_type):
@@ -61,14 +62,15 @@ def union_views():
                     pass
 
         for index, row in matched_cols.iterrows():
-            col_name = row['column_name']
+            col_name = str(row['column_name']).strip()
             data_type = row['data_type']
             using = ''
             for index2, row2 in old_matched_cols .iterrows():
                 if col_name == row2['column_name']:
                     if(data_type == row2['data_type']):
                         matched_view_columns.append(col_name)
-                    elif 'double' in data_type and 'timestamp' in row2['data_type']:
+                    #Avoid inconvertible types    
+                    elif 'double' in data_type and 'timestamp' in row2['data_type'] or ('double' in data_type and 'text' in row2['data_type']):
                         pass
                     else:
                         if 'timestamp' in str(data_type):
