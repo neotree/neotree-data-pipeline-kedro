@@ -36,7 +36,7 @@ def union_views():
                         if 'timestamp' in data_type:
                             using = f'''USING "{col_name}"::{data_type}'''
                         query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};'''
-                        inject_sql(query)
+                        inject_sql(query,"OLD ADMISSIONS")
                         adm_view_columns.append(col_name)
                 else:
                     pass
@@ -55,7 +55,7 @@ def union_views():
                         if 'timestamp' in str(data_type):
                             using = f'''USING "{col_name}"::{data_type}'''
                         query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
-                        inject_sql(query)
+                        inject_sql(query,"OLD DISCHARGES")
                         dis_view_columns.append(col_name)
                 else:
                     pass
@@ -74,7 +74,7 @@ def union_views():
                         if 'timestamp' in str(data_type):
                             using = f'''USING "{col_name}"::{data_type}'''
                         query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
-                        inject_sql(query)
+                        inject_sql(query,"Union Views")
                         matched_view_columns.append(col_name)
                 else:
                     pass
