@@ -434,7 +434,7 @@ def tidy_tables():
                                 else:
                                     episode = episode+1;
                          # Set The Episode Value For All Related Episodes in the Main DF 
-                        control_df.at[innerIndex,'episode']= episode;
+                        control_df.loc[innerIndex,'episode']= episode;
                         neolab_df.loc[(neolab_df['uid']
                             ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
                             ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
