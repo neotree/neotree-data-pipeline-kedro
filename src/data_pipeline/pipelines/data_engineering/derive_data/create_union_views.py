@@ -31,7 +31,7 @@ def union_views():
                     if(data_type == row2['data_type']):
                         adm_view_columns.append(col_name)
                     elif 'double' in data_type and 'timestamp' in row2['data_type'] or ('double' in data_type and 'text' in row2['data_type']):
-                       adm_view_columns.remove(col_name);
+                       pass;
                   
                     else:
                         if 'timestamp' in data_type :
@@ -51,7 +51,7 @@ def union_views():
                     if(data_type == row2['data_type']):
                         dis_view_columns.append(col_name)
                     elif 'double' in data_type and 'timestamp' in row2['data_type'] or ('double' in data_type and 'text' in row2['data_type']):
-                        dis_view_columns.remove(col_name);
+                        pass;
                     else:
                         if 'timestamp' in str(data_type):
                             using = f'''USING "{col_name}"::{data_type}'''
@@ -71,7 +71,7 @@ def union_views():
                         matched_view_columns.append(col_name)
                     #Avoid inconvertible types    
                     elif 'double' in data_type and 'timestamp' in row2['data_type'] or ('double' in data_type and 'text' in row2['data_type']):
-                        matched_view_columns.remove(col_name)
+                        pass;
                     else:
                         if 'timestamp' in str(data_type):
                             using = f'''USING "{col_name}"::{data_type}'''
