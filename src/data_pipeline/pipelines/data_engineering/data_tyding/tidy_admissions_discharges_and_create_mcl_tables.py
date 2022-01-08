@@ -408,59 +408,61 @@ def tidy_tables():
         # Create Episode Column for Neolab Data
         if not neolab_df.empty:
             # Initialise the column
-            neolab_df['episode'] = 1
+            neolab_df['episode'] = 0
             # Initialise BCR TYPE
             neolab_df['BCType']= None
 
             for index, row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index(drop=True)
-                
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
                 #Set Episodes
                 if not control_df.empty:
                     episode =1;
-                    for innerIndex, innerRow in control_df.iterrows() :
-                        
-                        if innerIndex == 0:
-                           #Episode Remains 1 
-                           pass;
-                        else:
-                            control_df_date_bct = control_df.at[innerIndex,'DateBCT.value']
-                            prev_control_df_date_bct = control_df.at[innerIndex-1,'DateBCT.value']
-                            if len(str(control_df_date_bct)) >9 and len(str(prev_control_df_date_bct)) > 9 :
-                                if control_df_date_bct[:10] == prev_control_df_date_bct[:10]:
-                                    # Episode Remains the same as previous Episode
-                                    pass;
-                                
-                                else:
-                                    episode = episode+1;
-                         # Set The Episode Value For All Related Episodes in the Main DF 
-                        control_df.loc[innerIndex,'episode']= episode;
-                        neolab_df.loc[(neolab_df['uid']
-                            ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
-                            ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
-                            == control_df.at[innerIndex,'DateBCR.value']),'episode'] = episode                              
-
-                    #Add BCR TYPE TO CONTROL DF
-                    # Loop is necessary since BCType is dependant on the set episodes
-                    for bct_index, bct_row in control_df.iterrows() :
-                        bct_type_df = control_df[control_df['uid'] == bct_row['uid'],control_df['episode'] == bct_row['episode']]
-                        if not bct_type_df.empty:
-                            if bct_type_df.at[bct_index,'BCType'] is None:
-                                if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
-                                    and bct_type_df.at[bct_index,'BCResult.value'] != 'PC'):
-                                    bct_type_df.at[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
-                                else:
-                                    if bct_index == len(bct_type_df)-1:
-                                        bct_type_df.at[bct_index,'BCType'] = "FINAL";
+                    if neolab_df[index,'episode'] ==0:
+                        for innerIndex, innerRow in control_df.iterrows() :
+                            
+                            if innerIndex == 0:
+                            #Episode Remains 1 
+                                pass;
+                            else:
+                                control_df_date_bct = control_df.at[innerIndex,'DateBCT.value']
+                                prev_control_df_date_bct = control_df.at[innerIndex-1,'DateBCT.value']
+                                if len(str(control_df_date_bct)) >9 and len(str(prev_control_df_date_bct)) > 9 :
+                                    if control_df_date_bct[:10] == prev_control_df_date_bct[:10]:
+                                        # Episode Remains the same as previous Episode
+                                        pass;
+                                    
                                     else:
-                                        bct_type_df.at[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
+                                        episode = episode+1;
+                            # Set The Episode Value For All Related Episodes in the Main DF 
+                            control_df.loc[innerIndex,'episode']= episode;
+                            neolab_df.loc[(neolab_df['uid']
+                                ==control_df.at[innerIndex,'uid']) & (neolab_df['DateBCT.value']
+                                ==control_df.at[innerIndex,'DateBCT.value']) & (neolab_df['DateBCR.value']
+                                == control_df.at[innerIndex,'DateBCR.value']),'episode'] = episode                              
 
-                            # Set The BCR Type For All Related Records in the Main DFclear
-                            if bct_type_df.at[bct_index,'BCType'] is not None:
-                                bct_type_df.loc[(neolab_df['uid']
-                                    ==bct_type_df.at[bct_index,'uid']) & (neolab_df['DateBCT.value']
-                                    ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
-                                    == bct_type_df.at[bct_index,'DateBCR.value']),'BCType'] = bct_type_df.at[bct_index,'BCType']
+                        #Add BCR TYPE TO CONTROL DF
+                        # Loop is necessary since BCType is dependant on the set episodes
+                        for bct_index, bct_row in control_df.iterrows() :  
+                            logging.info("---KEY1--"+str('episode' in bct_type_df)+"---KEYS2--"+str('episode' in control_df)+"--KEYS3--"+str('episode' in control_df));
+                            bct_type_df = control_df[control_df['uid'] == bct_row['uid'],control_df['episode'] == bct_row['episode']]
+                            if not bct_type_df.empty:
+                                    
+                                if bct_type_df.at[bct_index,'BCType'] is None:
+                                    if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
+                                        and bct_type_df.at[bct_index,'BCResult.value'] != 'PC'):
+                                        bct_type_df.at[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
+                                    else:
+                                        if bct_index == len(bct_type_df)-1:
+                                            bct_type_df.at[bct_index,'BCType'] = "FINAL";
+                                        else:
+                                            bct_type_df.at[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
+
+                                # Set The BCR Type For All Related Records in the Main DFclear
+                                if bct_type_df.at[bct_index,'BCType'] is not None:
+                                    bct_type_df.loc[(neolab_df['uid']
+                                        ==bct_type_df.at[bct_index,'uid']) & (neolab_df['DateBCT.value']
+                                        ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
+                                        == bct_type_df.at[bct_index,'DateBCR.value']),'BCType'] = bct_type_df.at[bct_index,'BCType']
 
  
 
