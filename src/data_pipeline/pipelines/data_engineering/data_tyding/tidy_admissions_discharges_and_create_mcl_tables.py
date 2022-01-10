@@ -452,7 +452,8 @@ def tidy_tables():
                                             ==bct_type_df.at[bct_index,'uid']) & (neolab_df['DateBCT.value']
                                             ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
                                             == bct_type_df.at[bct_index,'DateBCR.value']),'BCType']
-
+                                    
+                                    logging.info("====="+str(bct_value)+ "===="+row['uid'])
                                     if row['uid'] =='9980-0818':
                                         logging.info("====="+str(bct_index)+"----"+str(row['DateBCT.value'])+"----"+row['BCResult.value'])
                                     if bct_value is None:
