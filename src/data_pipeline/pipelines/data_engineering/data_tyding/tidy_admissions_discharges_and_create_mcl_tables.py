@@ -427,7 +427,7 @@ def tidy_tables():
                                 control_df_date_bct = control_df.at[innerIndex,'DateBCT.value']
                                 prev_control_df_date_bct = control_df.at[innerIndex-1,'DateBCT.value']
                                 if len(str(control_df_date_bct)) >9 and len(str(prev_control_df_date_bct)) > 9 :
-                                    if control_df_date_bct[:10] == prev_control_df_date_bct[:10]:
+                                    if str(control_df_date_bct)[:10] == str(prev_control_df_date_bct)[:10]:
                                         # Episode Remains the same as previous Episode
                                         pass;
                                     
