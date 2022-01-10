@@ -411,9 +411,9 @@ def tidy_tables():
             neolab_df['episode'] = 0
             # Initialise BCR TYPE
             neolab_df['BCType']= None
-
+            neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'])
             for index, row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index()
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 #Set Episodes
                 if not control_df.empty:
                     episode =1;
