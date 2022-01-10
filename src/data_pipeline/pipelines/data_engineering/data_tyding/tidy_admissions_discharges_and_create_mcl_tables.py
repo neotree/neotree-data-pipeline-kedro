@@ -417,8 +417,8 @@ def tidy_tables():
                 #Set Episodes
                 if not control_df.empty:
                     episode =1;
-                    logging.info(neolab_df[index,'episode'] )
-                    if neolab_df[index,'episode'] ==0:
+                    logging.info(neolab_df.at[index,'episode'] )
+                    if neolab_df.at[index,'episode'] ==0:
                         for innerIndex, innerRow in control_df.iterrows() :
                             
                             if innerIndex == 0:
