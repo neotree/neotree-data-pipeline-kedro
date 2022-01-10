@@ -444,6 +444,7 @@ def tidy_tables():
                         # Loop is necessary since BCType is dependant on the set episodes
                         for bct_index, bct_row in control_df.iterrows() :  
                             bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].copy()
+                            logging.info("DDDDDDDD---",len(bct_type_df))
                             if not bct_type_df.empty:
                                 if bct_type_df.at[bct_index,'BCType'] is None:
                                     if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
