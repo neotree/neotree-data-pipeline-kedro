@@ -448,13 +448,13 @@ def tidy_tables():
                             if not bct_type_df.empty:
                                 preliminary_index= 1;
                                 for bct_index, row in bct_type_df.iterrows():
-                                    bct_value = neolab_df[(neolab_df['uid']
+                                    bct_value = neolab_df.loc[(neolab_df['uid']
                                             ==bct_type_df.at[bct_index,'uid']) & (neolab_df['DateBCT.value']
                                             ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
-                                            == bct_type_df.at[bct_index,'DateBCR.value'])]['BCType']
+                                            == bct_type_df.at[bct_index,'DateBCR.value'])]['BCType'].values[0]
                                     
                                     logging.info("====="+str(bct_value))
-                                    if row['uid'] =='9980-0818':
+                                    if str(row['uid']) =='9980-0818':
                                         logging.info("====="+str(bct_index)+"----"+str(row['DateBCT.value'])+"----"+row['BCResult.value'])
                                     if bct_value is None:
                                         if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
