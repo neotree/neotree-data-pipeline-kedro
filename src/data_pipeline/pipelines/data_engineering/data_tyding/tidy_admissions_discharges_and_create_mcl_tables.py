@@ -446,7 +446,7 @@ def tidy_tables():
                             bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].copy()
                             if not bct_type_df.empty:
                                 preliminary_index= 1;
-                                for bct_index, row in bct_type_df:
+                                for bct_index, row in bct_type_df.iterrows():
                                     if bct_type_df.at[index,'BCType'] is None:
                                         if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
                                             and bct_type_df.at[bct_index,'BCResult.value'] != 'PC'):
