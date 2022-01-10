@@ -445,16 +445,15 @@ def tidy_tables():
                         for bct_index, bct_row in control_df.iterrows() :  
                             bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].copy()
                             if not bct_type_df.empty:
-                                    
                                 if bct_type_df.at[bct_index,'BCType'] is None:
                                     if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
                                         and bct_type_df.at[bct_index,'BCResult.value'] != 'PC'):
-                                        bct_type_df.at[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
+                                        bct_type_df.loc[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
                                     else:
                                         if bct_index == len(bct_type_df)-1:
-                                            bct_type_df.at[bct_index,'BCType'] = "FINAL";
+                                            bct_type_df.loc[bct_index,'BCType'] = "FINAL";
                                         else:
-                                            bct_type_df.at[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
+                                            bct_type_df.loc[bct_index,'BCType'] = "PRELIMINARY-"+str(bct_index+1);
 
                                 # Set The BCR Type For All Related Records in the Main DFclear
                                 if bct_type_df.at[bct_index,'BCType'] is not None:
