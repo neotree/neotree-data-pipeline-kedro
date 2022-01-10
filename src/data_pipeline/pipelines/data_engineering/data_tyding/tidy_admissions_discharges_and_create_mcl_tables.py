@@ -413,7 +413,7 @@ def tidy_tables():
             neolab_df['BCType']= None
 
             for index, row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
+                control_df = neolab_df.loc[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
                 #Set Episodes
                 if not control_df.empty:
                     episode =1;
@@ -443,7 +443,7 @@ def tidy_tables():
                         #Add BCR TYPE TO CONTROL DF
                         # Loop is necessary since BCType is dependant on the set episodes
                         for bct_index, bct_row in control_df.iterrows() :  
-                            bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])]
+                            bct_type_df = control_df.loc[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])]
                             if not bct_type_df.empty:
                                     
                                 if bct_type_df.at[bct_index,'BCType'] is None:
