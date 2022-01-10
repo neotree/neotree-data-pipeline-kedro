@@ -414,7 +414,7 @@ def tidy_tables():
 
             for index, row in neolab_df.iterrows():
                 control_df = neolab_df[neolab_df['uid'] == row['uid']].sort_values(by=['DateBCT.value']).reset_index()
-                logging.log("DDDDD--"+ str(control_df.keys()) + "--FFF--"+str(neolab_df.keys()))
+                logging.log("DDDDD--", str(control_df.keys()) + "--FFF--"+str(neolab_df.keys()))
                 #Set Episodes
                 if not control_df.empty:
                     episode =1;
