@@ -443,13 +443,20 @@ def tidy_tables():
                         #Add BCR TYPE TO CONTROL DF
                         # Loop is necessary since BCType is dependant on the set episodes
                         for control_index, bct_row in control_df.iterrows() :  
-                            bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].copy()
+                            bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].reset_index(drop=True).copy()
+                            
                             if not bct_type_df.empty:
                                 preliminary_index= 1;
                                 for bct_index, row in bct_type_df.iterrows():
+                                    bct_value = neolab_df[(neolab_df['uid']
+                                            ==bct_type_df.at[bct_index,'uid']) & (neolab_df['DateBCT.value']
+                                            ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
+                                            == bct_type_df.at[bct_index,'DateBCR.value'])]['BCType']
+
+                                    logging.info("====BCT_V="+str(bct_value))
                                     if row['uid'] =='9980-0818':
                                         logging.info("====="+str(bct_index)+"----"+str(row['DateBCT.value'])+"----"+row['BCResult.value'])
-                                    if bct_type_df.at[bct_index,'BCType'] is None:
+                                    if bct_value is None:
                                         if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
                                             and bct_type_df.at[bct_index,'BCResult.value'] != 'PC'):
                                             bct_type_df.loc[bct_index,'BCType'] = "PRELIMINARY-"+str(preliminary_index);
