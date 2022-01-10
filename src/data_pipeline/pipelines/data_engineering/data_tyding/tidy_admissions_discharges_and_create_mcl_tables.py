@@ -447,6 +447,8 @@ def tidy_tables():
                             if not bct_type_df.empty:
                                 preliminary_index= 1;
                                 for bct_index, row in bct_type_df.iterrows():
+                                    if row['uid'] =='9980-0818':
+                                        logging.info("====="+str(bct_index)+"----"+str(row['DateBCT.value'])+"----"+row['BCResult.value'])
                                     if bct_type_df.at[bct_index,'BCType'] is None:
                                         if (bct_type_df.at[bct_index,'BCResult.value'] != 'Pos' and bct_type_df.at[bct_index,'BCResult.value'] != 'Neg'
                                             and bct_type_df.at[bct_index,'BCResult.value'] != 'PC'):
