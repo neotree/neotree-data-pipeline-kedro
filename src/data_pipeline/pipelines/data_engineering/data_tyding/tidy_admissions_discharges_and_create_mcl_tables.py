@@ -458,7 +458,7 @@ def tidy_tables():
 
                                 # Set The BCR Type For All Related Records in the Main DFclear
                                 if bct_type_df.at[bct_index,'BCType'] is not None:
-                                    bct_type_df.loc[(neolab_df['uid']
+                                    neolab_df.loc[(neolab_df['uid']
                                         ==bct_type_df.at[bct_index,'uid']) & (neolab_df['DateBCT.value']
                                         ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
                                         == bct_type_df.at[bct_index,'DateBCR.value']),'BCType'] = bct_type_df.at[bct_index,'BCType']
