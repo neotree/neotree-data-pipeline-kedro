@@ -24,8 +24,10 @@ def tidy_tables():
         duplicate_df = pd.DataFrame([tuples[0]],columns=['id','uid','DateAdmission']);
         if not duplicate_df.empty:
             unique_uids = duplicate_df['uid'].unique();
+            logging.info(unique_uids)
             alphabet = "0A1B2C3D4E5F6789"
             for ind in unique_uids:
+               logging.info("----DER--"+str(ind))
                dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy()
 
                if not dup_df.empty:
