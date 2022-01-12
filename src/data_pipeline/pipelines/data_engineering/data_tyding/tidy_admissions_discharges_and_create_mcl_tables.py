@@ -23,7 +23,7 @@ def tidy_tables():
         tuples = fix_duplicate_uid()
         duplicate_df = pd.DataFrame([tuples[0]],['id','uid','DateAdmission']);
         if not duplicate_df.empty:
-            logging.info("****"+duplicate_df.loc[0,['id','uid','DateAdmission']])
+            logging.info("****"+duplicate_df.loc[0])
             unique_uids = duplicate_df['uid'].unique();
             alphabet = "0A1B2C3D4E5F6789"
             for ind,r in unique_uids.items():
