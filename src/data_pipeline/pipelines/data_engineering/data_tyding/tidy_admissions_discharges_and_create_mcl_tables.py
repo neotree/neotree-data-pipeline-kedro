@@ -15,6 +15,7 @@ import pandas as pd
 from datetime import datetime as dt
 import logging
 import random
+import sys
 
 
 def tidy_tables():
@@ -23,7 +24,7 @@ def tidy_tables():
         tuples = fix_duplicate_uid()
         duplicate_df = pd.DataFrame(tuples,columns=['id','uid','DateAdmission']);
         if not duplicate_df.empty:
-            unique_uids = duplicate_df['uid'].unique();
+            unique_uids = duplicate_df['uid'].copy().unique();
            
             alphabet = "0A1B2C3D4E5F6789"
             for ind in unique_uids:
@@ -48,6 +49,7 @@ def tidy_tables():
                                 update_uid('public','sessions',dup['id'],uid); 
                        prev_record = dup;    
         logging.info("...DONE WITH UPDATE......")
+        
     except Exception as ex:
         raise ex;
 
