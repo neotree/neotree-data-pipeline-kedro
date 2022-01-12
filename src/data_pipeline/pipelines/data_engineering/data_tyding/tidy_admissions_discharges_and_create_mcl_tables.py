@@ -49,6 +49,7 @@ def tidy_tables():
                                 update_uid('public','sessions',dup['id'],uid); 
                        prev_record = dup;    
         logging.info("...DONE WITH UPDATE......")
+        sys.exit()
         
     except Exception as ex:
         raise ex;
