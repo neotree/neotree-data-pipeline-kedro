@@ -27,21 +27,24 @@ def tidy_tables():
             logging.info(unique_uids)
             alphabet = "0A1B2C3D4E5F6789"
             for ind in unique_uids:
-               logging.info("----DER--"+str(ind))
                dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy()
 
                if not dup_df.empty:
+                   prev_record = None;
                    for dup_index, dup in dup_df.iterrows():
-                       if dup_index >=1 and dup_df['DateAdmission'] is not None:
-                           adm_date = dup_df['DateAdmission']
-                           prev_adm_date = dup_df.at[dup_index-1,'DateAdmission']
+                       logging.info(dup)
+                       if dup_index >=1 and dup['DateAdmission'] is not None:
+                           adm_date = dup['DateAdmission']
+                           prev_adm_date = prev_record['DateAdmission']
                            if adm_date == prev_adm_date:
                                # RECORD IS A DUPLICATE AND WILL BE DELT WITH DURING DEDUPLICATION PROCESS ON NEXT RUN OF PIPELINE
                                pass;
+                        
                            else:
                                #GENERATE NEW UID
                                 uid = '78'.join((random.choice(alphabet)) for x in range(2))+'-'+str(random.randint(1000,9999));
-                                update_uid('public','sessions',dup['id'],uid);     
+                                update_uid('public','sessions',dup['id'],uid); 
+                       prev_record = dup;    
         logging.info("...DONE WITH UPDATE......")
     except Exception as ex:
         raise ex;
@@ -445,7 +448,7 @@ def tidy_tables():
             neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'])
             unique_uids = neolab_df['uid'].unique()
             for uid in unique_uids:
-                control_df = neolab_df[neolab_df['uid'] == uid].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
+                control_df = neolab_df[neolab_df['uid'] == str(uid)].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 #Set Episodes
                 if not control_df.empty:
                     episode =1;
