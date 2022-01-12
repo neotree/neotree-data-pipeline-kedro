@@ -20,8 +20,7 @@ import random
 def tidy_tables():
 
     try:
-        duplicate_df = pd.DataFrame([fix_duplicate_uid()]);
-        duplicate_df.columns['id','uid','DateAdmission']
+        duplicate_df = pd.DataFrame(fix_duplicate_uid(),['id','uid','DateAdmission']);
         if not duplicate_df.empty:
             unique_uids = duplicate_df['uid'].unique();
             alphabet = "0A1B2C3D4E5F6789"
