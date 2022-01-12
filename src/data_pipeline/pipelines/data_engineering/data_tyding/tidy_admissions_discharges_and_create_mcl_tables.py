@@ -46,8 +46,7 @@ def tidy_tables():
                            else:
                                #GENERATE NEW UID
                                 uid = '78'.join((random.choice(alphabet)) for x in range(2))+'-'+str(random.randint(1000,9999));
-                                # update_uid('public','sessions',dup['id'],uid); 
-                                logging.info("uid---"+uid+"----"+str(dup['id'])+'--'+dup['uid']);
+                                update_uid('public','sessions',dup['id'],uid); 
                        prev_record = dup;    
         logging.info("...DONE WITH UPDATE......")
     except Exception as ex:
