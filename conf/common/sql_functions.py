@@ -34,6 +34,7 @@ def inject_sql(sql_script, file_name):
             logging.error('Something went wrong with the SQL file');
             raise e.with_traceback()
             sys.exit()
+        logging.info('... {0} has successfully run'.format(command))
     logging.info('... {0} has successfully run'.format(file_name))
 
 def create_table(df, table_name):
