@@ -31,7 +31,6 @@ def tidy_tables():
 
                if not dup_df.empty and len(dup_df)>1:
                    prev_record = None;
-                   logging.info(dup_df)
                    for dup_index, dup in dup_df.iterrows():
                        if dup_index >=1 and dup['DateAdmission'] is not None:
                            adm_date = str(dup['DateAdmission'])
