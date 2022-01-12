@@ -25,8 +25,8 @@ def tidy_tables():
         if not duplicate_df.empty:
             unique_uids = duplicate_df['uid'].unique();
             alphabet = "0A1B2C3D4E5F6789"
-            for ind,r in unique_uids.items():
-               dup_df = duplicate_df[(duplicate_df['uid'] == str(r))].copy()
+            for ind in unique_uids:
+               dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy()
 
                if not dup_df.empty:
                    for dup_index, dup in dup_df.iterrows():
@@ -442,8 +442,8 @@ def tidy_tables():
             neolab_df['BCType']= None
             neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'])
             unique_uids = neolab_df['uid'].unique()
-            for index, uid in unique_uids.items():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
+            for uid in unique_uids:
+                control_df = neolab_df[neolab_df['uid'] == uid].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 #Set Episodes
                 if not control_df.empty:
                     episode =1;
