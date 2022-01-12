@@ -35,7 +35,7 @@ def tidy_tables():
                        if dup_index >=1 and dup['DateAdmission'] is not None:
                            adm_date = str(dup['DateAdmission'])
                            prev_adm_date = None
-                           if prev_record['DateAdmission'] is not None:
+                           if prev_record is not None and prev_record['DateAdmission'] is not None:
                                 prev_adm_date = str(prev_record['DateAdmission'],'')
 
                            if adm_date == prev_adm_date:
