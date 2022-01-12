@@ -21,9 +21,9 @@ def tidy_tables():
 
     try:
         tuples = fix_duplicate_uid()
-        logging.info("---"+ str(tuples[0]))
-        duplicate_df = pd.DataFrame([tuples],['id','uid','DateAdmission']);
+        duplicate_df = pd.DataFrame(tuples,['id','uid','DateAdmission']);
         if not duplicate_df.empty:
+            logging.info("****"+str[duplicate_df[0]])
             unique_uids = duplicate_df['uid'].unique();
             alphabet = "0A1B2C3D4E5F6789"
             for ind,r in unique_uids.items():
@@ -31,7 +31,7 @@ def tidy_tables():
 
                if not dup_df.empty:
                    for dup_index, dup in dup_df.iterrows():
-                       if dup_index >=1:
+                       if dup_index >=1 and dup_df['DateAdmission'] is not None:
                            adm_date = dup_df['DateAdmission']
                            prev_adm_date = dup_df.at[dup_index-1,'DateAdmission']
                            if adm_date == prev_adm_date:
