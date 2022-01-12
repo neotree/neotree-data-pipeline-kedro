@@ -5,6 +5,8 @@ from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
+from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
+from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 
 
 
@@ -12,9 +14,36 @@ from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import
 import pandas as pd
 from datetime import datetime as dt
 import logging
+import random
 
 
 def tidy_tables():
+
+    try:
+        duplicate_df = pd.DataFrame([fix_duplicate_uid()]);
+        duplicate_df.columns['id','uid','DateAdmission']
+        if not duplicate_df.empty:
+            unique_uids = duplicate_df['uid'].unique();
+            alphabet = "0A1B2C3D4E5F6789"
+            for ind,r in unique_uids.items():
+               dup_df = duplicate_df[(duplicate_df['uid'] == str(r))].copy()
+
+               if not dup_df.empty:
+                   for dup_index, dup in dup_df.iterrows():
+                       if dup_index >=1:
+                           adm_date = dup_df['DateAdmission']
+                           prev_adm_date = dup_df.at[dup_index-1,'DateAdmission']
+                           if adm_date == prev_adm_date:
+                               # RECORD IS A DUPLICATE AND WILL BE DELT WITH DURING DEDUPLICATION PROCESS ON NEXT RUN OF PIPELINE
+                               pass;
+                           else:
+                               #GENERATE NEW UID
+                                uid = '78'.join((random.choice(alphabet)) for x in range(2))+'-'+str(random.randint(1000,9999));
+                                update_uid('public','sessions',dup['id'],uid);     
+        logging.info("...DONE WITH UPDATE......")
+    except Exception as ex:
+        raise ex;
+
     # Read the raw admissions and discharge data into dataframes
     logging.info("... Fetching raw admission and discharge data")
     
@@ -412,7 +441,8 @@ def tidy_tables():
             # Initialise BCR TYPE
             neolab_df['BCType']= None
             neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'])
-            for index, row in neolab_df.iterrows():
+            unique_uids = neolab_df['uid'].unique()
+            for index, uid in unique_uids.items():
                 control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 #Set Episodes
                 if not control_df.empty:
