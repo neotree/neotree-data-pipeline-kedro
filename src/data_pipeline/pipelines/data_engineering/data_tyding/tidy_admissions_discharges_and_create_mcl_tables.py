@@ -35,7 +35,7 @@ def tidy_tables():
                        logging.info(dup)
                        if dup_index >=1 and dup['DateAdmission'] is not None:
                            adm_date = str(dup['DateAdmission'])
-                           prev_adm_date = str(prev_record['DateAdmission'])
+                           prev_adm_date = str(prev_record['DateAdmission'],'')
                            if adm_date == prev_adm_date:
                                # RECORD IS A DUPLICATE AND WILL BE DELT WITH DURING DEDUPLICATION PROCESS ON NEXT RUN OF PIPELINE
                                pass;
