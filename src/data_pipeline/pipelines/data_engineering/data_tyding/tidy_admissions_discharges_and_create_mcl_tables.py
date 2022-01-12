@@ -21,7 +21,7 @@ def tidy_tables():
 
     try:
         tuples = fix_duplicate_uid()
-        duplicate_df = pd.DataFrame(tuples[0],['id','uid','DateAdmission']);
+        duplicate_df = pd.DataFrame([tuples[0]],['id','uid','DateAdmission']);
         if not duplicate_df.empty:
             logging.info("****"+str[duplicate_df[0]])
             unique_uids = duplicate_df['uid'].unique();
