@@ -27,7 +27,7 @@ def tidy_tables():
            
             alphabet = "0A1B2C3D4E5F6789"
             for ind in unique_uids:
-               dup_df = duplicate_df[(str(duplicate_df['uid']) == str(ind))].copy()
+               dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy()
 
                if not dup_df.empty and len(dup_df)>1:
                    prev_record = None;
@@ -47,7 +47,7 @@ def tidy_tables():
                                #GENERATE NEW UID
                                 uid = '78'.join((random.choice(alphabet)) for x in range(2))+'-'+str(random.randint(1000,9999));
                                 # update_uid('public','sessions',dup['id'],uid); 
-                                logging.info("uid---"+uid);
+                                logging.info("uid---"+uid+"----"+dup['id']+'--'+dup['uid']);
                        prev_record = dup;    
         logging.info("...DONE WITH UPDATE......")
     except Exception as ex:
