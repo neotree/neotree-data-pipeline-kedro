@@ -20,38 +20,38 @@ import sys
 
 def tidy_tables():
 
-    try:
-        tuples = fix_duplicate_uid()
-        duplicate_df = pd.DataFrame(tuples,columns=['id','uid','DateAdmission']);
-        if not duplicate_df.empty:
-            unique_uids = duplicate_df['uid'].copy().unique();
+    # try:
+    #     tuples = fix_duplicate_uid()
+    #     duplicate_df = pd.DataFrame(tuples,columns=['id','uid','DateAdmission']);
+    #     if not duplicate_df.empty:
+    #         unique_uids = duplicate_df['uid'].copy().unique();
            
-            alphabet = "0A1B2C3D4E5F6789"
-            for ind in unique_uids:
-               dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy().reset_index(drop=True)
+    #         alphabet = "0A1B2C3D4E5F6789"
+    #         for ind in unique_uids:
+    #            dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy().reset_index(drop=True)
 
-               if not dup_df.empty and len(dup_df)>1:
-                   prev_record = None;
-                   for dup_index, dup in dup_df.iterrows():
-                       if dup_index >=1 and dup['DateAdmission'] is not None:
-                           adm_date = str(dup['DateAdmission'])
-                           prev_adm_date = None
-                           if prev_record is not None and prev_record['DateAdmission'] is not None:
-                                prev_adm_date = str(prev_record['DateAdmission'])
-                           if adm_date == prev_adm_date:
-                               # RECORD IS A DUPLICATE AND WILL BE DELT WITH DURING DEDUPLICATION PROCESS ON NEXT RUN OF PIPELINE
-                               pass;
+    #            if not dup_df.empty and len(dup_df)>1:
+    #                prev_record = None;
+    #                for dup_index, dup in dup_df.iterrows():
+    #                    if dup_index >=1 and dup['DateAdmission'] is not None:
+    #                        adm_date = str(dup['DateAdmission'])
+    #                        prev_adm_date = None
+    #                        if prev_record is not None and prev_record['DateAdmission'] is not None:
+    #                             prev_adm_date = str(prev_record['DateAdmission'])
+    #                        if adm_date == prev_adm_date:
+    #                            # RECORD IS A DUPLICATE AND WILL BE DELT WITH DURING DEDUPLICATION PROCESS ON NEXT RUN OF PIPELINE
+    #                            pass;
                         
-                           else:
-                            #    #GENERATE NEW UID
-                                uid = '78'.join((random.choice(alphabet)) for x in range(2))+'-'+str(random.randint(1000,9999));
-                                update_uid('public','sessions',dup['id'],uid); 
-                       prev_record = dup;    
-        logging.info("...DONE WITH UPDATE......")
-        sys.exit()
+    #                        else:
+    #                         #    #GENERATE NEW UID
+    #                             uid = '78'.join((random.choice(alphabet)) for x in range(2))+'-'+str(random.randint(1000,9999));
+    #                             update_uid('public','sessions',dup['id'],uid); 
+    #                    prev_record = dup;    
+    #     logging.info("...DONE WITH UPDATE......")
+    #     sys.exit()
         
-    except Exception as ex:
-        raise ex;
+    # except Exception as ex:
+    #     raise ex;
 
     # Read the raw admissions and discharge data into dataframes
     logging.info("... Fetching raw admission and discharge data")
