@@ -28,7 +28,7 @@ def tidy_tables():
            
             alphabet = "0A1B2C3D4E5F6789"
             for ind in unique_uids:
-               dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy()
+               dup_df = duplicate_df[(duplicate_df['uid'] == str(ind))].copy().reset_index(drop=True)
 
                if not dup_df.empty and len(dup_df)>1:
                    prev_record = None;
