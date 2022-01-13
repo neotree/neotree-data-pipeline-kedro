@@ -38,7 +38,6 @@ def tidy_tables():
                            prev_adm_date = None
                            if prev_record is not None and prev_record['DateAdmission'] is not None:
                                 prev_adm_date = str(prev_record['DateAdmission'])
-                                logging.info("==AD=="+str(adm_date)+"-PRD-"+str(prev_adm_date) + '=PR=='+str(prev_record['uid']))
                            if adm_date == prev_adm_date:
                                # RECORD IS A DUPLICATE AND WILL BE DELT WITH DURING DEDUPLICATION PROCESS ON NEXT RUN OF PIPELINE
                                pass;
