@@ -33,7 +33,6 @@ def tidy_tables():
                if not dup_df.empty and len(dup_df)>1:
                    prev_record = None;
                    for dup_index, dup in dup_df.iterrows():
-                       logging.info("===="+str(dup_index)+"--"+str(dup['id']) + '==='+str(dup['uid']))
                        if dup_index >=1 and dup['DateAdmission'] is not None:
                            adm_date = str(dup['DateAdmission'])
                            prev_adm_date = None
@@ -47,8 +46,7 @@ def tidy_tables():
                            else:
                             #    #GENERATE NEW UID
                                 uid = '78'.join((random.choice(alphabet)) for x in range(2))+'-'+str(random.randint(1000,9999));
-                            #     update_uid('public','sessions',dup['id'],uid); 
-                                logging.info("--NEW UID--"+uid)
+                                update_uid('public','sessions',dup['id'],uid); 
                        prev_record = dup;    
         logging.info("...DONE WITH UPDATE......")
         sys.exit()
