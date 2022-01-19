@@ -79,6 +79,7 @@ def get_diagnoses_key_values(data_raw):
                 new_entries['facility'] = row['facility']
             
             new_entries['uid'] = row['uid']
+
             if 'ingested_at_admission' in row:
                 new_entries['ingested_at'] = row['ingested_at_admission']
 
@@ -93,10 +94,10 @@ def get_diagnoses_key_values(data_raw):
                 for parent_key in parent_keys:
                     
                     values = parent_keys[parent_key]
-                    logging.info(values)
+                    values['diagnosis']=parent_key
                     # iterate through child/inner keys
                     for child_key in values:
-                        k, v = restructure_array(parent_key,values[child_key],child_key)
+                        k, v = restructure_array(child_key,values[child_key])
                         new_entries[k] = v
                 # for each row add all the keys & values to a list
                 logging.info(new_entries)
