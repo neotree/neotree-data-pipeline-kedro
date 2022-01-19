@@ -69,22 +69,7 @@ def get_diagnoses_key_values(data_raw):
         if "diagnoses" in row:
             new_entries = {}
             # add uid and ingested_at first
-            app_version = None
-            if 'appVersion' in row:
-                app_version = row['appVersion']
-            if(app_version!=None and app_version!=''):
-                #Remove any Other Characters that are non-numeric
-                app_version = int(''.join(d for d in app_version if d.isdigit()))
-            if 'facility' in row:
-                new_entries['facility'] = row['facility']
             
-            new_entries['uid'] = row['uid']
-
-            if 'ingested_at_admission' in row:
-                new_entries['ingested_at'] = row['ingested_at_admission']
-
-            if 'ingested_at' in row:
-                new_entries['ingested_at'] = row['ingested_at']
 
             #Convert List to dictionary
             if row['diagnoses'] is not None and len(row['diagnoses'])> 0:
@@ -92,14 +77,31 @@ def get_diagnoses_key_values(data_raw):
 
                 # iterate through parent keys
                 for parent_key in parent_keys:
-                    
                     values = parent_keys[parent_key]
                     values['diagnosis']=parent_key
+                    app_version = None
+                    if 'appVersion' in row:
+                        app_version = row['appVersion']
+                    if(app_version!=None and app_version!=''):
+                #   Remove any Other Characters that are non-numeric
+                        app_version = int(''.join(d for d in app_version if d.isdigit()))
+                    values['appVersion'] = app_version
+                    if 'facility' in row:
+                        values['facility'] = row['facility']
+            
+                    values['uid'] = row['uid']
+
+                    if 'ingested_at_admission' in row:
+                        values['ingested_at'] = row['ingested_at_admission']
+
+                    if 'ingested_at' in row:
+                        values['ingested_at'] = row['ingested_at']
+                    
+                    
                     # iterate through child/inner keys
                     for child_key in values:
                         k, v = restructure_array(child_key,values[child_key])
                         new_entries[k] = v
                 # for each row add all the keys & values to a list
-                logging.info(new_entries)
                 data_new.append(new_entries)
     return data_new
