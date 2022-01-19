@@ -97,9 +97,8 @@ def get_diagnoses_key_values(data_raw):
                     # iterate through child/inner keys
                     for child_key in values:
                         k, v = restructure_array(parent_key,values[child_key],child_key)
-                        logging.info(k)
                         new_entries[k] = v
                 # for each row add all the keys & values to a list
-                
+                logging.info(new_entries[0])
                 data_new.append(new_entries)
     return data_new
