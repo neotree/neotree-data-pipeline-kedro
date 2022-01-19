@@ -67,7 +67,7 @@ def get_diagnoses_key_values(data_raw):
    
     for index, row in data_raw.iterrows():
         if "diagnoses" in row:
-            new_entries = {}
+            
             # add uid and ingested_at first
             
 
@@ -77,31 +77,32 @@ def get_diagnoses_key_values(data_raw):
 
                 # iterate through parent keys
                 for parent_key in parent_keys:
+                    new_entry = {}
                     values = parent_keys[parent_key]
-                    values['diagnosis']=parent_key
+                    new_entry['diagnosis']=parent_key
                     app_version = None
                     if 'appVersion' in row:
                         app_version = row['appVersion']
                     if(app_version!=None and app_version!=''):
                 #   Remove any Other Characters that are non-numeric
                         app_version = int(''.join(d for d in app_version if d.isdigit()))
-                    values['appVersion'] = app_version
+                    new_entry['appVersion'] = app_version
                     if 'facility' in row:
-                        values['facility'] = row['facility']
+                        new_entry['facility'] = row['facility']
             
-                    values['uid'] = row['uid']
+                    new_entry['uid'] = row['uid']
 
                     if 'ingested_at_admission' in row:
-                        values['ingested_at'] = row['ingested_at_admission']
+                        new_entry['ingested_at'] = row['ingested_at_admission']
 
                     if 'ingested_at' in row:
-                        values['ingested_at'] = row['ingested_at']
+                        new_entry['ingested_at'] = row['ingested_at']
                     
                     
                     # iterate through child/inner keys
                     for child_key in values:
                         k, v = restructure_array(child_key,values[child_key])
-                        new_entries[k] = v
+                        new_entry[k] = v
                 # for each row add all the keys & values to a list
-                data_new.append(new_entries)
+                data_new.append(new_entry)
     return data_new
