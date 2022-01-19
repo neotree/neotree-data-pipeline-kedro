@@ -122,8 +122,8 @@ def tidy_tables():
             baseline_df.set_index(['uid'])
 
         diagnoses_df = pd.json_normalize(diagnoses_new_entries)
-        if "uid" in diagnoses_df:
-            diagnoses_df.set_index(['uid'])
+        # if "uid" in diagnoses_df:
+        #     diagnoses_df.set_index(['uid'])
 
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if "uid" in mat_completeness_df:
@@ -133,13 +133,6 @@ def tidy_tables():
         
  
         # ADD TIME SPENT TO ALL DFs
-        if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
-           format_date_without_timezone(diagnoses_df,'time_spent'); 
-           format_date_without_timezone(diagnoses_df,'completed_at'); 
-           diagnoses_df['time_spent']= (diagnoses_df['completed_at']-diagnoses_df['started_at']).astype('timedelta64[m]')
-        else:
-            diagnoses_df['time_spent'] = None
-
         if "started_at" in adm_df and 'completed_at' in adm_df :
             format_date_without_timezone(adm_df,'started_at'); 
             format_date_without_timezone(adm_df,'completed_at'); 
@@ -182,12 +175,12 @@ def tidy_tables():
         else:
             baseline_df['time_spent'] = None
 
-        if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
-            format_date_without_timezone(diagnoses_df,'started_at'); 
-            format_date_without_timezone(diagnoses_df,'completed_at'); 
-            diagnoses_df['time_spent'] =  (diagnoses_df['completed_at'] - diagnoses_df['started_at']).astype('timedelta64[m]')
-        else:
-            diagnoses_df['time_spent'] = None
+        # if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
+        #     format_date_without_timezone(diagnoses_df,'started_at'); 
+        #     format_date_without_timezone(diagnoses_df,'completed_at'); 
+        #     diagnoses_df['time_spent'] =  (diagnoses_df['completed_at'] - diagnoses_df['started_at']).astype('timedelta64[m]')
+        # else:
+        #     diagnoses_df['time_spent'] = None
 
         baseline_df['LengthOfStay.value'] = None
         baseline_df['LengthOfStay.label'] = None

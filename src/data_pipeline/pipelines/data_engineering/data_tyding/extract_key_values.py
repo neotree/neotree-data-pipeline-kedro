@@ -1,4 +1,5 @@
 # This module extracts the key-value pairs within a raw json file.
+import logging
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import reduce
 
@@ -86,16 +87,17 @@ def get_diagnoses_key_values(data_raw):
 
             #Convert List to dictionary
             if row['diagnoses'] is not None and len(row['diagnoses'])> 0:
-                values_dict=reduce(lambda a, b: {**a, **b}, row['diagnoses'])
+                parent_keys=reduce(lambda a, b: {**a, **b}, row['diagnoses'])
 
                 # iterate through parent keys
-                for parent_key in values_dict:
+                for parent_key in parent_keys:
                     
-                    values = values_dict[parent_key]
+                    values = parent_keys[parent_key]
+                    logging.info("---ERE--"+values)
                     # iterate through child/inner keys
                     for child_key in values:
                         k, v = restructure_array(parent_key,values[child_key],child_key)
-
+                        logging.info("---VVVVV--"+k+"---"+v)
                         new_entries[k] = v
                 # for each row add all the keys & values to a list
                 
