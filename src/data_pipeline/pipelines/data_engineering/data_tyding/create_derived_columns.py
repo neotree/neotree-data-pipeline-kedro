@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from conf.base.catalog import params
-from data_engineering.utils.set_key_to_none import set_key_to_none
+from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 
 
 def create_columns(table: pd.DataFrame):
