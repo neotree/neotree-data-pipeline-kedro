@@ -65,7 +65,8 @@ def create_columns(table: pd.DataFrame):
       table.loc[table['BirthWeight.value'] < 1500, 'BWGroup.value'] = "VLBW"
       table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
     else:
-         table['BirthWeight.value'] = None 
+         table['BirthWeight.value'] = None
+         table['BWGroup.value'] = None  
 
     # For Baseline Tables
     if 'Bw.value' in table:
@@ -84,7 +85,8 @@ def create_columns(table: pd.DataFrame):
       table.loc[table['AdmissionWeight.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
       table.loc[table['AdmissionWeight.value'] < 1000, 'AWGroup.value'] = "<1000g"
     else:
-       table['AdmissionWeight.value']= None   
+       table['AdmissionWeight.value']= None
+       table['AWGroup.value']= None   
 
     # order of statements matters
     if 'Temperature.value' in table:
