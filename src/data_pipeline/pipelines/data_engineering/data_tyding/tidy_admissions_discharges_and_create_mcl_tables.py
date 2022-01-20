@@ -262,6 +262,7 @@ def tidy_tables():
         set_key_to_none(mat_outcomes_df,'Apgar5.value') 
         set_key_to_none(mat_outcomes_df,'Apgar10.value')
         set_key_to_none(mat_outcomes_df,'PregConditions.label')
+        set_key_to_none(mat_outcomes_df,'BirthDateDis.value')
 
         # Baselines Tables
         format_date(baseline_df,'DateTimeAdmission.value')
