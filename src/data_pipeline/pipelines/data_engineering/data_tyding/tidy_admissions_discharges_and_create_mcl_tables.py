@@ -270,7 +270,7 @@ def tidy_tables():
         format_date(baseline_df,'DateTimeDeath.value')
 
         set_key_to_none(baseline_df,'AWGroup.value')
-
+        set_key_to_none(baseline_df,'BWGroup.value') 
         #Vital Signs Table
         format_date(vit_signs_df,'D1Date.value')
         format_date(vit_signs_df,'TimeTemp1.value')
