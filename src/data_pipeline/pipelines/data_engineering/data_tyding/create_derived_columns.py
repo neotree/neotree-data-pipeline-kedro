@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from conf.base.catalog import params
+from data_engineering.utils.set_key_to_none import set_key_to_none
 
 
 def create_columns(table: pd.DataFrame):
@@ -15,18 +16,12 @@ def create_columns(table: pd.DataFrame):
 
     # Create AdmissionSource = IF(ISBLANK(Admissions[AdmittedFrom]); "External Referral"; Admissions[AdmittedFrom])
      #Fix Lost Data From One Of The Published Versions
-    if 'AdmittedFrom.value' not in table:
-        table['AdmittedFrom.value'] = None
-    if 'AdmittedFrom.label' not in table:
-        table['AdmittedFrom.label'] = None
-    if 'ReferredFrom.label' not in table:
-         table['ReferredFrom.label'] = None
-    if 'ReferredFrom.value' not in table:
-         table['ReferredFrom.value'] = None
-    if 'ReferredFrom2.label' not in table:
-         table['ReferredFrom2.label'] = None
-    if 'ReferredFrom2.value' not in table:
-         table['ReferredFrom2.value'] = None
+    set_key_to_none(table,'AdmittedFrom.value')
+    set_key_to_none(table,'AdmittedFrom.label')
+    set_key_to_none(table,'ReferredFrom.label')
+    set_key_to_none(table,'ReferredFrom.value')
+    set_key_to_none(table,'ReferredFrom2.label') 
+    set_key_to_none(table,'ReferredFrom2.value')
         
     table['AdmittedFrom.value'].fillna("ER", inplace=True)
     table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
@@ -62,13 +57,13 @@ def create_columns(table: pd.DataFrame):
 
 
     # order of statements matters
-    if 'BW.value' in table:
-      table.loc[table['BW.value'].isnull(), 'BWGroup.value'] = "Unknown"
-      table.loc[table['BW.value'] >= 4000, 'BWGroup.value'] = "HBW"
-      table.loc[table['BW.value'] < 4000, 'BWGroup.value'] = "NBW"
-      table.loc[table['BW.value'] < 2500, 'BWGroup.value'] = "LBW"
-      table.loc[table['BW.value'] < 1500, 'BWGroup.value'] = "VLBW"
-      table.loc[table['BW.value'] < 1000, 'BWGroup.value'] = "ELBW"
+    if 'BirthWeight.value' in table:
+      table.loc[table['BirthWeight.value'].isnull(), 'BWGroup.value'] = "Unknown"
+      table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
+      table.loc[table['BirthWeight.value'] < 4000, 'BWGroup.value'] = "NBW"
+      table.loc[table['BirthWeight.value'] < 2500, 'BWGroup.value'] = "LBW"
+      table.loc[table['BirthWeight.value'] < 1500, 'BWGroup.value'] = "VLBW"
+      table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
 
     # For Baseline Tables
     if 'Bw.value' in table:
@@ -80,12 +75,12 @@ def create_columns(table: pd.DataFrame):
       table.loc[table['Bw.value'] < 1000, 'BWGroup.value'] = "ELBW"
 
     # order of statements matters
-    if 'AW.value' in table:
-      table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
-      table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
-      table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
-      table.loc[table['AW.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
-      table.loc[table['AW.value'] < 1000, 'AWGroup.value'] = "<1000g"
+    if 'AdmissionWeight.value' in table:
+      table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
+      table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
+      table.loc[table['AdmissionWeight.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
+      table.loc[table['AdmissionWeight.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
+      table.loc[table['AdmissionWeight.value'] < 1000, 'AWGroup.value'] = "<1000g"
 
     # order of statements matters
     if 'Temperature.value' in table:

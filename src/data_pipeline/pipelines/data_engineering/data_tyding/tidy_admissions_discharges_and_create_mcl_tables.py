@@ -7,6 +7,8 @@ from data_pipeline.pipelines.data_engineering.utils.date_validator import is_dat
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
+from data_engineering.utils.key_change import key_change
+from data_engineering.utils.set_key_to_none import set_key_to_none
 
 
 
@@ -215,126 +217,61 @@ def tidy_tables():
 
 
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
-        # admissions tables
-        #Fix Missing Data Issues Emanating from eronous version published
+        set_key_to_none(adm_df,'DateHIVtest.value')
+        set_key_to_none(adm_df,'DateHIVtest.label')
+        set_key_to_none(adm_df,'HIVtestResult.value')
+        set_key_to_none(adm_df,'HIVtestResult.label')
+        set_key_to_none(adm_df,'ANVDRLDate.value')
+        set_key_to_none(adm_df,'ANVDRLDate.label')
+        set_key_to_none(adm_df,'HAART.value')
+        set_key_to_none(adm_df,'HAART.label')
+        set_key_to_none(adm_df,'LengthHAART.value')
+        set_key_to_none(adm_df,'LengthHAART.label')
+        set_key_to_none(adm_df,'NVPgiven.value')
+        set_key_to_none(adm_df,'NVPgiven.label')
+        set_key_to_none(adm_df,'DateTimeAdmission.value')
+        set_key_to_none(adm_df,'DateTimeAdmission.label')
+        set_key_to_none(adm_df,'ROMLength.label')
+        set_key_to_none(adm_df,'ROMLength.value')
 
-        if 'DateHIVtest.value' not in adm_df.columns:
-             adm_df['DateHIVtest.value']=None
-             adm_df['DateHIVtest.label']=None
+          #Format Dates Admissions Tables
+        format_date(adm_df,'DateTimeAdmission.value')
+        format_date(adm_df,'EndScriptDatetime.value')
+        format_date(adm_df,'DateHIVtest.value')
+        format_date(adm_df,'ANVDRLDate.value')
 
-        if 'HIVtestResult.value' not in adm_df.columns:
-            adm_df['HIVtestResult.value']=None
-            adm_df['HIVtestResult.label']=None
+        #Format Dates Discharge Table
+        format_date(dis_df,'DateAdmissionDC.value')  
+        format_date(dis_df,'DateDischVitals.value')
+        format_date(dis_df,'DateDischWeight.value')
+        format_date(dis_df,'DateTimeDischarge.value')
+        format_date(dis_df,'EndScriptDatetime.value')
+        format_date(dis_df,'DateWeaned.value')
+        format_date(dis_df,'DateTimeDeath.value')
+        format_date(dis_df,'DateAdmission.value')
+        format_date(dis_df,'BirthDateDis.value')
 
-        if 'ANVDRLDate.value' not in adm_df.columns:
-            adm_df['ANVDRLDate.value']=None
-            adm_df['ANVDRLDate.label']=None
-
-        if 'HAART.value' not in adm_df.columns:
-            adm_df['HAART.value']=None
-            adm_df['HAART.label']=None
-
-        if 'LengthHAART.value' not in adm_df.columns:
-            adm_df['LengthHAART.value']=None
-            adm_df['LengthHAART.label']=None
-
-        if 'NVPgiven.value' not in adm_df.columns:
-            adm_df['NVPgiven.value']=None
-            adm_df['NVPgiven.label']=None
-        # remove timezone in string to fix issues caused by converting to UTC
-        if 'DateTimeAdmission.value' not in adm_df.columns:
-            adm_df['DateTimeAdmission.value']=None
-            adm_df['DateTimeAdmission.label']=None
-
-        if 'DateTimeAdmission.value' in adm_df:
-            format_date(adm_df,'DateTimeAdmission.value')
-        if 'EndScriptDatetime.value' in adm_df:
-            format_date(adm_df,'EndScriptDatetime.value')
-        if  'DateHIVtest.value' in adm_df:
-            format_date(adm_df,'DateHIVtest.value')
-            
-        if 'ANVDRLDate.value' in adm_df:
-            format_date(adm_df,'ANVDRLDate.value')
-
-        # Remove Space From BW.Value :: Issue Was Affecting Dev Database
-        # if 'BW .label' in adm_df.columns and adm_df['BW .label'].notnull(): 
-        #     adm_df['BW.label'] = adm_df['BW .label']
-        #     adm_df.drop('BW .label',axis='columns',inplace=True)
-
-        # if 'BW .value' in adm_df.columns and  adm_df['BW .value'].notnull():
-        #     adm_df['BW.value'] = adm_df['BW .value']
-        #     adm_df.drop('BW .value', axis='columns', inplace=True)
-
-        if 'ROMLength.label' not in adm_df.columns:
-            adm_df['ROMLength.label'] = None;
-        if  'ROMLength.value' not in adm_df.columns:
-            adm_df['ROMLength.value'] = None;
-
-        # discharges tables
-        if 'DateAdmissionDC.value' in dis_df:
-            format_date(dis_df,'DateAdmissionDC.value')
-        if 'DateDischVitals.value'  in dis_df and dis_df['DateDischVitals.value'] is not None :
-            format_date(dis_df,'DateDischVitals.value')
-        if 'DateDischWeight.value' in dis_df and dis_df['DateDischWeight.value'] is not None:
-            format_date(dis_df,'DateDischWeight.value')
-        if 'DateTimeDischarge.value' in dis_df and  dis_df['DateTimeDischarge.value'] is not None:
-            format_date(dis_df,'DateTimeDischarge.value')
-        if 'EndScriptDatetime.value' in dis_df:
-            format_date(dis_df,'EndScriptDatetime.value')
-        if 'DateWeaned.value' in dis_df and  dis_df['DateWeaned.value']  is not None :
-           format_date(dis_df,'DateWeaned.value')
-        if 'DateTimeDeath.value' in dis_df and dis_df['DateTimeDeath.value'] is not None:
-            format_date(dis_df,'DateTimeDeath.value')
-            
-        #Maternal OutComes Table
-        if 'DateAdmission.value' in mat_outcomes_df:
-            format_date(dis_df,'DateAdmission.value')
-        if 'BirthDateDis.value' in mat_outcomes_df :
-            format_date(dis_df,'BirthDateDis.value')
-        else:
-            mat_outcomes_df["BirthDateDis.value"] = None
-        if "TypeBirth.label" not in mat_outcomes_df:
-            mat_outcomes_df["TypeBirth.label"] = None
-        if "Presentation.label" not in mat_outcomes_df:
-            mat_outcomes_df["Presentation.label"] = None
-        if "BabyNursery.label" not in mat_outcomes_df:
-            mat_outcomes_df["BabyNursery.label"] = None
-        if "Reason.label" not in mat_outcomes_df:
-            mat_outcomes_df["Reason.label"] = None
-        if "ReasonOther.label" not in mat_outcomes_df:
-            mat_outcomes_df["ReasonOther.label"] = None
-        if "CryBirth.label" not in mat_outcomes_df:
-            mat_outcomes_df["CryBirth.label"] = None
-        if "Apgar1.value" not in mat_outcomes_df:
-                mat_outcomes_df["Apgar1.value"] = None
-        if "Apgar5.value" not in mat_outcomes_df:
-                mat_outcomes_df["Apgar5.value"] = None
-        if "Apgar10.value" not in mat_outcomes_df:
-                mat_outcomes_df["Apgar10.value"] = None
-        if "PregConditions.label" not in mat_outcomes_df:
-                mat_outcomes_df["PregConditions.label"] = None
+        # Maternal Outcomes
+        set_key_to_none(mat_outcomes_df,'TypeBirth.label')
+        set_key_to_none(mat_outcomes_df,'Presentation.label')
+        set_key_to_none(mat_outcomes_df,'BabyNursery.label')
+        set_key_to_none(mat_outcomes_df,'Reason.label')
+        set_key_to_none(mat_outcomes_df,'ReasonOther.label')
+        set_key_to_none(mat_outcomes_df,'CryBirth.label')
+        set_key_to_none(mat_outcomes_df,'Apgar1.value')
+        set_key_to_none(mat_outcomes_df,'Apgar5.value') 
+        set_key_to_none(mat_outcomes_df,'Apgar10.value')
+        set_key_to_none(mat_outcomes_df,'PregConditions.label')
 
         # Baselines Tables
-        if "DateTimeAdmission.value" in baseline_df:
-            format_date(baseline_df,'DateTimeAdmission.value')
-        if "DateTimeDischarge.value" in baseline_df:
-            format_date(baseline_df,'DateTimeDischarge.value')
-        if "DateTimeDeath.value" in baseline_df:
-            format_date(baseline_df,'DateTimeDeath.value')
+        format_date(baseline_df,'DateTimeAdmission.value')
+        format_date(baseline_df,'DateTimeDischarge.value')
+        format_date(baseline_df,'DateTimeDeath.value')
         #Vital Signs Table
-        if 'D1Date.value' in vit_signs_df :
-            format_date(vit_signs_df,'D1Date.value')
-
-    
-       
-        if 'TimeTemp1.value' in vit_signs_df:
-            format_date(vit_signs_df,'TimeTemp1.value')
-            
-        if 'TimeTemp2.value' in vit_signs_df:
-            format_date(vit_signs_df,'TimeTemp2.value')
-
-        if 'EndScriptDatetime.value' in vit_signs_df:
-            format_date(vit_signs_df,'EndScriptDatetime.value')
+        format_date(vit_signs_df,'D1Date.value')
+        format_date(vit_signs_df,'TimeTemp1.value')
+        format_date(vit_signs_df,'TimeTemp2.value')
+        format_date(vit_signs_df,'EndScriptDatetime.value')
 
         # Make changes to admissions and baseline data to match fields in power bi
         adm_df = create_columns(adm_df)
@@ -408,31 +345,27 @@ def tidy_tables():
                     else:
                         adm_df.at[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-                if 'BW.value' in admission and (admission['BW.value']) != 'nan':
-                    
-                    adm_df.at[position,'BirthWeight.value'] = adm_df.at[position,'BW.value'] 
+
+                key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
+                key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
+                key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
+                key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
+                key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
+                key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
+                key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
+                key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
+                key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
+                
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
-                if 'BWTDis.value' in discharge and (discharge['BWTDis.value'])!= 'nan':
-                    dis_df.at[position,'BirthWeight.value'] = dis_df.at[position,'BWTDis.value']
-
-                if 'BirthDateDis.value' in discharge and (discharge['BirthDateDis.value'])!= 'nan':
-                    dis_df.at[position,'DOBTOB.value'] = dis_df.at[position,'BirthDateDis.value']
-
-                if 'Delivery.value' in discharge and (discharge['Delivery.value'])!= 'nan':
-                    dis_df.at[position,'ModeDelivery.value'] = dis_df.at[position,'Delivery.value'] 
-
-                if 'NNUAdmTemp.value' in discharge and (discharge['NNUAdmTemp.value'])!= 'nan':
-                    dis_df.at[position,'Temperature.value'] = dis_df.at[position,'NNUAdmTemp.value']
-
-                if 'GestBirth.value' in discharge and (discharge['GestBirth.value'])!= 'nan':
-                    dis_df.at[position,'Gestation.value'] = dis_df.at[position,'GestBirth.value'] 
-
-                if 'PresComp.value' in discharge and (discharge['PresComp.value'])!= 'nan':
-                    dis_df.at[position,'AdmReason.value'] = dis_df.at[position,'PresComp.value'] 
-                 
+                key_change(dis_df,discharge,position,'BWTDis.value','BirthWeight.value')
+                key_change(dis_df,discharge,position,'BirthDateDis.value','DOBTOB.value')
+                key_change(dis_df,discharge,position,'Delivery.value','ModeDelivery.value')
+                key_change(dis_df,discharge,position,'NNUAdmTemp.value','Temperature.value')
+                key_change(dis_df,discharge,position,'GestBirth.value','Gestation.value')
+                key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
         if not baseline_df.empty:
             baseline_df = create_columns(baseline_df)
 
