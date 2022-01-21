@@ -1,4 +1,3 @@
-from functools import cache
 import logging
 from conf.common.format_error import formatError
 from .config import config
