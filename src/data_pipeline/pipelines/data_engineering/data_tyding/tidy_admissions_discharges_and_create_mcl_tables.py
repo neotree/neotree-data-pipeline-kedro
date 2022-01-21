@@ -357,7 +357,10 @@ def tidy_tables():
                 key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
                 key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
                 #Fix differences in Column data type definition
+            
                 if 'AdmissionWeight.value' in adm_df:
+                    if adm_df.at[position,'AdmissionWeight.value'] is None:
+                        adm_df.at[position,'AdmissionWeight.value'] =0
                     adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(np.int64)
                 key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
                 key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
