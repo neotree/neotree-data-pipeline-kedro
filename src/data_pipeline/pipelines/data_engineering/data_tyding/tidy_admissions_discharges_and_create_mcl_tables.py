@@ -9,7 +9,7 @@ from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_dif
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
-
+from conf.common.sql_functions import create_table
 
 
 # Import libraries
@@ -460,7 +460,8 @@ def tidy_tables():
     
         #Save Derived Admissions To The DataBase Using Kedro
         if not adm_df.empty:
-            catalog.save('create_derived_admissions',adm_df)
+            #catalog.save('create_derived_admissions',adm_df)
+            create_table(adm_df,'admissions')
         #Save Derived Admissions To The DataBase Using Kedro
         if not dis_df.empty:
             catalog.save('create_derived_discharges',dis_df)

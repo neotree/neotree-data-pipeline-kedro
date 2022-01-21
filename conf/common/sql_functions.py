@@ -1,9 +1,11 @@
+from functools import cache
 import logging
 from conf.common.format_error import formatError
 from .config import config
 from sqlalchemy import create_engine,text
 import sys
 from sqlalchemy.types import TEXT
+import pandas as pd
 
 params = config()
 #Postgres Connection String
@@ -35,15 +37,18 @@ def inject_sql(sql_script, file_name):
             raise e.with_traceback()
     logging.info('... {0} has successfully run'.format(file_name))
 
-def create_table(df, table_name):
+def create_table(df: pd.DataFrame, table_name):
     # create tables in derived schema
-    df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)
+    try:
+        df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)
+    except Exception as e:
+        raise e.with_traceback() 
 
-def create_exploded_table(df, table_name):
+def create_exploded_table(df: pd.DataFrame, table_name):
     # create tables in derived schema and restrict all columns to Text
     df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False,dtype={col_name: TEXT for col_name in df})
 
-def append_data(df,table_name):
+def append_data(df: pd.DataFrame,table_name):
     #Add Data To An Existing Table
     df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False)
 
