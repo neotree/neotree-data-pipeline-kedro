@@ -359,6 +359,7 @@ def tidy_tables():
                 #Fix differences in Column data type definition
             
                 if 'AdmissionWeight.value' in adm_df:
+                    logging.info(adm_df.at[position,'AdmissionWeight.value'])
                     if adm_df.at[position,'AdmissionWeight.value'] is None:
                         adm_df.at[position,'AdmissionWeight.value'] =0
                     adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(np.int64)
