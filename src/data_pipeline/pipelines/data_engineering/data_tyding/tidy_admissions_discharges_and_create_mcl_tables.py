@@ -11,12 +11,14 @@ from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 
 
+
 # Import libraries
 import pandas as pd
 from datetime import datetime as dt
 import logging
 import random
 import sys
+import numpy as np
 
 
 def tidy_tables():
@@ -356,7 +358,7 @@ def tidy_tables():
                 key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
                 #Fix differences in Column data type definition
                 if 'AdmissionWeight.value' in adm_df:
-                   adm_df.astype({'AdmissionWeight.value': 'int64'}).dtypes
+                    adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(np.int64)
                 key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
                 key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
                 key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
