@@ -354,14 +354,17 @@ def tidy_tables():
                 key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
                 key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
                 key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
-                key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
                 key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
+                #Fix differences in Column data type definition
                 key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
                 key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
                 key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
 
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
+            if 'AdmissionWeight.value' in adm_df:
+                 adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
+
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
                 key_change(dis_df,discharge,position,'BWTDis.value','BirthWeight.value')
@@ -493,7 +496,7 @@ def tidy_tables():
     except Exception as e:
         logging.error(
             "!!! An error occured writing admissions and discharge output back to the database: ")
-        raise e
+        raise e.with_traceback()
 
     logging.info("... Creating MCL count tables")
     try:
