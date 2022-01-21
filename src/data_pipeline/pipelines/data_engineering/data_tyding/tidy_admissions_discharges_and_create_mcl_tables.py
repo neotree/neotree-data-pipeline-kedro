@@ -350,14 +350,13 @@ def tidy_tables():
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
 
                 # key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
-                # key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
-                # key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
-                # key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
-                # key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
-                # key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
-                # key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
-                # key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
-                # key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
+                key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
+                key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
+                key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
+                key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
+                key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
+                key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
+                key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
 
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
