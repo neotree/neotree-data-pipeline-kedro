@@ -493,7 +493,7 @@ def tidy_tables():
     except Exception as e:
         logging.error(
             "!!! An error occured writing admissions and discharge output back to the database: ")
-        raise e
+        raise e.with_traceback()
 
     logging.info("... Creating MCL count tables")
     try:
