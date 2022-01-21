@@ -349,10 +349,10 @@ def tidy_tables():
                         adm_df.at[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
 
-                key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
-                key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
-                #key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
-                key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
+                # key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
+                # key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
+                # key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
+                # key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
                 key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
                 key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
                 key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
