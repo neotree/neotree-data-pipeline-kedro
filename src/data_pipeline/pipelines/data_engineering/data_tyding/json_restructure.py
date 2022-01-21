@@ -52,13 +52,13 @@ def restructure_new_format(k,v,mcl):
 
     return k, v, mcl
 
-def restructure_array(parent_key,value,child_key):
+def restructure_array(key,value):
     
     # Create columns acceptable by postgres
 
-    if child_key is not None and parent_key is not None:
+    if key is not None:
     
-        k = re.sub('[^A-Za-z0-9_ ]+', '',str(parent_key).replace('-','_').replace(" ",""))+"."+child_key
+        k = re.sub('[^A-Za-z0-9_ ]+', '',str(key).replace('-','_').replace(" ",""))
         v = value
 
     return k, v

@@ -1,4 +1,5 @@
 # This module extracts the key-value pairs within a raw json file.
+import logging
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import reduce
 
@@ -66,38 +67,42 @@ def get_diagnoses_key_values(data_raw):
    
     for index, row in data_raw.iterrows():
         if "diagnoses" in row:
-            new_entries = {}
-            # add uid and ingested_at first
-            app_version = None
-            if 'appVersion' in row:
-                app_version = row['appVersion']
-            if(app_version!=None and app_version!=''):
-                #Remove any Other Characters that are non-numeric
-                app_version = int(''.join(d for d in app_version if d.isdigit()))
-            if 'facility' in row:
-                new_entries['facility'] = row['facility']
             
-            new_entries['uid'] = row['uid']
-            if 'ingested_at_admission' in row:
-                new_entries['ingested_at'] = row['ingested_at_admission']
-
-            if 'ingested_at' in row:
-                new_entries['ingested_at'] = row['ingested_at']
+            # add uid and ingested_at first
+            
 
             #Convert List to dictionary
             if row['diagnoses'] is not None and len(row['diagnoses'])> 0:
-                values_dict=reduce(lambda a, b: {**a, **b}, row['diagnoses'])
-
+                parent_keys=reduce(lambda a, b: {**a, **b}, row['diagnoses'])
+                
                 # iterate through parent keys
-                for parent_key in values_dict:
+                for parent_key in parent_keys:
+                    new_entry = {}
+                    values = parent_keys[parent_key]
+                    new_entry['diagnosis']=parent_key
+                    app_version = None
+                    if 'appVersion' in row:
+                        app_version = row['appVersion']
+                    if(app_version!=None and app_version!=''):
+                #   Remove any Other Characters that are non-numeric
+                        app_version = int(''.join(d for d in app_version if d.isdigit()))
+                    new_entry['appVersion'] = app_version
+                    if 'facility' in row:
+                        new_entry['facility'] = row['facility']
+            
+                    new_entry['uid'] = row['uid']
+
+                    if 'ingested_at_admission' in row:
+                        new_entry['ingested_at'] = row['ingested_at_admission']
+
+                    if 'ingested_at' in row:
+                        new_entry['ingested_at'] = row['ingested_at']
                     
-                    values = values_dict[parent_key]
+                    
                     # iterate through child/inner keys
                     for child_key in values:
-                        k, v = restructure_array(parent_key,values[child_key],child_key)
-
-                        new_entries[k] = v
-                # for each row add all the keys & values to a list
-                
-                data_new.append(new_entries)
+                        k, v = restructure_array(child_key,values[child_key])
+                        new_entry[k] = v
+                     # for each row add all the keys & values to a list
+                    data_new.append(new_entry)
     return data_new
