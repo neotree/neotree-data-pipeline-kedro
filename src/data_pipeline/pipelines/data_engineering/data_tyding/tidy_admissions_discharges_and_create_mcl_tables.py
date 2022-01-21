@@ -18,7 +18,6 @@ from datetime import datetime as dt
 import logging
 import random
 import sys
-import numpy as np
 
 
 def tidy_tables():
@@ -357,18 +356,15 @@ def tidy_tables():
                 key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
                 key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
                 #Fix differences in Column data type definition
-            
-                if 'AdmissionWeight.value' in adm_df:
-                    logging.info(adm_df.at[position,'AdmissionWeight.value'])
-                    if adm_df.at[position,'AdmissionWeight.value'] is None:
-                        adm_df.at[position,'AdmissionWeight.value'] =0
-                    adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(np.int64)
                 key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
                 key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
                 key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
 
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
+            if 'AdmissionWeight.value' in adm_df:
+                 adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
+
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
                 key_change(dis_df,discharge,position,'BWTDis.value','BirthWeight.value')
