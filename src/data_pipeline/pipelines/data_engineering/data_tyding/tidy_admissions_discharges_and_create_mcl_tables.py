@@ -9,7 +9,6 @@ from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_dif
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
-from conf.common.sql_functions import create_table
 
 
 # Import libraries
@@ -217,22 +216,22 @@ def tidy_tables():
 
 
         # watch out for time zone (tz) issues if you change code (ref: https://github.com/pandas-dev/pandas/issues/25571)
-        set_key_to_none(adm_df,'DateHIVtest.value')
-        set_key_to_none(adm_df,'DateHIVtest.label')
-        set_key_to_none(adm_df,'HIVtestResult.value')
-        set_key_to_none(adm_df,'HIVtestResult.label')
-        set_key_to_none(adm_df,'ANVDRLDate.value')
-        set_key_to_none(adm_df,'ANVDRLDate.label')
-        set_key_to_none(adm_df,'HAART.value')
-        set_key_to_none(adm_df,'HAART.label')
-        set_key_to_none(adm_df,'LengthHAART.value')
-        set_key_to_none(adm_df,'LengthHAART.label')
-        set_key_to_none(adm_df,'NVPgiven.value')
-        set_key_to_none(adm_df,'NVPgiven.label')
-        set_key_to_none(adm_df,'DateTimeAdmission.value')
-        set_key_to_none(adm_df,'DateTimeAdmission.label')
-        set_key_to_none(adm_df,'ROMLength.label')
-        set_key_to_none(adm_df,'ROMLength.value')
+        # set_key_to_none(adm_df,'DateHIVtest.value')
+        # set_key_to_none(adm_df,'DateHIVtest.label')
+        # set_key_to_none(adm_df,'HIVtestResult.value')
+        # set_key_to_none(adm_df,'HIVtestResult.label')
+        # set_key_to_none(adm_df,'ANVDRLDate.value')
+        # set_key_to_none(adm_df,'ANVDRLDate.label')
+        # set_key_to_none(adm_df,'HAART.value')
+        # set_key_to_none(adm_df,'HAART.label')
+        # set_key_to_none(adm_df,'LengthHAART.value')
+        # set_key_to_none(adm_df,'LengthHAART.label')
+        # set_key_to_none(adm_df,'NVPgiven.value')
+        # set_key_to_none(adm_df,'NVPgiven.label')
+        # set_key_to_none(adm_df,'DateTimeAdmission.value')
+        # set_key_to_none(adm_df,'DateTimeAdmission.label')
+        # set_key_to_none(adm_df,'ROMLength.label')
+        # set_key_to_none(adm_df,'ROMLength.value')
 
           #Format Dates Admissions Tables
         format_date(adm_df,'DateTimeAdmission.value')
@@ -460,8 +459,7 @@ def tidy_tables():
     
         #Save Derived Admissions To The DataBase Using Kedro
         if not adm_df.empty:
-            #catalog.save('create_derived_admissions',adm_df)
-            create_table(adm_df,'admissions')
+            catalog.save('create_derived_admissions',adm_df)
         #Save Derived Admissions To The DataBase Using Kedro
         if not dis_df.empty:
             catalog.save('create_derived_discharges',dis_df)

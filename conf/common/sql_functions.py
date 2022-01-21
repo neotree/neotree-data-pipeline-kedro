@@ -39,9 +39,9 @@ def inject_sql(sql_script, file_name):
 def create_table(df: pd.DataFrame, table_name):
     # create tables in derived schema
     try:
-       logging.info(df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False))
+       df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)
     except Exception as e:
-        raise e.with_traceback() 
+        raise e
 
 def create_exploded_table(df: pd.DataFrame, table_name):
     # create tables in derived schema and restrict all columns to Text
