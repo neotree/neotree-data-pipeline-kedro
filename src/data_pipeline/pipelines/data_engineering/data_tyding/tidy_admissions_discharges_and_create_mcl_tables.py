@@ -414,8 +414,9 @@ def tidy_tables():
 
                         #Add BCR TYPE TO CONTROL DF
                         # Loop is necessary since BCType is dependant on the set episodes
+
                         for control_index, bct_row in control_df.iterrows() :  
-                            bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].reset_index(drop=True).copy()
+                            bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].copy().sort_values(by=['DateBCR.value']).reset_index(drop=True)
                             
                             if not bct_type_df.empty:
                                 preliminary_index= 1;
