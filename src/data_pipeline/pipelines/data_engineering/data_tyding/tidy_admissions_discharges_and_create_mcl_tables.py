@@ -375,6 +375,11 @@ def tidy_tables():
                 key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
         if not baseline_df.empty:
             baseline_df = create_columns(baseline_df)
+        # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
+        if not mat_outcomes_df.empty and not mat_completeness_df.empty: 
+               latest_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value']) >='2021-10-01']
+               previous_mat_outcomes_df = mat_completeness_df[pd.to_datetime(mat_completeness_df['DateAdmission.value']) <='2021-09-30']
+               mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df], ignore_index=True)
 
         # Create Episode Column for Neolab Data
         if not neolab_df.empty:
