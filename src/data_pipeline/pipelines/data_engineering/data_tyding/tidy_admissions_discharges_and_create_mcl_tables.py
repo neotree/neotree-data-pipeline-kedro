@@ -337,17 +337,17 @@ def tidy_tables():
                     pass;  
 
                 if period>0:
-                    adm_df.at[position,'Age.value'] = period
+                    adm_df.loc[position,'Age.value'] = period
                     if period< 2:
-                        adm_df.at[position,'AgeCategory'] = 'Fresh Newborn (< 2 hours old)'
+                        adm_df.loc[position,'AgeCategory'] = 'Fresh Newborn (< 2 hours old)'
                     elif period>2 and period<=23:
-                        adm_df.at[position,'AgeCategory'] = 'Newborn (2 - 23 hrs old)'
+                        adm_df.loc[position,'AgeCategory'] = 'Newborn (2 - 23 hrs old)'
                     elif period>23 and period<=47:
-                        adm_df.at[position,'AgeCategory']= 'Newborn (1 day - 1 day 23 hrs old)'
+                        adm_df.loc[position,'AgeCategory']= 'Newborn (1 day - 1 day 23 hrs old)'
                     elif period>47 and period<= 71:
-                        adm_df.at[position,'AgeCategory']= 'Infant (2 days - 2 days 23 hrs old)' 
+                        adm_df.loc[position,'AgeCategory']= 'Infant (2 days - 2 days 23 hrs old)' 
                     else:
-                        adm_df.at[position,'AgeCategory'] = 'Infant (> 3 days old)' 
+                        adm_df.loc[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
             if 'BirthWeight.value' in adm_df:
                 adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
