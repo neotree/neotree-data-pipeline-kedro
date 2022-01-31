@@ -283,6 +283,7 @@ def tidy_tables():
         # CREATE AGE CATEGORIES
 
         if not adm_df.empty:
+           
             for position,admission in adm_df.iterrows():
 
                 age_list =[]
@@ -337,19 +338,18 @@ def tidy_tables():
                     pass;  
 
                 if period>0:
-                    adm_df.at[position,'Age.value'] = period
+                    adm_df.loc[position,'Age.value'] = period
                     if period< 2:
-                        adm_df.at[position,'AgeCategory'] = 'Fresh Newborn (< 2 hours old)'
+                        adm_df.loc[position,'AgeCategory'] = 'Fresh Newborn (< 2 hours old)'
                     elif period>2 and period<=23:
-                        adm_df.at[position,'AgeCategory'] = 'Newborn (2 - 23 hrs old)'
+                        adm_df.loc[position,'AgeCategory'] = 'Newborn (2 - 23 hrs old)'
                     elif period>23 and period<=47:
-                        adm_df.at[position,'AgeCategory']= 'Newborn (1 day - 1 day 23 hrs old)'
+                        adm_df.loc[position,'AgeCategory']= 'Newborn (1 day - 1 day 23 hrs old)'
                     elif period>47 and period<= 71:
-                        adm_df.at[position,'AgeCategory']= 'Infant (2 days - 2 days 23 hrs old)' 
+                        adm_df.loc[position,'AgeCategory']= 'Infant (2 days - 2 days 23 hrs old)' 
                     else:
-                        adm_df.at[position,'AgeCategory'] = 'Infant (> 3 days old)' 
+                        adm_df.loc[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-
                 key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
                 key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
                 key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
@@ -359,11 +359,12 @@ def tidy_tables():
                 key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
                 key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
                 key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
-
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
                  adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
+            if 'BirthWeight.value' in adm_df:
+                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
