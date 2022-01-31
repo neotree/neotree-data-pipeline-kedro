@@ -359,7 +359,7 @@ def tidy_tables():
                 key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
                 key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
                 key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
-
+                logging.info("-----",adm_df.at[position,'BirthWeight.value'])
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
