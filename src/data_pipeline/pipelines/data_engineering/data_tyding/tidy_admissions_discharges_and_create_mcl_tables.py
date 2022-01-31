@@ -283,6 +283,7 @@ def tidy_tables():
         # CREATE AGE CATEGORIES
 
         if not adm_df.empty:
+           
             for position,admission in adm_df.iterrows():
 
                 age_list =[]
@@ -349,9 +350,6 @@ def tidy_tables():
                     else:
                         adm_df.loc[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-            if 'BirthWeight.value' in adm_df:
-                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
-
                 key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
                 key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
                 key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
@@ -366,6 +364,8 @@ def tidy_tables():
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
                  adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
+            if 'BirthWeight.value' in adm_df:
+                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
