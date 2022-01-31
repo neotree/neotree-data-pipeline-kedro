@@ -349,6 +349,8 @@ def tidy_tables():
                     else:
                         adm_df.at[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
+            if 'BirthWeight.value' in adm_df:
+                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
 
                 key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
                 key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
