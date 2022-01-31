@@ -350,15 +350,41 @@ def tidy_tables():
                     else:
                         adm_df.loc[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-                key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
-                key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
-                key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
-                key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
-                key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
+                if  "BirthWeight.value" in admission:
+                    logging.info("0000---",admission["BirthWeight.value"])
+                else:
+                    key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
+                if "Convulsions.value" in admission:
+                    pass;
+                else:
+                    key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
+                if 'SymptomReviewNeurology.value' in admission:
+                    pass;
+                else:
+                    key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
+                if 'LowBirthWeight.value' in admission:
+                    pass;
+                else:
+                    key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
+                if 'AdmissionWeight.value' in admission:
+                    pass;
+                else:
+                    key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
                 #Fix differences in Column data type definition
-                key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
-                key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
-                key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
+                if 'BSUnitmg.value' in admission:
+                    pass;
+                else:
+                    key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
+                if 'BloodSugarmmol.value' in admission:
+                    pass;
+                else:
+
+                    key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
+                if 'BloodSugarmg.value' in admission:
+                    pass;
+                else:
+
+                    key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
@@ -368,12 +394,30 @@ def tidy_tables():
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
-                key_change(dis_df,discharge,position,'BWTDis.value','BirthWeight.value')
-                key_change(dis_df,discharge,position,'BirthDateDis.value','DOBTOB.value')
-                key_change(dis_df,discharge,position,'Delivery.value','ModeDelivery.value')
-                key_change(dis_df,discharge,position,'NNUAdmTemp.value','Temperature.value')
-                key_change(dis_df,discharge,position,'GestBirth.value','Gestation.value')
-                key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
+                if 'BirthWeight.value' in discharge:
+                    pass;
+                else:
+                    key_change(dis_df,discharge,position,'BWTDis.value','BirthWeight.value')
+                if 'DOBTOB.value' in discharge:
+                    pass;
+                else:
+                    key_change(dis_df,discharge,position,'BirthDateDis.value','DOBTOB.value')
+                if 'ModeDelivery.value' in discharge:
+                    pass;
+                else:
+                    key_change(dis_df,discharge,position,'Delivery.value','ModeDelivery.value')
+                if 'Temperature.value' in discharge:
+                    pass;
+                else: 
+                    key_change(dis_df,discharge,position,'NNUAdmTemp.value','Temperature.value') 
+                if  'Gestation.value' in discharge:
+                    pass;
+                else:
+                    key_change(dis_df,discharge,position,'GestBirth.value','Gestation.value')
+                if 'AdmReason.value' in discharge:
+                    pass;
+                else:
+                    key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
         if not baseline_df.empty:
             baseline_df = create_columns(baseline_df)
         # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
