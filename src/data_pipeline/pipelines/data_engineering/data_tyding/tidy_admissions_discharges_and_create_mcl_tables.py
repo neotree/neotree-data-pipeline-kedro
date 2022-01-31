@@ -1,4 +1,5 @@
 # Import created modules (need to be stored in the same directory as notebook)
+from tkinter.messagebox import NO
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
@@ -350,37 +351,37 @@ def tidy_tables():
                     else:
                         adm_df.loc[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-                if  "BirthWeight.value" in admission:
-                    logging.info("0000---",admission["BirthWeight.value"])
+                if  "BirthWeight.value" in admission and admission["BirthWeight.value"] is not None:
+                    pass;
                 else:
                     key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
-                if "Convulsions.value" in admission:
+                if "Convulsions.value" in admission and admission["Convulsions.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
-                if 'SymptomReviewNeurology.value' in admission:
+                if 'SymptomReviewNeurology.value' in admission and admission["SymptomReviewNeurology.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
-                if 'LowBirthWeight.value' in admission:
+                if 'LowBirthWeight.value' in admission and admission["LowBirthWeight.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
-                if 'AdmissionWeight.value' in admission:
+                if 'AdmissionWeight.value' in admission and admission["AdmissionWeight.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
                 #Fix differences in Column data type definition
-                if 'BSUnitmg.value' in admission:
+                if 'BSUnitmg.value' in admission and admission["BSUnitmg.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
-                if 'BloodSugarmmol.value' in admission:
+                if 'BloodSugarmmol.value' in admission and admission["BloodSugarmmol.value"] is not None:
                     pass;
                 else:
 
                     key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
-                if 'BloodSugarmg.value' in admission:
+                if 'BloodSugarmg.value' in admission and admission["BloodSugarmg.value"] is not None:
                     pass;
                 else:
 
@@ -394,27 +395,27 @@ def tidy_tables():
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
-                if 'BirthWeight.value' in discharge:
+                if 'BirthWeight.value' in discharge and discharge['BirthWeight.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'BWTDis.value','BirthWeight.value')
-                if 'DOBTOB.value' in discharge:
+                if 'DOBTOB.value' in discharge and discharge['DOBTOB.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'BirthDateDis.value','DOBTOB.value')
-                if 'ModeDelivery.value' in discharge:
+                if 'ModeDelivery.value' in discharge and discharge['ModeDelivery.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'Delivery.value','ModeDelivery.value')
-                if 'Temperature.value' in discharge:
+                if 'Temperature.value' in discharge and discharge['Temperature.value'] is not None:
                     pass;
                 else: 
                     key_change(dis_df,discharge,position,'NNUAdmTemp.value','Temperature.value') 
-                if  'Gestation.value' in discharge:
+                if  'Gestation.value' in discharge and discharge['Gestation.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'GestBirth.value','Gestation.value')
-                if 'AdmReason.value' in discharge:
+                if 'AdmReason.value' in discharge and discharge['AdmReason.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
