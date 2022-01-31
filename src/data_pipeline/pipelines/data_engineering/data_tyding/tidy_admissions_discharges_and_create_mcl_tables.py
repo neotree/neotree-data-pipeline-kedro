@@ -1,5 +1,4 @@
 # Import created modules (need to be stored in the same directory as notebook)
-from tkinter.messagebox import NO
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
