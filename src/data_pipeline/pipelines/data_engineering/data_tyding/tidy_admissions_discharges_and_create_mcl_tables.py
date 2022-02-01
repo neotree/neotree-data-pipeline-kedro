@@ -350,7 +350,7 @@ def tidy_tables():
                     else:
                         adm_df.loc[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                 ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-                if  "BirthWeight.value" in admission and str(admission["BirthWeight.value"]) != 'nan':
+                if  "BirthWeight.value" in admission and str(admission["BirthWeight.value"]) != 'nan' and admission["BirthWeight.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
