@@ -354,33 +354,34 @@ def tidy_tables():
                     pass;
                 else:
                     key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
-                if "Convulsions.value" in admission and str(admission["Convulsions.value"]) != 'nan':
+                if "Convulsions.value" in admission and str(admission["Convulsions.value"]) != 'nan' and admission["Convulsions.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'Conv.value','Convulsions.value')
-                if 'SymptomReviewNeurology.value' in admission and str(admission["SymptomReviewNeurology.value"]) != 'nan':
+                if ('SymptomReviewNeurology.value' in admission and str(admission["SymptomReviewNeurology.value"]) != 'nan' 
+                    and admission["SymptomReviewNeurology.value"] is not None):
                     pass;
                 else:
                     key_change(adm_df,admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
-                if 'LowBirthWeight.value' in admission and str(admission["LowBirthWeight.value"]) !='nan':
+                if 'LowBirthWeight.value' in admission and str(admission["LowBirthWeight.value"]) !='nan' and admission["LowBirthWeight.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
-                if 'AdmissionWeight.value' in admission and str(admission["AdmissionWeight.value"]) != 'nan' :
+                if 'AdmissionWeight.value' in admission and str(admission["AdmissionWeight.value"]) != 'nan' and admission["LowBirthWeight.value"] is not None :
                     pass;
                 else:
                     key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
                 #Fix differences in Column data type definition
-                if 'BSUnitmg.value' in admission and str(admission["BSUnitmg.value"]) !='nan':
+                if 'BSUnitmg.value' in admission and str(admission["BSUnitmg.value"]) !='nan' and admission["BSUnitmg.value"] is not None:
                     pass;
                 else:
                     key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
-                if 'BloodSugarmmol.value' in admission and str(admission["BloodSugarmmol.value"])!='nan':
+                if 'BloodSugarmmol.value' in admission and str(admission["BloodSugarmmol.value"])!='nan' and admission["BloodSugarmmol.value"] is not None:
                     pass;
                 else:
 
                     key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
-                if 'BloodSugarmg.value' in admission and str(admission["BloodSugarmg.value"])!='nan':
+                if 'BloodSugarmg.value' in admission and str(admission["BloodSugarmg.value"])!='nan' and admission["BloodSugarmg.value"] is not None:
                     pass;
                 else:
 
@@ -394,27 +395,27 @@ def tidy_tables():
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
-                if 'BirthWeight.value' in discharge and str(discharge['BirthWeight.value'])!='nan':
+                if 'BirthWeight.value' in discharge and str(discharge['BirthWeight.value'])!='nan' and discharge['BirthWeight.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'BWTDis.value','BirthWeight.value')
-                if 'DOBTOB.value' in discharge and str(discharge['DOBTOB.value'])!='nan':
+                if 'DOBTOB.value' in discharge and str(discharge['DOBTOB.value'])!='nan' and discharge['DOBTOB.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'BirthDateDis.value','DOBTOB.value')
-                if 'ModeDelivery.value' in discharge and str(discharge['ModeDelivery.value'])!='nan':
+                if 'ModeDelivery.value' in discharge and str(discharge['ModeDelivery.value'])!='nan' and discharge['ModeDelivery.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'Delivery.value','ModeDelivery.value')
-                if 'Temperature.value' in discharge and str(discharge['Temperature.value'])!='nan':
+                if 'Temperature.value' in discharge and str(discharge['Temperature.value'])!='nan' and discharge['Temperature.value'] is not None:
                     pass;
                 else: 
                     key_change(dis_df,discharge,position,'NNUAdmTemp.value','Temperature.value') 
-                if  'Gestation.value' in discharge and str(discharge['Gestation.value'])!='nan':
+                if  'Gestation.value' in discharge and str(discharge['Gestation.value'])!='nan' and discharge['Gestation.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'GestBirth.value','Gestation.value')
-                if 'AdmReason.value' in discharge and str(discharge['AdmReason.value'])!='nan':
+                if 'AdmReason.value' in discharge and str(discharge['AdmReason.value'])!='nan' and discharge['AdmReason.value'] is not None:
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
