@@ -192,16 +192,19 @@ def formatRawData():
                                     if "uid"in session.keys() and session["uid"] is not None:                            
                                         if "script" in session.keys():
                                             script = session["script"]
+                                            #Fix issue With Same Script Being used for multiple Sites Case Of Harare and Chinhoi
+                                            if str(filename).endswith('Chinhoyi_Maternity_Outcome.json'):
+                                                session['script']['id'] = '-MYk0A3-Z_QjaXYU5MsS'
+                                                session['scriptTitle'] = 'Chinhoyi Maternity Outcome'
+                                                session['title'] = '-MYk0A3-Z_QjaXYU5MsS'
                                             if "id" in script :
                                                 scriptId = script["id"]
                                                 if scriptId is not None:
                                                     formatedSessions.append(session) 
                                                     #Add uid To list for duplicates check 
-                                                    uids.append(session["uid"])
-                                    # if str(filename).endswith('Zimbabwe_Maternity_Outcome_.json'):
-                                    #     chc_uids.append(session["uid"])         
+                                                    uids.append(session["uid"])                                            
+                                             
                             json_file.close();
-                    # print("###UIDS--",chc_uids);
                     #Check If There Exist A Record With The Same UID in The Database
                     potential_duplicates = checkDuplicateDatabaseRecord(uids);
                     return dict(sessions=formatedSessions,duplicates=potential_duplicates);        
