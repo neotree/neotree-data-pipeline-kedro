@@ -367,7 +367,7 @@ def tidy_tables():
                     pass;
                 else:
                     key_change(adm_df,admission,position,'LBW.value','LowBirthWeight.value')
-                if 'AdmissionWeight.value' in admission and str(admission["AdmissionWeight.value"]) != 'nan' and admission["LowBirthWeight.value"] is not None :
+                if 'AdmissionWeight.value' in admission and str(admission["AdmissionWeight.value"]) != 'nan' and admission["AdmissionWeight.value"] is not None :
                     pass;
                 else:
                     key_change(adm_df,admission,position,'AW.value','AdmissionWeight.value')
