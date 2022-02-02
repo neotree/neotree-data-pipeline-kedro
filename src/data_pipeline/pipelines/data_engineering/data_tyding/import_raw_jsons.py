@@ -206,7 +206,7 @@ def formatRawData():
                                              
                             json_file.close();
                     #Check If There Exist A Record With The Same UID in The Database
-                    potential_duplicates = [] #checkDuplicateDatabaseRecord(uids);
+                    potential_duplicates = checkDuplicateDatabaseRecord(uids);
                     return dict(sessions=formatedSessions,duplicates=potential_duplicates);        
                 else:
                     logging.warn("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")
