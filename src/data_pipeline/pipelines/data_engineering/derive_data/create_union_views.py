@@ -256,7 +256,7 @@ def union_views():
             if 'BirthWeight.value_discharge' in old_matched_smch_data:
                 old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
         # SAVE OLD NEW ADMISSIONS
-        if new_smch_admissions and not new_smch_admissions.empty and old_smch_admissions and not old_smch_admissions.empty:
+        if (new_smch_admissions and not new_smch_admissions.empty) and (old_smch_admissions and not old_smch_admissions.empty):
             combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], ignore_index=True)
             if not combined_adm_df.empty:   
                 catalog.save('create_derived_old_new_admissions_view',combined_adm_df)   
