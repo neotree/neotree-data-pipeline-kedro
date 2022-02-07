@@ -6,30 +6,29 @@ from  conf.common.config import config
 from conf.common.hospital_config import hospital_conf
 import sys,os
 import logging
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_admissions_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_baseline_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_mat_completeness_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_vitals_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_neolab_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_maternal_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_discharges_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_admissions_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_discharges_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_maternal_outcome_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_vitalsigns_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_baselines_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_mat_completeness_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import derived_admissions_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import derived_discharges_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import vital_signs_count
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_noelab_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_diagnoses_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_admissions_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_discharges_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_admissions_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_discharges_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_matched_view_query
-from src.data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_matched_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_admissions_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_baseline_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_mat_completeness_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_vitals_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_neolab_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_maternal_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_discharges_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_admissions_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_discharges_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_maternal_outcome_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_vitalsigns_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_baselines_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_mat_completeness_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import derived_admissions_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import derived_discharges_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_noelab_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_diagnoses_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_admissions_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_discharges_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_admissions_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_discharges_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_matched_view_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_matched_query
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -201,31 +200,30 @@ where = " "
 if(env=="prod"):
    where = " and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
 
-deduplicate_admissions_query = deduplicate_admissions_query(admission_script_id,where)
-deduplicate_baseline_query = deduplicate_baseline_query(baseline_id, where)
-deduplicate_mat_completeness_query = deduplicate_mat_completeness_query(maternity_completeness_id,where)
-deduplicate_vitals_query = deduplicate_vitals_query(vital_signs_script_id,where)
-deduplicate_neolab_query = deduplicate_neolab_query(neolab_script_id,where)
-deduplicate_maternal_query = deduplicate_maternal_query(maternal_script_id,where)
-deduplicate_discharges_query = deduplicate_discharges_query(discharge_script_id,where)
-read_admissions_query = read_admissions_query(admissions_case,admission_script_id)
-read_discharges_query = read_discharges_query(dicharges_case,discharge_script_id)
-read_maternal_outcome_query = read_maternal_outcome_query(maternal_case,mat_outcomes_from,maternal_script_id)
-read_vitalsigns_query = read_vitalsigns_query(vitals_case,vital_signs_from,vital_signs_script_id)
-read_baselines_query = read_baselines_query(baseline_case,baseline_from,baseline_id)
-read_mat_completeness_query = read_mat_completeness_query(maternity_completeness_case,mat_completeness_from,maternity_completeness_id)
-derived_admissions_query = derived_admissions_query()
-derived_discharges_query = derived_discharges_query()
-vital_signs_count = vital_signs_count()
-read_noelab_query = read_noelab_query(neolabs_case,neolab_from,neolab_script_id)
-read_diagnoses_query = read_diagnoses_query(admissions_case,admission_script_id)
+deduplicate_admissions = deduplicate_admissions_query(admission_script_id,where)
+deduplicate_baseline = deduplicate_baseline_query(baseline_id, where)
+deduplicate_mat_completeness = deduplicate_mat_completeness_query(maternity_completeness_id,where)
+deduplicate_vitals = deduplicate_vitals_query(vital_signs_script_id,where)
+deduplicate_neolab = deduplicate_neolab_query(neolab_script_id,where)
+deduplicate_maternal = deduplicate_maternal_query(maternal_script_id,where)
+deduplicate_discharges = deduplicate_discharges_query(discharge_script_id,where)
+read_admissions = read_admissions_query(admissions_case,admission_script_id)
+read_discharges = read_discharges_query(dicharges_case,discharge_script_id)
+read_maternal_outcome = read_maternal_outcome_query(maternal_case,mat_outcomes_from,maternal_script_id)
+read_vitalsigns = read_vitalsigns_query(vitals_case,vital_signs_from,vital_signs_script_id)
+read_baselines = read_baselines_query(baseline_case,baseline_from,baseline_id)
+read_mat_completeness = read_mat_completeness_query(maternity_completeness_case,mat_completeness_from,maternity_completeness_id)
+derived_admissions = derived_admissions_query()
+derived_discharges = derived_discharges_query()
+read_noelab = read_noelab_query(neolabs_case,neolab_from,neolab_script_id)
+read_diagnoses= read_diagnoses_query(admissions_case,admission_script_id)
 #UNION VIEWS FOR OLD SMCH AND NEW SMCH DATA
-read_new_smch_admissions_query = read_new_smch_admissions_query()
-read_new_smch_discharges_query = read_new_smch_discharges_query()
-read_old_smch_admissions_query = read_old_smch_admissions_query()
-read_old_smch_discharges_query = read_old_smch_discharges_query()
-read_old_smch_matched_view_query = read_old_smch_matched_view_query()
-read_new_smch_matched_query = read_new_smch_matched_query()
+read_new_smch_admissions = read_new_smch_admissions_query()
+read_new_smch_discharges = read_new_smch_discharges_query()
+read_old_smch_admissions = read_old_smch_admissions_query()
+read_old_smch_discharges = read_old_smch_discharges_query()
+read_old_smch_matched_view = read_old_smch_matched_view_query()
+read_new_smch_matched = read_new_smch_matched_query()
 
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
@@ -233,87 +231,87 @@ catalog = DataCatalog(
         {
          #Read Admissions
          "read_admissions": SQLQueryDataSet(
-            sql= read_admissions_query,
+            sql= read_admissions,
             credentials=dict(con=con)
          ),
          #Read Raw Discharges
          "read_discharges": SQLQueryDataSet(
-            sql= read_discharges_query,
+            sql= read_discharges,
             credentials=dict(con=con)
          ),
          #Read Derived Admissions
         "read_derived_admissions": SQLQueryDataSet(
-            sql= derived_admissions_query,
+            sql= derived_admissions,
             #load_args= dict(index_col="uid"),
             credentials=dict(con=con)
          ),
          #Read Derived Discharges
          "read_derived_discharges": SQLQueryDataSet(
-            sql= derived_discharges_query,
+            sql= derived_discharges,
             #load_args= dict(index_col="uid"),
             credentials=dict(con=con)
          ),
          #Read Maternal Outcomes
          "read_maternal_outcomes": SQLQueryDataSet(
-            sql= read_maternal_outcome_query,
+            sql= read_maternal_outcome,
             credentials=dict(con=con)
          ),
          #Read Vital Signs
          "read_vital_signs": SQLQueryDataSet(
-            sql= read_vitalsigns_query,
+            sql= read_vitalsigns,
             credentials=dict(con=con)
          ),
          #Read Neolab Data
          "read_neolab_data": SQLQueryDataSet(
-            sql= read_noelab_query,
+            sql= read_noelab,
             credentials=dict(con=con)
          ),
          #Read Baseline Data
          "read_baseline_data": SQLQueryDataSet(
-            sql= read_baselines_query,
+            sql= read_baselines,
             credentials=dict(con=con)
          ),
          #Read  Diagnoses Data
          "read_diagnoses_data": SQLQueryDataSet(
-            sql= read_diagnoses_query,
+            sql= read_diagnoses,
             credentials=dict(con=con)
          ),
           #Read Baseline Data
          "read_mat_completeness_data": SQLQueryDataSet(
-            sql= read_mat_completeness_query,
+            sql= read_mat_completeness,
             credentials=dict(con=con)
          ),
            #Read New SCMH Admissions Data
          "read_new_smch_admissions": SQLQueryDataSet(
-            sql= read_new_smch_admissions_query,
+            sql= read_new_smch_admissions,
             credentials=dict(con=con)
          ),
             #Read New SCMH Discharges
          "read_new_smch_discharges": SQLQueryDataSet(
-            sql= read_new_smch_discharges_query,
+            sql= read_new_smch_discharges,
             credentials=dict(con=con)
          ),
 
           #Read Old SCMH Admissions
          "read_old_smch_admissions": SQLQueryDataSet(
-            sql= read_old_smch_admissions_query,
+            sql= read_old_smch_admissions,
             credentials=dict(con=con)
          ),
 
           #Read Old SCMH Discharges
          "read_old_smch_discharges": SQLQueryDataSet(
-            sql= read_old_smch_discharges_query,
+            sql= read_old_smch_discharges,
             credentials=dict(con=con)
          ),
          #Read New Matched SCMH Data
          "read_new_smch_matched": SQLQueryDataSet(
-            sql= read_new_smch_matched_query,
+            sql= read_new_smch_matched,
             credentials=dict(con=con)
          ),
 
           #Read Old Matched SCMH Data
          "read_old_smch_matched_view": SQLQueryDataSet(
-            sql= read_old_smch_matched_view_query,
+            sql= read_old_smch_matched_view,
             credentials=dict(con=con)
          ),
            

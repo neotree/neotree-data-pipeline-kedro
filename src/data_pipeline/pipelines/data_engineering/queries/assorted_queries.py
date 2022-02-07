@@ -284,8 +284,6 @@ def derived_discharges_query():
             from derived.discharges where uid!='null';
             '''
 
-def vital_signs_count():
-    return f''' select count(*) from derived.vitalsigns ''';
 
 def read_noelab_query(neolabs_case,neolab_from,neo_lab_id):
    return f'''
