@@ -28,7 +28,7 @@ def union_views():
             using = ''
             for index2, row2 in old_adm_cols.iterrows():
                 if col_name == row2['column_name']:
-                    if 'timestamp' in data_type :
+                    if 'timestamp' in str(data_type) or 'double' in data_type:
                         using = f'''USING "{col_name}"::{data_type}'''
                     query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};'''
                     inject_sql(query,"OLD ADMISSIONS")
@@ -40,7 +40,7 @@ def union_views():
             using = ''
             for index2, row2 in old_disc_cols.iterrows():
                 if col_name == row2['column_name']: 
-                    if 'timestamp' in str(data_type):
+                    if 'timestamp' in str(data_type) or 'double' in str(data_type):
                         using = f'''USING "{col_name}"::{data_type}'''
                     query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
                     inject_sql(query,"OLD DISCHARGES")
@@ -52,7 +52,7 @@ def union_views():
             using = ''
             for index2, row2 in old_matched_cols .iterrows():
                 if col_name == row2['column_name']:
-                    if 'timestamp' in str(data_type):
+                    if 'timestamp' in str(data_type) or 'double' in str(data_type):
                         using = f'''USING "{col_name}"::{data_type}'''
                     query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
                     inject_sql(query,"Union Views")
