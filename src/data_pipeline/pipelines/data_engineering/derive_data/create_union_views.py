@@ -4,6 +4,7 @@ from conf.common.sql_functions import inject_sql,get_table_columns
 import logging
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 
 def union_views():
     try:
@@ -56,14 +57,26 @@ def union_views():
                     query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
                     inject_sql(query,"Union Views")
 
-        old_smch_admissions =   catalog.load('read_old_smch_admissions')
-        old_smch_discharges =   catalog.load('read_old_smch_discharges')
-        old_matched_smch_data = catalog.load('read_old_smch_matched_view')
-        new_smch_admissions =   catalog.load('read_new_smch_admissions')
-        new_smch_discharges =   catalog.load('read_new_smch_discharges')
-        new_smch_matched_data = catalog.load('read_new_smch_matched')
+        old_smch_admissions =  None
+        old_smch_discharges =  None
+        old_matched_smch_data = None
+        new_smch_admissions =   None
+        new_smch_discharges =   None
+        new_smch_matched_data = None            
+        if table_exists('derived','old_smch_admissions'):
+            old_smch_admissions =   catalog.load('read_old_smch_admissions')
+        if table_exists('derived','old_smch_discharges'):
+            old_smch_discharges =   catalog.load('read_old_smch_discharges')
+        if table_exists('derived','old_smch_matched_admissions_discharges'):
+            old_matched_smch_data = catalog.load('read_old_smch_matched_data')
+        if table_exists('derived','admissions'):
+            new_smch_admissions =   catalog.load('read_new_smch_admissions')
+        if table_exists('derived','discharges'):
+            new_smch_discharges =   catalog.load('read_new_smch_discharges')
+        if table_exists('derived','joined_admissions_discharges'):
+            new_smch_matched_data = catalog.load('read_new_smch_matched')
 
-        if not old_smch_admissions.empty:
+        if old_smch_admissions and not old_smch_admissions.empty:
            
             for position,admission in old_smch_admissions.iterrows():
 
@@ -145,7 +158,7 @@ def union_views():
                 old_smch_admissions['BirthWeight.value'] = pd.to_numeric(old_smch_admissions['BirthWeight.value'], errors='coerce')   
 
 
-        if not old_smch_discharges.empty:
+        if old_smch_discharges and not old_smch_discharges.empty:
             for position,discharge in old_smch_discharges.iterrows():
                 key_change(old_smch_discharges,discharge,position,'BWTDis.value','BirthWeight.value')
                 key_change(old_smch_discharges,discharge,position,'BirthDateDis.value','DOBTOB.value')
@@ -243,18 +256,18 @@ def union_views():
             if 'BirthWeight.value_discharge' in old_matched_smch_data:
                 old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
         # SAVE OLD NEW ADMISSIONS
-        if not new_smch_admissions.empty and not old_smch_admissions.empty:
+        if new_smch_admissions and not new_smch_admissions.empty and old_smch_admissions and not old_smch_admissions.empty:
             combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], ignore_index=True)
             if not combined_adm_df.empty:   
                 catalog.save('create_derived_old_new_admissions_view',combined_adm_df)   
         # SAVE OLD NEW DISCHARGES
-        if not new_smch_discharges.empty and not old_smch_discharges.empty:
+        if new_smch_discharges and not new_smch_discharges.empty and old_smch_discharges and not old_smch_discharges.empty:
             combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges], ignore_index=True)
             if not combined_dis_df.empty:   
                 catalog.save('create_derived_old_new_discharges_view',combined_dis_df)   
 
         # SAVE MATCHED DATA 
-        if not new_smch_matched_data.empty and not old_matched_smch_data.empty:
+        if new_smch_matched_data and not new_smch_matched_data.empty and old_matched_smch_data and not old_matched_smch_data.empty:
             combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data], ignore_index=True)
             if not combined_matched_df.empty:   
                 catalog.save('create_derived_old_new_matched_view',combined_matched_df)   

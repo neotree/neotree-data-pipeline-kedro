@@ -222,7 +222,7 @@ read_new_smch_admissions = read_new_smch_admissions_query()
 read_new_smch_discharges = read_new_smch_discharges_query()
 read_old_smch_admissions = read_old_smch_admissions_query()
 read_old_smch_discharges = read_old_smch_discharges_query()
-read_old_smch_matched_view = read_old_smch_matched_view_query()
+read_old_smch_matched_data = read_old_smch_matched_view_query()
 read_new_smch_matched = read_new_smch_matched_query()
 
 
@@ -310,8 +310,8 @@ catalog = DataCatalog(
          ),
 
           #Read Old Matched SCMH Data
-         "read_old_smch_matched_view": SQLQueryDataSet(
-            sql= read_old_smch_matched_view,
+         "read_old_smch_matched_data": SQLQueryDataSet(
+            sql= read_old_smch_matched_data,
             credentials=dict(con=con)
          ),
            
