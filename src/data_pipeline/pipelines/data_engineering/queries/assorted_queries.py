@@ -308,7 +308,7 @@ def read_diagnoses_query(admissions_case,adm_script_id):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case}
-            from scratch.deduplicated_admissions where uid!='null' and scriptid in '{adm_script_id}';
+            from scratch.deduplicated_admissions where uid!='null' and scriptid = '{adm_script_id}';
             '''
 
 def read_new_smch_admissions_query():
