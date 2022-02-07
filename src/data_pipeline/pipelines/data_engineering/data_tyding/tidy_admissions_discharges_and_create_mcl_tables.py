@@ -292,7 +292,7 @@ def tidy_tables():
                 # Get The Value which is a string e.g  3 days, 4 hours
                     age_list = str(admission['Age.value']).split(",")
                 else:
-                    if 'AgeB.value':
+                    if 'AgeB.value' in admission and str(admission['AgeB.value']) != 'nan':
                         age_list = str(admission['AgeB.value']).split(",")
                 # Initialise Hours
                 hours = 0
