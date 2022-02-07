@@ -168,7 +168,7 @@ def union_views():
                 key_change(old_smch_discharges,discharge,position,'PresComp.value','AdmReason.value')
 
         
-        if not old_matched_smch_data.empty:
+        if old_matched_smch_data and not old_matched_smch_data.empty:
             for position,matched_admission in old_matched_smch_data.iterrows():
 
                 age_list =[]
