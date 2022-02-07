@@ -1,9 +1,9 @@
 import os, sys
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
-from conf.base.catalog import (deduplicate_baseline_query,deduplicate_maternal_query,
-                              deduplicate_neolab_query,deduplicate_vitals_query,cron_log_file,
-                              deduplicate_mat_completeness_query)
+from conf.base.catalog import (deduplicate_baseline,deduplicate_maternal,
+                              deduplicate_neolab,deduplicate_vitals,cron_log_file,
+                              deduplicate_mat_completeness)
 import logging
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
@@ -11,11 +11,11 @@ from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.dedupli
 def deduplicate_other_data(data_import_output):
     try:
         if data_import_output is not None:
-            maternal_script = deduplicate_maternal_query
-            vitals_script = deduplicate_vitals_query
-            baseline_script = deduplicate_baseline_query
-            neolab_script = deduplicate_neolab_query
-            mat_completeness_script = deduplicate_mat_completeness_query
+            maternal_script = deduplicate_maternal
+            vitals_script = deduplicate_vitals
+            baseline_script = deduplicate_baseline
+            neolab_script = deduplicate_neolab
+            mat_completeness_script = deduplicate_mat_completeness
             inject_sql(maternal_script, "deduplicate-maternal")
             inject_sql(vitals_script, "deduplicate-vitals")
             inject_sql(baseline_script, "deduplicate-baseline")
