@@ -1,9 +1,8 @@
 import os, sys
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
-from conf.common.format_error import formatError
 import logging
-from conf.base.catalog import deduplicate_admissions_query,params,cron_log_file
+from conf.base.catalog import dedup_admissions,params,cron_log_file
 from pathlib import Path,PureWindowsPath
 import time
 from datetime import datetime
@@ -16,7 +15,7 @@ mode = params['env']
 def deduplicate_admissions(data_import_output):
     try:
         if data_import_output is not None:
-            sql_script = deduplicate_admissions_query
+            sql_script = dedup_admissions
             inject_sql(sql_script, "deduplicate-admissions")
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
