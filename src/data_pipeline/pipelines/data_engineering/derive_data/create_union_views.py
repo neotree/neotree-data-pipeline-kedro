@@ -256,18 +256,18 @@ def union_views():
             if 'BirthWeight.value_discharge' in old_matched_smch_data:
                 old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
         # SAVE OLD NEW ADMISSIONS
-        if (new_smch_admissions and not new_smch_admissions.empty) and (old_smch_admissions and not old_smch_admissions.empty):
+        if new_smch_admissions  and old_smch_admissions :
             combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], ignore_index=True)
             if not combined_adm_df.empty:   
                 catalog.save('create_derived_old_new_admissions_view',combined_adm_df)   
         # SAVE OLD NEW DISCHARGES
-        if new_smch_discharges and not new_smch_discharges.empty and old_smch_discharges and not old_smch_discharges.empty:
+        if new_smch_discharges and old_smch_discharges :
             combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges], ignore_index=True)
             if not combined_dis_df.empty:   
                 catalog.save('create_derived_old_new_discharges_view',combined_dis_df)   
 
         # SAVE MATCHED DATA 
-        if new_smch_matched_data and not new_smch_matched_data.empty and old_matched_smch_data and not old_matched_smch_data.empty:
+        if new_smch_matched_data and old_matched_smch_data :
             combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data], ignore_index=True)
             if not combined_matched_df.empty:   
                 catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
