@@ -29,10 +29,10 @@ def union_views():
             for index2, row2 in old_adm_cols.iterrows():
                 if col_name == row2['column_name']:
                     try:
-                        if 'timestamp' in str(data_type) or 'double' in str(data_type):
+                        if str(data_type) != str(row2['data_type']):
                             using = f'''USING "{col_name}"::{data_type}'''
-                        query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};'''
-                        inject_sql(query,"OLD ADMISSIONS")
+                            query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};'''
+                            inject_sql(query,"OLD ADMISSIONS")
                     except Exception as ex:
                         query = f'''ALTER table derived.old_smch_admissions DROP column "{col_name}" '''
                         inject_sql(query,f'''DROPPING ADMISSIONS {col_name}''')
@@ -46,10 +46,10 @@ def union_views():
             for index2, row2 in old_disc_cols.iterrows():
                 if col_name == row2['column_name']: 
                     try:
-                        if 'timestamp' in str(data_type) or 'double' in str(data_type):
+                        if str(data_type) != str(row2['data_type']):
                             using = f'''USING "{col_name}"::{data_type}'''
-                        query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
-                        inject_sql(query,"OLD DISCHARGES")
+                            query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
+                            inject_sql(query,"OLD DISCHARGES")
                     except Exception as ex:
                         query = f'''ALTER table derived.old_smch_discharges DROP column "{col_name}" '''
                         inject_sql(query,f'''DROPPING DISCHARGE COLL {col_name}''')
@@ -62,10 +62,10 @@ def union_views():
             for index2, row2 in old_matched_cols .iterrows():
                 if col_name == row2['column_name']:
                     try:
-                        if 'timestamp' in str(data_type) or 'double' in str(data_type):
+                        if str(data_type) != str(row2['data_type']):
                             using = f'''USING "{col_name}"::{data_type}'''
-                        query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
-                        inject_sql(query,"Union Views")
+                            query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
+                            inject_sql(query,"Union Views")
                     except Exception as ex:
                         query = f'''ALTER table derived.old_smch_matched_admissions_discharges DROP column "{col_name}" '''
                         inject_sql(query,f'''DROPPING MATCHED COLL {col_name} ''')
