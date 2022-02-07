@@ -200,13 +200,13 @@ where = " "
 if(env=="prod"):
    where = " and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
 
-deduplicate_admissions = deduplicate_admissions_query(admission_script_id,where)
-deduplicate_baseline = deduplicate_baseline_query(baseline_id, where)
-deduplicate_mat_completeness = deduplicate_mat_completeness_query(maternity_completeness_id,where)
-deduplicate_vitals = deduplicate_vitals_query(vital_signs_script_id,where)
-deduplicate_neolab = deduplicate_neolab_query(neolab_script_id,where)
-deduplicate_maternal = deduplicate_maternal_query(maternal_script_id,where)
-deduplicate_discharges = deduplicate_discharges_query(discharge_script_id,where)
+dedup_admissions = deduplicate_admissions_query(admission_script_id,where)
+dedup_baseline = deduplicate_baseline_query(baseline_id, where)
+dedup_mat_completeness = deduplicate_mat_completeness_query(maternity_completeness_id,where)
+dedup_vitals = deduplicate_vitals_query(vital_signs_script_id,where)
+dedup_neolab = deduplicate_neolab_query(neolab_script_id,where)
+dedup_maternal = deduplicate_maternal_query(maternal_script_id,where)
+dedup_discharges = deduplicate_discharges_query(discharge_script_id,where)
 read_admissions = read_admissions_query(admissions_case,admission_script_id)
 read_discharges = read_discharges_query(dicharges_case,discharge_script_id)
 read_maternal_outcome = read_maternal_outcome_query(maternal_case,mat_outcomes_from,maternal_script_id)
