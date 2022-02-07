@@ -39,14 +39,16 @@ def create_columns(table: pd.DataFrame):
         table['Gestation.value'] = float('nan') 
          
     if('country' in params and str(params['country']).lower()) =='zimbabwe':
-            table.loc[table['Gestation.value'].isnull(
-            ), 'GestGroup.value'] = float('nan')
-            table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
-            table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
-            table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
-            table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
-            table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
+          if not table.empty and 'Gestation.value' in table:
+                  table.loc[table['Gestation.value'].isnull(
+                  ), 'GestGroup.value'] = float('nan')
+                  table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
+                  table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
+                  table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
+                  table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
+                  table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
     else:
+      if not table.empty  and 'Gestation.value' in table:
             table.loc[table['Gestation.value'].isnull(
             ), 'GestGroup.value'] = float('nan')
             table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
