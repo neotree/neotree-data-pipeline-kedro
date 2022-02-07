@@ -12,7 +12,7 @@ def deduplicate_admissions_query(adm_script_id, where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid = '{adm_script_id}'' {where} -- only pull out admissions
+            where scriptid = '{adm_script_id}' {where} -- only pull out admissions
             group by 1,2
             )
             select
