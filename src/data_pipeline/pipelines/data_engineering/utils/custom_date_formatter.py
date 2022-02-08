@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime as dt
 
-def format_date(df,field_name):
+def format_date(df:pd.DataFrame,field_name):
     """
     Return A formated Date.
 
@@ -12,7 +12,13 @@ def format_date(df,field_name):
         if field_name in df and df[field_name] is not None and pd.notnull(df[field_name]):
             #df[field_name] = dt.strftime(df[field_name].map(lambda x: str(x)), format='%Y-%m-%dT%H:%M:%S.%f')
             #df[field_name] = pd.to_datetime(df[field_name].map(lambda x: str(x)[:-4]), format='%Y-%m-%dT%H:%M:%S')
-            df[field_name] = pd.to_datetime(df[field_name]);
+            if field_name == 'DateTimeAdmission.value':
+                df[field_name] = pd.to_datetime(df[field_name]);
+            elif field_name == 'ANVDRLDate.value':
+                df[field_name] = df[field_name].astype('datetime64[ns]')
+            else :
+                df[field_name] = pd.to_datetime(df[field_name].map(lambda x: str(x)[:-4]), format='%Y-%m-%dT%H:%M:%S')
+                df[field_name] = df[field_name].astype('datetime64[ns]')
         else:
             df[field_name]= None;
     except Exception as e:
