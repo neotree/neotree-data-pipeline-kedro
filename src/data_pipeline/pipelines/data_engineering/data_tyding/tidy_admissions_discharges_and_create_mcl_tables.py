@@ -394,7 +394,8 @@ def tidy_tables():
                 adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
 
             if 'DateTimeAdmission.value' in adm_df:
-                adm_df['DateTimeAdmission.value'] =adm_df['DateTimeAdmission.value'].map(lambda x: str(x)[:-4] if len(x)>10 else str(x))
+                adm_df['DateTimeAdmission.value'] =adm_df['DateTimeAdmission.value'].map(lambda x: str(x)[:-4] 
+                if x is not None and len(x)>10 else str(x))
                 adm_df['DateTimeAdmission.value']=pd.to_datetime(adm_df['DateTimeAdmission.value'],utc=True)
 
         if not dis_df.empty:
