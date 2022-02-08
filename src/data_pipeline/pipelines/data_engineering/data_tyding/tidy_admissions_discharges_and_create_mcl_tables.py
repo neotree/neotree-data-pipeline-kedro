@@ -234,7 +234,7 @@ def tidy_tables():
         set_key_to_none(adm_df,'ROMLength.label')
         set_key_to_none(adm_df,'ROMLength.value')
 
-          #Format Dates Admissions Tables
+        #Format Dates Admissions Tables
         format_date(adm_df,'DateTimeAdmission.value')
         format_date(adm_df,'EndScriptDatetime.value')
         format_date(adm_df,'DateHIVtest.value')

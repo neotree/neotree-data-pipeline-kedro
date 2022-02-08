@@ -16,11 +16,14 @@ def is_date(value):
         return False
 
 def is_date_formatable(value):
-        """
+    """
     Return whether the string can formated into a date
 
     :param value: str, string to check for date
     """
+    if value is None:
+        return False;
+    else:
         valid_dashed_date = str(value).count('-') >=2 and len(str(value))>10
         valid_slashed_date = str(value).count('/') >=2 and len(str(value))>10
         return valid_dashed_date or valid_slashed_date;
