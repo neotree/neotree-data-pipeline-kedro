@@ -10,7 +10,7 @@ def format_date(df:pd.DataFrame,field_name):
     """
     try: 
         if field_name in df and df[field_name] is not None:
-            df[field_name] =pd.to_datetime(df[field_name], errors='coerce',format='%Y-%m-%dT%H:%M:%S')
+            df[field_name] =pd.to_datetime(df[field_name], errors='coerce').astype('datetime64[ns]')
     except Exception as e:
         raise (e.with_traceback())
        
