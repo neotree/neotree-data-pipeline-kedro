@@ -234,11 +234,8 @@ def tidy_tables():
         set_key_to_none(adm_df,'ROMLength.label')
         set_key_to_none(adm_df,'ROMLength.value')
 
-          #Format Dates Admissions Tables
-        logging.info("@@@FORMATTING DATES---")
-        format_date(adm_df,'DateTimeAdmission.value')
-        logging.info(adm_df['DateTimeAdmission.value'])
-        adm_df['DateTimeAdmission.value'] = adm_df['DateTimeAdmission.value'].astype('datetime64[ns]')
+        #Format Dates Admissions Tables
+        #format_date(adm_df,'DateTimeAdmission.value')
         format_date(adm_df,'EndScriptDatetime.value')
         format_date(adm_df,'DateHIVtest.value')
         format_date(adm_df,'ANVDRLDate.value')
@@ -395,6 +392,9 @@ def tidy_tables():
                  adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
             if 'BirthWeight.value' in adm_df:
                 adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
+
+            if 'DateTimeAdmission.value' in adm_df:
+                adm_df['DateTimeAdmission.value']=pd.to_datetime(adm_df['DateTimeAdmission.value'], errors='coerce',format='%Y-%m-%dT%H:%M:%S')
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
