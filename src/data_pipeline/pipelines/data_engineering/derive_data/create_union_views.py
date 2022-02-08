@@ -5,6 +5,7 @@ import logging
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date
 
 def union_views():
     try:
@@ -169,6 +170,11 @@ def union_views():
                  old_smch_admissions['AdmissionWeight.value'] = pd.to_numeric(old_smch_admissions['AdmissionWeight.value'], errors='coerce')
             if 'BirthWeight.value' in old_smch_admissions:
                 old_smch_admissions['BirthWeight.value'] = pd.to_numeric(old_smch_admissions['BirthWeight.value'], errors='coerce')   
+            
+            format_date(old_smch_admissions,'DateTimeAdmission.value')
+            format_date(old_smch_admissions,'EndScriptDatetime.value')
+            format_date(old_smch_admissions,'DateHIVtest.value')
+            format_date(old_smch_admissions,'ANVDRLDate.value')
 
 
         if old_smch_discharges  is not None and not old_smch_discharges.empty:
@@ -179,6 +185,16 @@ def union_views():
                 key_change(old_smch_discharges,discharge,position,'NNUAdmTemp.value','Temperature.value') 
                 key_change(old_smch_discharges,discharge,position,'GestBirth.value','Gestation.value')
                 key_change(old_smch_discharges,discharge,position,'PresComp.value','AdmReason.value')
+             #Format Dates Discharge Table
+            format_date(old_smch_discharges,'DateAdmissionDC.value')  
+            format_date(old_smch_discharges,'DateDischVitals.value')
+            format_date(old_smch_discharges,'DateDischWeight.value')
+            format_date(old_smch_discharges,'DateTimeDischarge.value')
+            format_date(old_smch_discharges,'EndScriptDatetime.value')
+            format_date(old_smch_discharges,'DateWeaned.value')
+            format_date(old_smch_discharges,'DateTimeDeath.value')
+            format_date(old_smch_discharges,'DateAdmission.value')
+            format_date(old_smch_discharges,'BirthDateDis.value')
 
         
         if old_matched_smch_data  is not None and not old_matched_smch_data.empty:
@@ -268,6 +284,22 @@ def union_views():
                 old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value'], errors='coerce')
             if 'BirthWeight.value_discharge' in old_matched_smch_data:
                 old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
+            format_date(old_matched_smch_data,'DateTimeAdmission.value')
+            format_date(old_matched_smch_data,'EndScriptDatetime.value')
+            format_date(old_matched_smch_data,'DateHIVtest.value')
+            format_date(old_matched_smch_data,'ANVDRLDate.value')
+
+            #Format Dates Discharge Table
+            format_date(old_matched_smch_data,'DateAdmissionDC.value')  
+            format_date(old_matched_smch_data,'DateDischVitals.value')
+            format_date(old_matched_smch_data,'DateDischWeight.value')
+            format_date(old_matched_smch_data,'DateTimeDischarge.value')
+            format_date(old_matched_smch_data,'EndScriptDatetime.value')
+            format_date(old_matched_smch_data,'DateWeaned.value')
+            format_date(old_matched_smch_data,'DateTimeDeath.value')
+            format_date(old_matched_smch_data,'DateAdmission.value')
+            format_date(old_matched_smch_data,'BirthDateDis.value')
+
         # SAVE OLD NEW ADMISSIONS
         if new_smch_admissions is not None and old_smch_admissions  is not None:
             combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], ignore_index=True)
