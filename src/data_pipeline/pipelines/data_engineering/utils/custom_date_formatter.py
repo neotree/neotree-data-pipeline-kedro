@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime as dt
 
-def format_date(df:pd.Dataframe,field_name):
+def format_date(df:pd.DataFrame,field_name):
     """
     Return A formated Date.
 
