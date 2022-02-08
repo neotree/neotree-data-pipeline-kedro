@@ -235,10 +235,10 @@ def tidy_tables():
         set_key_to_none(adm_df,'ROMLength.value')
 
           #Format Dates Admissions Tables
-        adm_df['DateTimeAdmission.value']=format_date(adm_df,'DateTimeAdmission.value')
-        adm_df['EndScriptDatetime.value']=format_date(adm_df,'EndScriptDatetime.value')
-        adm_df['DateHIVtest.value']=format_date(adm_df,'DateHIVtest.value')
-        adm_df['ANVDRLDate.value']=format_date(adm_df,'ANVDRLDate.value')
+        format_date(adm_df,'DateTimeAdmission.value')
+        format_date(adm_df,'EndScriptDatetime.value')
+        format_date(adm_df,'DateHIVtest.value')
+        format_date(adm_df,'ANVDRLDate.value')
 
         #Format Dates Discharge Table
         format_date(dis_df,'DateAdmissionDC.value')  
