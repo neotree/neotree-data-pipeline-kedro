@@ -235,6 +235,7 @@ def tidy_tables():
         set_key_to_none(adm_df,'ROMLength.value')
 
           #Format Dates Admissions Tables
+        logging.info("@@@FORMATTING DATES---")
         format_date(adm_df,'DateTimeAdmission.value')
         logging.info(adm_df['DateTimeAdmission.value'])
         adm_df['DateTimeAdmission.value'] = adm_df['DateTimeAdmission.value'].astype('datetime64[ns]')
