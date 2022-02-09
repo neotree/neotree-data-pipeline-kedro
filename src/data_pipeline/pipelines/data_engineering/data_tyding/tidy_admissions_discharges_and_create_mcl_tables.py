@@ -250,6 +250,8 @@ def tidy_tables():
         format_date(dis_df,'DateTimeDeath.value')
         format_date(dis_df,'DateAdmission.value')
         format_date(dis_df,'BirthDateDis.value')
+        format_date(dis_df,'DateHIVtest.value')
+        format_date(dis_df,'DateVDRLSameHIV.value')
 
         # Maternal Outcomes
         set_key_to_none(mat_outcomes_df,'TypeBirth.label')
