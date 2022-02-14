@@ -8,17 +8,19 @@ from .summary_joined_vitalsigns import create_summary_joined_vitalsigns
 from .summary_maternal_outcomes import create_summary_maternal_outcomes
 from .summary_admissions import create_summary_admissions
 from .summary_discharges import create_summary_discharges
+from conf.base.catalog import params
 
 
-def create_summary_tables(tidy_data_output):
+def create_summary_tables(manually_Fix_admissions_output):
     try:
-        if tidy_data_output is not None:
+        if manually_Fix_admissions_output is not None:
             create_summary_vitalsigns()
-            create_maternal_completeness_summary() 
             create_summary_joined_vitalsigns() 
             create_summary_maternal_outcomes()
-            create_summary_admissions()
-            create_summary_discharges()
+            if('country' in params and str(params['country']).lower()) =='malawi':
+                create_maternal_completeness_summary() 
+                create_summary_admissions()
+                create_summary_discharges()
 
             # Add Return Value For Kedro Not To Throw Data Error
             return dict(

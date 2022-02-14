@@ -1,5 +1,5 @@
 import logging
-import sys,os
+import sys
 from  data_pipeline.pipelines.data_engineering.data_tyding.tidy_admissions_discharges_and_create_mcl_tables import tidy_tables
 from  conf.common.format_error import formatError
 from conf.base.catalog import catalog,cron_log_file
@@ -9,10 +9,10 @@ from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.dedupli
 
 
 # Pass The Output Of Step One, As Input To Avoid Concurrent running of Step 1 and This Step
-def tidy_data(drop_views_output):
+def tidy_data(deduplicate_admissions_output):
     try:
         #Test If Previous Node Has Completed Successfully
-        if drop_views_output is not None :
+        if deduplicate_admissions_output is not None :
             tidy_tables()
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
@@ -21,12 +21,12 @@ def tidy_data(drop_views_output):
              )
         else:
             logging.error(
-                "Data Tyding Did Not Execute To Completion")
+                "Data Deduplication Did Not Execute To Completion")
             return None
         
     except Exception as e:
         logging.error("!!! An error occured tidying or creating MCL tables: ")
-        logging.error(e.with_traceback())
+        logging.error(formatError(e))
         cron_log = open(cron_log_file,"a+")
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Tyding Data ".format(cron_time,mode))

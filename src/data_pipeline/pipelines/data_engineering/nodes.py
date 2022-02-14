@@ -55,7 +55,7 @@ manually_fix_discharges_node = node(
 
 #Create Summary Tables Node  
 create_summary_tables_node = node(
-    create_summary_tables, inputs= "tidy_data_output", outputs = "create_summary_tables_output"
+    create_summary_tables, inputs= "manually_Fix_admissions_output", outputs = "create_summary_tables_output"
 )
 
 
