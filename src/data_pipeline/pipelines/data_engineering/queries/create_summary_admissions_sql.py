@@ -31,7 +31,6 @@ def summary_admissions_query():
                     "OFC.value" AS "Head Circumference (cm)",
                     "AdmReason.label" AS "Admission Reason",
                     "AdmReasonOth.label" AS "Other admission reason",
-                    "AgeCat.label" AS "Age Category",
                     "AgeB.label" AS "AgeB.label",
                     "AgeC.label" AS "AgeC.label",
                     "AgeA.label" AS "AgeA.label",
