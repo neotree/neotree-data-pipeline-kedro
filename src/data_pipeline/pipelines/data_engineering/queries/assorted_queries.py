@@ -12,7 +12,7 @@ def deduplicate_admissions_query(adm_where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where earliest_admissions.scriptid {adm_where}  -- only pull out admissions
+            where scriptid {adm_where}  -- only pull out admissions
             group by 1,2
             )
             select
@@ -38,7 +38,7 @@ def deduplicate_baseline_query(baseline_where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where earliest_baseline.scriptid  {baseline_where} -- only pull out baseline
+            where scriptid  {baseline_where} -- only pull out baseline
             group by 1,2
              )
             select
@@ -64,7 +64,7 @@ def deduplicate_mat_completeness_query(mat_completeness_where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where earliest_mat_completeness.scriptid {mat_completeness_where} -- only pull out maternity completeness data
+            where scriptid {mat_completeness_where} -- only pull out maternity completeness data
             group by 1,2
             )
             select
@@ -91,7 +91,7 @@ def deduplicate_vitals_query(vitals_where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
                 from public.sessions
-                where earliest_vitals.scriptid {vitals_where} -- only pull out vitals
+                where scriptid {vitals_where} -- only pull out vitals
                 group by 1,2
                 )
                 select
@@ -124,7 +124,7 @@ def deduplicate_neolab_query(neolab_where):
                     -- We could replace with min(id) to take the 
                     -- first uploaded
             from public.sessions
-            where earliest_neolab.scriptid {neolab_where} -- only pull out neloab data
+            where scriptid {neolab_where} -- only pull out neloab data
             group by 1,2,3,4
             )
             select
@@ -153,7 +153,7 @@ def deduplicate_maternal_query(mat_outcomes_where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where earliest_maternal.scriptid {mat_outcomes_where} -- only pull out maternal  data
+            where scriptid {mat_outcomes_where} -- only pull out maternal  data
             group by 1,2
             )
             select
@@ -179,7 +179,7 @@ def deduplicate_discharges_query(disc_where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where earliest_discharges.scriptid {disc_where} -- only pull out discharges
+            where scriptid {disc_where} -- only pull out discharges
             group by 1,2
             )
             select
