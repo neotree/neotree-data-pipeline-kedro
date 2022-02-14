@@ -162,6 +162,8 @@ def summary_admissions_query():
                     "DOBYN.value" AS "DOBYN.value",
                     "AgeEst.label" AS "Age Estimated",
                     "Age.value" AS "Age",
-                    "AgeCategory" AS "Age Category",
+                    CASE WHEN "AgeCat.label" is null THEN
+                    "AgeCategory"
+                    ELSE "AgeCat.label" END AS "Age Category",
                     "BirthWeight.value" AS "BirthWeight"
                 FROM "derived"."admissions"; '''
