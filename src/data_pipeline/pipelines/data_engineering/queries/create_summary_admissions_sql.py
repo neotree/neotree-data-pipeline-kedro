@@ -75,7 +75,6 @@ def summary_admissions_query():
                     "OtherReferralFacility.label" AS "Other Referral Facility",
                     "PlaceBirth.label" AS "Place of Birth",
                     "BirthFacility.label" AS "Birth Facility",
-                    "PlaceBirth.label" AS "Place of Birth",
                     "BirthPlaceSame.label" AS "Same birth place?",
                     "OtherBirthFacility.label" AS "Other Birth Facility",
                     "MatPhysAddressDistrict.label" AS "Mothers Disctrict",
