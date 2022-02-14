@@ -80,6 +80,7 @@ if hospital_scripts:
             ids = hospital_scripts[hospital]
             if 'country' in ids.keys() and 'country' in params.keys():
                if str(ids['country']).lower() == str(params['country']):
+                  logging.info(f'''###IDS---{ids.keys()}''')
                   if 'admissions' in ids.keys():   
                      admission_script_id = ids['admissions']
                      if(admission_script_id!= ''):
@@ -200,6 +201,7 @@ where = " "
 if(env=="prod"):
    where = " and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
 
+logging.info(f'''###IDS---{admission_script_id},{vital_signs_script_id}, {discharge_script_id}''')
 dedup_admissions = deduplicate_admissions_query(admission_script_id,where)
 dedup_baseline = deduplicate_baseline_query(baseline_id, where)
 dedup_mat_completeness = deduplicate_mat_completeness_query(maternity_completeness_id,where)
