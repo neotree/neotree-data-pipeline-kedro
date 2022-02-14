@@ -49,7 +49,6 @@ def summary_admissions_query():
                     "Palate.label" AS "Palate",
                     "HeadShape.label" AS "Head Shape",
                     "Dysmorphic.label" AS "Dysmorphic",
-                    "Tone.label" AS "Tone",
                     "Spine.label" AS "Spine",
                     "Activity.label" AS "Activity",
                     "SignsRD.label" AS "Signs of Respiratory Distress",
@@ -129,8 +128,10 @@ def summary_admissions_query():
                     "SuckReflex.label" 
                      ELSE "SuckTh.label" END AS "Suck Reflex",
                     CASE WHEN "FontTh.label" is null THEN "Fontanelle.label" 
-                    ELSE "FontTh.label" END AS "Fontanelle",              
-                    "ToneTh.label" AS "Tone",
+                    ELSE "FontTh.label" END AS "Fontanelle",  
+                    CASE WHEN "ToneTh.label" is null THEN
+                    "Tone.label"  ELSE            
+                    "ToneTh.label" END AS "Tone",
                     "LOCTh.label" AS "Level of Conciousness",
                     "FitsTh.label" AS "Fits, Seizures or convulsions",
                     "RespTh.label" AS "Respiration",
