@@ -315,14 +315,14 @@ def read_new_smch_admissions_query():
     return f'''
             select 
                 *
-            from derived.admissions where TO_DATE("DateTimeAdmission.value",'YYYY-MM-DD') >='2021-02-01' AND facility = 'SMCH';'''
+            from derived.admissions where TO_DATE(cast("DateTimeAdmission.value" as TEXT),'YYYY-MM-DD') >='2021-02-01' AND facility = 'SMCH';'''
 
 def read_new_smch_discharges_query():
     return f'''
             select 
                 *
-            from derived.discharges where TO_DATE("DateTimeDischarge.value",'YYYY-MM-DD') >='2021-02-01' 
-                or TO_DATE("DateTimeDeath.value",'YYYY-MM-DD')>'2021-02-01'  AND facility = 'SMCH';'''
+            from derived.discharges where TO_DATE(cast("DateTimeDischarge.value" as TEXT),'YYYY-MM-DD') >='2021-02-01' 
+                or TO_DATE(cast("DateTimeDeath.value",as TEXT),'YYYY-MM-DD')>'2021-02-01'  AND facility = 'SMCH';'''
 
 def read_old_smch_admissions_query():
     return f'''
