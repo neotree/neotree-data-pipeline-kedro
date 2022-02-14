@@ -56,4 +56,4 @@ def summary_discharges_query():
                   "derived"."discharges"."DiscDiagSurgicalCond.label" AS "Discharge Surgical Conditions diagnosis",
                   "derived"."discharges"."CovidRepResults.label" AS "Covid Repeat Results",
                   "derived"."discharges"."CovidConfirmation.label" AS "Covid Confirmation"
-                FROM "derived"."discharges" '''
+                FROM "derived"."discharges"; '''

@@ -164,4 +164,4 @@ def summary_admissions_query():
                     "Age.value" AS "Age",
                     "AgeCategory" AS "Age Category",
                     "BirthWeight.value" AS "BirthWeight"
-                FROM "derived"."admissions" '''
+                FROM "derived"."admissions"; '''

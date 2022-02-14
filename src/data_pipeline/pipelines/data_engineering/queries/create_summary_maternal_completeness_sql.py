@@ -38,4 +38,4 @@ def summary_maternal_completeness_query():
                     "PeritonitisTreatment.label" AS "Peritonitis Treatment",
                     "DurationInWard.value" AS "Duration in the Ward",
                     "NoOfTimesInTheater.value" AS "Number of times in theatre"
-                FROM "derived"."maternity_completeness" '''
+                FROM "derived"."maternity_completeness"; '''
