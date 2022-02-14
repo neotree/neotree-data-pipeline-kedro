@@ -29,7 +29,6 @@ def inject_sql(sql_script, file_name):
     sql_commands = sql_script.split(';')
     for command in sql_commands[:-1]:
         try:
-            logging.info(f'''{file_name}:: {text(command)})''')
             engine.connect().execute(text(command))
         # last element in list is empty hence need for [:-1] slicing out the last element
         except Exception as e:

@@ -1,4 +1,4 @@
-def deduplicate_admissions_query(adm_script_id, where):
+def deduplicate_admissions_query(adm_where):
     return  f'''
             drop table if exists scratch.deduplicated_admissions cascade;
             create table scratch.deduplicated_admissions as 
@@ -12,7 +12,7 @@ def deduplicate_admissions_query(adm_script_id, where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid = '{adm_script_id}' {where} -- only pull out admissions
+            {adm_where}  -- only pull out admissions
             group by 1,2
             )
             select
@@ -22,10 +22,10 @@ def deduplicate_admissions_query(adm_script_id, where):
             sessions.ingested_at,
             data
             from earliest_admissions join sessions
-            on earliest_admissions.id = sessions.id where sessions.scriptid = '{adm_script_id}'
+            on earliest_admissions.id = sessions.id {adm_where}
             ); '''
 
-def deduplicate_baseline_query(baseline_id, where):
+def deduplicate_baseline_query(baseline_where):
     return f'''drop table if exists scratch.deduplicated_baseline cascade;
             create table scratch.deduplicated_baseline as 
             (
@@ -38,7 +38,7 @@ def deduplicate_baseline_query(baseline_id, where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid = '{baseline_id}' {where} -- only pull out baseline
+            {baseline_where} -- only pull out baseline
             group by 1,2
              )
             select
@@ -48,10 +48,10 @@ def deduplicate_baseline_query(baseline_id, where):
             sessions.ingested_at,
             data
             from earliest_baseline join sessions
-            on earliest_baseline.id = sessions.id where sessions.scriptid = '{baseline_id}'
+            on earliest_baseline.id = sessions.id {baseline_where}
             ); '''
 
-def deduplicate_mat_completeness_query(maternity_completeness_id,where):
+def deduplicate_mat_completeness_query(mat_completeness_where):
     return  f'''drop table if exists scratch.deduplicated_maternity_completeness cascade;
             create table scratch.deduplicated_maternity_completeness as 
             (
@@ -64,7 +64,7 @@ def deduplicate_mat_completeness_query(maternity_completeness_id,where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid = '{maternity_completeness_id}' {where} -- only pull out maternity completeness data
+            {mat_completeness_where} -- only pull out maternity completeness data
             group by 1,2
             )
             select
@@ -74,11 +74,11 @@ def deduplicate_mat_completeness_query(maternity_completeness_id,where):
             sessions.ingested_at,
             data
             from earliest_mat_completeness join sessions
-            on earliest_mat_completeness.id = sessions.id where sessions.scriptid = '{maternity_completeness_id}'
+            on earliest_mat_completeness.id = sessions.id {mat_completeness_where}
             ); '''
 
 
-def deduplicate_vitals_query(vital_signs_id, where):
+def deduplicate_vitals_query(vitals_where):
     return f'''drop table if exists scratch.deduplicated_vitals cascade;
                 create table scratch.deduplicated_vitals as 
                 (
@@ -91,7 +91,7 @@ def deduplicate_vitals_query(vital_signs_id, where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
                 from public.sessions
-                where scriptid = '{vital_signs_id}' {where} -- only pull out vitals
+                {vitals_where} -- only pull out vitals
                 group by 1,2
                 )
                 select
@@ -101,10 +101,10 @@ def deduplicate_vitals_query(vital_signs_id, where):
                 sessions.ingested_at,
                 data
                 from earliest_vitals join sessions
-                on earliest_vitals.id = sessions.id where sessions.scriptid = '{vital_signs_id}'
+                on earliest_vitals.id = sessions.id {vitals_where}
                 ); '''
 
-def deduplicate_neolab_query(neo_lab_id,where):
+def deduplicate_neolab_query(neolab_where):
     return f'''
             drop table if exists scratch.deduplicated_neolabs cascade;
             create table scratch.deduplicated_neolabs as 
@@ -124,7 +124,7 @@ def deduplicate_neolab_query(neo_lab_id,where):
                     -- We could replace with min(id) to take the 
                     -- first uploaded
             from public.sessions
-            where scriptid = '{neo_lab_id}' {where} -- only pull out neloab data
+            {neolab_where} -- only pull out neloab data
             group by 1,2,3,4
             )
             select
@@ -136,10 +136,10 @@ def deduplicate_neolab_query(neo_lab_id,where):
             earliest_neolab."DateBCR",
             data
             from earliest_neolab join sessions
-            on earliest_neolab.id = sessions.id where sessions.scriptid = '{neo_lab_id}'
+            on earliest_neolab.id = sessions.id  {neolab_where}
             ); '''
 
-def deduplicate_maternal_query(mat_outcomes_script_id,where):
+def deduplicate_maternal_query(mat_outcomes_where):
     return f'''
             drop table if exists scratch.deduplicated_maternals cascade;
             create table scratch.deduplicated_maternals as 
@@ -153,7 +153,7 @@ def deduplicate_maternal_query(mat_outcomes_script_id,where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid = '{mat_outcomes_script_id}' {where} -- only pull out maternal  data
+            {mat_outcomes_where} -- only pull out maternal  data
             group by 1,2
             )
             select
@@ -163,10 +163,10 @@ def deduplicate_maternal_query(mat_outcomes_script_id,where):
             sessions.ingested_at,
             data
             from earliest_maternal join sessions
-            on earliest_maternal.id = sessions.id where sessions.scriptid = '{mat_outcomes_script_id}' 
+            on earliest_maternal.id = sessions.id {mat_outcomes_where}  
             ); '''
 
-def deduplicate_discharges_query(disc_script_id,where):
+def deduplicate_discharges_query(disc_where):
     return f'''drop table if exists scratch.deduplicated_discharges cascade;
             create table scratch.deduplicated_discharges as 
             (
@@ -179,7 +179,7 @@ def deduplicate_discharges_query(disc_script_id,where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid = '{disc_script_id}' {where} -- only pull out discharges
+            {disc_where} -- only pull out discharges
             group by 1,2
             )
             select
@@ -189,10 +189,10 @@ def deduplicate_discharges_query(disc_script_id,where):
             sessions.ingested_at,
             data
             from earliest_discharges join sessions
-            on earliest_discharges.id = sessions.id where sessions.scriptid = '{disc_script_id}'
+            on earliest_discharges.id = sessions.id {disc_where}
             ); '''
 
-def read_admissions_query(admissions_case,adm_script_id):
+def read_admissions_query(admissions_case,adm_where):
     return f'''
             select 
                 uid,
@@ -201,9 +201,9 @@ def read_admissions_query(admissions_case,adm_script_id):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {admissions_case} 
-            from scratch.deduplicated_admissions where uid!='null' and scriptid = '{adm_script_id}';
+            from scratch.deduplicated_admissions {adm_where} and uid!='null';
             '''
-def read_discharges_query(dicharges_case,disc_script_id):
+def read_discharges_query(dicharges_case,disc_where):
     return   f'''
              select 
                 uid,
@@ -212,10 +212,10 @@ def read_discharges_query(dicharges_case,disc_script_id):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {dicharges_case}
-             from scratch.deduplicated_discharges where uid!='null' and scriptid = '{disc_script_id}';
+             from scratch.deduplicated_discharges where {disc_where} and uid!='null';
              '''
 
-def read_maternal_outcome_query(maternal_case,mat_outcomes_from,mat_outcomes_script_id):
+def read_maternal_outcome_query(maternal_case,mat_outcomes_from,mat_outcomes_where):
     return  f'''
             select 
                 scriptid,
@@ -226,9 +226,9 @@ def read_maternal_outcome_query(maternal_case,mat_outcomes_from,mat_outcomes_scr
                 "data"->'started_at' as "started_at",
                     "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {maternal_case}
-            from {mat_outcomes_from} where scriptid = '{mat_outcomes_script_id}' and uid!='null'; 
+            from {mat_outcomes_from} {mat_outcomes_where} and uid!='null'; 
             '''
-def read_vitalsigns_query(vitals_case,vital_signs_from,vital_signs_id):
+def read_vitalsigns_query(vitals_case,vital_signs_from,vitals_where):
     return f'''
             select 
                 scriptid,
@@ -239,10 +239,10 @@ def read_vitalsigns_query(vitals_case,vital_signs_from,vital_signs_id):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {vitals_case}
-            from {vital_signs_from} where scriptid = '{vital_signs_id}' and uid!='null';
+            from {vital_signs_from} {vitals_where} and uid!='null';
             '''
 
-def read_baselines_query(baseline_case,baseline_from,baseline_id):
+def read_baselines_query(baseline_case,baseline_from,baseline_where):
     return  f'''
             select 
                 scriptid,
@@ -253,10 +253,10 @@ def read_baselines_query(baseline_case,baseline_from,baseline_id):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {baseline_case}
-            from {baseline_from} where scriptid = '{baseline_id}' and uid!='null';
+            from {baseline_from} where {baseline_where} and uid!='null';
         '''
 
-def read_mat_completeness_query(maternity_completeness_case,mat_completeness_from,maternity_completeness_id):
+def read_mat_completeness_query(maternity_completeness_case,mat_completeness_from,mat_completeness_where):
     return f'''
             select 
                 scriptid,
@@ -267,7 +267,7 @@ def read_mat_completeness_query(maternity_completeness_case,mat_completeness_fro
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {maternity_completeness_case}
-            from {mat_completeness_from} where scriptid = '{maternity_completeness_id}' and uid!='null';
+            from {mat_completeness_from} {mat_completeness_where} and uid!='null';
             '''
 
 def derived_admissions_query():
@@ -285,7 +285,7 @@ def derived_discharges_query():
             '''
 
 
-def read_noelab_query(neolabs_case,neolab_from,neo_lab_id):
+def read_noelab_query(neolabs_case,neolab_from,neolab_where):
    return f'''
             select 
                 scriptid,
@@ -296,10 +296,10 @@ def read_noelab_query(neolabs_case,neolab_from,neo_lab_id):
                 "data"->'started_at' as "started_at",
                     "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {neolabs_case}
-            from {neolab_from} where scriptid = '{neo_lab_id}' ;
+            from {neolab_from} {neolab_where};
             '''
 
-def read_diagnoses_query(admissions_case,adm_script_id):
+def read_diagnoses_query(admissions_case,adm_where):
     return f'''
             select 
                 uid,
@@ -308,7 +308,7 @@ def read_diagnoses_query(admissions_case,adm_script_id):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case}
-            from scratch.deduplicated_admissions where uid!='null' and scriptid = '{adm_script_id}';
+            from scratch.deduplicated_admissions {adm_where} and uid!='null';
             '''
 
 def read_new_smch_admissions_query():
