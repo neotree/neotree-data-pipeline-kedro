@@ -217,7 +217,7 @@ else:
   else:
       pass
 
-if (len(neolab_tuple == 0)):
+if (len(neolab_tuple) == 0):
    neolab_from = generic_from
 else:
    if (len(neolab_tuple) == 1):
@@ -227,7 +227,7 @@ else:
    else:
       pass
 
-if (len(vitals_tuple == 0)):
+if (len(vitals_tuple) == 0):
    vital_signs_from = generic_from
 else:
    if (len(vitals_tuple) == 1):
@@ -237,7 +237,7 @@ else:
    else:
       pass
 
-if (len(baseline_tuple == 0)):  
+if (len(baseline_tuple) == 0):  
    baseline_from = generic_from
 else:
    if (len(baseline_tuple) == 1):
@@ -247,7 +247,7 @@ else:
    else:
       pass
 
-if (len(mat_completeness_tuple == '')):  
+if (len(mat_completeness_tuple) == 0):  
    mat_completeness_from = generic_from
 else:
    if (len(mat_completeness_tuple) == 1):
