@@ -46,9 +46,7 @@ def summary_admissions_query():
                     "Apgar1.value" AS "Apgar score at 1 min",
                     "Apgar5.value" AS "Apgar score at 5 mins",
                     "Apgar10.value" AS "Apgar score at 10 mins",
-                    "SuckReflex.label" AS "Suck Reflex",
                     "Palate.label" AS "Palate",
-                    "Fontanelle.label" AS "Fontanelle",
                     "HeadShape.label" AS "Head Shape",
                     "Dysmorphic.label" AS "Dysmorphic",
                     "Tone.label" AS "Tone",
@@ -127,8 +125,11 @@ def summary_admissions_query():
                     "PassedMec.label" AS "Meconium?",
                     "PUNewborn.label" AS "Passing Urine?",
                     "PUInfant.label" AS "Passing urine? (infant)",
-                    "SuckTh.label" AS "Suck Reflex",
-                    "FontTh.label" AS "Fontanelle",
+                    CASE WHEN "SuckTh.label" is null THEN
+                    "SuckReflex.label" 
+                     ELSE "SuckTh.label" END AS "Suck Reflex",
+                    CASE WHEN "FontTh.label" is null THEN "Fontanelle.label" 
+                    ELSE "FontTh.label" END AS "Fontanelle",              
                     "ToneTh.label" AS "Tone",
                     "LOCTh.label" AS "Level of Conciousness",
                     "FitsTh.label" AS "Fits, Seizures or convulsions",
