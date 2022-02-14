@@ -136,7 +136,7 @@ def deduplicate_neolab_query(neolab_where):
             earliest_neolab."DateBCR",
             data
             from earliest_neolab join sessions
-            on earliest_neolab.id = sessions.id  sessions.scriptid {neolab_where}
+            on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
             ); '''
 
 def deduplicate_maternal_query(mat_outcomes_where):
