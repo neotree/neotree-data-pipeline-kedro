@@ -10,9 +10,9 @@ from .summary_admissions import create_summary_admissions
 from .summary_discharges import create_summary_discharges
 
 
-def create_summary_tables(tidy_data_output):
+def create_summary_tables(manually_Fix_admissions_output):
     try:
-        if tidy_data_output is not None:
+        if manually_Fix_admissions_output is not None:
             create_summary_vitalsigns()
             create_maternal_completeness_summary() 
             create_summary_joined_vitalsigns() 
