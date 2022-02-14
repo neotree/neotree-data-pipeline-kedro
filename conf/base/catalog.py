@@ -211,9 +211,9 @@ if (len(mat_tuple) == 0):
    mat_outcomes_from = generic_from
 else:
   if (len(mat_tuple) == 1):
-      mat_outcomes_where = f''' where criptid = '{mat_tuple[0]}' ''' 
+      mat_outcomes_where = f''' where scriptid = '{mat_tuple[0]}' ''' 
   elif (len(mat_tuple)>1):
-      mat_outcomes_where = f''' where criptid in {tuple(mat_tuple)} '''
+      mat_outcomes_where = f''' where scriptid in {tuple(mat_tuple)} '''
   else:
       pass
 
@@ -221,9 +221,9 @@ if (len(neolab_tuple) == 0):
    neolab_from = generic_from
 else:
    if (len(neolab_tuple) == 1):
-      neolab_where = f''' where criptid = '{neolab_tuple[0]}' ''' 
+      neolab_where = f''' where scriptid = '{neolab_tuple[0]}' ''' 
    elif (len(neolab_tuple) >1):
-      neolab_where = f''' where criptid in {tuple(neolab_tuple)} '''
+      neolab_where = f''' where scriptid in {tuple(neolab_tuple)} '''
    else:
       pass
 
@@ -231,9 +231,9 @@ if (len(vitals_tuple) == 0):
    vital_signs_from = generic_from
 else:
    if (len(vitals_tuple) == 1):
-      vitals_where = f''' where criptid = '{vitals_tuple[0]}' ''' 
+      vitals_where = f''' where scriptid = '{vitals_tuple[0]}' ''' 
    elif (len(vitals_tuple) >1):
-      vitals_where = f''' where criptid in {tuple(vitals_tuple)} '''
+      vitals_where = f''' where scriptid in {tuple(vitals_tuple)} '''
    else:
       pass
 
@@ -241,9 +241,9 @@ if (len(baseline_tuple) == 0):
    baseline_from = generic_from
 else:
    if (len(baseline_tuple) == 1):
-      baseline_where = f''' where criptid = '{baseline_tuple[0]}' ''' 
+      baseline_where = f''' where scriptid = '{baseline_tuple[0]}' ''' 
    elif (len(baseline_tuple) >1):
-      baseline_where = f''' where criptid in {tuple(baseline_tuple)} '''
+      baseline_where = f''' where scriptid in {tuple(baseline_tuple)} '''
    else:
       pass
 
@@ -251,23 +251,23 @@ if (len(mat_completeness_tuple) == 0):
    mat_completeness_from = generic_from
 else:
    if (len(mat_completeness_tuple) == 1):
-      mat_completeness_where = f''' where criptid = '{mat_completeness_tuple[0]}' ''' 
+      mat_completeness_where = f''' where scriptid = '{mat_completeness_tuple[0]}' ''' 
    elif (len(mat_completeness_tuple) >1):
-      mat_completeness_where = f''' where criptid in {tuple(mat_completeness_tuple)} '''
+      mat_completeness_where = f''' where scriptid in {tuple(mat_completeness_tuple)} '''
    else:
       pass
        
 if (len(adm_tuple) ==1):
-    adm_where = f''' where criptid = '{adm_tuple[0]}'   ''' 
+    adm_where = f''' where scriptid = '{adm_tuple[0]}'   ''' 
 elif (len(adm_tuple) >1):
-      adm_where = f''' where criptid in {tuple(adm_tuple)}  ''' 
+      adm_where = f''' where scriptid in {tuple(adm_tuple)}  ''' 
 else:
    pass
 
 if (len(disc_tuple) ==1):
-    disc_where = f''' where criptid = '{disc_tuple[0]}'   ''' 
+    disc_where = f''' where scriptid = '{disc_tuple[0]}'   ''' 
 elif (len(disc_tuple) >1):
-      disc_where = f''' where criptid in {tuple(disc_tuple)}  ''' 
+      disc_where = f''' where scriptid in {tuple(disc_tuple)}  ''' 
 else:
    pass
 
