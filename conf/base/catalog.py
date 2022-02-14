@@ -192,13 +192,13 @@ vital_signs_from = 'scratch.deduplicated_vitals'
 mat_completeness_from = 'scratch.deduplicated_maternity_completeness'
 
 #If maternal outcomes id is empty the system should take data from take data directly from sessions which idearly should be empty
-adm_where = ' = '' '
-disc_where = ' = '' '
-mat_outcomes_where = ' = '' '
-mat_completeness_where = ' = '' '
-neolab_where = ' = '' '
-baseline_where = ' = '' '
-vitals_where = ' = '' '
+adm_where = f''' = '' '''
+disc_where = f''' = '' '''
+mat_outcomes_where = f''' = '' '''
+mat_completeness_where = f''' = '' '''
+neolab_where = f''' = '' '''
+baseline_where = f''' = '' '''
+vitals_where = f''' = '' '''
 #Remove Dev Data From Production Instance:
 #Take Everything (Applies To Dev And Stage Environments)
 additional_where = " "
