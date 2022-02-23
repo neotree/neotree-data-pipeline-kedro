@@ -88,7 +88,7 @@ Hence it is mandatory to have unique hospitals initials
 8. neolabs     : Script Id For Neolab Data
 9. baselines   : Script Id For Baseline Data
 10. maternal_dev: Script Id For Maternal Outcomes Dev (Special Case, else Dev Script Ids Should Be The Same As Prod Ones)
->Where the item doesn't have a value, please put the item, an equal sign and nothing after, as demonstrated in the example below
+>Where the item doesn't have a value, please put the item, an equal sign and nothing after, as demonstrated in the example below or totally remove the item
 
 ## EXAMPLE OF FULL `hospitals.ini` FILE:
 
