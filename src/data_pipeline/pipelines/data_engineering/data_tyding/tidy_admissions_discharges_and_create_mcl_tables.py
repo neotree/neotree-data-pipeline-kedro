@@ -517,6 +517,7 @@ def tidy_tables():
     
         #Save Derived Admissions To The DataBase Using Kedro
         if not adm_df.empty:
+            adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             catalog.save('create_derived_admissions',adm_df)
         #Save Derived Admissions To The DataBase Using Kedro
         if not dis_df.empty:
