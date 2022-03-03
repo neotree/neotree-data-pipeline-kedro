@@ -278,9 +278,6 @@ def tidy_tables():
         format_date(vit_signs_df,'TimeTemp1.value')
         format_date(vit_signs_df,'TimeTemp2.value')
         format_date(vit_signs_df,'EndScriptDatetime.value')
-
-        # Make changes to admissions and baseline data to match fields in power bi
-        adm_df = create_columns(adm_df)
         
         # CREATE AGE CATEGORIES
 
@@ -421,8 +418,7 @@ def tidy_tables():
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
-        if not baseline_df.empty:
-            baseline_df = create_columns(baseline_df)
+       
         # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
         if not mat_outcomes_df.empty and not mat_completeness_df.empty: 
                latest_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value']) >='2021-10-01']
@@ -502,7 +498,11 @@ def tidy_tables():
                                             ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
                                             == bct_type_df.at[bct_index,'DateBCR.value']),'BCType'] = bct_type_df.at[bct_index,'BCType']
 
- 
+        # Make changes to admissions and baseline data to match fields in power bi                                    
+        if not adm_df.empty:
+            adm_df = create_columns(adm_df)
+        if not baseline_df.empty:
+            baseline_df = create_columns(baseline_df)
 
     except Exception as e:
         logging.error(
