@@ -9,6 +9,7 @@ from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_dif
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
+from .neolab_data_cleanup import neolab_cleanup
 
 
 
@@ -434,8 +435,10 @@ def tidy_tables():
             neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'])
        
             for index,row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
+                # Data Cleaning
+                neolab_cleanup(neolab_df,index)  
                 #Set Episodes
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 if not control_df.empty:
                     episode =1;
                     if neolab_df.at[index,'episode'] ==0:
