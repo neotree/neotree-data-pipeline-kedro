@@ -8,7 +8,7 @@ def summary_neolab_query():
             select
             facility,
             uid, 
-            min("DateBCR.value") as "DateBCR" -- This takes the first upload 
+            max("DateBCR.value") as "DateBCR" -- This takes the first upload 
                     -- of the session as the deduplicated record. 
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
