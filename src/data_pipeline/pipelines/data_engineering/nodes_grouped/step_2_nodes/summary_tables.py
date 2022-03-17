@@ -8,6 +8,7 @@ from .summary_joined_vitalsigns import create_summary_joined_vitalsigns
 from .summary_maternal_outcomes import create_summary_maternal_outcomes
 from .summary_admissions import create_summary_admissions
 from .summary_discharges import create_summary_discharges
+from .summary_neolab import create_summary_neolabs
 from conf.base.catalog import params, env
 
 
@@ -17,6 +18,7 @@ def create_summary_tables(manually_Fix_admissions_output):
             create_summary_vitalsigns()
             create_summary_joined_vitalsigns() 
             create_summary_maternal_outcomes()
+            create_summary_neolabs()
             if('country' in params and str(params['country']).lower() =='malawi' and env=='prod'):
                 create_maternal_completeness_summary() 
                 create_summary_admissions()
