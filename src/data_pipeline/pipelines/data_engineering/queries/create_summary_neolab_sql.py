@@ -27,7 +27,7 @@ def summary_neolab_query():
                     END AS "Status",
                     derived.neolab."DateBCT.value" AS "DATEBCT",
 				    (select count(derived.neolab.uid) from derived.neolab where 
-				    latest_neolab.uid=derived.neolab."uid") AS "NumberOfCultures"        
+				    latest_neolab.uid=derived.neolab."uid" and latest_neolab.episode = derived.neolab."episode") AS "NumberOfCulturesForEpisode"        
             from latest_neolab join derived.neolab
             on latest_neolab.uid=derived.neolab."uid" and latest_neolab."DateBCR" = derived.neolab."DateBCR.value" 
             );'''
