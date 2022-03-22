@@ -20,6 +20,9 @@ def summary_neolab_query():
             latest_neolab.uid,
             latest_neolab.episode,
             latest_neolab."DateBCR",
+            derived.neolab."Org1.label",
+            derived.neolab."Org1.value",
+            derived.neolab."OtherOrg1.value",
             derived.neolab."BCResult.value" AS "BCResult",
                     CASE WHEN 
                     derived.neolab."BCType" like '%PRELIMINARY%' THEN 'PRELIMINARY'
@@ -27,7 +30,11 @@ def summary_neolab_query():
                     END AS "Status",
                     derived.neolab."DateBCT.value" AS "DATEBCT",
 				    (select count(derived.neolab.uid) from derived.neolab where 
-				    latest_neolab.uid=derived.neolab."uid" and latest_neolab.episode = derived.neolab."episode") AS "NumberOfCulturesForEpisode"        
+				    latest_neolab.uid=derived.neolab."uid" and latest_neolab.episode = derived.neolab."episode") AS "NumberOfCulturesForEpisode",
+           CASE WHEN (derived.neolab."BCResult.value" ='Pos' and  derived.neolab."Org1.value" ='CONS') OR 
+                    (derived.neolab."BCResult.value" ='PC') THEN 'Contaminant'
+                    ELSE
+                    derived.neolab."BCResult.value" END AS "CombinedResult"   
             from latest_neolab join derived.neolab
             on latest_neolab.uid=derived.neolab."uid" and latest_neolab."DateBCR" = derived.neolab."DateBCR.value" 
             );'''
