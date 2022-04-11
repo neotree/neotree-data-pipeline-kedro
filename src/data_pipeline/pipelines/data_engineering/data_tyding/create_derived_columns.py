@@ -71,13 +71,13 @@ def create_columns(table: pd.DataFrame):
          table['BWGroup.value'] = None  
 
     # For Baseline Tables
-    if 'Bw.value' in table:
-      table.loc[table['Bw.value'].isnull(), 'BWGroup.value'] = "Unknown"
-      table.loc[table['Bw.value'] >= 4000, 'BWGroup.value'] = "HBW"
-      table.loc[table['Bw.value'] < 4000, 'BWGroup.value'] = "NBW"
-      table.loc[table['Bw.value'] < 2500, 'BWGroup.value'] = "LBW"
-      table.loc[table['Bw.value'] < 1500, 'BWGroup.value'] = "VLBW"
-      table.loc[table['Bw.value'] < 1000, 'BWGroup.value'] = "ELBW"
+    if 'BW.value' in table:
+      table.loc[table['BW.value'].isnull(), 'BirthWeightCategory'] = "Unknown"
+      table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
+      table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
+      table.loc[table['BW.value'] < 2500, 'BirthWeightCategory'] = "LBW"
+      table.loc[table['BW.value'] < 1500, 'BirthWeightCategory'] = "VLBW"
+      table.loc[table['BW.value'] < 1000, 'BirthWeightCategory'] = "ELBW"
 
     # order of statements matters
     if 'AdmissionWeight.value' in table:
