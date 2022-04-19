@@ -177,6 +177,13 @@ def tidy_tables():
             baseline_df['time_spent'] = (baseline_df['completed_at'] -baseline_df['started_at']).astype('timedelta64[m]')
         else:
             baseline_df['time_spent'] = None
+        
+        if "DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df :
+            format_date_without_timezone(neolab_df,'DateBCR.value'); 
+            format_date_without_timezone(neolab_df,'DateBCT.value'); 
+            neolab_df['BCReturnTime'] = (neolab_df['DateBCR.value'] - neolab_df['DateBCT.value']).astype('timedelta64[m]')
+        else:
+            neolab_df['BCReturnTime'] = None
 
         # if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
         #     format_date_without_timezone(diagnoses_df,'started_at'); 
