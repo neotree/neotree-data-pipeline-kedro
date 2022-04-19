@@ -34,7 +34,7 @@ def summary_neolab_query():
            CASE WHEN (derived.neolab."BCResult.value" ='Pos' and  derived.neolab."Org1.value" ='CONS') OR 
                     (derived.neolab."BCResult.value" ='PC') THEN 'Contaminant'
                 WHEN (derived.neolab."DateBCR.value"::date - derived.neolab."DateBCT.value"::date) <= 5
-                THEN "Awaiting Final Result"
+                THEN 'Awaiting Final Result'
                 ELSE
                     derived.neolab."BCResult.value" END AS "CombinedResult"   
             from latest_neolab join derived.neolab
