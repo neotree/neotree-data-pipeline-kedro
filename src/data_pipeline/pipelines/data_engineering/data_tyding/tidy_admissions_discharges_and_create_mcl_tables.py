@@ -177,13 +177,14 @@ def tidy_tables():
             baseline_df['time_spent'] = (baseline_df['completed_at'] -baseline_df['started_at']).astype('timedelta64[m]')
         else:
             baseline_df['time_spent'] = None
-
-        # if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
-        #     format_date_without_timezone(diagnoses_df,'started_at'); 
-        #     format_date_without_timezone(diagnoses_df,'completed_at'); 
-        #     diagnoses_df['time_spent'] =  (diagnoses_df['completed_at'] - diagnoses_df['started_at']).astype('timedelta64[m]')
-        # else:
-        #     diagnoses_df['time_spent'] = None
+        
+        if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
+            neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None):
+            
+            neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
+                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
+        else:
+            neolab_df['BCReturnTime'] = None
 
         baseline_df['LengthOfStay.value'] = None
         baseline_df['LengthOfStay.label'] = None

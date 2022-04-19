@@ -33,7 +33,9 @@ def summary_neolab_query():
 				    latest_neolab.uid=derived.neolab."uid" and latest_neolab.episode = derived.neolab."episode") AS "NumberOfCulturesForEpisode",
            CASE WHEN (derived.neolab."BCResult.value" ='Pos' and  derived.neolab."Org1.value" ='CONS') OR 
                     (derived.neolab."BCResult.value" ='PC') THEN 'Contaminant'
-                    ELSE
+                WHEN (derived.neolab."DateBCR.value"::date - derived.neolab."DateBCT.value"::date) <= 5
+                THEN 'Awaiting Final Result'
+                ELSE
                     derived.neolab."BCResult.value" END AS "CombinedResult"   
             from latest_neolab join derived.neolab
             on latest_neolab.uid=derived.neolab."uid" and latest_neolab."DateBCR" = derived.neolab."DateBCR.value" 
