@@ -179,7 +179,7 @@ def tidy_tables():
             baseline_df['time_spent'] = None
         
         if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
-            neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None:
+            neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None):
             
             neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S').astype('datetime64[ns]') -
                                         pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S').astype('datetime64[ns]')).astype('timedelta64[m]')
