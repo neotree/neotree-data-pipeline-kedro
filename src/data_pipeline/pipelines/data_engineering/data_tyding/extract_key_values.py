@@ -35,6 +35,9 @@ def get_key_values(data_raw):
 
         if 'completed_at' in row:
              new_entry['completed_at'] = row['completed_at']
+        
+        if 'ingested_at' in row:
+             new_entry['ingested_at'] = row['ingested_at']
 
 
         # iterate through key, value and add to dict
