@@ -288,55 +288,59 @@ def tidy_tables():
             for position,admission in adm_df.iterrows():
 
                 age_list =[]
-
-                if 'Age.value' in admission and str(admission['Age.value']) != 'nan':
-                # Get The Value which is a string e.g  3 days, 4 hours
-                    age_list = str(admission['Age.value']).split(",")
-                else:
-                    if 'AgeB.value' in admission and str(admission['AgeB.value']) != 'nan':
-                        age_list = str(admission['AgeB.value']).split(",")
-                # Initialise Hours
-                hours = 0
                 period = 0
-                # If size of List is 1 it either means its days only or hours only
-               
-                if len(age_list) == 1:
-                    age = age_list[0]
-                    # Check if hours or Days
-                    if 'hour' in age:
-                       
-                        hours= [int(s) for s in age.replace("-","").split() if s.isdigit()]
-                        # Check if value contains figures
-                        if len(hours) >0:
-                            period = hours[0]
-                        else:
-                            if "an" in age:
-                                # IF AN HOUR 
-                                period = 1
 
-                    elif 'day' in age:
-                        hours = [int(s) for s in age.replace("-","").split() if s.isdigit()]
-                        if len(hours) >0:
-                            period = hours[0] * 24
-                    elif 'second' in age:
-                        # FEW SECONDS CAN BE ROUNDED OFF 1 HOUR
-                        period = 1
-                    elif 'minute' in age:
-                        # MINUTES CAN BE ROUNDED OFF 1 HOUR
-                        period = 1
-                        pass;     
-                # Contains Both Hours and Days        
-                elif len(age_list) == 2:
-                    age_days = age_list[0]
-                    age_hours = age_list[1]
-                    if 'day' in age_days and 'hour' in age_hours:
-                        number_hours_days= [int(s) for s in age_days.split() if s.isdigit()]
-                        number_hours = [int(s) for s in age_hours.split() if s.isdigit()]
-                        if (len(number_hours) >0 and len(number_hours_days)>0):
-                            period = (number_hours_days[0]) * 24 +(number_hours[0])
-
+                if 'Age.value' in admission and str(admission['Age.value']).isdigit():
+                    period = admission['Age.value']
                 else:
-                    pass;  
+                    if 'Age.value' in admission and str(admission['Age.value']) != 'nan':
+                    # Get The Value which is a string e.g  3 days, 4 hours
+                        age_list = str(admission['Age.value']).split(",")
+                    else:
+                        if 'AgeB.value' in admission and str(admission['AgeB.value']) != 'nan':
+                            age_list = str(admission['AgeB.value']).split(",")
+                    # Initialise Hours
+                    hours = 0
+                    
+                    # If size of List is 1 it either means its days only or hours only
+                
+                    if len(age_list) == 1:
+                        age = age_list[0]
+                        # Check if hours or Days
+                        if 'hour' in age:
+                        
+                            hours= [int(s) for s in age.replace("-","").split() if s.isdigit()]
+                            # Check if value contains figures
+                            if len(hours) >0:
+                                period = hours[0]
+                            else:
+                                if "an" in age:
+                                    # IF AN HOUR 
+                                    period = 1
+
+                        elif 'day' in age:
+                            hours = [int(s) for s in age.replace("-","").split() if s.isdigit()]
+                            if len(hours) >0:
+                                period = hours[0] * 24
+                        elif 'second' in age:
+                            # FEW SECONDS CAN BE ROUNDED OFF 1 HOUR
+                            period = 1
+                        elif 'minute' in age:
+                            # MINUTES CAN BE ROUNDED OFF 1 HOUR
+                            period = 1
+                            pass;     
+                    # Contains Both Hours and Days        
+                    elif len(age_list) == 2:
+                        age_days = age_list[0]
+                        age_hours = age_list[1]
+                        if 'day' in age_days and 'hour' in age_hours:
+                            number_hours_days= [int(s) for s in age_days.split() if s.isdigit()]
+                            number_hours = [int(s) for s in age_hours.split() if s.isdigit()]
+                            if (len(number_hours) >0 and len(number_hours_days)>0):
+                                period = (number_hours_days[0]) * 24 +(number_hours[0])
+
+                    else:
+                        pass;  
 
                 if period>0:
                     adm_df.loc[position,'Age.value'] = period
