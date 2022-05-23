@@ -1,4 +1,5 @@
 # Import created modules (need to be stored in the same directory as notebook)
+from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
@@ -81,7 +82,7 @@ def tidy_tables():
     
     except Exception as e:
         logging.error("!!! An error occured fetching the data: ")
-        raise e
+        logging.error(formatError(e))
 
     # Now let's fetch the list of properties recorded in that table
     logging.info("... Extracting keys")
@@ -99,7 +100,7 @@ def tidy_tables():
 
     except Exception as e:
         logging.error("!!! An error occured extracting keys: ")
-        raise e
+        logging.error(formatError(e))
 
     # Create the dataframe (df) where each property is pulled out into its own colum
     logging.info(
@@ -515,7 +516,7 @@ def tidy_tables():
     except Exception as e:
         logging.error(
             "!!! An error occured normalized dataframes/changing data types: ")
-        raise e
+        logging.error(formatError(e))
 
     # Now write the cleaned up admission and discharge tables back to the database
     logging.info(
@@ -559,7 +560,7 @@ def tidy_tables():
     except Exception as e:
         logging.error(
             "!!! An error occured writing admissions and discharge output back to the database: ")
-        raise e
+        logging.error(formatError(e))
 
     logging.info("... Creating MCL count tables")
     try:
@@ -580,5 +581,5 @@ def tidy_tables():
        
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")
-        raise e
+        logging.error(formatError(e))
 
