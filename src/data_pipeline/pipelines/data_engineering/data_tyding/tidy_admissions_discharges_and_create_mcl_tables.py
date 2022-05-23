@@ -234,7 +234,7 @@ def tidy_tables():
         set_key_to_none(adm_df,'NVPgiven.label')
         set_key_to_none(adm_df,'DateTimeAdmission.value')
         set_key_to_none(adm_df,'DateTimeAdmission.label')
-        set_key_to_none(adm_df,'ROMLength.label')
+        set_key_to_none(adm_df,'ROMlength.label')
         set_key_to_none(adm_df,'ROMLength.value')
 
         #Format Dates Admissions Tables
@@ -392,6 +392,10 @@ def tidy_tables():
                 else:
 
                     key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
+                if  "ROMlength.value" in admission and str(admission["ROMlength.value"]) != 'nan' and admission["ROMlength.value"] is not None:
+                    key_change(adm_df,admission,position,'ROMlength.value','ROMLength.value');
+                else:
+                    pass;
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
