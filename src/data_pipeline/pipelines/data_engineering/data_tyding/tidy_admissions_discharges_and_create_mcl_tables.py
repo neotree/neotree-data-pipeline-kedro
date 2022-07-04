@@ -11,6 +11,7 @@ from data_pipeline.pipelines.data_engineering.queries.update_uid import update_u
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from .neolab_data_cleanup import neolab_cleanup
+from conf.base.catalog import params
 
 
 
@@ -236,6 +237,8 @@ def tidy_tables():
         set_key_to_none(adm_df,'DateTimeAdmission.label')
         set_key_to_none(adm_df,'ROMlength.label')
         set_key_to_none(adm_df,'ROMlength.value')
+        set_key_to_none(adm_df,'ROMLength.label')
+        set_key_to_none(adm_df,'ROMLength.value')
 
         #Format Dates Admissions Tables
         format_date(adm_df,'DateTimeAdmission.value')
@@ -389,14 +392,8 @@ def tidy_tables():
                 if 'BSmg.value' in admission and str(admission["BSmg.value"])!='nan' and admission["BSmg.value"] is not None:
                     key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
                     
-                if  "ROMLength.value" in admission and str(admission["ROMLength.value"]) != 'nan' and admission["ROMLength.value"] is not None:
-                    key_change(adm_df,admission,position,'ROMLength.value','ROMlength.value');
-                
                 if  "ROMlength.value" in admission and str(admission["ROMlength.value"]) != 'nan' and admission["ROMlength.value"] is not None:
-                    key_change(adm_df,admission,position,'ROMlength.value','ROMLength.value');
-                
-                if  "ROMLength.label" in admission and str(admission["ROMLength.label"]) != 'nan' and admission["ROMLength.label"] is not None:
-                    key_change(adm_df,admission,position,'ROMLength.label','ROMlength.label');
+                    key_change(adm_df,admission,position,'ROMLength.value','ROMLength.value');
                 
                 if  "ROMlength.label" in admission and str(admission["ROMlength.label"]) != 'nan' and admission["ROMlength.label"] is not None:
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label');
