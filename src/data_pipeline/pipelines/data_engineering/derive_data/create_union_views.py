@@ -281,7 +281,7 @@ def union_views():
                     old_matched_smch_data['AdmissionWeight.value'] = pd.to_numeric(old_matched_smch_data['AdmissionWeight.value'], errors='coerce')
                 if 'BirthWeight.value' in old_matched_smch_data:
                     old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value'], errors='coerce')
-                if 'BirthWeight.value_value' in old_matched_smch_data:
+                if 'BirthWeight.value_discharge' in old_matched_smch_data:
                     old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
                 format_date(old_matched_smch_data,'DateTimeAdmission.value')
                 format_date(old_matched_smch_data,'EndScriptDatetime.value')
