@@ -235,7 +235,7 @@ def tidy_tables():
         set_key_to_none(adm_df,'DateTimeAdmission.value')
         set_key_to_none(adm_df,'DateTimeAdmission.label')
         set_key_to_none(adm_df,'ROMlength.label')
-        set_key_to_none(adm_df,'ROMLength.value')
+        set_key_to_none(adm_df,'ROMlength.value')
 
         #Format Dates Admissions Tables
         format_date(adm_df,'DateTimeAdmission.value')
@@ -382,20 +382,18 @@ def tidy_tables():
                     pass;
                 else:
                     key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
-                if 'BloodSugarmmol.value' in admission and str(admission["BloodSugarmmol.value"])!='nan' and admission["BloodSugarmmol.value"] is not None:
-                    pass;
-                else:
+                if 'BSmmol.value' in admission and str(admission["BSmmol.value"])!='nan' and admission["BSmmol.value"] is not None:
+                    
+                    key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value');
 
-                    key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
-                if 'BloodSugarmg.value' in admission and str(admission["BloodSugarmg.value"])!='nan' and admission["BloodSugarmg.value"] is not None:
-                    pass;
-                else:
-
+                if 'BSmg.value' in admission and str(admission["BSmg.value"])!='nan' and admission["BSmg.value"] is not None:
                     key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
-                if  "ROMlength.value" in admission and str(admission["ROMlength.value"]) != 'nan' and admission["ROMlength.value"] is not None:
-                    key_change(adm_df,admission,position,'ROMlength.value','ROMLength.value');
-                else:
-                    pass;
+                    
+                if  "ROMLength.value" in admission and str(admission["ROMLength.value"]) != 'nan' and admission["ROMLength.value"] is not None:
+                    key_change(adm_df,admission,position,'ROMLength.value','ROMlength.value');
+
+            # DROP THE OLD COLUMN AS IT HAS SAME NAME WITH NEW COLUMN (METABASE TREATS THEM AS ONE COLUMN, RESULTING IN A DUPLICATE COLUMN ERROR)        
+            admission.drop("ROMLength.value",axis='columns',inplace=True)        
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
