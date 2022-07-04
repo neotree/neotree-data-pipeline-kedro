@@ -36,7 +36,7 @@ def create_summary_tables(manually_Fix_admissions_output):
     except Exception as e:
         logging.error(
             "!!! An error occured in creating summary tables: ")
-        logging.error(e.with_traceback())
+        logging.error(e)
         # Only Open This File When Need Be To Write To It
         cron_log = open(cron_log_file, "a+")
         cron_log.write(

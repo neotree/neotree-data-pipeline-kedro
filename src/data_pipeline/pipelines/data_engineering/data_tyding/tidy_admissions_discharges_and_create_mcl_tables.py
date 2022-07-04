@@ -392,8 +392,9 @@ def tidy_tables():
                 if  "ROMLength.value" in admission and str(admission["ROMLength.value"]) != 'nan' and admission["ROMLength.value"] is not None:
                     key_change(adm_df,admission,position,'ROMLength.value','ROMlength.value');
 
-            # DROP THE OLD COLUMN AS IT HAS SAME NAME WITH NEW COLUMN (METABASE TREATS THEM AS ONE COLUMN, RESULTING IN A DUPLICATE COLUMN ERROR)        
-            adm_df.drop("ROMLength.value",axis="columns",inplace=True)        
+            # DROP THE OLD COLUMN AS IT HAS SAME NAME WITH NEW COLUMN (METABASE TREATS THEM AS ONE COLUMN, RESULTING IN A DUPLICATE COLUMN ERROR)
+            if("ROMLength.value" in adm_df):       
+                adm_df.drop("ROMLength.value",axis="columns",inplace=True)        
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
