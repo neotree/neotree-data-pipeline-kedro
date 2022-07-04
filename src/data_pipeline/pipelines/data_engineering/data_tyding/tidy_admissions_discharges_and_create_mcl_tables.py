@@ -389,13 +389,17 @@ def tidy_tables():
                 if 'BSmg.value' in admission and str(admission["BSmg.value"])!='nan' and admission["BSmg.value"] is not None:
                     key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
                     
-            #     if  "ROMLength.value" in admission and str(admission["ROMLength.value"]) != 'nan' and admission["ROMLength.value"] is not None:
-            #         key_change(adm_df,admission,position,'ROMLength.value','ROMlength.value');
-
-            # # DROP THE OLD COLUMN AS IT HAS SAME NAME WITH NEW COLUMN (METABASE TREATS THEM AS ONE COLUMN, RESULTING IN A DUPLICATE COLUMN ERROR)
-            # if("ROMLength.value" in adm_df): 
-            #     logging.info("-----DROPPING---")      
-            #     adm_df.drop("ROMLength.value",axis="columns",inplace=True) 
+                if  "ROMLength.value" in admission and str(admission["ROMLength.value"]) != 'nan' and admission["ROMLength.value"] is not None:
+                    key_change(adm_df,admission,position,'ROMLength.value','ROMlength.value');
+                
+                if  "ROMlength.value" in admission and str(admission["ROMlength.value"]) != 'nan' and admission["ROMlength.value"] is not None:
+                    key_change(adm_df,admission,position,'ROMlength.value','ROMLength.value');
+                
+                if  "ROMLength.label" in admission and str(admission["ROMLength.label"]) != 'nan' and admission["ROMLength.label"] is not None:
+                    key_change(adm_df,admission,position,'ROMLength.label','ROMlength.label');
+                
+                if  "ROMlength.label" in admission and str(admission["ROMlength.label"]) != 'nan' and admission["ROMlength.label"] is not None:
+                    key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label');
 
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
