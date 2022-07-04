@@ -393,7 +393,7 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
                     
                 if  "ROMlength.value" in admission and str(admission["ROMlength.value"]) != 'nan' and admission["ROMlength.value"] is not None:
-                    key_change(adm_df,admission,position,'ROMLength.value','ROMLength.value');
+                    key_change(adm_df,admission,position,'ROMlength.value','ROMLength.value');
                 
                 if  "ROMlength.label" in admission and str(admission["ROMlength.label"]) != 'nan' and admission["ROMlength.label"] is not None:
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label');
