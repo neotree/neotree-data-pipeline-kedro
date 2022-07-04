@@ -197,7 +197,6 @@ def union_views():
                 format_date(old_smch_discharges,'DateAdmission.value')
                 format_date(old_smch_discharges,'BirthDateDis.value')
 
-                logging.info("========1111===========")
             if old_matched_smch_data  is not None and not old_matched_smch_data.empty:
                 for position,matched_admission in old_matched_smch_data.iterrows():
 
@@ -262,7 +261,6 @@ def union_views():
                         else:
                             old_matched_smch_data.loc[position,'AgeCategory'] = 'Infant (> 3 days old)' 
                     ########################## UPDATE ADMISSION SCRIPT WITH NEW KEYS ########################
-                    logging.info("========22222===========")
                     key_change(old_matched_smch_data,matched_admission,position,'BW.value','BirthWeight.value')              
                     key_change(old_matched_smch_data,matched_admission,position,'Conv.value','Convulsions.value')  
                     key_change(old_matched_smch_data,matched_admission,position,'SRNeuroOther.value','SymptomReviewNeurology.value')
@@ -289,7 +287,6 @@ def union_views():
                 format_date(old_matched_smch_data,'EndScriptDatetime.value')
                 format_date(old_matched_smch_data,'DateHIVtest.value')
                 format_date(old_matched_smch_data,'ANVDRLDate.value')
-                logging.info("========333333===========")
                 #Format Dates Discharge Table
                 format_date(old_matched_smch_data,'DateAdmissionDC.value')  
                 format_date(old_matched_smch_data,'DateDischVitals.value')
@@ -300,7 +297,6 @@ def union_views():
                 format_date(old_matched_smch_data,'DateTimeDeath.value')
                 format_date(old_matched_smch_data,'DateAdmission.value')
                 format_date(old_matched_smch_data,'BirthDateDis.value')
-                logging.info("========44444===========")
             # SAVE OLD NEW ADMISSIONS
             if new_smch_admissions is not None and old_smch_admissions  is not None:
                 combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], ignore_index=True)
