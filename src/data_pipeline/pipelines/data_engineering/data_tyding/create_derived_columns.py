@@ -79,13 +79,20 @@ def create_columns(table: pd.DataFrame):
       table.loc[table['BW.value'] < 1500, 'BirthWeightCategory'] = "VLBW"
       table.loc[table['BW.value'] < 1000, 'BirthWeightCategory'] = "ELBW"
 
-    # order of statements matters
     if 'AdmissionWeight.value' in table:
       table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
       table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
       table.loc[table['AdmissionWeight.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
       table.loc[table['AdmissionWeight.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
       table.loc[table['AdmissionWeight.value'] < 1000, 'AWGroup.value'] = "<1000g"
+
+    # order of statements matters
+    elif 'AW.value' in table:
+      table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
+      table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
+      table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
+      table.loc[table['AW.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
+      table.loc[table['AW.value'] < 1000, 'AWGroup.value'] = "<1000g"
     else:
        table['AdmissionWeight.value']= None
        table['AWGroup.value']= None   
