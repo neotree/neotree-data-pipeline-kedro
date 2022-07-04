@@ -393,7 +393,7 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMLength.value','ROMlength.value');
 
             # DROP THE OLD COLUMN AS IT HAS SAME NAME WITH NEW COLUMN (METABASE TREATS THEM AS ONE COLUMN, RESULTING IN A DUPLICATE COLUMN ERROR)        
-            admission.drop("ROMLength.value",axis='columns',inplace=True)        
+            adm_df.drop("ROMLength.value",axis="columns",inplace=True)        
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
@@ -544,7 +544,8 @@ def tidy_tables():
             #SET INDEX 
             if "uid" in neolab_df:
                 neolab_df.set_index(['uid'])
-            neolab_df.sort_values(by=['uid','episode'])  
+                if ("episode" in neolab_df):
+                    neolab_df.sort_values(by=['uid','episode'])  
             catalog.save('create_derived_neolab',neolab_df)
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
