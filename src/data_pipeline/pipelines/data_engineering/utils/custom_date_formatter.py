@@ -14,7 +14,7 @@ def format_date(df:pd.DataFrame,field_name):
             df[field_name] =df[field_name].map(lambda x: str(x)[:-4] if is_date_formatable(x) else None) 
             df[field_name]=pd.to_datetime(df[field_name],utc=False)
     except Exception as e:
-        raise (e.with_traceback())
+        raise (e)
        
 def format_date_without_timezone(df,field_name):
     """

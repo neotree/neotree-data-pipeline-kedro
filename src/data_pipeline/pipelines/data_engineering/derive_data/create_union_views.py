@@ -282,7 +282,7 @@ def union_views():
                 if 'BirthWeight.value' in old_matched_smch_data:
                     old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value'], errors='coerce')
                 if 'BirthWeight.value_discharge' in old_matched_smch_data:
-                    old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_discharge'], errors='coerce')
+                    old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
                 format_date(old_matched_smch_data,'DateTimeAdmission.value')
                 format_date(old_matched_smch_data,'EndScriptDatetime.value')
                 format_date(old_matched_smch_data,'DateHIVtest.value')
@@ -320,5 +320,5 @@ def union_views():
 
         except Exception as ex:
             logging.error("!!! An error occured creating union views: ")
-            logging.error(ex.with_traceback())
+            logging.error(ex)
             exit()

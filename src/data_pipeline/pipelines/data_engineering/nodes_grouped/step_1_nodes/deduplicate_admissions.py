@@ -30,7 +30,7 @@ def deduplicate_admissions(data_import_output):
     except Exception as e:
         logging.error(
             "!!! An error occured deduplicating discharges: ")
-        logging.error(e.with_traceback())
+        logging.error(e)
         #Only Open This File When Need Be To Write To It
         cron_log = open(cron_log_file,"a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Deduplicating Admissions ".format(cron_time,mode))

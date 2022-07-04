@@ -38,5 +38,5 @@ def deduplicate_other_data(data_import_output):
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Deduplicating Data ".format(cron_time,mode))
         cron_log.close()
-        logging.error(e.with_traceback())
+        logging.error(e)
         sys.exit(1)

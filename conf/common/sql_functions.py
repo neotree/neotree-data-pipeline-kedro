@@ -33,7 +33,7 @@ def inject_sql(sql_script, file_name):
         # last element in list is empty hence need for [:-1] slicing out the last element
         except Exception as e:
             logging.error('Something went wrong with the SQL file');
-            raise e.with_traceback()
+            raise e
     logging.info('... {0} has successfully run'.format(file_name))
 
 def create_table(df: pd.DataFrame, table_name):

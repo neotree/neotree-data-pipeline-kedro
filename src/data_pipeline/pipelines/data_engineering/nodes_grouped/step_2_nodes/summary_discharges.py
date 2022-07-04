@@ -29,6 +29,6 @@ def create_summary_discharges():
         cron_log = open(cron_log_file,"a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Discharges ".format(cron_time,mode))
         cron_log.close()
-        logging.error(e.with_traceback())
+        logging.error(e)
         sys.exit(1)
    

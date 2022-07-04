@@ -31,9 +31,9 @@ def create_summary_neolabs():
 
     except Exception as e:
         logging.error("!!! An error occured creating summary Neolab")
+        logging.error(e)
         cron_log = open(cron_log_file,"a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Neolab".format(cron_time,mode))
         cron_log.close()
-        logging.error(formatError(e))
         sys.exit(1)
    

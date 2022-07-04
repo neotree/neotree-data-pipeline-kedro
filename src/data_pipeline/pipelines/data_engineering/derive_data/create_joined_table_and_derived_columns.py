@@ -69,7 +69,7 @@ def join_table():
 
     except Exception as e:
         logging.error("!!! An error occured creating joined dataframe: ")
-        raise e.with_traceback()
+        raise e
 
     # Now write the table back to the database
     logging.info("... Writing the output back to the database")

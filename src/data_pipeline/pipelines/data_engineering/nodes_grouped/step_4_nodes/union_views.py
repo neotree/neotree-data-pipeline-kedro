@@ -21,7 +21,7 @@ def create_union_views(joined_tables_output):
 
     except Exception as e:
         logging.error("!!! An error occured creating union views")
-        logging.error(e.with_traceback())
+        logging.error(e)
         cron_log = open(cron_log_file, "a+")
         cron_log.write(
             "StartTime: {0}   Instance: {1}   Status: Failed Stage: Union Views Creation ".format(cron_time, mode))
