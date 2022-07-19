@@ -347,3 +347,4 @@ def read_new_smch_matched_query():
             select 
                 *
             from derived.joined_admissions_discharges;'''
+   
