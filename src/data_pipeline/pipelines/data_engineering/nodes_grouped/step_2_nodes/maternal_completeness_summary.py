@@ -27,7 +27,7 @@ def create_maternal_completeness_summary():
 
 
     except Exception as e:
-         logging.error("!!! An error occured creating Vital Signs Summaries: ")
+         logging.error("!!! An error occured creating summary maternal completeness: ")
          cron_log = open(cron_log_file,"a+")
          cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Maternal Completeness ".format(cron_time,mode))
          cron_log.close()
