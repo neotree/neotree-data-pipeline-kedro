@@ -285,8 +285,10 @@ def tidy_tables():
         set_key_to_none(baseline_df,'ReferredFrom2.value') 
         set_key_to_none(baseline_df,'TempThermia.label') 
         set_key_to_none(baseline_df,'TempThermia.value')
+        set_key_to_none(baseline_df,'TempGroup.label') 
         set_key_to_none(baseline_df,'TempGroup.value') 
-        set_key_to_none(baseline_df,'TempGroup.value') 
+        set_key_to_none(baseline_df,'GestGroup.label') 
+        set_key_to_none(baseline_df,'GestGroup.value') 
         #Vital Signs Table
         format_date(vit_signs_df,'D1Date.value')
         format_date(vit_signs_df,'TimeTemp1.value')
