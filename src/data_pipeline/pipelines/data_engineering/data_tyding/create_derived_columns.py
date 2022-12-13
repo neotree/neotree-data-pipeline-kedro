@@ -94,6 +94,8 @@ def create_columns(table: pd.DataFrame):
       table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
       table.loc[table['AW.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
       table.loc[table['AW.value'] < 1000, 'AWGroup.value'] = "<1000g"
+      table['AdmissionWeight.value']= table["AW.value"]
+
     else:
        table['AdmissionWeight.value']= None
        table['AWGroup.value']= None   
