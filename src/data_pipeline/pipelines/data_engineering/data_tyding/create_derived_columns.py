@@ -69,17 +69,15 @@ def create_columns(table: pd.DataFrame):
                   table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
                   table['BirthWeightCategory'] =table['BWGroup.value']
             else:
-                  table['BirthWeight.value'] = None
-                  table['BWGroup.value'] = None  
+                  if ('BW.value' in table):
+                        table.loc[table['BW.value'].isnull() , 'BirthWeightCategory'] = "Unknown"
+                        table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
+                        table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
+                        table.loc[table['BW.value'] < 2500, 'BirthWeightCategory'] = "LBW"
+                        table.loc[table['BW.value'] < 1500, 'BirthWeightCategory'] = "VLBW"
+                        table.loc[table['BW.value'] < 1000, 'BirthWeightCategory'] = "ELBW"
 
             # For Baseline Tables
-            if ('BW.value' in table):
-                  table.loc[table['BW.value'].isnull(), 'BirthWeightCategory'] = "Unknown"
-                  table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
-                  table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
-                  table.loc[table['BW.value'] < 2500, 'BirthWeightCategory'] = "LBW"
-                  table.loc[table['BW.value'] < 1500, 'BirthWeightCategory'] = "VLBW"
-                  table.loc[table['BW.value'] < 1000, 'BirthWeightCategory'] = "ELBW"
 
             if 'AdmissionWeight.value' in table:
                   table.loc[table['AdmissionWeight.value'].isnull(), 'AWGroup.value'] = "Unknown"
