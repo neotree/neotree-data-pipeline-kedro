@@ -21,6 +21,7 @@ from datetime import datetime as dt
 import logging
 import random
 import sys
+import traceback
 
 
 def tidy_tables():
@@ -283,6 +284,14 @@ def tidy_tables():
         set_key_to_none(baseline_df,'AdmittedFrom.value') 
         set_key_to_none(baseline_df,'ReferredFrom2.label') 
         set_key_to_none(baseline_df,'ReferredFrom2.value') 
+        set_key_to_none(baseline_df,'ReferredFrom.label') 
+        set_key_to_none(baseline_df,'ReferredFrom.value') 
+        set_key_to_none(baseline_df,'TempThermia.label') 
+        set_key_to_none(baseline_df,'TempThermia.value')
+        set_key_to_none(baseline_df,'TempGroup.label') 
+        set_key_to_none(baseline_df,'TempGroup.value') 
+        set_key_to_none(baseline_df,'GestGroup.label') 
+        set_key_to_none(baseline_df,'GestGroup.value') 
         #Vital Signs Table
         format_date(vit_signs_df,'D1Date.value')
         format_date(vit_signs_df,'TimeTemp1.value')
@@ -519,13 +528,18 @@ def tidy_tables():
 
         # Make changes to admissions and baseline data to match fields in power bi                                    
         if not adm_df.empty:
-            adm_df = create_columns(adm_df)
+            try:
+                adm_df = create_columns(adm_df)
+            except Exception as ex:
+                raise ex
         if not baseline_df.empty:
             baseline_df = create_columns(baseline_df)
 
     except Exception as e:
         logging.error(
             "!!! An error occured normalized dataframes/changing data types: ")
+        traceback.print_exc()
+        raise e
         logging.error(formatError(e))
 
     # Now write the cleaned up admission and discharge tables back to the database
