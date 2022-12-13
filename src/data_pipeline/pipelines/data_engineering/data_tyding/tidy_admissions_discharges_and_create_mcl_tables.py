@@ -281,6 +281,8 @@ def tidy_tables():
         set_key_to_none(baseline_df,'BWGroup.value') 
         set_key_to_none(baseline_df,'AdmittedFrom.label') 
         set_key_to_none(baseline_df,'AdmittedFrom.value') 
+         set_key_to_none(baseline_df,'ReferredFrom2.label') 
+        set_key_to_none(baseline_df,'ReferredFrom2.value') 
         #Vital Signs Table
         format_date(vit_signs_df,'D1Date.value')
         format_date(vit_signs_df,'TimeTemp1.value')
