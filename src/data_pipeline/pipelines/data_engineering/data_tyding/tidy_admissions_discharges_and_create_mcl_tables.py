@@ -21,6 +21,7 @@ from datetime import datetime as dt
 import logging
 import random
 import sys
+import traceback
 
 
 def tidy_tables():
@@ -537,7 +538,8 @@ def tidy_tables():
     except Exception as e:
         logging.error(
             "!!! An error occured normalized dataframes/changing data types: ")
-        raise e.with_traceback()
+        traceback.print_exc()
+        raise e
         logging.error(formatError(e))
 
     # Now write the cleaned up admission and discharge tables back to the database
