@@ -283,6 +283,8 @@ def tidy_tables():
         set_key_to_none(baseline_df,'AdmittedFrom.value') 
         set_key_to_none(baseline_df,'ReferredFrom2.label') 
         set_key_to_none(baseline_df,'ReferredFrom2.value') 
+        set_key_to_none(baseline_df,'ReferredFrom.label') 
+        set_key_to_none(baseline_df,'ReferredFrom.value') 
         set_key_to_none(baseline_df,'TempThermia.label') 
         set_key_to_none(baseline_df,'TempThermia.value')
         set_key_to_none(baseline_df,'TempGroup.label') 
