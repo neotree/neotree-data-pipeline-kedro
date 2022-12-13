@@ -66,12 +66,13 @@ def create_columns(table: pd.DataFrame):
       table.loc[table['BirthWeight.value'] < 2500, 'BWGroup.value'] = "LBW"
       table.loc[table['BirthWeight.value'] < 1500, 'BWGroup.value'] = "VLBW"
       table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
+      table['BirthWeight.value'] =table['BWGroup.value']
     else:
          table['BirthWeight.value'] = None
          table['BWGroup.value'] = None  
 
     # For Baseline Tables
-    if 'BW.value' in table:
+    if ('BW.value' in table and ('BirthWeight.value' not in table or table["BirthWeight.value"]=="Unknown")):
       table.loc[table['BW.value'].isnull(), 'BirthWeightCategory'] = "Unknown"
       table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
       table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
