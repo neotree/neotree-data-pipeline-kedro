@@ -67,7 +67,7 @@ def create_columns(table: pd.DataFrame):
                   table.loc[table['BirthWeight.value'] < 2500, 'BWGroup.value'] = "LBW"
                   table.loc[table['BirthWeight.value'] < 1500, 'BWGroup.value'] = "VLBW"
                   table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
-                  table['BirthWeightCategory.value'] =table['BWGroup.value']
+                  table['BirthWeightCategory'] =table['BWGroup.value']
             else:
                   table['BirthWeight.value'] = None
                   table['BWGroup.value'] = None  
