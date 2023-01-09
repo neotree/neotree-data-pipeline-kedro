@@ -13,6 +13,7 @@ def restructure(c, mcl):
         current_v = c['values']
         # code to restructure MCL json file to key value pairs format
         for k, val in [(key, d[key]) for d in current_v for key in d]:
+            
             if k not in v:
                 v[k] = [val]
             else:

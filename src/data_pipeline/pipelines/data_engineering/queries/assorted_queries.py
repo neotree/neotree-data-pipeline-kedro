@@ -1,3 +1,6 @@
+import logging
+
+
 def deduplicate_admissions_query(adm_where):
     return  f'''
             drop table if exists scratch.deduplicated_admissions cascade;
@@ -347,4 +350,53 @@ def read_new_smch_matched_query():
             select 
                 *
             from derived.joined_admissions_discharges;'''
-   
+
+def get_duplicate_maternal_query():
+    return f'''
+            select uid, s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 as "DA",s."data"->'entries' as "entries"
+            from public.sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
+            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' having count(*)>1 order by
+            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 
+           '''
+
+def update_maternal_uid_query_new(uid,date_condition,old_uid):
+            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+             data,
+            '{{entries,NeotreeID}}',
+               '{{
+                "type": "string",
+                "values": {{
+                "label": [
+                    "NeoTree ID number"
+                ],
+                "value": ["{0}"]
+                
+                }}
+                }}'::TEXT::jsonb,
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
+            '''.format(uid,date_condition,old_uid)
+
+def update_maternal_uid_query_old(uid,date_condition,old_uid):
+            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+             data,
+            '{{entries,0}}',
+               '{{
+                "key":"NeotreeID",
+                "type": "string",
+                "values": {{
+                "label": [
+                    "NeoTree ID number"
+                ],
+                "value": ["{0}"]
+                
+                }}
+                }}'::TEXT::jsonb,
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
+            '''.format(uid,date_condition,old_uid)
+
+def update_maternal_outer_uid(uid):
+    return ''' update public.sessions set data= JSONB_SET(
+             data,
+            '{{uid}}',
+             to_json(uid)::TEXT::JSONB,
+             true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';'''.format(uid)
