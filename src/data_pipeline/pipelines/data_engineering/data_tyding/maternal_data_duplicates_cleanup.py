@@ -36,6 +36,8 @@ def maternal_data_duplicates_cleanup():
                                         update_query = update_maternal_uid_query_old(neotree_id,date_condition,fRow['uid'])
                                     else:
                                         update_query = update_maternal_uid_query_new(neotree_id,date_condition,fRow['uid'])
+                                    if(fRow['uid']=='4441-0327'):
+                                        logging.info("===MY SUG==="+update_query)
                                     outer_uid_update_query = update_maternal_outer_uid(neotree_id);
                                     inject_sql(update_query,'UPDATE DUPLICATE NEOTREE ID')
                                     inject_sql(outer_uid_update_query,'UPDATE OUTER NEOTREE ID')

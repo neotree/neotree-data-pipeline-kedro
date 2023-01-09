@@ -17,7 +17,7 @@ def restructure(c, mcl):
         
         # code to restructure MCL json file to key value pairs format
         for k in current_v:
-            if k not in v:
+            if k not in v.keys():
                 v[k] = [current_v[k]]
             else:
                 v[k].append(current_v[k])
