@@ -28,7 +28,7 @@ def maternal_data_duplicates_cleanup():
                                 else:
                                     neotree_id = generateNeotreeId()
                                     admission_date = fRow['DA']
-                                    date_condition =f'''={admission_date}'''
+                                    date_condition =f'''='{admission_date}' '''
                                     if admission_date is None:
                                         date_condition= 'is null'
                                     update_query =''

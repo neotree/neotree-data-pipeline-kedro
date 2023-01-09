@@ -17,7 +17,7 @@ def restructure(c, mcl):
         
         # code to restructure MCL json file to key value pairs format
         for k in current_v:
-            logging.info("====K==="+k)
+            logging.info("====K==="+str(k))
             logging.info("====KIN==="+str(k in v.keys()))
             if k not in v.keys():
                 v[k] = [current_v[k]]
