@@ -414,7 +414,7 @@ def update_misplaced_uid(uid,id):
                 }}
                 ]
                 }}'::TEXT::jsonb,
-               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and id={1}';
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and id={1};
             '''.format(uid,id)
 
 
