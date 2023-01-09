@@ -34,10 +34,11 @@ def maternal_data_duplicates_cleanup():
                                     update_query =''
                                     if type(fRow['entries']) is list:
                                         update_query = update_maternal_uid_query_old(neotree_id,date_condition,fRow['uid'])
+                                        inject_sql(update_query,'UPDATE DUPLICATE OLD STRUCTURE')
                                     else:
                                         update_query = update_maternal_uid_query_new(neotree_id,date_condition,fRow['uid'])
+                                        inject_sql(update_query,'UPDATE DUPLICATE NEW STRUCTURE')
                                     outer_uid_update_query = update_maternal_outer_uid(neotree_id);
-                                    inject_sql(update_query,'UPDATE DUPLICATE NEOTREE ID')
                                     inject_sql(outer_uid_update_query,'UPDATE OUTER NEOTREE ID')
                     processed.append(row['uid'])
         else:
