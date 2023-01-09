@@ -420,4 +420,4 @@ def update_misplaced_uid(uid,id):
 
 def get_data_to_fix_query():
     return f'''
-            select id from public.sessions s where uid like '\\%ZZ-\\%' '''
+            select id from public.sessions s where uid like '%%ZZ-%%' '''
