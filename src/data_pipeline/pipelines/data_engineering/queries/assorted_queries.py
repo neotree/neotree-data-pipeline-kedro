@@ -383,15 +383,14 @@ def update_maternal_uid_query_old(uid,date_condition,old_uid):
                '{{
                 "key":"NeotreeID",
                 "type": "string",
-                "values": {{
-                "label": [
-                    "NeoTree ID number"
-                ],
-                "value": ["{0}"]
-                
+                "values": [
+                    {{
+                "label": "NeoTree ID number",
+                "value": "{0}"
                 }}
+                ]
                 }}'::TEXT::jsonb,
-               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and ("uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1}) or uid like '%ZZ-%';
             '''.format(uid,date_condition,old_uid)
 
 def update_maternal_outer_uid(uid):
