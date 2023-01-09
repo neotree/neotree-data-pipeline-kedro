@@ -34,7 +34,7 @@ def inject_sql(sql_script, file_name):
         except Exception as e:
             logging.error('Something went wrong with the SQL file');
             raise e
-    logging.info('... {0} has successfully run'.format(file_name))
+    #logging.info('... {0} has successfully run'.format(file_name))
 
 def create_table(df: pd.DataFrame, table_name):
     # create tables in derived schema

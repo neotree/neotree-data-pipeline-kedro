@@ -4,7 +4,7 @@ from conf.common.format_error import formatError
 import random
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_maternal_uid_query_new,update_maternal_uid_query_old
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_maternal_uid_query_new,update_maternal_uid_query_old,update_misplaced_uid
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_maternal_outer_uid
 from data_pipeline.pipelines.data_engineering.queries.check_row_exists_sql import row_exists
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
@@ -15,6 +15,13 @@ def maternal_data_duplicates_cleanup():
         duplicates_df = pd.DataFrame()
         if table_exists('public','sessions'):
             duplicates_df = catalog.load('duplicate_maternal_data')
+            data_to_fix_df = catalog.load('data_to_fix')
+            if not data_to_fix_df.empty:
+                for i, r, in data_to_fix_df.iterrows():
+                    id = r['id']
+                    sql_q= update_misplaced_uid(generateNeotreeId(),id)
+                    logging.info("----SD--"+str(i))
+                    inject_sql(sql_q,"CORRECTING DATA")
         if not duplicates_df.empty:
             processed = []
             for index,row in duplicates_df.iterrows():
