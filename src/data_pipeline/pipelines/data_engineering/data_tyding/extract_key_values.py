@@ -3,8 +3,9 @@ import logging
 from conf.common.format_error import formatError
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import  reduce
-import sys
-import traceback
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import delete_misplaced_uid
+from conf.common.sql_functions import inject_sql
+
 
 def get_key_values(data_raw):
     mcl = []
@@ -55,7 +56,7 @@ def get_key_values(data_raw):
                         if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                             new_entry['uid'] = v.value;
                     except Exception:
-                        logging.info("===CORRUP==="+str(row['uid']))
+                        inject_sql( delete_misplaced_uid(row['uid']),"DELEETE")
 
             #ELSE USE THE OLD FORMAT
                 else:
