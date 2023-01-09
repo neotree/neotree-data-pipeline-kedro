@@ -33,7 +33,6 @@ def restructure(c, mcl):
         #Add Other Values T MCL Columns For Exploding and Adm Reason
         if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)
-        logging.info("---MY V==="+str(k)+"==BO=="+str(v))
     return k, v, mcl
 
     #Restructure New Formated Data

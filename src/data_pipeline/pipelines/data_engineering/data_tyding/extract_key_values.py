@@ -60,8 +60,7 @@ def get_key_values(data_raw):
                         k, v, mcl = restructure(c, mcl)
                     except Exception:
                         logging.info("===CORRUPT==="+str(row['uid']))
-                        traceback.print_exc()
-                        sys.exit(1)
+                        
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
                 if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                         new_entry['uid'] = v.value;
