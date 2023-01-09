@@ -15,7 +15,9 @@ def maternal_data_duplicates_cleanup():
         duplicates_df = pd.DataFrame()
         if table_exists('public','sessions'):
             duplicates_df = catalog.load('duplicate_maternal_data')
-            inject_sql(update_misplaced_uid(generateNeotreeId()),"CORRECTING DATA")
+            sql_q= update_misplaced_uid(generateNeotreeId())
+            logging.info("----SD--"+sql_q)
+            inject_sql(sql_q,"CORRECTING DATA")
         if not duplicates_df.empty:
             processed = []
             for index,row in duplicates_df.iterrows():
