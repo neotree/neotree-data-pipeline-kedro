@@ -8,34 +8,35 @@ import re
 
 def restructure(c, mcl):
     # branch to manage MCL
-    if len(dict(c['values'])) > 1:
+    c= dict(c)
+    logging.info("=====I HAVE PASSED===="+str(c))
+    if len(c['values']) > 1:
         v = {}
-        current_v = dict(c['values'])
-        logging.info("=====I HAVE PASSED===="+str(current_v))
+        current_v = c['values']
         
         # code to restructure MCL json file to key value pairs format
-        for k, val in [(key, d[key]) for d in current_v for key in d]:
-            logging.info("=====I KEYED ===="+str(k)+"==VAL-")
+        for k in current_v:
+            logging.info("=====THE DCIT===="+str(k))
             if k not in v:
-                v[k] = [val]
+                v[k] = [current_v[k]]
             else:
-                v[k].append(val)
-        k = dict(c)['key']
+                v[k].append(current_v[k])
+        k = c['key']
         mcl.append(k)
 
     # branch to cater for empty values
-    elif len(dict(c)['values']) == 0:
-        k = dict(c)['key']
-        v = dict(c)['values']
+    elif len(c['values']) == 0:
+        k = c['key']
+        v = c['values']
 
     # branch to extract single entry values
     else:
-        k = dict(c)['key']
-        v = dict(c)['values'][0]
+        k = c['key']
+        v = c['values'][0]
         #Add Other Values T MCL Columns For Exploding and Adm Reason
         if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)
-
+    logging.info("==MY PASS MARK"+k+"==MEU=="+v+ "=HAHA=="+str(mcl))
     return k, v, mcl
 
     #Restructure New Formated Data
