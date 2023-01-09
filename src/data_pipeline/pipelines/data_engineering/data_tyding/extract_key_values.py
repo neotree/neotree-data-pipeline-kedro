@@ -2,7 +2,7 @@
 import logging
 from conf.common.format_error import formatError
 from .json_restructure import restructure, restructure_new_format, restructure_array
-from functools import cache, reduce
+from functools import  reduce
 
 def get_key_values(data_raw):
     mcl = []
