@@ -390,7 +390,7 @@ def update_maternal_uid_query_old(uid,date_condition,old_uid):
                 }}
                 ]
                 }}'::TEXT::jsonb,
-               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and ("uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1}) or uid like '%ZZ-%';
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
             '''.format(uid,date_condition,old_uid)
 
 def update_maternal_outer_uid(uid):
@@ -399,3 +399,20 @@ def update_maternal_outer_uid(uid):
             '{{uid}}',
              to_json(uid)::TEXT::JSONB,
              true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';'''.format(uid)
+
+def update_misplaced_uid(uid):
+            return '''update public.sessions data = JSONB_SET(
+             data,
+            '{{entries,0}}',
+               '{{
+                "key":"NeotreeID",
+                "type": "string",
+                "values": [
+                    {{
+                "label": "NeoTree ID number",
+                "value": "{0}"
+                }}
+                ]
+                }}'::TEXT::jsonb,
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and uid like '%ZZ-%';
+            '''.format(uid)
