@@ -4,7 +4,7 @@ from conf.common.format_error import formatError
 import random
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_maternal_uid_query_new,update_maternal_uid_query_old,delete_misplaced_uid
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_maternal_uid_query_new,update_maternal_uid_query_old
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_maternal_outer_uid
 from data_pipeline.pipelines.data_engineering.queries.check_row_exists_sql import row_exists
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists

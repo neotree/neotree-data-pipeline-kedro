@@ -399,7 +399,3 @@ def update_maternal_outer_uid(uid):
             '{{uid}}',
              to_json(uid)::TEXT::JSONB,
              true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';'''.format(uid)
-
-def delete_misplaced_uid(uid):
-            return '''delete from public.sessions where scriptid='-MDPYzHcFVHt02D1Tz4Z' and uid='{0}';
-            '''.format(uid)
