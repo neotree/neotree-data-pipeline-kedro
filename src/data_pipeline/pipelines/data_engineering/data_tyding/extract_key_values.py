@@ -59,6 +59,7 @@ def get_key_values(data_raw):
                     try:
                         k, v, mcl = restructure(c, mcl)
                     except Exception:
+                        logging.info("===CORRUPT==="+str(row['uid']))
                         traceback.print_exc()
                         sys.exit(1)
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
