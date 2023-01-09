@@ -3,6 +3,8 @@ import logging
 from conf.common.format_error import formatError
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import  reduce
+import sys
+import traceback
 
 def get_key_values(data_raw):
     mcl = []
@@ -56,9 +58,9 @@ def get_key_values(data_raw):
                 else:
                     try:
                         k, v, mcl = restructure(c, mcl)
-                    except Exception as ex:
-                        logging.error(ex.with_traceback())
-                        exit(1)
+                    except Exception:
+                        traceback.print_exc()
+                        sys.exit(1)
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
                 if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                         new_entry['uid'] = v.value;

@@ -5,6 +5,8 @@
 import logging
 from conf.common.format_error import formatError
 import re
+import traceback
+
 
 def restructure(c, mcl):
     # branch to manage MCL
@@ -57,7 +59,6 @@ def restructure_new_format(k,v,mcl):
 
         return k, v, mcl
     except Exception as ex:
-        logging.error(v)
         logging.error(formatError(ex))
 
 def restructure_array(key,value):
