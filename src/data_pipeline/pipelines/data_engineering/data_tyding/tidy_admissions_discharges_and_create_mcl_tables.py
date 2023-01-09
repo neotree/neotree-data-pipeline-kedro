@@ -538,8 +538,6 @@ def tidy_tables():
     except Exception as e:
         logging.error(
             "!!! An error occured normalized dataframes/changing data types: ")
-        traceback.print_exc()
-        raise e
         logging.error(formatError(e))
 
     # Now write the cleaned up admission and discharge tables back to the database

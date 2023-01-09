@@ -2,7 +2,8 @@
 import logging
 from conf.common.format_error import formatError
 from .json_restructure import restructure, restructure_new_format, restructure_array
-from functools import reduce
+from functools import  reduce
+
 
 def get_key_values(data_raw):
     mcl = []
@@ -46,15 +47,19 @@ def get_key_values(data_raw):
             for c in row['entries']:
            
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-                if(app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):             
-                    k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
+                if(app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)): 
+                    try:            
+                        k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
                     #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
-                    if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
-                        new_entry['uid'] = v.value;
+                        if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
+                            new_entry['uid'] = v.value;
+                    except Exception:
+                        logging.info("RESTRUCTURING ERROR ON RECORD WITH UID"+str(row['uid']))
 
             #ELSE USE THE OLD FORMAT
                 else:
                     k, v, mcl = restructure(c, mcl)
+                        
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
                 if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                         new_entry['uid'] = v.value;
