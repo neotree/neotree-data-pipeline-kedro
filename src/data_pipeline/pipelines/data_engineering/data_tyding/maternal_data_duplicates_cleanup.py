@@ -20,7 +20,7 @@ def maternal_data_duplicates_cleanup():
                 for i, r, in data_to_fix_df.iterrows():
                     id = r['id']
                     sql_q= update_misplaced_uid(generateNeotreeId(),id)
-                    logging.info("----SD--"+sql_q)
+                    logging.info("----SD--"+id)
                     inject_sql(sql_q,"CORRECTING DATA")
         if not duplicates_df.empty:
             processed = []

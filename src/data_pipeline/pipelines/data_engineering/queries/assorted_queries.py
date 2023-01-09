@@ -401,7 +401,7 @@ def update_maternal_outer_uid(uid):
              true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';'''.format(uid)
 
 def update_misplaced_uid(uid,id):
-            return '''update public.sessions data = JSONB_SET(
+            return '''update public.sessions set data = JSONB_SET(
              data,
             '{{entries,0}}',
                '{{
