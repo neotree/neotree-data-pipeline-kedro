@@ -9,14 +9,12 @@ import re
 def restructure(c, mcl):
     # branch to manage MCL
     c= dict(c)
-    logging.info("=====I HAVE PASSED===="+str(c))
     if len(c['values']) > 1:
         v = {}
         current_v = c['values']
         
         # code to restructure MCL json file to key value pairs format
         for k in current_v:
-            logging.info("=====THE DCIT===="+str(k))
             if k not in v:
                 v[k] = [current_v[k]]
             else:
@@ -36,7 +34,7 @@ def restructure(c, mcl):
         #Add Other Values T MCL Columns For Exploding and Adm Reason
         if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)
-    logging.info("==MY PASS MARK"+k+"==MEU=="+v+ "=HAHA=="+str(mcl))
+    logging.info("==MY PASS MARK"+str(k)+"==MEU=="+str(v)+ "=HAHA=="+str(mcl))
     return k, v, mcl
 
     #Restructure New Formated Data
