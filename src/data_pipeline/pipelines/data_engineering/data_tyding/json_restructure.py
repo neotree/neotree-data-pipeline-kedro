@@ -5,22 +5,19 @@
 import logging
 from conf.common.format_error import formatError
 import re
-import traceback
-
 
 def restructure(c, mcl):
     # branch to manage MCL
-    c= dict(c)
     if len(c['values']) > 1:
         v = {}
         current_v = c['values']
-        logging.info("====VVVV=="+str(c['key']))
         # code to restructure MCL json file to key value pairs format
-        for k in current_v.keys():
-            if k not in v.keys():
-                v[k] = [current_v[k]]
+        for k, val in [(key, d[key]) for d in current_v for key in d]:
+            
+            if k not in v:
+                v[k] = [val]
             else:
-                v[k].append(current_v[k])
+                v[k].append(val)
         k = c['key']
         mcl.append(k)
 
@@ -36,6 +33,7 @@ def restructure(c, mcl):
         #Add Other Values T MCL Columns For Exploding and Adm Reason
         if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)
+        logging.info("---MY V==="+str(k)+"==BO=="+str(v))
     return k, v, mcl
 
     #Restructure New Formated Data
@@ -59,6 +57,7 @@ def restructure_new_format(k,v,mcl):
 
         return k, v, mcl
     except Exception as ex:
+        logging.error(v)
         logging.error(formatError(ex))
 
 def restructure_array(key,value):
