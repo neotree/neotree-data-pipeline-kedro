@@ -8,9 +8,10 @@ import re
 
 def restructure(c, mcl):
     # branch to manage MCL
-    if len(c['values']) > 1:
+    if len(dict(c['values'])) > 1:
+        logging.info("=====I HAVE PASSED====")
         v = {}
-        current_v = c['values']
+        current_v = dict(c)['values']
         # code to restructure MCL json file to key value pairs format
         for k, val in [(key, d[key]) for d in current_v for key in d]:
             
@@ -18,18 +19,18 @@ def restructure(c, mcl):
                 v[k] = [val]
             else:
                 v[k].append(val)
-        k = c['key']
+        k = dict(c)['key']
         mcl.append(k)
 
     # branch to cater for empty values
-    elif len(c['values']) == 0:
-        k = c['key']
-        v = c['values']
+    elif len(dict(c)['values']) == 0:
+        k = dict(c)['key']
+        v = dict(c)['values']
 
     # branch to extract single entry values
     else:
-        k = c['key']
-        v = c['values'][0]
+        k = dict(c)['key']
+        v = dict(c)['values'][0]
         #Add Other Values T MCL Columns For Exploding and Adm Reason
         if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)

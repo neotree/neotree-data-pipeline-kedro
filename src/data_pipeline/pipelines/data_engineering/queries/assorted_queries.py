@@ -362,7 +362,7 @@ def get_duplicate_maternal_query():
 def update_maternal_uid_query_new(uid,date_condition,old_uid):
             return '''update public.sessions set uid = '{0}',data = JSONB_SET(
              data,
-            '{{entries,NeotreeID}}',
+            '{{entries,NeoTreeID}}',
                '{{
                 "type": "string",
                 "values": {{
