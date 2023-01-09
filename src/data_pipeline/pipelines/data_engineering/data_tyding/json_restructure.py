@@ -9,12 +9,13 @@ import re
 def restructure(c, mcl):
     # branch to manage MCL
     if len(dict(c['values'])) > 1:
-        logging.info("=====I HAVE PASSED====")
         v = {}
-        current_v = dict(c)['values']
+        current_v = dict(c['values'])
+        logging.info("=====I HAVE PASSED===="+str(current_v))
+        
         # code to restructure MCL json file to key value pairs format
         for k, val in [(key, d[key]) for d in current_v for key in d]:
-            
+            logging.info("=====I KEYED ===="+str(k)+"==VAL-")
             if k not in v:
                 v[k] = [val]
             else:
