@@ -23,7 +23,7 @@ def maternal_data_duplicates_cleanup():
                     if fileterd_df.size>1:
                         for fIndex,fRow in fileterd_df.iterrows(): 
                             if row['uid'] == fRow['uid']:
-                                if row['DA'] ==fRow['DA']:
+                                if row['DA'] ==fRow['DA'] or index == fIndex:
                                     pass;
                                 else:
                                     neotree_id = generateNeotreeId()
@@ -40,7 +40,7 @@ def maternal_data_duplicates_cleanup():
                                         inject_sql(update_query,'UPDATE DUPLICATE NEW STRUCTURE')
                                     outer_uid_update_query = update_maternal_outer_uid(neotree_id);
                                     inject_sql(outer_uid_update_query,'UPDATE OUTER NEOTREE ID')
-                    processed.append(row['uid'])
+                        processed.append(row['uid'])
         else:
             pass;
 
