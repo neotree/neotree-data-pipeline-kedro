@@ -355,7 +355,7 @@ def get_duplicate_maternal_query():
     return f'''
             select uid, s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 as "DA",s."data"->'entries' as "entries"
             from public.sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
-            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' having count(*)>1 order by
+            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' order by
             s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 
            '''
 
