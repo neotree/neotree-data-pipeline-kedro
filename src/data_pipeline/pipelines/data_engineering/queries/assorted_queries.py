@@ -201,6 +201,7 @@ def read_admissions_query(admissions_case,adm_where):
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {admissions_case} 
@@ -212,6 +213,7 @@ def read_discharges_query(dicharges_case,disc_where):
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {dicharges_case}
@@ -226,6 +228,7 @@ def read_maternal_outcome_query(maternal_case,mat_outcomes_from,mat_outcomes_whe
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                     "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {maternal_case}
@@ -239,6 +242,7 @@ def read_vitalsigns_query(vitals_case,vital_signs_from,vitals_where):
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {vitals_case}
@@ -253,6 +257,7 @@ def read_baselines_query(baseline_case,baseline_from,baseline_where):
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {baseline_case}
@@ -267,6 +272,7 @@ def read_mat_completeness_query(maternity_completeness_case,mat_completeness_fro
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {maternity_completeness_case}
@@ -296,6 +302,7 @@ def read_noelab_query(neolabs_case,neolab_from,neolab_where):
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                     "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {neolabs_case}
@@ -308,6 +315,7 @@ def read_diagnoses_query(admissions_case,adm_where):
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case}
