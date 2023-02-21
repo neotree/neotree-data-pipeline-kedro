@@ -51,9 +51,7 @@ def get_key_values(data_raw):
             for c in row['entries']:
            
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-                if(script_version!=None):
-                    logging.info('===VERSION GREATER=='+script_version+'=GE='+str(int(script_version)>40) + "===FIRST=="+(script_version)>40)
-                if((script_version!=None and int(script_version)>40) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
+                if((script_version!=None and script_version)>40 or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
                     try:            
                         k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
                     #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
