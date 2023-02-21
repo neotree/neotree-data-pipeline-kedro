@@ -15,11 +15,15 @@ def get_key_values(data_raw):
             new_entry = {}
             # add uid and ingested_at first
             app_version = None
+            script_version = None
             if 'appVersion' in row:
                 app_version = row['appVersion']
             if(app_version!=None and app_version!=''):
                 #Remove any Other Characters that are non-numeric
                 app_version = int(''.join(d for d in app_version if d.isdigit()))
+            if 'scriptVersion' in row:
+                script_version = row['scriptVersion']
+
             if 'facility' in row:
                 new_entry['facility'] = row['facility']
             
@@ -47,7 +51,7 @@ def get_key_values(data_raw):
             for c in row['entries']:
            
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-                if(app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)): 
+                if((script_version!=None and script_version>40) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
                     try:            
                         k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
                     #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
