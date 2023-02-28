@@ -30,6 +30,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import re
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_matched_view_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_matched_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_duplicate_maternal_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_discharges_tofix_query
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -299,6 +300,7 @@ read_new_smch_matched = read_new_smch_matched_query()
 
 #DATA CLEANUP QUERIES
 get_duplicate_maternal_data = get_duplicate_maternal_query()
+get_discharges_tofix = get_discharges_tofix_query()
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
@@ -462,6 +464,10 @@ catalog = DataCatalog(
          ),
          "duplicate_maternal_data": SQLQueryDataSet(
             sql= get_duplicate_maternal_data,
+            credentials=dict(con=con)
+         ),
+          "discharges_to_fix": SQLQueryDataSet(
+            sql= get_discharges_tofix,
             credentials=dict(con=con)
          ),
         }

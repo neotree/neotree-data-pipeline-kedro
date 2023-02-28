@@ -553,6 +553,16 @@ def tidy_tables():
         #Save Derived Admissions To The DataBase Using Kedro
         if not dis_df.empty:
             catalog.save('create_derived_discharges',dis_df)
+            #FIX DATA LABELS
+            discharges_to_fix = catalog.load('discharges_to_fix') 
+            discharges_to_fix_df = pd.json_normalize(discharges_to_fix)
+
+            if not discharges_to_fix_df.empty:
+                for index, disc_row in discharges_to_fix_df.iterrows():
+                    for key in disc_row:
+                        print(key,disc_row[key])
+
+
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
         if not mat_outcomes_df.empty:
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)

@@ -407,3 +407,35 @@ def update_maternal_outer_uid(uid):
             '{{uid}}',
              to_json(uid)::TEXT::JSONB,
              true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';'''.format(uid)
+
+def get_discharges_tofix_query():
+    return '''select 
+             uid,"NeoTreeOutcome.value" as "NeoTreeOutcome","SexDis.value" as "SexDis","REVCLIN.value" as "REVCLIN",
+             "SPECREV.value" as "SPECREV", "TROWard.value" as "TROWard","CadreDis.value" as "CadreDis",
+             "DIAGDIS1.value" as "DIAGDIS1","GoodProg.value" as "GoodProg","AdmReason.value" as "AdmReason","TransType.value" as "TransType",
+             "BirthPlace.value" as "BirthPlace", "MatOutcome.value" as "MatOutcome","REVCLINTYP.value" as "REVCLINTYP",
+             "SPECREVTYP.value" as "SPECREVTYP", "Transfusion.value" as "Transfusion","ModeDelivery.value" as "ModeDelivery",
+             "HighRisk.value" as "HighRisk","MatAdmit.value" as "MatAdmit","MatDischarge.value" as "MatDischarge","CauseDeath.value" as 
+             "CauseDeath", "BC1R.value" as "BC1R","HIVPCRInfR.value" as "HIVPCRInfR","MatRPRR.value" as "MatRPRR","MatHIVPR.value" as "MatHIVPR",
+             "MatPART.value" as "MatPART","MatRPRT.value" as "MatRPRT","BC2R.value" as "BC2R","LPGlucAvail.value" as "LPGlucAvail",
+             "LPProtAvail.value" as "LPProtAvail", "CSFOrg.value" as "CSFOrg","ThompTone.value" as "ThompTone","ThompAlert.value" as "ThompAlert",
+             "ThompSeiz.value" as "ThompSeiz", "ThompRefl.value" as "ThompRefl","ThompMoro.value" as "ThompMoro","ThompGrasp.value" as "ThompGrasp",
+             "ThompFeed.value" as "ThompFeed", "ThompResp.value" as "ThompResp","ThompFont.value" as "ThompFont"
+             from derived.discharges where "NeoTreeOutcome.label" like '%Outcome%'  
+           '''
+def update_eronous_label(uid,script_id,type,key,label,value):
+            return '''update public.sessions set data = JSONB_SET(
+             data,
+            '{{entries,{3}}}',
+               '{{
+                "type": "{2}",
+                "values": {{
+                "label": [
+                    "{4}"
+                ],
+                "value": ["{5}"]
+                
+                }}
+                }}'::TEXT::jsonb,
+               true) where "uid" = '{0}' and "scriptid"='{1}';
+            '''.format(uid,script_id,type,key,label,value)
