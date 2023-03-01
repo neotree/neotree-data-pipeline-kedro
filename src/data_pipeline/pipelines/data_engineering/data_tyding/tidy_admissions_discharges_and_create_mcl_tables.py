@@ -3,7 +3,10 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
+from conf.common.sql_functions import inject_sql
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_eronous_label
 from conf.base.catalog import catalog
+from utils.data_label_fixes import fix_label
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
@@ -19,9 +22,6 @@ from conf.base.catalog import params
 import pandas as pd
 from datetime import datetime as dt
 import logging
-import random
-import sys
-import traceback
 
 
 def tidy_tables():
@@ -553,6 +553,19 @@ def tidy_tables():
         #Save Derived Admissions To The DataBase Using Kedro
         if not dis_df.empty:
             catalog.save('create_derived_discharges',dis_df)
+            #FIX DATA LABELS
+            discharges_to_fix = catalog.load('discharges_to_fix') 
+            discharges_to_fix_df = pd.json_normalize(discharges_to_fix)
+
+            if not discharges_to_fix_df.empty:
+                for index, disc_row in discharges_to_fix_df.iterrows():
+                    for key in disc_row:
+                        label = fix_label(key,disc_row[key])
+                        if(label is not None and str(key)!='uid'):
+                            print("====MY DATA"+str(label)+"=="+str(disc_row[key]))
+                            query = update_eronous_label(disc_row['uid'],'-ZYDiO2BTM4kSGZDVXAO','dropdown',key,label,disc_row[key])
+                            inject_sql(query,"FIX DISCHARGE ERRORS")
+                            
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
         if not mat_outcomes_df.empty:
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
