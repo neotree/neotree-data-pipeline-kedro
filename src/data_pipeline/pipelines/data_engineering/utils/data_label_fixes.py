@@ -1,7 +1,4 @@
 
-from tkinter.messagebox import RETRY
-
-
 def fix_neotree_oucome(value):
         if value== 'DC':
             return 'Discharged'
