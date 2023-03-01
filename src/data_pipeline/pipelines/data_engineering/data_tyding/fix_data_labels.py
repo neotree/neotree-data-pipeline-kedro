@@ -15,8 +15,9 @@ def data_labels_cleanup():
             faulty_discharges_df = catalog.load('discharges_to_fix')
         if not faulty_discharges_df.empty:
             for index,row in faulty_discharges_df.iterrows():
-                for key in row:
-                    value = row[key]['values']['value'][0]
+                for key in row['data']:
+                    logging.info("==THE KEY==="+key)
+                    value = row['data'][key]['values']['value'][0]
                     type = row[key]['type']
                     label = fix_disharge_label(key,value)
                     if value is not None and label is not None:
