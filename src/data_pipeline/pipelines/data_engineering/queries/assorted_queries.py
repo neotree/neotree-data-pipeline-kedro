@@ -410,7 +410,7 @@ def update_maternal_outer_uid(uid):
 
 def get_discharges_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%Outcome%' and uid='3400-0000' 
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%Outcome%';
            '''
 def update_eronous_label(uid,script_id,type,key,label,value):
             return '''update public.sessions set data = JSONB_SET(
