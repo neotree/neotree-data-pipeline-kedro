@@ -16,9 +16,8 @@ def data_labels_cleanup():
         if not faulty_discharges_df.empty:
             for index,row in faulty_discharges_df.iterrows():
                 for key in row['data']:
-                    logging.info("==THE KEY==="+key)
                     value = row['data'][key]['values']['value'][0]
-                    type = row[key]['type']
+                    type = row['data'][key]['type']
                     label = fix_disharge_label(key,value)
                     if value is not None and label is not None:
                         query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
