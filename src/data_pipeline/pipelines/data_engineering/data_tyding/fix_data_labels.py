@@ -12,7 +12,7 @@ def data_labels_cleanup():
         #####IDENTIFY THE FAULTY DISCHARGES
         faulty_discharges_df = pd.DataFrame()
         if table_exists('public','sessions'):
-            faulty_discharges_df = catalog.load('duplicate_maternal_data')
+            faulty_discharges_df = catalog.load('discharges_to_fix')
         if not faulty_discharges_df.empty:
             for index,row in faulty_discharges_df.iterrows():
                 for key in row:
