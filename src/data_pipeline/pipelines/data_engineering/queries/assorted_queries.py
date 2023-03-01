@@ -421,7 +421,7 @@ def get_discharges_tofix_query():
              "LPProtAvail.value" as "LPProtAvail", "CSFOrg.value" as "CSFOrg","ThompTone.value" as "ThompTone","ThompAlert.value" as "ThompAlert",
              "ThompSeiz.value" as "ThompSeiz", "ThompRefl.value" as "ThompRefl","ThompMoro.value" as "ThompMoro","ThompGrasp.value" as "ThompGrasp",
              "ThompFeed.value" as "ThompFeed", "ThompResp.value" as "ThompResp","ThompFont.value" as "ThompFont"
-             from derived.discharges where "NeoTreeOutcome.label" like '%Outcome%'  
+             from derived.discharges where "NeoTreeOutcome.label" like '%Outcome%' and uid='3400-0000'  
            '''
 def update_eronous_label(uid,script_id,type,key,label,value):
             return '''update public.sessions set data = JSONB_SET(

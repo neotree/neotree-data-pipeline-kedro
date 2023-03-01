@@ -560,7 +560,7 @@ def tidy_tables():
             if not discharges_to_fix_df.empty:
                 for index, disc_row in discharges_to_fix_df.iterrows():
                     for key in disc_row:
-                        print(key,disc_row[key])
+                        print("====MY DATA"+str(key)+"=="+str(disc_row[key]))
 
 
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
