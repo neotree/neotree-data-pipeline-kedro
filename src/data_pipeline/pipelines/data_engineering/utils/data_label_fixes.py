@@ -543,7 +543,7 @@ def fix_admission_reason(value):
             return 'Moderate Talipes (club foot)'
         return None
 
-def fix_label(key,value):
+def fix_disharge_label(key,value):
         if key== 'NeoTreeOutcome':
             return fix_neotree_oucome(value)
         if key== 'SexDis':
