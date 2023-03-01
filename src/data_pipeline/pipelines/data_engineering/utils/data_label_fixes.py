@@ -1,668 +1,629 @@
 
-from tkinter.messagebox import RETRY
-
-
 def fix_neotree_oucome(value):
-    match value:
-        case 'DC':
+        if value== 'DC':
             return 'Discharged'
-        case 'NND':
+        if value== 'NND':
             return 'Died'
-        case 'ABS':
+        if value== 'ABS':
             return 'Absconded'
-        case 'TRH':
+        if value== 'TRH':
             return 'Transferred to other Hospital'
-        case 'TRO':
+        if value== 'TRO':
             return 'Transferred to other ward'
-        case 'DAMA':
+        if value== 'DAMA':
             return 'Discharged against medical advice'
 
-        case _:
+        if value== _:
             return None
 
 def fix_discharge_sex(value):
-    match value:
-        case 'F':
+        if value== 'F':
             return 'Female'
-        case 'M':
+        if value== 'M':
             return 'Male'
-        case 'U':
+        if value== 'U':
             return 'Unsure'
 
-        case _:
+        if value== _:
             return None
 
 def fix_maternal_outcome(value):
-    match value:
-        case 'A':
+    
+        if value== 'A':
             return 'Alive'
-        case 'D':
-            return 'Deceased'
-        case _:
-            return None
+        if value== 'D':
+            return 'Deceased' 
+        return None
 
 def fix_place_of_birth(value):
-    match value:
-        case 'SMCH':
+    
+        if value== 'SMCH':
             return 'Sally Mugabe Central Hospital'
-        case 'OtH':
+        if value== 'OtH':
             return 'Other clinic in Harare'
-        case 'OtR':
+        if value== 'OtR':
             return 'Other clinic outside Harare'
-        case 'H':
-            return 'Home'
-        case _:
-            return None
+        if value== 'H':
+            return 'Home' 
+        return None
 
 def fix_mode_of_delivery(value):
-    match value:
-        case 'SVD':
+    
+        if value== 'SVD':
             return 'Spontaneous vaginal delivery'
-        case 'IVD':
+        if value== 'IVD':
             return 'Induced vaginal delivery'
-        case 'ECS':
+        if value== 'ECS':
             return 'Emergency Caesarean section'
-        case 'ElCS':
+        if value== 'ElCS':
             return 'Elective Caesarean section'
-        case 'Vent':
+        if value== 'Vent':
             return 'Ventouse'
-        case _:
-            return None
+        return None
 
 def fix_transfare_wards(value):
-    match value:
-        case 'PostA':
+    
+        if value== 'PostA':
             return 'Postnatal A'
-        case 'PostB':
+        if value== 'PostB':
             return 'Postnatal B'
-        case 'Paeds':
+        if value== 'Paeds':
             return 'Paediatric'
-        case 'OTH':
+        if value== 'OTH':
             return 'Other'
-        case _:
-            return None
+        return None
 
 def fix_transfare_wards(value):
-    match value:
-        case 'PostA':
+    
+        if value== 'PostA':
             return 'Postnatal A'
-        case 'PostB':
+        if value== 'PostB':
             return 'Postnatal B'
-        case 'Paeds':
+        if value== 'Paeds':
             return 'Paediatric'
-        case 'OTH':
+        if value== 'OTH':
             return 'Other'
-        case _:
-            return None
+        return None
 
 def fix_bcresults(value):
-    match value:
-        case 'NO':
+    
+        if value== 'NO':
             return 'No Growth'
-        case 'CO':
+        if value== 'CO':
             return 'Likely Contaminant Organism'
-        case 'BS':
+        if value== 'BS':
             return 'Coagulase Negative Staphylococcus'
-        case 'CONS':
+        if value== 'CONS':
             return 'Coagulase Negative Staphylococcus'
-        case 'EC':
+        if value== 'EC':
             return 'E.Coli'
-        case 'GBS':
+        if value== 'GBS':
             return 'Group B Streptococcus'
-        case 'GDS':
+        if value== 'GDS':
             return 'Group D Streptococcus'
-        case 'KP':
+        if value== 'KP':
             return 'Klebsiella Pneumoniae'
-        case 'PA':
+        if value== 'PA':
             return 'Pseudomonas Aeruginosa'
-        case 'SA':
+        if value== 'SA':
             return 'Staphylococcus Aureus'
-        case 'LFC':
+        if value== 'LFC':
             return 'Lactose Fermenting Coliform'
-        case 'NLFC':
+        if value== 'NLFC':
             return 'Non Lactose Fermenting Coliform'
-        case 'OGN':
+        if value== 'OGN':
             return 'Other Gram Negative'
-
-        case 'OGP':
+        if value== 'OGP':
             return 'Other Gram Positive'
 
-        case 'OGP':
+        if value== 'OGP':
             return 'Other Gram Positive'
         
-        case 'OTH':
+        if value== 'OTH':
             return 'Other'
-        case _:
-            return None
+        return None
 
 def fix_hivpcr(value):
-    match value:
-        case 'P':
+    
+        if value== 'P':
             return 'Positive'
 
-        case 'N':
+        if value== 'N':
             return 'Negative'
         
-        case 'I':
+        if value== 'I':
             return 'Indeterminate'
-        case _:
-            return None
+        return None
 
 def fix_mat_hivpr(value):
-    match value:
-        case 'P':
+    
+        if value== 'P':
             return 'Code 1'
 
-        case 'N':
+        if value== 'N':
             return 'Code 0'
         
-        case 'I':
+        if value== 'I':
             return 'Indeterminate'
-        case _:
-            return None        
+        return None        
 
 def fix_matrprr(value):
-    match value:
-        case 'P':
+    
+        if value== 'P':
             return 'Positive'
 
-        case 'N':
+        if value== 'N':
             return 'Negative'
         
-        case 'I':
+        if value== 'I':
             return 'Indeterminate'
         
-        case 'U':
+        if value== 'U':
             return 'Unknown'
-
-        case _:
-            return None
+        return None
 
 def fix_matpart(value):
-    match value:
-        case 'Y':
+    
+        if value== 'Y':
             return 'Yes'
 
-        case 'N':
+        if value== 'N':
             return 'No'
         
-        case 'U':
+        if value== 'U':
             return 'Unknown'
 
-        case _:
-            return None
+        return None
 
 def fix_lpgluc(value):
-    match value:
-        case 'Y':
+    
+        if value== 'Y':
             return 'Yes'
 
-        case 'N':
+        if value== 'N':
             return 'No'
         
-        case 'ND':
+        if value== 'ND':
             return 'Not Done'
-
-        case _:
-            return None
+        return None
 
 
 def fix_thomp_tone(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = normal'
-        case '1':
+        if value== '1':
             return '1 = hypertonia' 
-        case '2':
+        if value== '2':
             return '2 = hypotonia'
-        case '3':
+        if value== '3':
             return '3 = flaccid'
+        return None
 
-        case _:
-            return None
 def fix_thomp_alert(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = Alert'
-        case '1':
+        if value== '1':
             return '1 = Hyperalert/stare' 
-        case '2':
+        if value== '2':
             return '2 = Lethargic'
-        case '3':
+        if value== '3':
             return '3 = Comatose'
-        case _:
-            return None
+        return None
 
 def fix_thomp_seize(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = none'
-        case '1':
+        if value== '1':
             return '1 = 2 or less per day' 
-        case '2':
+        if value== '2':
             return '2 = More than 2 per day'
-        case _:
-            return None
+        return None
 
 def fix_thomp_refl(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = Normal'
-        case '1':
+        if value== '1':
             return '1 = Fisting, cycling' 
-        case '2':
+        if value== '2':
             return '2 = Strong distal flexion'
-        case '3':
+        if value== '3':
             return '3 = Decerebrate'
-        case _:
-            return None
+        return None
 
 def fix_thomp_moro(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = Normal'
-        case '1':
+        if value== '1':
             return '1 = Partial' 
-        case '2':
+        if value== '2':
             return '2 = Absent'
-        case _:
-            return None
+        return None
 
 def fix_thomp_grasp(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = Normal'
-        case '1':
+        if value== '1':
             return '1 = Poor' 
-        case '2':
+        if value== '2':
             return '2 = Absent'
-        case _:
-            return None
+        return None
 
 def fix_thomp_feed(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = Normal'
-        case '1':
+        if value== '1':
             return '1 = Poor' 
-        case '2':
+        if value== '2':
             return '2 = Absent or with bites'
-        case _:
-            return None
+        return None
 
 def fix_thomp_resp(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = normal'
-        case '1':
+        if value== '1':
             return '1 = Hyperventilation' 
-        case '2':
+        if value== '2':
             return '2 = Brief apnoea'
-        case '3':
+        if value== '3':
             return '3 = Apnoea needing ventilatory support'
-        case _:
-            return None
+        return None
 
 def fix_thomp_front(value):
-    match value:
-        case '0':
+    
+        if value== '0':
             return '0 = normal'
-        case '1':
+        if value== '1':
             return '1 = full, not tense' 
-        case '2':
+        if value== '2':
             return '2 = tense'
-        case _:
-            return None
+        return None
 
 def fix_transfusion(value):
-    match value:
-        case 'Y':
+    
+        if value== 'Y':
             return 'Yes'
-        case 'N':
+        if value== 'N':
             return 'No' 
-        case _:
-            return None
+        return None
 
 def fix_high_risk(value):
-    match value:
-        case 'Y':
+    
+        if value== 'Y':
             return 'Yes'
-        case 'N':
+        if value== 'N':
             return 'No' 
-        case 'NS':
+        if value== 'NS':
             return 'Not Sure' 
-        case _:
-            return None
+        return None
 
 def fix_trans_type(value):
-    match value:
-        case 'R':
+    
+        if value== 'R':
             return 'Packed Red Cells'
-        case 'FFP':
+        if value== 'FFP':
             return 'FFP' 
-        case 'P':
+        if value== 'P':
             return 'Platelets' 
-        case 'E':
+        if value== 'E':
             return 'Exchange transfusion' 
-        case 'M':
+        if value== 'M':
             return 'More than one kind' 
-        case _:
-            return None
+        return None
 
 def fix_spec_type(value):
-    match value:
-        case 'Neph':
+    
+        if value== 'Neph':
             return 'Nephrology'
-        case 'Ortho':
+        if value== 'Ortho':
             return 'Orthopaedic Surgery' 
-        case 'Surg':
+        if value== 'Surg':
             return 'Surgical' 
-        case 'Opth':
+        if value== 'Opth':
             return 'Opthalmology' 
-        case 'MxFx':
+        if value== 'MxFx':
             return 'Maxillofacial Surgery' 
-        case 'Neuro':
+        if value== 'Neuro':
             return 'Neurology' 
-        case 'Endoc':
+        if value== 'Endoc':
             return 'Endocrinology' 
-        case 'Oth':
+        if value== 'Oth':
             return 'Other' 
-        case _:
-            return None
+        return None
 
 def fix_rev_clinic_type(value):
-    match value:
-        case 'KMC':
+    
+        if value== 'KMC':
             return 'Kangaroo clinic (Wednesday and Thursday)'
-        case 'NNC':
+        if value== 'NNC':
             return 'Neonatal clinic (Friday)' 
-        case 'LOC':
+        if value== 'LOC':
             return 'Local clinic'
-        case 'SUR':
+        if value== 'SUR':
             return 'Surgical clinic'  
-        case 'ORTH':
+        if value== 'ORTH':
             return 'Orthopaedic clinic' 
-        case 'OTH':
+        if value== 'OTH':
             return 'Other clinic'   
-        case _:
-            return None
+        return None
 
 def fix_cadre_disc(value):
-    match value:
-        case 'S':
+    
+        if value== 'S':
             return 'SRMO'
-        case 'SH':
+        if value== 'SH':
             return 'SHO' 
-        case 'R':
+        if value== 'R':
             return 'Registrar'
-        case 'SR':
+        if value== 'SR':
             return 'Senior Registrar'  
-        case 'N':
+        if value== 'N':
             return 'Nurse' 
-        case 'MW':
+        if value== 'MW':
             return 'Midwife' 
-        case 'O':
+        if value== 'O':
             return 'Other'     
-        case _:
-            return None
+        return None
 
 def fix_good_prog(value):
-    match value:
-        case 'OB':
+    
+        if value== 'OB':
             return 'Admitted for observation and progressed well'
-        case 'SE':
+        if value== 'SE':
             return 'Risk factors for sepsis and progressed well' 
-        case 'ME':
+        if value== 'ME':
             return 'Respiratory distress resolved with no treatment' 
-        case 'REO':
+        if value== 'REO':
             return 'Respiratory distress resolved with O2' 
-        case 'FE':
+        if value== 'FE':
             return 'Feeding difficulties resolved with feeding support' 
-        case 'JA':
+        if value== 'JA':
             return 'Jaundice resolved with phototherapy' 
-        case 'JAS':
+        if value== 'JAS':
             return 'Suspected jaundice with no phototherapy needed' 
-        case 'MA':
+        if value== 'MA':
             return 'Admitted with macrosomia Blood sugars normal so discharged' 
-        case 'CS':
+        if value== 'CS':
             return 'Confirmed sepsis treated successfully with antibiotics'
-        case 'SS':
+        if value== 'SS':
             return 'Suspected sepsis treated successfully with antibiotics'  
-        case 'DI':
+        if value== 'DI':
             return 'Died shortly after admission'  
-        case 'DE':
+        if value== 'DE':
             return 'Deteriorated and died despite interventions'  
-        case 'DOA':
+        if value== 'DOA':
             return 'Dead on arrival' 
-        case 'OTH':
+        if value== 'OTH':
             return 'Additional Information not covered above' 
-        case _:
-            return None
+        return None
 
 def fix_admission_reason(value):
-    match value:
-        case 'An':
+    
+        if value== 'An':
             return 'Anaemia'
-        case 'BBA':
+        if value== 'BBA':
             return 'Born before arrival'
-        case 'BI':
+        if value== 'BI':
             return 'Birth trauma'
-        case 'Cong':
+        if value== 'Cong':
             return 'Congenital Abnormality'
-        case 'CHD':
+        if value== 'CHD':
             return 'Consider Congenital Heart Disease'
-        case 'Conv':
+        if value== 'Conv':
             return 'Convulsions'
-        case 'Dhyd':
+        if value== 'Dhyd':
             return 'Dehydration'
-        case 'DF':
+        if value== 'DF':
             return 'Difficulty feeding'
-        case 'DUM':
+        if value== 'DUM':
             return 'Abandoned baby'
-        case 'HIVLR':
+        if value== 'HIVLR':
             return 'HIV low risk'
-        case 'HIVHR':
+        if value== 'HIVHR':
             return 'HIV high risk'
-        case 'HIVU':
+        if value== 'HIVU':
             return 'HIV unknown'
-        case 'HypogAs':
+        if value== 'HypogAs':
             return 'Hypoglycaemia (NOT symptomatic)'
-        case 'HypogSy':
+        if value== 'HypogSy':
             return 'Hypoglycaemia (Symptomatic)'
-        case 'RiHypog':
+        if value== 'RiHypog':
             return 'Risk of hypoglycaemia'
-        case 'BA':
+        if value== 'BA':
             return 'Hypoxic Ischaemic Encephalopathy'
-        case 'GSch':
+        if value== 'GSch':
             return 'Gastroschisis'
-        case 'MJ':
+        if value== 'MJ':
             return 'Physiological Jaundice'
 
-        case 'LBW':
+        if value== 'LBW':
             return 'Low Birth Weight (1500-2499g)'
 
-        case 'VLBW':
+        if value== 'VLBW':
             return 'Very Low Birth Weight (1000-1499g)'
 
-        case 'ExLBW':
+        if value== 'ExLBW':
             return 'ExtremelyLow Birth Weight (<1000g)'
 
-        case 'MA':
+        if value== 'MA':
             return 'Possible Meconium Aspiration'
 
-        case 'MecEx':
+        if value== 'MecEx':
             return 'Meconium exposure (asymptomatic baby)'
 
-        case 'MiHypo':
+        if value== 'MiHypo':
             return 'Mild Hypothermia'
         
-        case 'ModHypo':
+        if value== 'ModHypo':
             return 'Moderate Hypothermia'
         
-        case 'SHypo':
+        if value== 'SHypo':
             return 'Severe Hypothermia'
         
-        case 'Hyperth':
+        if value== 'Hyperth':
             return 'Hyperthermia'
         
-        case 'SEPS':
+        if value== 'SEPS':
             return 'Neonatal Sepsis'
 
-        case 'Risk':
+        if value== 'Risk':
             return 'Risk factors for sepsis (asymptomatic baby)'
         
-        case 'NB':
+        if value== 'NB':
             return 'Normal baby'
         
-        case 'PN':
+        if value== 'PN':
             return 'Pneumonia / Bronchiolitis'
         
-        case 'Prem':
+        if value== 'Prem':
             return 'Premature (32-36 weeks)'
         
-        case 'VPrem':
+        if value== 'VPrem':
             return 'Very Premature (28-31 weeks)'
         
-        case 'ExPrem':
+        if value== 'ExPrem':
             return 'Extremely Premature (<28 weeks)'
         
-        case 'PremRD':
+        if value== 'PremRD':
             return 'Prematurity with RD'
 
-        case 'Safe':
+        if value== 'Safe':
             return 'Safekeeping'
         
-        case 'TTN':
+        if value== 'TTN':
             return 'Transient Tachypnoea of Newborn (TTN)'
         
-        case 'OTH':
+        if value== 'OTH':
             return 'Other'
         
-        case 'HBW':
+        if value== 'HBW':
             return 'Macrosomia (>4000g)'
         
-        case 'TermRD':
+        if value== 'TermRD':
             return 'Term with RD'
         
-        case 'DJ':
+        if value== 'DJ':
             return 'Pathological Jaundice'
 
-        case 'sHIE':
+        if value== 'sHIE':
             return 'Suspected Hypoxic Ischaemic Encephalopathy'
         
-        case 'PJaundice':
+        if value== 'PJaundice':
             return 'Prolonged Jaundice'
         
-        case 'CleftLip':
+        if value== 'CleftLip':
             return 'Cleft lip'
         
-        case 'CleftRD':
+        if value== 'CleftRD':
             return 'Cleft lip and/or palate with RD'
         
-        case 'CleftLipPalate':
+        if value== 'CleftLipPalate':
             return 'Cleft lip and/or palate'
         
-        case 'Omph':
+        if value== 'Omph':
             return 'Omphalocele'
         
-        case 'Myelo':
+        if value== 'Myelo':
             return 'Myelomeningocele'
         
-        case 'CDH':
+        if value== 'CDH':
             return 'Congenital Dislocation of the hip (CDH)'
 
-        case 'MiTalipes':
+        if value== 'MiTalipes':
             return 'Mild Talipes (club foot)'
         
-        case 'MoTalipes':
+        if value== 'MoTalipes':
             return 'Moderate Talipes (club foot)'
-        case _:
-            return None
+        return None
 
 def fix_label(key,value):
-    match key:
-        case 'NeoTreeOutcome':
+        if key== 'NeoTreeOutcome':
             return fix_neotree_oucome(value)
-        case 'SexDis':
+        if key== 'SexDis':
             return fix_discharge_sex(value)
-        case 'MatOutcome':
+        if key== 'MatOutcome':
             return fix_maternal_outcome(value)
-        case 'ModeDelivery':
+        if key== 'ModeDelivery':
             return fix_mode_of_delivery(value)
-        case 'BirthPlace' :
+        if key== 'BirthPlace' :
             return fix_place_of_birth(value)
-        case 'AdmReason':
+        if key== 'AdmReason':
             return fix_admission_reason(value)
-        case 'DIAGDIS1':
+        if key== 'DIAGDIS1':
             #Same values as Adm Reasons
             return fix_admission_reason(value)
-        case 'TROWard':
+        if key== 'TROWard':
             return fix_transfare_wards(value)   
-        case 'CauseDeath':
+        if key== 'CauseDeath':
             #Same values as Adm Reasons
             return fix_admission_reason(value)
-        case 'BC1R':
+        if key== 'BC1R':
             return fix_bcresults(value)
-        case 'HIVPCRInfR':
+        if key== 'HIVPCRInfR':
             return fix_hivpcr(value)
-        case 'MatRPRR':
+        if key== 'MatRPRR':
             return fix_matrprr(value)
-        case 'MatHIVPR':
+        if key== 'MatHIVPR':
             return fix_mat_hivpr(value)
-        case 'MatPART':
+        if key== 'MatPART':
            return fix_matpart(value)   
-        case 'MatRPRT':
+        if key== 'MatRPRT':
            return fix_matpart(value)
-        case 'BC2R':
+        if key== 'BC2R':
             #Same values as BC Results
             return fix_bcresults(value)
-        case 'LPGlucAvail':
+        if key== 'LPGlucAvail':
             return fix_lpgluc(value)
-        case 'LPProtAvail':
+        if key== 'LPProtAvail':
             return fix_lpgluc(value)
-        case 'CSFOrg':
+        if key== 'CSFOrg':
             #Same values as BC Results
             return fix_bcresults(value)
-        case 'ThompTone':
+        if key== 'ThompTone':
             return fix_thomp_tone(value)
-        case 'ThompAlert':
+        if key== 'ThompAlert':
             return fix_thomp_alert(value)
-        case 'ThompSeiz':
+        if key== 'ThompSeiz':
             return fix_thomp_seize(value)
-        case 'ThompRefl':
+        if key== 'ThompRefl':
             return fix_thomp_refl(value)
-        case 'ThompMoro':
+        if key== 'ThompMoro':
             return fix_thomp_moro(value)
-        case 'ThompGrasp':
+        if key== 'ThompGrasp':
             return fix_thomp_grasp(value)
-        case 'ThompFeed':
+        if key== 'ThompFeed':
             return fix_thomp_feed(value)
-        case 'ThompResp': 
+        if key== 'ThompResp': 
             return fix_thomp_resp(value)
-        case 'ThompFont':
+        if key== 'ThompFont':
            return fix_thomp_front(value)
-        case 'Transfusion':
+        if key== 'Transfusion':
             return fix_transfusion(value)
-        case 'TransType':
+        if key== 'TransType':
             return fix_trans_type(value)
-        case 'SPECREV':
+        if key== 'SPECREV':
               #Same Values as Transfusion
               return fix_transfusion(value)
-        case 'SPECREVTYP':
+        if key== 'SPECREVTYP':
              return fix_spec_type(value)
-        case 'GoodProg':
+        if key== 'GoodProg':
              return fix_good_prog(value)
-        case 'HighRisk':
+        if key== 'HighRisk':
              return fix_high_risk(value)
-        case 'REVCLIN':
+        if key== 'REVCLIN':
             #Same Values as Transfusion
             return fix_transfusion(value)
-        case 'REVCLINTYP':
+        if key== 'REVCLINTYP':
             #Same Values as Transfusion
             return fix_rev_clinic_type(value)
-        case 'CadreDis':
+        if key== 'CadreDis':
             #Same Values as Transfusion
             return fix_cadre_disc(value)
-              
-        case _:
-            pass
+        pass
