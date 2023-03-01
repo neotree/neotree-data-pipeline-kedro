@@ -6,7 +6,7 @@ from .create_derived_columns import create_columns
 from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_eronous_label
 from conf.base.catalog import catalog
-from utils.data_label_fixes import fix_label
+from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import fix_label
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
