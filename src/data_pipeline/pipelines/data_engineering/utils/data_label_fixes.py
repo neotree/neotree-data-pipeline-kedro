@@ -13,7 +13,7 @@ def fix_neotree_oucome(value):
         if value== 'DAMA':
             return 'Discharged against medical advice'
 
-        if value== _:
+        if value== 'null':
             return None
 
 def fix_discharge_sex(value):
@@ -24,7 +24,7 @@ def fix_discharge_sex(value):
         if value== 'U':
             return 'Unsure'
 
-        if value== _:
+        if value== 'null':
             return None
 
 def fix_maternal_outcome(value):

@@ -21,7 +21,6 @@ def data_labels_cleanup():
                     label = fix_disharge_label(key,value)
                     if value is not None and label is not None:
                         query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                        logging.info("==I AM CLEANING THIS==="+query)
                         inject_sql(query,"FIX DISCHARGE ERRORS")
     
     except Exception as e:
