@@ -1,3 +1,6 @@
+## DISCHARGES DATA
+from ast import Return
+
 
 def fix_neotree_oucome(value):
         if value== 'DC':
@@ -543,6 +546,41 @@ def fix_admission_reason(value):
             return 'Moderate Talipes (club foot)'
         return None
 
+##FIX MATERNAL DATA
+def fix_maternal_mode_of_delivery(value):
+    if value=='1':
+        return 'Spontaneous Vaginal Delivery'
+    if value =='2':
+        return 'Vacuum extraction'
+    if value == '3':
+        return 'Forceps extraction'
+    if value == '4':
+        return 'Elective Caesarian Section (ELCS)'
+    if value == '5':
+        return 'Emergency Caesarian Section (EMCS)'
+    if value == '6':
+        return 'Breech extraction (vaginal)'
+    return None
+
+def fix_maternal_neonatal_outcome(value):
+    if value == 'LB':
+        return 'Live Birth'
+    if value == 'ENND':
+        return 'Early Neonatal Death'
+    if value == 'STBM':
+        return 'Stillbirth Mascerated'
+    if value == 'STBF':
+        return 'Stillbirth Fresh'
+    return None
+
+def fix_maternal_mother_outcome(value):
+    if value == 'D':
+        return 'Died'
+    if value == 'S':
+        return 'Survived'
+    return None
+
+## FIX DISCHARGES
 def fix_disharge_label(key,value):
         if key== 'NeoTreeOutcome':
             return fix_neotree_oucome(value)
@@ -627,3 +665,15 @@ def fix_disharge_label(key,value):
             #Same Values as Transfusion
             return fix_cadre_disc(value)
         pass
+
+## MATERNAL OUTCOMES
+def fix_maternal_label(key,value):
+    if(key =='SexDis'):
+        return fix_discharge_sex(value)
+    if (key == 'ModeDelivery'):
+        return fix_maternal_mode_of_delivery(value)
+    if (key== 'NeoTreeOutcome'):
+        return fix_maternal_neonatal_outcome(value)
+    if (key=='MatOutcome'):
+        return fix_maternal_mother_outcome(value)
+    pass

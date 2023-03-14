@@ -6,11 +6,13 @@ from conf.base.catalog import dedup_discharges,cron_log_file
 import logging
 from pathlib import Path,PureWindowsPath
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
+from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import discharge_data_cleanup   
 
 #Not passing any Input To Allow Concurrent running of independent Nodes
 def deduplicate_discharges(data_import_output):
     try:
         if data_import_output is not None:
+            discharge_data_cleanup()
             sql_script = dedup_discharges
             inject_sql(sql_script, "deduplicate-discharges")
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
