@@ -87,8 +87,7 @@ def tidy_tables():
     # Now let's fetch the list of properties recorded in that table
     logging.info("... Extracting keys")
     try:
-        
-        
+         
         adm_new_entries, adm_mcl = get_key_values(adm_raw)
         dis_new_entries, dis_mcl = get_key_values(dis_raw)
         mat_outcomes_new_entries,mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
