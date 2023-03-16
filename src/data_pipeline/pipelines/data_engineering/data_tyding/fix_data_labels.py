@@ -16,12 +16,13 @@ def discharge_data_cleanup():
         if not faulty_discharges_df.empty:
             for index,row in faulty_discharges_df.iterrows():
                 for key in row['data']:
-                    value = row['data'][key]['values']['value'][0]
-                    type = row['data'][key]['type']
-                    label = fix_disharge_label(key,value)
-                    if value is not None and label is not None:
-                        query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                        inject_sql(query,"FIX DISCHARGE ERRORS")
+                    if row['data'][key] and row['data'][key]['values'] and row['data'][key]['values']['value'][0]:
+                        value = row['data'][key]['values']['value'][0]
+                        type = row['data'][key]['type']
+                        label = fix_disharge_label(key,value)
+                        if value is not None and label is not None:
+                            query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
+                            inject_sql(query,"FIX DISCHARGE ERRORS")
     
     except Exception as e:
         logging.error(formatError(e))
@@ -35,12 +36,13 @@ def maternal_data_cleanup():
         if not faulty_maternal_df.empty:
             for index,row in faulty_maternal_df.iterrows():
                 for key in row['data']:
-                    value = row['data'][key]['values']['value'][0]
-                    type = row['data'][key]['type']
-                    label = fix_maternal_label(key,value)
-                    if value is not None and label is not None:
-                        query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                        inject_sql(query,"FIX MATERNITY DATA ERRORS")
+                    if row['data'][key] and row['data'][key]['values'] and row['data'][key]['values']['value'][0]:
+                        value = row['data'][key]['values']['value'][0]
+                        type = row['data'][key]['type']
+                        label = fix_maternal_label(key,value)
+                        if value is not None and label is not None:
+                            query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
+                            inject_sql(query,"FIX MATERNITY DATA ERRORS")
     
     except Exception as e:
         logging.error(formatError(e))
@@ -54,12 +56,13 @@ def admissions_data_cleanup():
         if not faulty_admin_df.empty:
             for index,row in faulty_admin_df.iterrows():
                 for key in row['data']:
-                    value = row['data'][key]['values']['value'][0]
-                    type = row['data'][key]['type']
-                    label = fix_admissions_label(key,value)
-                    if value is not None and label is not None:
-                        query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                        inject_sql(query,"FIX ADMISSIONS DATA ERRORS")
+                    if row['data'][key] and row['data'][key]['values'] and row['data'][key]['values']['value'][0]:
+                        value = row['data'][key]['values']['value'][0]
+                        type = row['data'][key]['type']
+                        label = fix_admissions_label(key,value)
+                        if value is not None and label is not None:
+                            query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
+                            inject_sql(query,"FIX ADMISSIONS DATA ERRORS")
     
     except Exception as e:
         logging.error(formatError(e))
