@@ -56,9 +56,9 @@ def admissions_data_cleanup():
             faulty_admin_df = catalog.load('admissions_to_fix')
         if not faulty_admin_df.empty:
             for index,row in faulty_admin_df.iterrows():
-                logging.info("===DEBUG=="+Str(row['uid']))
+                logging.info("===DEBUG=="+str(row['uid']))
                 for key in row['data']:
-                    logging.info("===DEBUG2=="+Str(key) +row['data'][key])
+                    logging.info("===DEBUG2=="+str(key) +str(row['data'][key]))
                     if row['data'][key] is not None and row['data'][key]['values'] is not None and len(row['data'][key]['values']['value'])>0:
                         value = row['data'][key]['values']['value'][0]
                         type = row['data'][key]['type']
