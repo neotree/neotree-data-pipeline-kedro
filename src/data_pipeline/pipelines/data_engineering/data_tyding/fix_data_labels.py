@@ -1,3 +1,4 @@
+from ast import Str
 import logging
 import pandas as pd
 from conf.common.format_error import formatError
@@ -55,8 +56,10 @@ def admissions_data_cleanup():
             faulty_admin_df = catalog.load('admissions_to_fix')
         if not faulty_admin_df.empty:
             for index,row in faulty_admin_df.iterrows():
+                logging.info("===DEBUG=="+Str(row['uid']))
                 for key in row['data']:
-                    if row['data'][key] and row['data'][key]['values'] and row['data'][key]['values']['value'][0]:
+                    logging.info("===DEBUG2=="+Str(key) +row['data'][key])
+                    if row['data'][key] is not None and row['data'][key]['values'] is not None and row['data'][key]['values']['value'][0] is not None:
                         value = row['data'][key]['values']['value'][0]
                         type = row['data'][key]['type']
                         label = fix_admissions_label(key,value)
