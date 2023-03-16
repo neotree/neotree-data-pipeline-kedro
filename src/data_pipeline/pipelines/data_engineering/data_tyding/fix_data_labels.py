@@ -17,7 +17,7 @@ def discharge_data_cleanup():
         if not faulty_discharges_df.empty:
             for index,row in faulty_discharges_df.iterrows():
                 for key in row['data']:
-                    if row['data'][key] and row['data'][key]['values'] and row['data'][key]['values']['value'][0]:
+                    if row['data'][key] is not None and row['data'][key]['values'] is not None and len(row['data'][key]['values']['value'])>0:
                         value = row['data'][key]['values']['value'][0]
                         type = row['data'][key]['type']
                         label = fix_disharge_label(key,value)
@@ -37,7 +37,7 @@ def maternal_data_cleanup():
         if not faulty_maternal_df.empty:
             for index,row in faulty_maternal_df.iterrows():
                 for key in row['data']:
-                    if row['data'][key] and row['data'][key]['values'] and row['data'][key]['values']['value'][0]:
+                    if row['data'][key] is not None and row['data'][key]['values'] is not None and len(row['data'][key]['values']['value'])>0:
                         value = row['data'][key]['values']['value'][0]
                         type = row['data'][key]['type']
                         label = fix_maternal_label(key,value)
@@ -59,7 +59,7 @@ def admissions_data_cleanup():
                 logging.info("===DEBUG=="+Str(row['uid']))
                 for key in row['data']:
                     logging.info("===DEBUG2=="+Str(key) +row['data'][key])
-                    if row['data'][key] is not None and row['data'][key]['values'] is not None and row['data'][key]['values']['value'][0] is not None:
+                    if row['data'][key] is not None and row['data'][key]['values'] is not None and len(row['data'][key]['values']['value'])>0:
                         value = row['data'][key]['values']['value'][0]
                         type = row['data'][key]['type']
                         label = fix_admissions_label(key,value)
