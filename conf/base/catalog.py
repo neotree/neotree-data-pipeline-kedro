@@ -474,8 +474,12 @@ catalog = DataCatalog(
             sql= get_discharges_tofix,
             credentials=dict(con=con)
          ),
-          "admissions_to_fix": SQLQueryDataSet(
+          "maternals_to_fix": SQLQueryDataSet(
             sql= get_maternal_outcome_to_fix,
+            credentials=dict(con=con)
+         ),
+         "admissions_to_fix": SQLQueryDataSet(
+            sql= get_admissions_data_to_fix,
             credentials=dict(con=con)
          ),
         }
