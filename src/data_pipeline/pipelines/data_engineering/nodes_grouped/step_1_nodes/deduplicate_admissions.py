@@ -6,6 +6,7 @@ from conf.base.catalog import dedup_admissions,params,cron_log_file
 from pathlib import Path,PureWindowsPath
 import time
 from datetime import datetime
+from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import admissions_data_cleanup  
 
 
 start = time.time()
@@ -16,6 +17,7 @@ def deduplicate_admissions(data_import_output):
     try:
         if data_import_output is not None:
             sql_script = dedup_admissions
+            admissions_data_cleanup()
             inject_sql(sql_script, "deduplicate-admissions")
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
