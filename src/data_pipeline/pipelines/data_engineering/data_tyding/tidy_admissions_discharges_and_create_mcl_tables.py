@@ -420,9 +420,9 @@ def tidy_tables():
                 adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
             ## DROP UNNECESSARY COLUMNS
             if 'BW.value' in adm_df:
-                df.drop(columns=['BW.value'])
+                adm_df.drop(columns=['BW.value'])
             if 'BW .value' in adm_df:
-                df.drop(columns=['BW .value'])
+                adm_df.drop(columns=['BW .value'])
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
