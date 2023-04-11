@@ -355,7 +355,11 @@ def tidy_tables():
                 if  "BirthWeight.value" in admission and str(admission["BirthWeight.value"]) != 'nan' and admission["BirthWeight.value"] is not None:
                     pass;
                 else:
-                    key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
+                    if('BW.value' in admission and str(admission["BW.value"]) != 'nan' and admission["BW.value"] is not None):
+                        key_change(adm_df,admission,position,'BW.value','BirthWeight.value')
+                    else:
+                        if('BW .value' in admission and str(admission["BW .value"]) != 'nan' and admission["BW .value"] is not None):
+                            key_change(adm_df,admission,position,'BW .value','BirthWeight.value')
                 if "Convulsions.value" in admission and str(admission["Convulsions.value"]) != 'nan' and admission["Convulsions.value"] is not None:
                     pass;
                 else:
@@ -394,6 +398,11 @@ def tidy_tables():
                  adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
             if 'BirthWeight.value' in adm_df:
                 adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
+            ## DROP UNNECESSARY COLUMNS
+            if 'BW.value' in adm_df:
+                df.drop(columns=['BW.value'])
+            if 'BW .value' in adm_df:
+                df.drop(columns=['BW .value'])
 
         if not dis_df.empty:
             for position,discharge in dis_df.iterrows():
