@@ -23,9 +23,9 @@ def summary_admissions_query():
                     "BSmg.value" AS "Blood Sugar mg",
                     "AW.value" AS "Admission Weight",
                     "AWGroup.value" AS "Admission Weight Group",
-                    "BW.value" AS "Birth Weight",
+                    CASE WHEN "BirthWeight.value" is 
+                    "BirthWeight.value" AS "Birth Weight",
                     "BWGroup.value" AS "Birth Weight Group",
-                    "BW .value" AS "BW .value",
                     "<28wks/1kg.value" AS "<28wks/1kg",
                     "LBWBinary" AS "Low Birth Weight?",
                     "OFC.value" AS "Head Circumference (cm)",
