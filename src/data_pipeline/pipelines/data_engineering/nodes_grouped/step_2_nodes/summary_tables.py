@@ -1,6 +1,7 @@
 import logging
 import sys
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.base.catalog import cron_log_file
 from .summary_vitalsigns import create_summary_vitalsigns
 from .maternal_completeness_summary import create_maternal_completeness_summary
@@ -8,7 +9,10 @@ from .summary_joined_vitalsigns import create_summary_joined_vitalsigns
 from .summary_maternal_outcomes import create_summary_maternal_outcomes
 from .summary_admissions import create_summary_admissions
 from .summary_discharges import create_summary_discharges
+from .summary_neolab import create_summary_neolabs
+from .combined_diagnoses import create_combined_diagnoses
 from conf.base.catalog import params, env
+
 
 
 def create_summary_tables(manually_Fix_admissions_output):
@@ -17,12 +21,17 @@ def create_summary_tables(manually_Fix_admissions_output):
             create_summary_vitalsigns()
             create_summary_joined_vitalsigns() 
             create_summary_maternal_outcomes()
+            create_summary_neolabs()
             if('country' in params and str(params['country']).lower() =='malawi' and env=='prod'):
                 create_maternal_completeness_summary() 
                 create_summary_admissions()
                 create_summary_discharges()
 
-            # Add Return Value For Kedro Not To Throw Data Error
+            exploded_Diagnoses_exists = table_exists("derived","exploded_Diagnoses.label")
+            diagnoses_exists = table_exists("derived","diagnoses")
+            if exploded_Diagnoses_exists and diagnoses_exists:
+                create_combined_diagnoses()
+
             return dict(
                 status='Success',
                 message="Summary Tables Complete"
@@ -34,7 +43,7 @@ def create_summary_tables(manually_Fix_admissions_output):
     except Exception as e:
         logging.error(
             "!!! An error occured in creating summary tables: ")
-        logging.error(e.with_traceback())
+        logging.error(e)
         # Only Open This File When Need Be To Write To It
         cron_log = open(cron_log_file, "a+")
         cron_log.write(

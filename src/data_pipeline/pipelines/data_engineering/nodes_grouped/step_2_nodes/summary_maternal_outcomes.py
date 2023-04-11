@@ -12,7 +12,6 @@ from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.dedupli
 cwd = os.getcwd()
 
 
-#Pass Convinience Views Output
 def create_summary_maternal_outcomes():
     maternal_outcomes_count = 0
     mat_outcomes_exists = False;

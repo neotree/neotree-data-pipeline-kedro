@@ -1,6 +1,4 @@
-import logging
 import pandas as pd
-import sys
 
 def key_change(df: pd.DataFrame,row,position,old_key,new_key):
     try:

@@ -6,7 +6,7 @@ from  conf.common.config import config
 from conf.common.hospital_config import hospital_conf
 import sys,os
 import logging
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_admissions_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_admissions_query, get_admissions_data_tofix_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_baseline_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_mat_completeness_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_vitals_query
@@ -29,6 +29,10 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import re
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_discharges_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_matched_view_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_matched_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_duplicate_maternal_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_discharges_tofix_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_maternal_data_tofix_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_admissions_data_tofix_query
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -296,6 +300,11 @@ read_old_smch_discharges = read_old_smch_discharges_query()
 read_old_smch_matched_data = read_old_smch_matched_view_query()
 read_new_smch_matched = read_new_smch_matched_query()
 
+#DATA CLEANUP QUERIES
+get_duplicate_maternal_data = get_duplicate_maternal_query()
+get_discharges_tofix = get_discharges_tofix_query()
+get_maternal_outcome_to_fix = get_maternal_data_tofix_query()
+get_admissions_data_to_fix = get_admissions_data_tofix_query()
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
@@ -456,6 +465,22 @@ catalog = DataCatalog(
             table_name='old_new_matched_view',
             credentials=dict(con=con),
             save_args = dict(schema='derived',if_exists='replace')
+         ),
+         "duplicate_maternal_data": SQLQueryDataSet(
+            sql= get_duplicate_maternal_data,
+            credentials=dict(con=con)
+         ),
+          "discharges_to_fix": SQLQueryDataSet(
+            sql= get_discharges_tofix,
+            credentials=dict(con=con)
+         ),
+          "maternals_to_fix": SQLQueryDataSet(
+            sql= get_maternal_outcome_to_fix,
+            credentials=dict(con=con)
+         ),
+         "admissions_to_fix": SQLQueryDataSet(
+            sql= get_admissions_data_to_fix,
+            credentials=dict(con=con)
          ),
         }
         )

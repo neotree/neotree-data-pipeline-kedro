@@ -1,7 +1,9 @@
 # Import created modules (need to be stored in the same directory as notebook)
+from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
+from conf.common.sql_functions import inject_sql
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
@@ -9,6 +11,8 @@ from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_dif
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
+from .neolab_data_cleanup import neolab_cleanup
+from conf.base.catalog import params
 
 
 
@@ -16,8 +20,6 @@ from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_k
 import pandas as pd
 from datetime import datetime as dt
 import logging
-import random
-import sys
 
 
 def tidy_tables():
@@ -80,13 +82,12 @@ def tidy_tables():
     
     except Exception as e:
         logging.error("!!! An error occured fetching the data: ")
-        raise e
+        logging.error(formatError(e))
 
     # Now let's fetch the list of properties recorded in that table
     logging.info("... Extracting keys")
     try:
-        
-        
+         
         adm_new_entries, adm_mcl = get_key_values(adm_raw)
         dis_new_entries, dis_mcl = get_key_values(dis_raw)
         mat_outcomes_new_entries,mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
@@ -98,7 +99,7 @@ def tidy_tables():
 
     except Exception as e:
         logging.error("!!! An error occured extracting keys: ")
-        raise e
+        logging.error(formatError(e))
 
     # Create the dataframe (df) where each property is pulled out into its own colum
     logging.info(
@@ -176,13 +177,14 @@ def tidy_tables():
             baseline_df['time_spent'] = (baseline_df['completed_at'] -baseline_df['started_at']).astype('timedelta64[m]')
         else:
             baseline_df['time_spent'] = None
-
-        # if "started_at" in diagnoses_df and 'completed_at' in diagnoses_df :
-        #     format_date_without_timezone(diagnoses_df,'started_at'); 
-        #     format_date_without_timezone(diagnoses_df,'completed_at'); 
-        #     diagnoses_df['time_spent'] =  (diagnoses_df['completed_at'] - diagnoses_df['started_at']).astype('timedelta64[m]')
-        # else:
-        #     diagnoses_df['time_spent'] = None
+        
+        if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
+            neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None):
+            
+            neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
+                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
+        else:
+            neolab_df['BCReturnTime'] = None
 
         baseline_df['LengthOfStay.value'] = None
         baseline_df['LengthOfStay.label'] = None
@@ -231,6 +233,8 @@ def tidy_tables():
         set_key_to_none(adm_df,'NVPgiven.label')
         set_key_to_none(adm_df,'DateTimeAdmission.value')
         set_key_to_none(adm_df,'DateTimeAdmission.label')
+        set_key_to_none(adm_df,'ROMlength.label')
+        set_key_to_none(adm_df,'ROMlength.value')
         set_key_to_none(adm_df,'ROMLength.label')
         set_key_to_none(adm_df,'ROMLength.value')
 
@@ -273,14 +277,23 @@ def tidy_tables():
 
         set_key_to_none(baseline_df,'AWGroup.value')
         set_key_to_none(baseline_df,'BWGroup.value') 
+        set_key_to_none(baseline_df,'AdmittedFrom.label') 
+        set_key_to_none(baseline_df,'AdmittedFrom.value') 
+        set_key_to_none(baseline_df,'ReferredFrom2.label') 
+        set_key_to_none(baseline_df,'ReferredFrom2.value') 
+        set_key_to_none(baseline_df,'ReferredFrom.label') 
+        set_key_to_none(baseline_df,'ReferredFrom.value') 
+        set_key_to_none(baseline_df,'TempThermia.label') 
+        set_key_to_none(baseline_df,'TempThermia.value')
+        set_key_to_none(baseline_df,'TempGroup.label') 
+        set_key_to_none(baseline_df,'TempGroup.value') 
+        set_key_to_none(baseline_df,'GestGroup.label') 
+        set_key_to_none(baseline_df,'GestGroup.value') 
         #Vital Signs Table
         format_date(vit_signs_df,'D1Date.value')
         format_date(vit_signs_df,'TimeTemp1.value')
         format_date(vit_signs_df,'TimeTemp2.value')
         format_date(vit_signs_df,'EndScriptDatetime.value')
-
-        # Make changes to admissions and baseline data to match fields in power bi
-        adm_df = create_columns(adm_df)
         
         # CREATE AGE CATEGORIES
 
@@ -289,55 +302,59 @@ def tidy_tables():
             for position,admission in adm_df.iterrows():
 
                 age_list =[]
-
-                if 'Age.value' in admission and str(admission['Age.value']) != 'nan':
-                # Get The Value which is a string e.g  3 days, 4 hours
-                    age_list = str(admission['Age.value']).split(",")
-                else:
-                    if 'AgeB.value' in admission and str(admission['AgeB.value']) != 'nan':
-                        age_list = str(admission['AgeB.value']).split(",")
-                # Initialise Hours
-                hours = 0
                 period = 0
-                # If size of List is 1 it either means its days only or hours only
-               
-                if len(age_list) == 1:
-                    age = age_list[0]
-                    # Check if hours or Days
-                    if 'hour' in age:
-                       
-                        hours= [int(s) for s in age.replace("-","").split() if s.isdigit()]
-                        # Check if value contains figures
-                        if len(hours) >0:
-                            period = hours[0]
-                        else:
-                            if "an" in age:
-                                # IF AN HOUR 
-                                period = 1
 
-                    elif 'day' in age:
-                        hours = [int(s) for s in age.replace("-","").split() if s.isdigit()]
-                        if len(hours) >0:
-                            period = hours[0] * 24
-                    elif 'second' in age:
-                        # FEW SECONDS CAN BE ROUNDED OFF 1 HOUR
-                        period = 1
-                    elif 'minute' in age:
-                        # MINUTES CAN BE ROUNDED OFF 1 HOUR
-                        period = 1
-                        pass;     
-                # Contains Both Hours and Days        
-                elif len(age_list) == 2:
-                    age_days = age_list[0]
-                    age_hours = age_list[1]
-                    if 'day' in age_days and 'hour' in age_hours:
-                        number_hours_days= [int(s) for s in age_days.split() if s.isdigit()]
-                        number_hours = [int(s) for s in age_hours.split() if s.isdigit()]
-                        if (len(number_hours) >0 and len(number_hours_days)>0):
-                            period = (number_hours_days[0]) * 24 +(number_hours[0])
-
+                if 'Age.value' in admission and str(admission['Age.value']).isdigit():
+                    period = admission['Age.value']
                 else:
-                    pass;  
+                    if 'Age.value' in admission and str(admission['Age.value']) != 'nan':
+                    # Get The Value which is a string e.g  3 days, 4 hours
+                        age_list = str(admission['Age.value']).split(",")
+                    else:
+                        if 'AgeB.value' in admission and str(admission['AgeB.value']) != 'nan':
+                            age_list = str(admission['AgeB.value']).split(",")
+                    # Initialise Hours
+                    hours = 0
+                    
+                    # If size of List is 1 it either means its days only or hours only
+                
+                    if len(age_list) == 1:
+                        age = age_list[0]
+                        # Check if hours or Days
+                        if 'hour' in age:
+                        
+                            hours= [int(s) for s in age.replace("-","").split() if s.isdigit()]
+                            # Check if value contains figures
+                            if len(hours) >0:
+                                period = hours[0]
+                            else:
+                                if "an" in age:
+                                    # IF AN HOUR 
+                                    period = 1
+
+                        elif 'day' in age:
+                            hours = [int(s) for s in age.replace("-","").split() if s.isdigit()]
+                            if len(hours) >0:
+                                period = hours[0] * 24
+                        elif 'second' in age:
+                            # FEW SECONDS CAN BE ROUNDED OFF 1 HOUR
+                            period = 1
+                        elif 'minute' in age:
+                            # MINUTES CAN BE ROUNDED OFF 1 HOUR
+                            period = 1
+                            pass;     
+                    # Contains Both Hours and Days        
+                    elif len(age_list) == 2:
+                        age_days = age_list[0]
+                        age_hours = age_list[1]
+                        if 'day' in age_days and 'hour' in age_hours:
+                            number_hours_days= [int(s) for s in age_days.split() if s.isdigit()]
+                            number_hours = [int(s) for s in age_hours.split() if s.isdigit()]
+                            if (len(number_hours) >0 and len(number_hours_days)>0):
+                                period = (number_hours_days[0]) * 24 +(number_hours[0])
+
+                    else:
+                        pass;  
 
                 if period>0:
                     adm_df.loc[position,'Age.value'] = period
@@ -382,16 +399,19 @@ def tidy_tables():
                     pass;
                 else:
                     key_change(adm_df,admission,position,'BSmgdL.value','BSUnitmg.value')
-                if 'BloodSugarmmol.value' in admission and str(admission["BloodSugarmmol.value"])!='nan' and admission["BloodSugarmmol.value"] is not None:
-                    pass;
-                else:
+                if 'BSmmol.value' in admission and str(admission["BSmmol.value"])!='nan' and admission["BSmmol.value"] is not None:
+                    
+                    key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value');
 
-                    key_change(adm_df,admission,position,'BSmmol.value','BloodSugarmmol.value')
-                if 'BloodSugarmg.value' in admission and str(admission["BloodSugarmg.value"])!='nan' and admission["BloodSugarmg.value"] is not None:
-                    pass;
-                else:
-
+                if 'BSmg.value' in admission and str(admission["BSmg.value"])!='nan' and admission["BSmg.value"] is not None:
                     key_change(adm_df,admission,position,'BSmg.value','BloodSugarmg.value')
+                    
+                if  "ROMlength.value" in admission and str(admission["ROMlength.value"]) != 'nan' and admission["ROMlength.value"] is not None:
+                    key_change(adm_df,admission,position,'ROMlength.value','ROMLength.value');
+                
+                if  "ROMlength.label" in admission and str(admission["ROMlength.label"]) != 'nan' and admission["ROMlength.label"] is not None:
+                    key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label');
+
             if "Age.value" in adm_df:
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
             if 'AdmissionWeight.value' in adm_df:
@@ -430,8 +450,7 @@ def tidy_tables():
                     pass;
                 else:
                     key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
-        if not baseline_df.empty:
-            baseline_df = create_columns(baseline_df)
+       
         # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
         if not mat_outcomes_df.empty and not mat_completeness_df.empty: 
                latest_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value']) >='2021-10-01']
@@ -447,8 +466,10 @@ def tidy_tables():
             neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'])
        
             for index,row in neolab_df.iterrows():
-                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
+                # Data Cleaning
+                neolab_cleanup(neolab_df,index)  
                 #Set Episodes
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 if not control_df.empty:
                     episode =1;
                     if neolab_df.at[index,'episode'] ==0:
@@ -511,12 +532,19 @@ def tidy_tables():
                                             ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
                                             == bct_type_df.at[bct_index,'DateBCR.value']),'BCType'] = bct_type_df.at[bct_index,'BCType']
 
- 
+        # Make changes to admissions and baseline data to match fields in power bi                                    
+        if not adm_df.empty:
+            try:
+                adm_df = create_columns(adm_df)
+            except Exception as ex:
+                raise ex
+        if not baseline_df.empty:
+            baseline_df = create_columns(baseline_df)
 
     except Exception as e:
         logging.error(
             "!!! An error occured normalized dataframes/changing data types: ")
-        raise e
+        logging.error(formatError(e))
 
     # Now write the cleaned up admission and discharge tables back to the database
     logging.info(
@@ -526,10 +554,12 @@ def tidy_tables():
     
         #Save Derived Admissions To The DataBase Using Kedro
         if not adm_df.empty:
+            adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             catalog.save('create_derived_admissions',adm_df)
         #Save Derived Admissions To The DataBase Using Kedro
         if not dis_df.empty:
             catalog.save('create_derived_discharges',dis_df)
+                            
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
         if not mat_outcomes_df.empty:
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
@@ -541,7 +571,8 @@ def tidy_tables():
             #SET INDEX 
             if "uid" in neolab_df:
                 neolab_df.set_index(['uid'])
-            neolab_df.sort_values(by=['uid','episode'])  
+                if ("episode" in neolab_df):
+                    neolab_df.sort_values(by=['uid','episode'])  
             catalog.save('create_derived_neolab',neolab_df)
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
@@ -559,7 +590,7 @@ def tidy_tables():
     except Exception as e:
         logging.error(
             "!!! An error occured writing admissions and discharge output back to the database: ")
-        raise e.with_traceback()
+        logging.error(formatError(e))
 
     logging.info("... Creating MCL count tables")
     try:
@@ -580,5 +611,5 @@ def tidy_tables():
        
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")
-        raise e
+        logging.error(formatError(e))
 

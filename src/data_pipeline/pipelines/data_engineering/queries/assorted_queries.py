@@ -1,3 +1,6 @@
+import logging
+
+
 def deduplicate_admissions_query(adm_where):
     return  f'''
             drop table if exists scratch.deduplicated_admissions cascade;
@@ -198,6 +201,7 @@ def read_admissions_query(admissions_case,adm_where):
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {admissions_case} 
@@ -209,6 +213,7 @@ def read_discharges_query(dicharges_case,disc_where):
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {dicharges_case}
@@ -223,6 +228,7 @@ def read_maternal_outcome_query(maternal_case,mat_outcomes_from,mat_outcomes_whe
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                     "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {maternal_case}
@@ -236,6 +242,7 @@ def read_vitalsigns_query(vitals_case,vital_signs_from,vitals_where):
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {vitals_case}
@@ -250,6 +257,7 @@ def read_baselines_query(baseline_case,baseline_from,baseline_where):
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {baseline_case}
@@ -264,6 +272,7 @@ def read_mat_completeness_query(maternity_completeness_case,mat_completeness_fro
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {maternity_completeness_case}
@@ -293,6 +302,7 @@ def read_noelab_query(neolabs_case,neolab_from,neolab_where):
                 id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                     "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries" {neolabs_case}
@@ -305,6 +315,7 @@ def read_diagnoses_query(admissions_case,adm_where):
                 uid,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
+                "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case}
@@ -347,3 +358,82 @@ def read_new_smch_matched_query():
             select 
                 *
             from derived.joined_admissions_discharges;'''
+
+def get_duplicate_maternal_query():
+    return f'''
+            select uid, s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 as "DA",s."data"->'entries' as "entries"
+            from public.sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
+            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' order by
+            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 
+           '''
+
+def update_maternal_uid_query_new(uid,date_condition,old_uid):
+            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+             data,
+            '{{entries,NeoTreeID}}',
+               '{{
+                "type": "string",
+                "values": {{
+                "label": [
+                    "NeoTree ID number"
+                ],
+                "value": ["{0}"]
+                
+                }}
+                }}'::TEXT::jsonb,
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
+            '''.format(uid,date_condition,old_uid)
+
+def update_maternal_uid_query_old(uid,date_condition,old_uid):
+            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+             data,
+            '{{entries,0}}',
+               '{{
+                "key":"NeotreeID",
+                "type": "string",
+                "values": [
+                    {{
+                "label": "NeoTree ID number",
+                "value": "{0}"
+                }}
+                ]
+                }}'::TEXT::jsonb,
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
+            '''.format(uid,date_condition,old_uid)
+
+def update_maternal_outer_uid(uid):
+    return ''' update public.sessions set data= JSONB_SET(
+             data,
+            '{{uid}}',
+             to_json(uid)::TEXT::JSONB,
+             true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';'''.format(uid)
+
+def get_discharges_tofix_query():
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%Outcome%' and scriptid='-ZYDiO2BTM4kSGZDVXAO';
+             '''
+def get_maternal_data_tofix_query():
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%Outcome%' and scriptid='-MDPYzHcFVHt02D1Tz4Z';
+             '''
+def get_admissions_data_tofix_query():
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
+             "data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%Presenting complaint%' and scriptid='-ZO1TK4zMvLhxTw6eKia';
+             '''
+
+def update_eronous_label(uid,script_id,type,key,label,value):
+            return '''update public.sessions set data = JSONB_SET(
+             data,
+            '{{entries,{3}}}',
+               '{{
+                "type": "{2}",
+                "values": {{
+                "label": [
+                    "{4}"
+                ],
+                "value": ["{5}"]
+                
+                }}
+                }}'::TEXT::jsonb,
+               true) where "uid" = '{0}' and "scriptid"='{1}';
+            '''.format(uid,script_id,type,key,label,value)

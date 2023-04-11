@@ -1,4 +1,5 @@
 from conf.base.catalog import catalog
+import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 
 # Import libraries
@@ -36,6 +37,9 @@ def join_table():
         jn_adm_dis['LengthOfStay.label'] = None
         jn_adm_dis['LengthOfLife.value'] = None
         jn_adm_dis['LengthOfLife.label'] = None
+
+        if 'Gestation.value' in jn_adm_dis:
+                    jn_adm_dis['Gestation.value'] = pd.to_numeric(jn_adm_dis['Gestation.value'], errors='coerce')
         
         #Length of Life and Length of Stay
         date_format = "%Y-%m-%d"
@@ -65,7 +69,7 @@ def join_table():
 
     except Exception as e:
         logging.error("!!! An error occured creating joined dataframe: ")
-        raise e.with_traceback()
+        raise e
 
     # Now write the table back to the database
     logging.info("... Writing the output back to the database")

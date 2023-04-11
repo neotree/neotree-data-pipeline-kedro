@@ -1,10 +1,12 @@
 import os, sys
-sys.path.append(os.getcwd())
+sys.path.append(os.getcwd())                         
+import logging
 from conf.common.sql_functions import inject_sql
 from conf.base.catalog import (dedup_baseline,dedup_maternal,
                               dedup_neolab,dedup_vitals,cron_log_file,
                               dedup_mat_completeness)
-import logging
+from data_pipeline.pipelines.data_engineering.data_tyding.maternal_data_duplicates_cleanup import maternal_data_duplicates_cleanup
+from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import maternal_data_cleanup   
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 #Not passing any Input To Allow Concurrent running of independent Nodes
@@ -16,6 +18,8 @@ def deduplicate_other_data(data_import_output):
             baseline_script = dedup_baseline
             neolab_script = dedup_neolab
             mat_completeness_script = dedup_mat_completeness
+            maternal_data_cleanup()
+            maternal_data_duplicates_cleanup()
             inject_sql(maternal_script, "deduplicate-maternal")
             inject_sql(vitals_script, "deduplicate-vitals")
             inject_sql(baseline_script, "deduplicate-baseline")
@@ -38,5 +42,5 @@ def deduplicate_other_data(data_import_output):
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Deduplicating Data ".format(cron_time,mode))
         cron_log.close()
-        logging.error(e.with_traceback())
+        logging.error(e)
         sys.exit(1)

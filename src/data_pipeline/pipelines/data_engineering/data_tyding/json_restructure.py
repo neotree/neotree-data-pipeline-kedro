@@ -2,6 +2,8 @@
 # A number of if statements have been used to manage different scenarios
 # These include: MCL, empty lists and list with one element
 # The input is the raw json data and the output is a reformed json (newentrieslist)
+import logging
+from conf.common.format_error import formatError
 import re
 
 def restructure(c, mcl):
@@ -11,6 +13,7 @@ def restructure(c, mcl):
         current_v = c['values']
         # code to restructure MCL json file to key value pairs format
         for k, val in [(key, d[key]) for d in current_v for key in d]:
+            
             if k not in v:
                 v[k] = [val]
             else:
@@ -30,27 +33,31 @@ def restructure(c, mcl):
         #Add Other Values T MCL Columns For Exploding and Adm Reason
         if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)
-
     return k, v, mcl
 
     #Restructure New Formated Data
 def restructure_new_format(k,v,mcl):
+    try:
+        #Check If Multi Value Column 
+        if len(v['values']['label']) > 1:
+            k = k
+            v = v['values']
+            mcl.append(k)
 
-    #Check If Multi Value Column 
-    if len(v['values']['label']) > 1:
-        k = k
-        v = v['values']
-        mcl.append(k)
+        else :
+            if len(v['values']['label'])>0 and len(v['values']['value'])>0:
+                k = str(k).strip()
+                #  Unpack The Values Object To Get Single Values
+                v = {'label':v['values']['label'][0],'value':v['values']['value'][0]}
+                # #Add Other Values T MCL Columns For Exploding
+                if str(k).endswith('Oth') or k=="AdmReason":
+                    mcl.append(k) 
+        
 
-    else :
-        k = str(k).strip()
-        #  Unpack The Values Object To Get Single Values
-        v = {'label':v['values']['label'][0],'value':v['values']['value'][0]}
-        # #Add Other Values T MCL Columns For Exploding
-        if str(k).endswith('Oth') or k=="AdmReason":
-            mcl.append(k) 
-
-    return k, v, mcl
+        return k, v, mcl
+    except Exception as ex:
+        logging.error(v)
+        logging.error(formatError(ex))
 
 def restructure_array(key,value):
     

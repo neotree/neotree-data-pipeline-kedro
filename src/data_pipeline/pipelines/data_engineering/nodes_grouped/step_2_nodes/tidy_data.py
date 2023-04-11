@@ -26,7 +26,7 @@ def tidy_data(deduplicate_admissions_output):
         
     except Exception as e:
         logging.error("!!! An error occured tidying or creating MCL tables: ")
-        logging.error(formatError(e))
+        logging.error(e)
         cron_log = open(cron_log_file,"a+")
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Tyding Data ".format(cron_time,mode))
