@@ -164,9 +164,9 @@ def create_columns(table: pd.DataFrame):
                                           ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
                         table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
                   if 'Bw.value' in table:
-                  table['<28wks/1kg.value'] = ((table['Bw.value'] > 0)  &
+                        table['<28wks/1kg.value'] = ((table['Bw.value'] > 0)  &
                                           ((table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
-                  table['LBWBinary']=((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
+                        table['LBWBinary']=((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
             # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
             return table
     except Exception as e:
