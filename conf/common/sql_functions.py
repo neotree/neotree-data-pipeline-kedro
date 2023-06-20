@@ -11,7 +11,7 @@ params = config()
 con = 'postgresql+psycopg2://' + \
 params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
-engine = create_engine(con)
+engine = create_engine(con, executemany_mode='batch')
 
 #Useful functions to inject sql queries
 #Inject SQL Procedures
