@@ -23,8 +23,8 @@ def summary_admissions_query():
                     "BSmg.value" AS "Blood Sugar mg",
                     "AW.value" AS "Admission Weight",
                     "AWGroup.value" AS "Admission Weight Group",
-                    CASE WHEN "BirthWeight.value" is 
-                    "BirthWeight.value" AS "Birth Weight",
+                    CASE WHEN "BirthWeight.value" is not null THEN 
+                    "BirthWeight.value" END AS "Birth Weight",
                     "BWGroup.value" AS "Birth Weight Group",
                     "<28wks/1kg.value" AS "<28wks/1kg",
                     "LBWBinary" AS "Low Birth Weight?",

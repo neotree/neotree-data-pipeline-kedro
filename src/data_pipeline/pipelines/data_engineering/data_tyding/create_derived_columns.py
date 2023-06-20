@@ -153,11 +153,17 @@ def create_columns(table: pd.DataFrame):
                   table.loc[table['Temperature.value'] < 36.5,
                         'TempThermia.value'] = "Hypothermia"
 
-            if 'BW.value' in table:
-                  table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
+            if 'BirthWeight.value' in table: 
+                  table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
+                                          ((table['BirthWeight.value'] < 1000) | (table['Gestation.value'] < 28)))
+                  table['LBWBinary'] = ((table['BirthWeight.value'] > 0) & (table['BirthWeight.value'] < 2500)) 
+
+            else:
+                  if 'BW.value' in table:
+                        table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
                                           ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
-                  table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
-            if 'Bw.value' in table:
+                        table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
+                  if 'Bw.value' in table:
                   table['<28wks/1kg.value'] = ((table['Bw.value'] > 0)  &
                                           ((table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
                   table['LBWBinary']=((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
