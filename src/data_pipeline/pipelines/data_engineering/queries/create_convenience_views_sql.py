@@ -64,7 +64,7 @@ def create_convinience_views_query():
             WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Died%%' THEN 1
             WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%NND%%' THEN 1 
             WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%BID%%' THEN 1
-            end AS "DeathCount",
+            END AS "DeathCount",
             CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' Then 1 end AS "AbscondedCount",
             CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Transferred to other hospital' Then 1 end AS "TransferredOutCount",
             CASE WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Discharged on Request' Then 1 end AS "DischargeOnRequestCount",

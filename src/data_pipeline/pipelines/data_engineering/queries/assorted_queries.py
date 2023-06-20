@@ -410,15 +410,15 @@ def update_maternal_outer_uid(uid):
 
 def get_discharges_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%Outcome%' and scriptid='-ZYDiO2BTM4kSGZDVXAO';
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid='-ZYDiO2BTM4kSGZDVXAO';
              '''
 def get_maternal_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%Outcome%' and scriptid='-MDPYzHcFVHt02D1Tz4Z';
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid='-MDPYzHcFVHt02D1Tz4Z';
              '''
 def get_admissions_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%Presenting complaint%' and scriptid='-ZO1TK4zMvLhxTw6eKia';
+             "data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%%Presenting complaint%%' and scriptid='-ZO1TK4zMvLhxTw6eKia';
              '''
 
 def update_eronous_label(uid,script_id,type,key,label,value):

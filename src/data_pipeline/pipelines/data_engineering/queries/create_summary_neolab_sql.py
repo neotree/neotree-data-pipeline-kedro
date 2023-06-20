@@ -12,7 +12,7 @@ def summary_neolab_query():
             max("DateBCR.value") as "DateBCR" -- This takes the last upload 
                     -- most recently uploaded
             from derived.neolab
-            where uid not like '0000%' and uid not like '***%'
+            where uid not like '0000%%' and uid not like '***%%'
             group by 1,2,3
             )
             select
@@ -25,8 +25,8 @@ def summary_neolab_query():
             derived.neolab."OtherOrg1.value",
             derived.neolab."BCResult.value" AS "BCResult",
                     CASE WHEN 
-                    derived.neolab."BCType" like '%PRELIMINARY%' THEN 'PRELIMINARY'
-                    WHEN derived.neolab."BCType" like '%FINAL%' THEN 'FINAL'
+                    derived.neolab."BCType" like '%%PRELIMINARY%%' THEN 'PRELIMINARY'
+                    WHEN derived.neolab."BCType" like '%%FINAL%%' THEN 'FINAL'
                     END AS "Status",
                     derived.neolab."DateBCT.value" AS "DATEBCT",
 				    (select count(derived.neolab.uid) from derived.neolab where 
