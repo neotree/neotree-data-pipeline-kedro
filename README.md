@@ -26,7 +26,7 @@ At this stage the assumption is that we have cloned the code base to our local m
 2. Create a virtual environment using `virtualenv`,`pipenv` or easily by taking advantage of the venv package that was added to python 3 using the command 
 `python3 -m venv env`  name    it `env` 
 3. Activate the `env` virtual environment
-4. Run `pip install kedro`
+4. Run `pip install kedro==0.17.0`
 5. Validate if kedro has been successfully installed by running `kedro info` ,This should produce a graphical display of the word `Kedro`
 6. cd into `src/` and run `pip install -r requirements.txt`
 7. If you face any error, it is recommended to install the erronous dependencies independently using pip
