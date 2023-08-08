@@ -64,6 +64,8 @@ def admissions_data_cleanup():
                         if value is not None and label is not None:
                             query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
                             inject_sql(query,"FIX ADMISSIONS DATA ERRORS")
+    except Exception as e:
+        logging.error(formatError(e))
 
 def baseline_data_cleanup():
     try:
