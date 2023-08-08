@@ -33,7 +33,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import ge
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_discharges_tofix_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_maternal_data_tofix_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_admissions_data_tofix_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries get_baseline_data_tofix_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_baseline_data_tofix_query
 
 params = config()
 con = 'postgresql+psycopg2://' + \
