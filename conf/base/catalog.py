@@ -33,6 +33,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import ge
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_discharges_tofix_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_maternal_data_tofix_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_admissions_data_tofix_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries get_baseline_data_tofix_query
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -305,6 +306,7 @@ get_duplicate_maternal_data = get_duplicate_maternal_query()
 get_discharges_tofix = get_discharges_tofix_query()
 get_maternal_outcome_to_fix = get_maternal_data_tofix_query()
 get_admissions_data_to_fix = get_admissions_data_tofix_query()
+get_baseline_data_to_fix = get_baseline_data_tofix_query()
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
 catalog = DataCatalog(
@@ -482,5 +484,9 @@ catalog = DataCatalog(
             sql= get_admissions_data_to_fix,
             credentials=dict(con=con)
          ),
+         "baselines_to_fix": SQLQueryDataSet(
+            sql= get_baseline_data_to_fix,
+            credentials=dict(con=con)
+         )
         }
         )
