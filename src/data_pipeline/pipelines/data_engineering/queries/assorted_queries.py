@@ -420,7 +420,10 @@ def get_admissions_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
              "data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%%Presenting complaint%%' and scriptid='-ZO1TK4zMvLhxTw6eKia';
              '''
-
+def get_baseline_data_tofix_query():
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid='-MX3bKFIUQxrUw9nmtfb';
+             '''
 def update_eronous_label(uid,script_id,type,key,label,value):
             return '''update public.sessions set data = JSONB_SET(
              data,

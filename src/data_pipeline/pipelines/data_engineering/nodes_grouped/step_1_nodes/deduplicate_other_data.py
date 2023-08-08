@@ -6,7 +6,7 @@ from conf.base.catalog import (dedup_baseline,dedup_maternal,
                               dedup_neolab,dedup_vitals,cron_log_file,
                               dedup_mat_completeness)
 from data_pipeline.pipelines.data_engineering.data_tyding.maternal_data_duplicates_cleanup import maternal_data_duplicates_cleanup
-from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import maternal_data_cleanup   
+from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import maternal_data_cleanup,baseline_data_cleanup  
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 #Not passing any Input To Allow Concurrent running of independent Nodes
@@ -20,6 +20,7 @@ def deduplicate_other_data(data_import_output):
             mat_completeness_script = dedup_mat_completeness
             maternal_data_cleanup()
             maternal_data_duplicates_cleanup()
+            baseline_data_cleanup()
             inject_sql(maternal_script, "deduplicate-maternal")
             inject_sql(vitals_script, "deduplicate-vitals")
             inject_sql(baseline_script, "deduplicate-baseline")

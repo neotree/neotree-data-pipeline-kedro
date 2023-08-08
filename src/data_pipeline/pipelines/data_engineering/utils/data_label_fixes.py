@@ -1420,3 +1420,9 @@ def fix_admissions_label(key,value):
     if(key=='ReviewCadre'):
         return fix_adm_review_cadre(value)
     pass
+
+## MATERNAL OUTCOMES
+def fix_baseline_label(key,value):
+    if(key =='NeoTreeOutcome'):
+        return fix_neotree_oucome(value)
+    pass
