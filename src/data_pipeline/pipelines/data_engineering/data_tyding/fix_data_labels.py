@@ -5,8 +5,7 @@ from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_eronous_label
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
-from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import fix_disharge_label
-,fix_maternal_label,fix_admissions_label,fix_baseline_label
+from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import fix_disharge_label,fix_maternal_label,fix_admissions_label,fix_baseline_label
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 
 def discharge_data_cleanup():
