@@ -303,7 +303,7 @@ def tidy_tables():
                 period = 0
 
                 if 'Age.value' in admission:
-                    logging.info("=MY AGE=="+str(admission['Age.value']) +" ---IS--"+isinstance(str(admission['Age.value']),datetime.datetime))
+                    logging.info("=MY AGE=="+str(admission['Age.value']) +" ---IS--"+str(isinstance(str(admission['Age.value']),datetime.datetime)))
                     if isinstance(str(admission['Age.value']),datetime.datetime):
                         if "DateTimeAdmission.value" in admission and admission["DateTimeAdmission.value"] is not None:
                             admission['Age.value']=(pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
