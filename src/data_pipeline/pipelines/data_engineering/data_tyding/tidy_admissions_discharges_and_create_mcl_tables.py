@@ -305,10 +305,10 @@ def tidy_tables():
                 if 'Age.value' in admission:
                     if len(str(admission['Age.value']))>10 and 'T' in str(admission['Age.value']):
                         if "DateTimeAdmission.value" in admission and admission["DateTimeAdmission.value"] is not None:
-                            admission['Age.value']=(pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
-                                        pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
-                        logging.info("==============GOTCHA")
-                        
+                            admission['Age.value']=(pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True) -
+                                        pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True))/ pd.Timedelta(hours=1)
+                        logging.info("==============GOTCHA=="+str(admission['Age.value']))
+
                 if 'Age.value' in admission and str(admission['Age.value']).isdigit():
                     period = admission['Age.value']
                 else:
