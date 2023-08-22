@@ -315,8 +315,6 @@ def tidy_tables():
 
                 if 'Age.value' in admission and str(admission['Age.value']).isdigit():
                     period=admission['Age.value']
-                    if(admission['uid'] =='60E3-5045'):
-                        logging.info("---GRRRRRRRRRRRRR---"+str(admission['Age.value']))
 
                 else:
                     if 'Age.value' in admission and str(admission['Age.value']) != 'nan':
