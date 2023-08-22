@@ -303,10 +303,11 @@ def tidy_tables():
                 period = 0
 
                 if 'Age.value' in admission:
-                    logging.info("=MY AGE=="+str(admission['Age.value']) +" ---IS--"+str(admission['Age.value'])[:10].strip().replace('T',''),datetime.date)
-                    if isinstance(str(admission['Age.value'])[:10].strip().replace('T',''),datetime.date):
-                        if "DateTimeAdmission.value" in admission and admission["DateTimeAdmission.value"] is not None:
-                            admission['Age.value']=(pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
+                    if len((str(admission['Age.value'])))>10:
+                        if isinstance(str(admission['Age.value'])[:10].strip().replace('T',''),datetime.date):
+                            logging.info("==============GOTCHA")
+                            if "DateTimeAdmission.value" in admission and admission["DateTimeAdmission.value"] is not None:
+                                admission['Age.value']=(pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
                                         pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
 
                 if 'Age.value' in admission and str(admission['Age.value']).isdigit():
