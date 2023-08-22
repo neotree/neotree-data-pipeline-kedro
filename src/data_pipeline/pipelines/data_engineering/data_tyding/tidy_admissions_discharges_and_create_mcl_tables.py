@@ -411,7 +411,7 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label');
 
             if "Age.value" in adm_df:
-                if isinstance(adm_df['Age.value'],datetime.datetime)
+                if isinstance(adm_df['Age.value'],datetime.datetime):
                     if "AdmissionDateTime.value" in adm_df and adm_df["AdmissionDateTime.value"] is not None:
                        adm_df['Age.value']=(pd.to_datetime(adm_df['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
                                         pd.to_datetime(adm_df['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
