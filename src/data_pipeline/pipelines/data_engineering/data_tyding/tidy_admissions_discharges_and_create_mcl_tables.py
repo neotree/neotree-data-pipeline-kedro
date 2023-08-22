@@ -13,9 +13,7 @@ from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from .neolab_data_cleanup import neolab_cleanup
 from conf.base.catalog import params
-
-
-
+import datetime
 # Import libraries
 import pandas as pd
 from datetime import datetime as dt
@@ -413,7 +411,12 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label');
 
             if "Age.value" in adm_df:
+                if isinstance(adm_df['Age.value'],datetime.datetime)
+                    if "AdmissionDateTime.value" in adm_df and adm_df["AdmissionDateTime.value"] is not None:
+                       adm_df['Age.value']=(pd.to_datetime(adm_df['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
+                                        pd.to_datetime(adm_df['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
                 adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
+
             if 'AdmissionWeight.value' in adm_df:
                  adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
             if 'BirthWeight.value' in adm_df:
