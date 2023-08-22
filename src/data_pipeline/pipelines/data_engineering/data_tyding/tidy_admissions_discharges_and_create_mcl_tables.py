@@ -307,15 +307,17 @@ def tidy_tables():
                         if "DateTimeAdmission.value" in admission and admission["DateTimeAdmission.value"] is not None:
                             admission['Age.value']=(pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True) -
                                         pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True))/ pd.Timedelta(hours=1)
+                        if admission['Age.value']>0:
+                            if admission['Age.value'] <1:
+                                admission['Age.value'] = 1
+                            else:
+                               admission['Age.value']= round(admission['Age.value'])
 
                 if 'Age.value' in admission and str(admission['Age.value']).isdigit():
-                    if admission['Age.value']>0:
-                        if admission['Age.value'] <1:
-                            period=1
-                        else:
-                            period = round(admission['Age.value'])
-                    else:
-                        period = 0
+                    period=admission['Age.value']
+                    if(admission['uid'] =='60E3-5045'):
+                        logging.info("---GRRRRRRRRRRRRR---"+str(admission['Age.value']))
+
                 else:
                     if 'Age.value' in admission and str(admission['Age.value']) != 'nan':
                     # Get The Value which is a string e.g  3 days, 4 hours
