@@ -305,8 +305,14 @@ def tidy_tables():
                 if 'Age.value' in admission:
                     if len(str(admission['Age.value']))>10 and 'T' in str(admission['Age.value']):
                         if "DateTimeAdmission.value" in admission and admission["DateTimeAdmission.value"] is not None:
+                            #FIX BUG WHERE DOB IS GREATER THAN DATE OF ADMISSIONS
+                            if (pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)<
+                            pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)):
+                                admission['Age.value'] = pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)-pd.Timedelta(hours=24)
+
                             admission['Age.value']=(pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True) -
                                         pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True))/ pd.Timedelta(hours=1)
+                                        
                         if admission['Age.value']>0:
                             if admission['Age.value'] <1:
                                 admission['Age.value'] = 1
