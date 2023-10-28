@@ -42,5 +42,4 @@ def create_summary_baseline(join_tables_output):
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Baseline ".format(cron_time,mode))
         cron_log.close()
         raise e
-        logging.error(formatError(e))
-        sys.exit(1)
+        
