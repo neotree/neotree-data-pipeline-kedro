@@ -18,9 +18,10 @@ def tidy_dynamic_tables():
     
     try:
         #Read Data From The Kedro Catalog
-        logging.info("*********NEW SCRIPTS**************"+str(new_scripts))
-        for index,script in new_scripts:
-            script_raw = catalog.load(f'''read_{script}''')
+        for script in new_scripts:
+            catalog_query = f'''read_{script}'''
+            logging.info("--------POSTAV======"+catalog_query)
+            script_raw = catalog.load(catalog_query)
         
             try:
                 script_new_entries, script_mcl = get_key_values(script_raw)
