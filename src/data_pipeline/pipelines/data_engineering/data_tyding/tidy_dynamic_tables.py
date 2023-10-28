@@ -49,7 +49,7 @@ def tidy_dynamic_tables():
                             script_df.columns = script_df.columns.str.replace(r"[()-]", "_")
                             catalog.save(f'''create_derived_{script}''',script_df)
                             logging.info("... Creating MCL count tables for Generic Scripts")
-                            explode_column(script_df,script_mcl)      
+                            explode_column(script_df,script_mcl,script+'_')      
                     except Exception as e:                            
                         logging.error("!!! An error occured writing admissions and discharge output back to the database: ")
                         logging.error(formatError(e))
