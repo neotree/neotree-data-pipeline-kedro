@@ -31,7 +31,6 @@ deduplicate_discharges_node = node(
     deduplicate_discharges, inputs="data_import_output", outputs="deduplicate_discharges_output"
 )
 
-
 #Create A Deduplicating  Node
 deduplicate_other_data_node = node(
     deduplicate_other_data, inputs="data_import_output", outputs="deduplicate_data_output"
@@ -39,7 +38,7 @@ deduplicate_other_data_node = node(
 
 # Create A Data Tyding Node And Pass OutPut From Deduplication
 tidy_data_node = node(
-    tidy_data,  inputs="deduplicate_admissions_output", outputs ="tidy_data_output"
+    tidy_data,  inputs=["deduplicate_admissions_output","deduplicate_data_output","deduplicate_discharges_output"], outputs ="tidy_data_output"
 )
 
 # Create Manually Fixing Admisiions Node And Pass Data Tyding Output as input
@@ -55,13 +54,13 @@ manually_fix_discharges_node = node(
 
 #Create Summary Tables Node  
 create_summary_tables_node = node(
-    create_summary_tables, inputs= "manually_Fix_admissions_output", outputs = "create_summary_tables_output"
+    create_summary_tables, inputs= ["manually_Fix_admissions_output","manually_fix_discharges_output"], outputs = "create_summary_tables_output"
 )
 
 
 # Create Join Tables Node And Pass Manually Fix Admissions OutPut as we currently have nothing in Fix Discharges
 join_tables_node = node(
-    join_tables, inputs="manually_Fix_admissions_output",outputs="join_tables_output"
+    join_tables, inputs=["manually_Fix_admissions_output","manually_fix_discharges_output"],outputs="join_tables_output"
 )
 
 # Create A Union Views Node And Pass Output from Data Tyding

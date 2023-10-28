@@ -15,9 +15,9 @@ from conf.base.catalog import params, env
 
 
 
-def create_summary_tables(manually_Fix_admissions_output):
+def create_summary_tables(manually_Fix_admissions_output,manually_fix_discharges_output):
     try:
-        if manually_Fix_admissions_output is not None:
+        if manually_Fix_admissions_output is not None and manually_fix_discharges_output is not None:
             create_summary_vitalsigns()
             create_summary_joined_vitalsigns() 
             create_summary_maternal_outcomes()

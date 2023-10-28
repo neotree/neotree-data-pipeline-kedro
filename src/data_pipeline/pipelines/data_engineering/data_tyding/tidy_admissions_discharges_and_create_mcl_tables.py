@@ -57,6 +57,13 @@ def tidy_tables():
     #     raise ex;
 
     # Read the raw admissions and discharge data into dataframes
+    logging.info("****************Processing Dynamic Scripts*******************")
+    try:
+        tidy_dynamic_tables()
+        
+    except Exception as e:
+        logging.error("!!! An error occured processing Dynamic Scripts ")
+        logging.error(formatError(e))
     logging.info("... Fetching raw admission and discharge data")
     
     try:
@@ -631,10 +638,4 @@ def tidy_tables():
         logging.error("!!! An error occured exploding MCL  columns: ")
         logging.error(formatError(e))
         
-    logging.info("****************Processing Dynamic Scripts*******************")
-    try:
-        tidy_dynamic_tables()
-        
-    except Exception as e:
-        logging.error("!!! An error occured processing Dynamic Scripts ")
-        logging.error(formatError(e))
+   

@@ -7,10 +7,10 @@ from data_pipeline.pipelines.data_engineering.derive_data.create_joined_table_an
 from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 #Pass OutPut From Manually Fixing Admissions So That We Can use a clean derived table as Input
-def join_tables(manually_Fix_admissions_output):
+def join_tables(manually_Fix_admissions_output,manually_fix_discharges_output):
     try:
         #Test If Previous Node Has Completed Successfully
-        if manually_Fix_admissions_output:
+        if manually_Fix_admissions_output is not None and manually_fix_discharges_output is not None:
             join_table()
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
