@@ -18,9 +18,10 @@ def tidy_dynamic_tables():
     
     try:
         #Read Data From The Kedro Catalog
-        for index,script in enumerate(new_scripts):
+        logging.info("*********NEW SCRIPTS**************"+str(new_scripts))
+        for index,script in new_scripts:
             script_raw = catalog.load(f'''read_{script}''')
-            logging.info("... Extracting Keys For Generic Tables")
+            logging.info("********* Extracting Keys For Generic Table******* "+f'''read_{script}'''+str(script_raw))
             try:
                 script_new_entries, script_mcl = get_key_values(script_raw)
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
@@ -42,7 +43,7 @@ def tidy_dynamic_tables():
                     for date_column in date_columns:
                         format_date(script_df,date_column);
                     # Now write the cleaned up admission and discharge tables back to the database
-                    logging.info("... Writing the tidied admission and discharge back to the database")
+                    logging.info("... Writing the Generics to the database")
                     try:
                         if not script_df.empty:
                             ##### REMOVE INVALID CHARACTERS FROM DATAFRAMES 
