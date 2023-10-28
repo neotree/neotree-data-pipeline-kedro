@@ -4,6 +4,7 @@ from conf.base.catalog import params
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 
 
+
 def create_columns(table: pd.DataFrame):
     '''
     This function replicates some of the fields created in power bi.
@@ -23,6 +24,7 @@ def create_columns(table: pd.DataFrame):
             set_key_to_none(table,'ReferredFrom.value')
             set_key_to_none(table,'ReferredFrom2.label') 
             set_key_to_none(table,'ReferredFrom2.value')
+            set_key_to_none(table,'AgeCat.label')
                   
             table['AdmittedFrom.value'].fillna("ER", inplace=True)
             table['AdmittedFrom.label'].fillna("External Referral", inplace=True)

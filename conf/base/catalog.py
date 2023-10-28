@@ -58,7 +58,7 @@ maternal_script_id_dev = ''
 generic_dedup_queries = []
 
  ## LIST ALL OLD SCRIPT NAMES INORDER TO ADD GENERIC GENERATION FOR NEW SCRIPTS
-old_scripts = ['admissions','discharges','maternals','maternals_dev','vital_signs','neolabs','baselines','maternity_completeness']
+excluded_keys = ['admissions','discharges','maternals','maternals_dev','vital_signs','neolabs','baselines','maternity_completeness','country','name']
 
 ##INITIALISE NEW SCRIPTS
 new_scripts = []
@@ -156,16 +156,16 @@ if hospital_scripts:
                   ### LOOP THROUGH ALL NEW SCRIPTS PER HOSPITAL
                   ### ONLY USE THIS FUNCTION IF THERE ARE NO ADDITIONAL TWEAKS TO THE SCRIPT
                   ### OTHERWISE YOU WILL BE FORCED TO MANIPULATE THE CODE
-                  new_scripts = list(set(ids.keys()).difference(old_scripts))
-                 
+                  new_scripts = list(set(ids.keys()).difference(excluded_keys))
+                  
                   for table_name in new_scripts:
                      script_id = ids[table_name]
                      if(script_id!=''):
-                        script_case=f''' CASE WHEN scriptid='{script_id}' THEN {hospital} END AS "facility" '''
+                        script_case=f''' CASE WHEN scriptid='{script_id}' THEN '{hospital}' END AS "facility" '''
                         ####### GENERATE DEDUPLICATION TABLES##############
-                        dedup_destination = 'deduplicated_'+table_name
+                        dedup_destination = 'scratch.deduplicated_'+table_name
                         ### STRIPE DEV RECORDS FROM PRODUCTION IF REQUIRED
-                        query_condition = f''' = {script_id} '''
+                        query_condition = f''' = '{script_id}' '''
                         deduplication_query = deduplicate_data_query(query_condition+additional_where,dedup_destination)
                         generic_dedup_queries.append(deduplication_query)
                         read_query = read_deduplicated_data_query(script_case,query_condition,dedup_destination)
@@ -226,11 +226,13 @@ if hospital_scripts:
 
 #DEFINE FROM SECTION TO AVOID ERROR FROM NON-EXISTING OPTIONAL TABLE
 generic_from = 'public.sessions'
-mat_outcomes_from = 'deduplicated_maternals'
-neolab_from = 'deduplicated_neolabs'
-baseline_from = 'deduplicated_baseline'
-vital_signs_from = 'deduplicated_vitals'
-mat_completeness_from = 'deduplicated_maternity_completeness'
+mat_outcomes_from = 'scratch.deduplicated_maternals'
+neolab_from = 'scratch.deduplicated_neolabs'
+baseline_from = 'scratch.deduplicated_baseline'
+vital_signs_from = 'scratch.deduplicated_vitals'
+mat_completeness_from = 'scratch.deduplicated_maternity_completeness'
+admissions_from ='scratch.deduplicated_admissions'
+discharges_from ='scratch.deduplicated_discharges'
 
 #If maternal outcomes id is empty the system should take data from take data directly from sessions which idearly should be empty
 adm_where = f''' = '' '''
@@ -297,25 +299,25 @@ if (len(adm_tuple) ==1):
 elif (len(adm_tuple) >1):
       adm_where = f'''  in {tuple(adm_tuple)}  ''' 
 else:
-   pass
+   admissions_from =generic_from
 
 if (len(disc_tuple) ==1):
     disc_where = f'''  = '{disc_tuple[0]}'   ''' 
 elif (len(disc_tuple) >1):
       disc_where = f'''  in {tuple(disc_tuple)}  ''' 
 else:
-   pass
+   discharges_from =generic_from
 
 dedup_neolab = deduplicate_neolab_query(neolab_where + additional_where)
-dedup_admissions = deduplicate_data_query(adm_where+additional_where,'deduplicated_admissions')
-dedup_baseline = deduplicate_data_query(baseline_where + additional_where,'deduplicated_baseline')
-dedup_mat_completeness = deduplicate_data_query(mat_completeness_where + additional_where,'deduplicated_maternity_completeness')
-dedup_vitals = deduplicate_data_query(vitals_where + additional_where,'deduplicated_vitals')
-dedup_maternal = deduplicate_data_query(mat_outcomes_where + additional_where,'deduplicated_maternals')
-dedup_discharges = deduplicate_data_query(disc_where + additional_where,'deduplicated_discharges')
+dedup_admissions = deduplicate_data_query(adm_where+additional_where,admissions_from)
+dedup_baseline = deduplicate_data_query(baseline_where + additional_where,baseline_from)
+dedup_mat_completeness = deduplicate_data_query(mat_completeness_where + additional_where,mat_completeness_from)
+dedup_vitals = deduplicate_data_query(vitals_where + additional_where,vital_signs_from)
+dedup_maternal = deduplicate_data_query(mat_outcomes_where + additional_where,mat_outcomes_from)
+dedup_discharges = deduplicate_data_query(disc_where + additional_where,discharges_from)
 ################################READ DEDUPLICATED#################################################
-read_admissions = read_deduplicated_data_query(admissions_case,adm_where,'deduplicated_admissions')
-read_discharges = read_deduplicated_data_query(dicharges_case,disc_where,'deduplicated_discharges')
+read_admissions = read_deduplicated_data_query(admissions_case,adm_where,admissions_from)
+read_discharges = read_deduplicated_data_query(dicharges_case,disc_where,discharges_from)
 read_maternal_outcome = read_deduplicated_data_query(maternal_case,mat_outcomes_where,mat_outcomes_from)
 read_vitalsigns = read_deduplicated_data_query(vitals_case,vitals_where,vital_signs_from)
 read_baselines = read_deduplicated_data_query(baseline_case,baseline_where,baseline_from)
@@ -522,7 +524,7 @@ old_catalog =  {
             credentials=dict(con=con)
          )
         }
-combined_catalog = old_catalog.update(generic_catalog)   
+old_catalog.update(generic_catalog)   
 catalog = DataCatalog(
-         combined_catalog
+         old_catalog
         )

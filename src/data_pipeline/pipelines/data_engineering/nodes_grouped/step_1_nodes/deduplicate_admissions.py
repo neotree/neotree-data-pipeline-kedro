@@ -18,7 +18,8 @@ def deduplicate_admissions(data_import_output):
         if data_import_output is not None:
             sql_script = dedup_admissions
             data_labels_cleanup('admissions')
-            inject_sql(sql_script, "deduplicate-admissions")
+            if(sql_script):
+                inject_sql(sql_script, "deduplicate-admissions")
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
                 status='Success',

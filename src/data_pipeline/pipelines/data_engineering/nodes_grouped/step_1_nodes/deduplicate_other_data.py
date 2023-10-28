@@ -21,11 +21,16 @@ def deduplicate_other_data(data_import_output):
             data_labels_cleanup('maternals')
             maternal_data_duplicates_cleanup()
             data_labels_cleanup('baselines')
-            inject_sql(maternal_script, "deduplicate-maternal")
-            inject_sql(vitals_script, "deduplicate-vitals")
-            inject_sql(baseline_script, "deduplicate-baseline")
-            inject_sql(neolab_script, "deduplicate-neolabs")
-            inject_sql(mat_completeness_script, "deduplicate-mat-completeness")
+            if(maternal_script):
+                inject_sql(maternal_script, "deduplicate-maternal")
+            if(vitals_script):
+                inject_sql(vitals_script, "deduplicate-vitals")
+            if(baseline_script):
+                inject_sql(baseline_script, "deduplicate-baseline")
+            if(neolab_script):
+                inject_sql(neolab_script, "deduplicate-neolabs")
+            if(mat_completeness_script):
+                inject_sql(mat_completeness_script, "deduplicate-mat-completeness")
             ###DEDUPLICATE DYNAMICALLY ADDED SCRIPTS
             for index,dedup_query in enumerate(generic_dedup_queries):
                 inject_sql(dedup_query, f'''deduplicate-generic_{index}''')

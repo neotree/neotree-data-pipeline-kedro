@@ -14,7 +14,8 @@ def deduplicate_discharges(data_import_output):
         if data_import_output is not None:
             data_labels_cleanup('discharges')
             sql_script = dedup_discharges
-            inject_sql(sql_script, "deduplicate-discharges")
+            if(sql_script):
+                inject_sql(sql_script, "deduplicate-discharges")
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
             return dict(
                 status='Success',

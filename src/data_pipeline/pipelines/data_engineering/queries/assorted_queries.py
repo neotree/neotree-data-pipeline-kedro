@@ -38,8 +38,9 @@ def deduplicate_neolab_query(neolab_where):
             ); '''
 
 def deduplicate_data_query(condition,destination_table):
-    return f'''drop table if exists scratch.{destination_table} cascade;
-            create table scratch.{destination_table} as 
+    if(destination_table!='public.sessions'):
+        return f'''drop table if exists {destination_table} cascade;
+            create table {destination_table} as 
             (
             with earliest_record as (
             select
@@ -63,6 +64,7 @@ def deduplicate_data_query(condition,destination_table):
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );
             '''
+            
 def read_deduplicated_data_query(case_condition,where_condition,source_table):
     return f'''
                 select 
@@ -72,9 +74,9 @@ def read_deduplicated_data_query(case_condition,where_condition,source_table):
                 "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" ,
+                "data"->'entries' as "entries"
                 {case_condition}
-            from scratch.{source_table} where scriptid {where_condition} and uid!='null';
+            from {source_table} where scriptid {where_condition} and uid!='null';
    
   '''
   
@@ -188,7 +190,7 @@ def update_maternal_outer_uid(uid):
 def get_discharges_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
              ("data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%'
-             or or "data"->'entries'->'ModeDelivery'->'values'->'label'::text->>0 like '%%Mode of Delivery%%') 
+             or "data"->'entries'->'ModeDelivery'->'values'->'label'::text->>0 like '%%Mode of Delivery%%') 
              and scriptid in ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka','-KYDiO2BTM4kSGZDVXAO');
              '''
 def get_maternal_data_tofix_query():
