@@ -3,7 +3,6 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
-from conf.common.sql_functions import inject_sql
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
@@ -12,6 +11,8 @@ from data_pipeline.pipelines.data_engineering.queries.update_uid import update_u
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from .neolab_data_cleanup import neolab_cleanup
+from .tidy_dynamic_tables import tidy_dynamic_tables
+
 from conf.base.catalog import params
 import datetime
 # Import libraries
@@ -629,4 +630,11 @@ def tidy_tables():
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")
         logging.error(formatError(e))
-
+        
+    logging.info("****************Processing Dynamic Scripts*******************")
+    try:
+        tidy_dynamic_tables()
+        
+    except Exception as e:
+        logging.error("!!! An error occured processing Dynamic Scripts ")
+        logging.error(formatError(e))

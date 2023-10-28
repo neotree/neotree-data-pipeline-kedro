@@ -6,22 +6,12 @@ from  conf.common.config import config
 from conf.common.hospital_config import hospital_conf
 import sys,os
 import logging
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_admissions_query, get_admissions_data_tofix_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_baseline_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_mat_completeness_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_vitals_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_admissions_data_tofix_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_neolab_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_maternal_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_discharges_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_admissions_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_discharges_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_maternal_outcome_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_vitalsigns_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_baselines_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_mat_completeness_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import derived_admissions_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_data_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_deduplicated_data_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_derived_data_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import derived_discharges_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_noelab_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_diagnoses_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_admissions_query
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_discharges_query
@@ -66,6 +56,14 @@ maternity_completeness_id = ''
 
 maternal_script_id_dev = ''
 
+generic_dedup_queries = []
+
+ ## LIST ALL OLD SCRIPT NAMES INORDER TO ADD GENERIC GENERATION FOR NEW SCRIPTS
+old_scripts = ['admissions','discharges','maternals','maternals_dev','vital_signs','neolabs','baselines','maternity_completeness']
+
+##INITIALISE NEW SCRIPTS
+new_scripts = []
+
 
 # Hospital Scripts Configs
 hospital_scripts = hospital_conf()
@@ -88,8 +86,19 @@ if hospital_scripts:
       neolab_tuple = []
       baseline_tuple = []
       vitals_tuple = []
+      ### FOR CREATING SCRIPTS DYNAMICALLY
+      generic_catalog = {}
+     
+      
+      #Remove Dev Data From Production Instance:
+      #Take Everything (Applies To Dev And Stage Environments)
+      additional_where = " "
+      #Else Remove All Records That Were Created In App Mode Dev
+      if(env=="prod"):
+         additional_where = "  and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
 
-       
+     
+      ###This Assumes One Script Id Per Script, Per Hospital  
       for hospital in hospital_scripts:
             ids = hospital_scripts[hospital]
             if 'country' in ids.keys() and 'country' in params.keys():
@@ -144,7 +153,35 @@ if hospital_scripts:
                      if (maternity_completeness_id != ''):
                         mat_completeness_tuple.append(maternity_completeness_id)
                         maternity_completeness_case = maternity_completeness_case+ " WHEN scriptid ='{0}' THEN '{1}' ".format(maternity_completeness_id,hospital)
-               
+                  
+                  ### LOOP THROUGH ALL NEW SCRIPTS PER HOSPITAL
+                  ### ONLY USE THIS FUNCTION IF THERE ARE NO ADDITIONAL TWEAKS TO THE SCRIPT
+                  ### OTHERWISE YOU WILL BE FORCED TO MANIPULATE THE CODE
+                  new_scripts = list(set(ids.keys()).difference(old_scripts))
+                 
+                  for table_name in new_scripts:
+                     script_id = ids[table_name]
+                     if(script_id!=''):
+                        script_case=f''' CASE WHEN scriptid='{script_id}' THEN {hospital} END AS "facility" '''
+                        ####### GENERATE DEDUPLICATION TABLES##############
+                        dedup_destination = 'deduplicated_'+table_name
+                        ### STRIPE DEV RECORDS FROM PRODUCTION IF REQUIRED
+                        query_condition = f''' = {script_id} '''
+                        deduplication_query = deduplicate_data_query(query_condition+additional_where,dedup_destination)
+                        generic_dedup_queries.append(deduplication_query)
+                        read_query = read_deduplicated_data_query(script_case,query_condition,dedup_destination)
+                        create_query = SQLTableDataSet(
+                                       table_name=table_name,
+                                       credentials=dict(con=con),
+                                       save_args = dict(schema='derived',if_exists='replace')
+                                      )
+                        #### ADD THE QUERIES TO THE GENERIC CATALOG
+                        generic_catalog['read_'+table_name] = SQLQueryDataSet(
+                                                sql= read_query,
+                                                credentials=dict(con=con)
+                                                )
+                        generic_catalog['create_derived_'+table_name] = create_query                                 
+                  
             else:
                log.error("Please specify country in both `database.ini` and `hospitals.ini` files")
                sys.exit() 
@@ -190,11 +227,11 @@ if hospital_scripts:
 
 #DEFINE FROM SECTION TO AVOID ERROR FROM NON-EXISTING OPTIONAL TABLE
 generic_from = 'public.sessions'
-mat_outcomes_from = 'scratch.deduplicated_maternals'
-neolab_from = 'scratch.deduplicated_neolabs'
-baseline_from = 'scratch.deduplicated_baseline'
-vital_signs_from = 'scratch.deduplicated_vitals'
-mat_completeness_from = 'scratch.deduplicated_maternity_completeness'
+mat_outcomes_from = 'deduplicated_maternals'
+neolab_from = 'deduplicated_neolabs'
+baseline_from = 'deduplicated_baseline'
+vital_signs_from = 'deduplicated_vitals'
+mat_completeness_from = 'deduplicated_maternity_completeness'
 
 #If maternal outcomes id is empty the system should take data from take data directly from sessions which idearly should be empty
 adm_where = f''' = '' '''
@@ -204,12 +241,7 @@ mat_completeness_where = f''' = '' '''
 neolab_where = f''' = '' '''
 baseline_where = f''' = '' '''
 vitals_where = f''' = '' '''
-#Remove Dev Data From Production Instance:
-#Take Everything (Applies To Dev And Stage Environments)
-additional_where = " "
-#Else Remove All Records That Were Created In App Mode Dev
-if(env=="prod"):
-   additional_where = "  and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
+
 
 if (len(mat_tuple) == 0):
    mat_outcomes_from = generic_from
@@ -275,24 +307,27 @@ elif (len(disc_tuple) >1):
 else:
    pass
 
-
-dedup_admissions = deduplicate_admissions_query(adm_where+additional_where)
-dedup_baseline = deduplicate_baseline_query(baseline_where + additional_where)
-dedup_mat_completeness = deduplicate_mat_completeness_query(mat_completeness_where + additional_where)
-dedup_vitals = deduplicate_vitals_query(vitals_where + additional_where)
 dedup_neolab = deduplicate_neolab_query(neolab_where + additional_where)
-dedup_maternal = deduplicate_maternal_query(mat_outcomes_where + additional_where)
-dedup_discharges = deduplicate_discharges_query(disc_where + additional_where)
-read_admissions = read_admissions_query(admissions_case,adm_where)
-read_discharges = read_discharges_query(dicharges_case,disc_where)
-read_maternal_outcome = read_maternal_outcome_query(maternal_case,mat_outcomes_from,mat_outcomes_where)
-read_vitalsigns = read_vitalsigns_query(vitals_case,vital_signs_from,vitals_where)
-read_baselines = read_baselines_query(baseline_case,baseline_from,baseline_where)
-read_mat_completeness = read_mat_completeness_query(maternity_completeness_case,mat_completeness_from,mat_completeness_where)
-derived_admissions = derived_admissions_query()
-derived_discharges = derived_discharges_query()
-read_noelab = read_noelab_query(neolabs_case,neolab_from,neolab_where)
+dedup_admissions = deduplicate_data_query(adm_where+additional_where,'deduplicated_admissions')
+dedup_baseline = deduplicate_data_query(baseline_where + additional_where,'deduplicated_baseline')
+dedup_mat_completeness = deduplicate_data_query(mat_completeness_where + additional_where,'deduplicated_maternity_completeness')
+dedup_vitals = deduplicate_data_query(vitals_where + additional_where,'deduplicated_vitals')
+dedup_maternal = deduplicate_data_query(mat_outcomes_where + additional_where,'deduplicated_maternals')
+dedup_discharges = deduplicate_data_query(disc_where + additional_where,'deduplicated_discharges')
+################################READ DEDUPLICATED#################################################
+read_admissions = read_deduplicated_data_query(admissions_case,adm_where,'deduplicated_admissions')
+read_discharges = read_deduplicated_data_query(dicharges_case,disc_where,'deduplicated_discharges')
+read_maternal_outcome = read_deduplicated_data_query(maternal_case,mat_outcomes_where,mat_outcomes_from)
+read_vitalsigns = read_deduplicated_data_query(vitals_case,vitals_where,vital_signs_from)
+read_baselines = read_deduplicated_data_query(baseline_case,baseline_where,baseline_from)
+read_noelab = read_deduplicated_data_query(neolabs_case,neolab_where,neolab_from)
+read_mat_completeness = read_deduplicated_data_query(maternity_completeness_case,mat_completeness_where,mat_completeness_from)
 read_diagnoses= read_diagnoses_query(admissions_case,adm_where)
+##################################################################################################
+
+derived_admissions = read_derived_data_query('admissions')
+derived_discharges = read_derived_data_query('discharges')
+
 #UNION VIEWS FOR OLD SMCH AND NEW SMCH DATA
 read_new_smch_admissions = read_new_smch_admissions_query()
 read_new_smch_discharges = read_new_smch_discharges_query()
@@ -489,4 +524,4 @@ catalog = DataCatalog(
             credentials=dict(con=con)
          )
         }
-        )
+        ).add_all(generic_catalog)
