@@ -39,7 +39,8 @@ def tidy_dynamic_tables():
                         
                     ########### FORMAT OTHER DATES
                     # Get the date columns
-                    date_columns = script_df.select_dtypes(include='datetime64').columns
+                    datetime_types = ["datetime","datetime64", "datetime64[ns]", "datetimetz"]
+                    date_columns = script_df.select_dtypes(include=datetime_types).columns
                     for date_column in date_columns:
                         format_date_without_timezone(script_df,date_column);
                     # Now write the cleaned up admission and discharge tables back to the database
