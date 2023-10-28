@@ -161,7 +161,7 @@ if hospital_scripts:
                   for table_name in new_scripts:
                      script_id = ids[table_name]
                      if(script_id!=''):
-                        script_case=f''' CASE WHEN scriptid='{script_id}' THEN '{hospital}' END AS "facility" '''
+                        script_case=f''',CASE WHEN scriptid='{script_id}' THEN '{hospital}' END AS "facility" '''
                         ####### GENERATE DEDUPLICATION TABLES##############
                         dedup_destination = 'scratch.deduplicated_'+table_name
                         ### STRIPE DEV RECORDS FROM PRODUCTION IF REQUIRED
