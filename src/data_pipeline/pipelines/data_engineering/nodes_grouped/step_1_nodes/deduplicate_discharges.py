@@ -1,6 +1,7 @@
 import os, sys
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
+from conf.common.format_error import formatError
 from conf.base.catalog import dedup_discharges,cron_log_file
 import logging
 from pathlib import Path,PureWindowsPath
@@ -11,7 +12,7 @@ from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import
 def deduplicate_discharges(data_import_output):
     try:
         if data_import_output is not None:
-            discharge_data_cleanup()
+            data_labels_cleanup('discharges')
             sql_script = dedup_discharges
             inject_sql(sql_script, "deduplicate-discharges")
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
@@ -31,5 +32,5 @@ def deduplicate_discharges(data_import_output):
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Deduplicating Discharges ".format(cron_time,mode))
         cron_log.close()
-        logging.error(e.with_traceback())
+        logging.error(formatError(e))
         sys.exit(1)
