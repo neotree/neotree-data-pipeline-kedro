@@ -342,9 +342,8 @@ get_maternal_outcome_to_fix = get_maternal_data_tofix_query()
 get_admissions_data_to_fix = get_admissions_data_tofix_query()
 get_baseline_data_to_fix = get_baseline_data_tofix_query()
 
-#Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')
-catalog = DataCatalog(
-        {
+#Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')-
+old_catalog =  {
          #Read Admissions
          "read_admissions": SQLQueryDataSet(
             sql= read_admissions,
@@ -523,4 +522,7 @@ catalog = DataCatalog(
             credentials=dict(con=con)
          )
         }
-        ).add_all(generic_catalog)
+combined_catalog = old_catalog.update(generic_catalog)   
+catalog = DataCatalog(
+         combined_catalog
+        )
