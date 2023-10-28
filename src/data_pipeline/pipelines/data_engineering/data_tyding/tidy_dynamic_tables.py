@@ -20,6 +20,7 @@ def tidy_dynamic_tables():
         #Read Data From The Kedro Catalog
         for script in new_scripts:
             catalog_query = f'''read_{script}'''
+            logging.info("*******CATALOG QUERY====",catalog_query)
             script_raw = catalog.load(catalog_query)
         
             try:
@@ -49,7 +50,9 @@ def tidy_dynamic_tables():
                         if not script_df.empty:
                             ##### REMOVE INVALID CHARACTERS FROM DATAFRAMES 
                             script_df.columns = script_df.columns.str.replace(r"[()-]", "_")
-                            catalog.save(f'''create_derived_{script}''',script_df)
+                            catalog_save_name = f'''create_derived_{script}'''
+                            logging.info("****************SAVING***************"+catalog_save_name)
+                            catalog.save(catalog_save_name,script_df)
                             logging.info("... Creating MCL count tables for Generic Scripts")
                             explode_column(script_df,script_mcl,script+'_')      
                     except Exception as e:                            

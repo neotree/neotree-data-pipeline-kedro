@@ -33,7 +33,8 @@ def deduplicate_other_data(data_import_output):
                 inject_sql(mat_completeness_script, "deduplicate-mat-completeness")
             ###DEDUPLICATE DYNAMICALLY ADDED SCRIPTS
             for index,dedup_query in enumerate(generic_dedup_queries):
-                inject_sql(dedup_query, f'''deduplicate-generic_{index}''')
+                current_dedup = f'''deduplicate-generic_{index}'''
+                inject_sql(dedup_query, current_dedup)
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
             return dict(
                 status='Success',

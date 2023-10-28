@@ -175,11 +175,15 @@ if hospital_scripts:
                                        save_args = dict(schema='derived',if_exists='replace')
                                       )
                         #### ADD THE QUERIES TO THE GENERIC CATALOG
-                        generic_catalog['read_'+table_name] = SQLQueryDataSet(
+                        read_table = f'''read_{table_name}'''
+                        create_table =f'''create_derived_{table_name}'''
+                        generic_catalog.update({read_table: SQLQueryDataSet(
                                                 sql= read_query,
                                                 credentials=dict(con=con)
-                                                )
-                        generic_catalog['create_derived_'+table_name] = create_query                                 
+                                                ),
+                                                create_table:
+                                                create_query
+                                                })
                   
             else:
                log.error("Please specify country in both `database.ini` and `hospitals.ini` files")
