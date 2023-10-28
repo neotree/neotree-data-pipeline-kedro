@@ -21,7 +21,7 @@ def tidy_dynamic_tables():
         logging.info("*********NEW SCRIPTS**************"+str(new_scripts))
         for index,script in new_scripts:
             script_raw = catalog.load(f'''read_{script}''')
-            logging.info("********* Extracting Keys For Generic Table******* "+f'''read_{script}'''+str(script_raw))
+        
             try:
                 script_new_entries, script_mcl = get_key_values(script_raw)
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
@@ -41,7 +41,7 @@ def tidy_dynamic_tables():
                     # Get the date columns
                     date_columns = script_df.select_dtypes(include='datetime64').columns
                     for date_column in date_columns:
-                        format_date(script_df,date_column);
+                        format_date_without_timezone(script_df,date_column);
                     # Now write the cleaned up admission and discharge tables back to the database
                     logging.info("... Writing the Generics to the database")
                     try:
