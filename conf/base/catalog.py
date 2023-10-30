@@ -122,7 +122,7 @@ if hospital_scripts:
                   generic_dedup_queries.append(deduplication_query)
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
-                     script_case = case_object[0]   
+                     script_case = case_object[0][script_name]  
                   read_query = read_deduplicated_data_query(script_case,condition,dedup_destination)
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
