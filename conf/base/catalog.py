@@ -87,6 +87,7 @@ if hospital_scripts:
                                     existing_list =  dic[key]
                                     existing_list.append(script_id)
                                     dic[key] = existing_list
+                                    break
                            ##### ADD TO THE CASE CONDITION
                            for case in processed_case:
                               for key in case.keys():
@@ -94,6 +95,7 @@ if hospital_scripts:
                                     existing_case =  case[key]
                                     existing_case = existing_case+ f''' WHEN scriptid ='{script_id}' THEN '{hospital}' '''
                                     case[key] = existing_case
+                                    break
       #########CLOSE CASE STATEMENTS
       for case in processed_case:
          for key in case.keys():
@@ -118,6 +120,9 @@ if hospital_scripts:
                   if(script_name=='neolab'):
                      deduplication_query= deduplicate_neolab_query(condition+additional_where)
                   generic_dedup_queries.append(deduplication_query)
+                  case_object = [item for item in processed_case if script_name in item]
+                  if case_object:
+                     script_case = case_object[0]   
                   read_query = read_deduplicated_data_query(script_case,condition,dedup_destination)
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
