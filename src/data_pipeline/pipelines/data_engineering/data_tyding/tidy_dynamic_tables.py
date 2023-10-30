@@ -20,7 +20,6 @@ def tidy_dynamic_tables():
         #Read Data From The Kedro Catalog
         for script in new_scripts:
             catalog_query = f'''read_{script}'''
-            logging.info("*******CATALOG QUERY====",catalog_query)
             script_raw = catalog.load(catalog_query)
         
             try:
