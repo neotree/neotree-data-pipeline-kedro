@@ -75,7 +75,7 @@ if hospital_scripts:
                         script_id = ids[script]
                         if script not in processed_script_names: 
                            processed_scripts.append({script:[script_id]})
-                           script_case = f''', CASE WHEN sriptid='{script_id}' then '{hospital}'  '''
+                           script_case = f''', CASE WHEN scriptid='{script_id}' then '{hospital}'  '''
                            processed_case.append({script:script_case})
                            
                            processed_script_names.append(script)
