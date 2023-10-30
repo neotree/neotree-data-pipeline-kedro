@@ -37,7 +37,7 @@ generic_dedup_queries = []
 # Hospital Scripts Configs
 hospital_scripts = hospital_conf()
 
-old_scripts = ['admissions','discharges','maternals','maternals_dev','vital_signs','neolabs','baseline','maternity_completeness','country','name']
+old_scripts = ['admissions','discharges','maternal_outcomes','maternals_dev','vitalsigns','neolab','baseline','maternity_completeness','country','name']
 
 ##INITIALISE NEW SCRIPTS
 new_scripts = []
