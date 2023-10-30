@@ -8,21 +8,12 @@ import sys,os
 import logging
 from datetime import datetime
 import time
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_admissions_data_tofix_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_neolab_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import deduplicate_data_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_deduplicated_data_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_admissions_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_discharges_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_admissions_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_discharges_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_old_smch_matched_view_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_new_smch_matched_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_duplicate_maternal_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_discharges_tofix_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_maternal_data_tofix_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_admissions_data_tofix_query
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import get_baseline_data_tofix_query
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (get_admissions_data_tofix_query,
+                            deduplicate_neolab_query,read_deduplicated_data_query,read_new_smch_admissions_query,
+                            read_new_smch_discharges_query,read_old_smch_admissions_query,read_old_smch_discharges_query,
+                            read_old_smch_matched_view_query,read_new_smch_matched_query,get_duplicate_maternal_query,
+                            get_discharges_tofix_query,get_maternal_data_tofix_query,get_admissions_data_tofix_query,
+                            get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query)
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -130,7 +121,7 @@ if hospital_scripts:
                                  save_args = dict(schema='derived',if_exists='replace')
                                  )
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
-                  read_table = f'''read_derived_{script_name}'''
+                  read_table = f'''read_{script_name}'''
                   create_table =f'''create_derived_{script_name}'''  
                   generic_catalog.update({read_table: SQLQueryDataSet(
                                           sql= read_query,
@@ -153,6 +144,8 @@ read_old_smch_admissions = read_old_smch_admissions_query()
 read_old_smch_discharges = read_old_smch_discharges_query()
 read_old_smch_matched_data = read_old_smch_matched_view_query()
 read_new_smch_matched = read_new_smch_matched_query()
+derived_admissions = read_derived_data_query('admissions')
+derived_discharges = read_derived_data_query('discharges')
 
 #DATA CLEANUP QUERIES
 get_duplicate_maternal_data = get_duplicate_maternal_query()
@@ -163,7 +156,18 @@ get_baseline_data_to_fix = get_baseline_data_tofix_query()
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')-
 old_catalog =  {
-         
+          #Read Derived Admissions
+        "read_derived_admissions": SQLQueryDataSet(
+            sql= derived_admissions,
+            #load_args= dict(index_col="uid"),
+            credentials=dict(con=con)
+         ),
+         #Read Derived Discharges
+         "read_derived_discharges": SQLQueryDataSet(
+            sql= derived_discharges,
+            #load_args= dict(index_col="uid"),
+            credentials=dict(con=con)
+         ),
            #Read New SCMH Admissions Data
          "read_new_smch_admissions": SQLQueryDataSet(
             sql= read_new_smch_admissions,
