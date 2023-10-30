@@ -156,7 +156,8 @@ def deduplicate_maternal_query(mat_outcomes_where):
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid {mat_outcomes_where} -- only pull out maternal  data
+            where scriptid {mat_outcomes_where}  -- only pull out maternal  data
+            and ingested_at > '2022-08-01' 
             group by 1,2
             )
             select
