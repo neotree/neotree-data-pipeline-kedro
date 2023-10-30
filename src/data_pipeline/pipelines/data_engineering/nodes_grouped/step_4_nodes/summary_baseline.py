@@ -2,10 +2,8 @@ import logging
 import sys,os
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
-from conf.common.format_error import formatError
-from conf.base.catalog import cron_log_file
+from conf.base.catalog import cron_log_file,env,cron_time
 from data_pipeline.pipelines.data_engineering.queries.create_summary_baselines_sql import summary_baseline_query
-from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists 
 
 
@@ -39,7 +37,7 @@ def create_summary_baseline(join_tables_output):
         logging.error("!!! An error occured creating summary baseline: ")
         cron_log = open(cron_log_file,"a+")
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
-        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Baseline ".format(cron_time,mode))
+        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Baseline ".format(cron_time,env))
         cron_log.close()
         raise e
         

@@ -3,11 +3,8 @@ import sys,os
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql_procedure
 from conf.common.format_error import formatError
-from conf.common.config import config
-from conf.base.catalog import cron_log_file
+from conf.base.catalog import cron_log_file,cron_time,start,env
 from data_pipeline.pipelines.data_engineering.queries.grant_usage_on_tables_sql import grant_usage_query 
-from datetime import datetime
-from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time, start
 import logging
 import time
 
@@ -27,7 +24,7 @@ def grant_privileges(create_summary_counts_output):
             if execution_time > 0:
                 execution_time_minutes = round(execution_time//60)
                 execution_time_seconds = round(execution_time % 60)
-                cron_log.write("StartTime: {0}   Instance: {1}   Status: Success  ExecutionTime: {2} mins {3} seconds \n".format(cron_time,mode,execution_time_minutes,execution_time_seconds))
+                cron_log.write("StartTime: {0}   Instance: {1}   Status: Success  ExecutionTime: {2} mins {3} seconds \n".format(cron_time,env,execution_time_minutes,execution_time_seconds))
                 cron_log.close()
 
             #Add Return Value For Kedro Not To Throw Data Error
@@ -44,7 +41,7 @@ def grant_privileges(create_summary_counts_output):
     except Exception as e:
         logging.error(
             "!!! An error occured Granting Priviledges: ")
-        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Granting Privileges".format(cron_time,mode))
+        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Granting Privileges".format(cron_time,env))
         cron_log.close()
         logging.error(formatError(e))
         sys.exit(1)

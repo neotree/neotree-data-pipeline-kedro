@@ -1,8 +1,6 @@
 from kedro.pipeline import node
 from .nodes_grouped.data_impotation_nodes.import_from_raw_json import import_json_files
-from .nodes_grouped.step_1_nodes.deduplicate_admissions import deduplicate_admissions
-from .nodes_grouped.step_1_nodes.deduplicate_discharges import deduplicate_discharges
-from .nodes_grouped.step_1_nodes.deduplicate_other_data import deduplicate_other_data
+from .nodes_grouped.step_1_nodes.deduplicate_data import deduplicate_data
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data
 from .nodes_grouped.step_2_nodes.summary_tables import create_summary_tables
 from .nodes_grouped.step_3_nodes.manually_fix_admissions_records import manually_fix_admissions
@@ -22,23 +20,13 @@ import_raw_json_files_node = node(
     import_json_files,inputs=None,outputs ="data_import_output"
 )
 #Create A Deduplicating Admissions Node
-deduplicate_admissions_node = node(
-    deduplicate_admissions, inputs="data_import_output", outputs="deduplicate_admissions_output"
-)
-
-#Create A Deduplicating Discharges Node
-deduplicate_discharges_node = node(
-    deduplicate_discharges, inputs="data_import_output", outputs="deduplicate_discharges_output"
-)
-
-#Create A Deduplicating  Node
-deduplicate_other_data_node = node(
-    deduplicate_other_data, inputs="data_import_output", outputs="deduplicate_data_output"
+deduplicate_data_node = node(
+    deduplicate_data, inputs="data_import_output", outputs="deduplicate_data_output"
 )
 
 # Create A Data Tyding Node And Pass OutPut From Deduplication
 tidy_data_node = node(
-    tidy_data,  inputs=["deduplicate_admissions_output","deduplicate_data_output","deduplicate_discharges_output"], outputs ="tidy_data_output"
+    tidy_data,  inputs=["deduplicate_data_output"], outputs ="tidy_data_output"
 )
 
 # Create Manually Fixing Admisiions Node And Pass Data Tyding Output as input

@@ -1,9 +1,8 @@
-from conf.base.catalog import catalog,cron_log_file
+from conf.base.catalog import env,cron_time,cron_log_file
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.queries.check_table_count_sql import table_data_count
 from data_pipeline.pipelines.data_engineering.queries.create_summary_discharges_sql import summary_discharges_query
 from conf.common.sql_functions import inject_sql
-from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_discharges import mode,cron_time
 import logging
 import sys
 
@@ -27,7 +26,7 @@ def create_summary_discharges():
     except Exception as e:
         logging.error("!!! An error occured creating summary discharges: ")
         cron_log = open(cron_log_file,"a+")
-        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Discharges ".format(cron_time,mode))
+        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Discharges ".format(cron_time,env))
         cron_log.close()
         logging.error(e)
         sys.exit(1)

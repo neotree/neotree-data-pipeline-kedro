@@ -3,9 +3,8 @@ import sys,os
 sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
-from conf.base.catalog import cron_log_file
+from conf.base.catalog import cron_log_file,cron_time,env
 from data_pipeline.pipelines.data_engineering.queries.create_convenience_views_sql import create_convinience_views_query
-from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 
 
 #Pass Join Table Output To Create Convenience View From Joined Tables
@@ -30,7 +29,7 @@ def create_convenience_views(join_tables_output):
         logging.error("!!! An error occured creating convenience views: ")
         cron_log = open(cron_log_file,"a+")
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
-        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Convenience Views ".format(cron_time,mode))
+        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Convenience Views ".format(cron_time,env))
         raise e
         cron_log.close()
         logging.error(formatError(e))

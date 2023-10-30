@@ -3,7 +3,7 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values
 from .explode_mcl_columns import explode_column
 from conf.base.catalog import catalog,new_scripts
-from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 
 from conf.base.catalog import params
 # Import libraries
