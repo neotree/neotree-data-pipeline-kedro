@@ -74,11 +74,11 @@ def tidy_tables():
         #Read Maternal OutComes from Kedro Catalog
         mat_outcomes_raw = catalog.load('read_maternal_outcomes')
         #Read Vital Signs from Kedro Catalog
-        vit_signs_raw = catalog.load('read_vital_signs')
+        vit_signs_raw = catalog.load('read_vitalsigns')
         #Read Neo Lab Data from Kedro Catalog
         neolab_raw = catalog.load('read_neolab')
         #Read Baseline Data from Kedro Catalog
-        baseline_raw = catalog.load('read_baselines')
+        baseline_raw = catalog.load('read_baseline')
         #Read Diagnoses Data from Kedro Catalog
         diagnoses_raw = catalog.load('read_diagnoses_data') 
         #Read Maternity Completeness Data from Kedro Catalog
