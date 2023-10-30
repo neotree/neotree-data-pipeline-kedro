@@ -108,7 +108,7 @@ if hospital_scripts:
             
             if(type(myIds) is list):
                condition =''
-               if len(ids)==1:
+               if len(myIds)==1:
                   script_id = myIds[0]
                   condition = f''' = '{script_id}' '''
                else:
