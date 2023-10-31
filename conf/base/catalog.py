@@ -237,6 +237,10 @@ old_catalog =  {
             credentials=dict(con=con),
             save_args = dict(schema='derived',if_exists='replace')
          ),
+          "duplicate_maternal_data": SQLQueryDataSet(
+            sql= get_duplicate_maternal_data,
+            credentials=dict(con=con)
+         ),
           "discharges_to_fix": SQLQueryDataSet(
             sql= get_discharges_tofix,
             credentials=dict(con=con)
