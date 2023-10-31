@@ -1,8 +1,7 @@
 import logging
 import sys
-from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
-from conf.base.catalog import cron_log_file
+from conf.base.catalog import cron_log_file,cron_time,env
 from .summary_vitalsigns import create_summary_vitalsigns
 from .maternal_completeness_summary import create_maternal_completeness_summary
 from .summary_joined_vitalsigns import create_summary_joined_vitalsigns
@@ -15,9 +14,9 @@ from conf.base.catalog import params, env
 
 
 
-def create_summary_tables(manually_Fix_admissions_output):
+def create_summary_tables(manually_Fix_admissions_output,manually_fix_discharges_output):
     try:
-        if manually_Fix_admissions_output is not None:
+        if manually_Fix_admissions_output is not None and manually_fix_discharges_output is not None:
             create_summary_vitalsigns()
             create_summary_joined_vitalsigns() 
             create_summary_maternal_outcomes()
@@ -47,6 +46,6 @@ def create_summary_tables(manually_Fix_admissions_output):
         # Only Open This File When Need Be To Write To It
         cron_log = open(cron_log_file, "a+")
         cron_log.write(
-            "StartTime: {0}   Instance: {1}   Status: Failed Stage: Summary Tables ".format(cron_time, mode))
+            "StartTime: {0}   Instance: {1}   Status: Failed Stage: Summary Tables ".format(cron_time, env))
         cron_log.close()
         sys.exit(1)

@@ -1,9 +1,7 @@
 
 from kedro.pipeline import Pipeline
 
-from .nodes import (deduplicate_admissions_node,
-deduplicate_discharges_node,
-deduplicate_other_data_node,
+from .nodes import (deduplicate_data_node,
 tidy_data_node,
 union_views_node,
 manually_fix_admissions_node,
@@ -22,9 +20,7 @@ def create_pipeline(**kwargs):
     return Pipeline(
         [
         import_raw_json_files_node,
-        deduplicate_admissions_node,
-        deduplicate_discharges_node,
-        deduplicate_other_data_node,
+        deduplicate_data_node,
         tidy_data_node,
         manually_fix_admissions_node,
         manually_fix_discharges_node,

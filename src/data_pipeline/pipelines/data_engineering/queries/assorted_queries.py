@@ -1,116 +1,11 @@
 import logging
 
 
-def deduplicate_admissions_query(adm_where):
-    return  f'''
-            drop table if exists scratch.deduplicated_admissions cascade;
-            create table scratch.deduplicated_admissions as 
-            (
-             with earliest_admissions as (
-            select
-            scriptid,
-            uid, 
-            min(id) as id -- This takes the first upload 
-                    -- of the session as the deduplicated record. 
-                    -- We could replace with max(id) to take the 
-                    -- most recently uploaded
-            from public.sessions
-            where scriptid {adm_where}  -- only pull out admissions
-            group by 1,2
-            )
-            select
-            earliest_admissions.scriptid,
-            earliest_admissions.uid,
-            earliest_admissions.id,
-            sessions.ingested_at,
-            data
-            from earliest_admissions join sessions
-            on earliest_admissions.id = sessions.id where sessions.scriptid {adm_where}
-            ); '''
-
-def deduplicate_baseline_query(baseline_where):
-    return f'''drop table if exists scratch.deduplicated_baseline cascade;
-            create table scratch.deduplicated_baseline as 
-            (
-            with earliest_baseline as (
-            select
-            scriptid,
-            uid, 
-            min(id) as id -- This takes the first upload 
-                    -- of the session as the deduplicated record. 
-                    -- We could replace with max(id) to take the 
-                    -- most recently uploaded
-            from public.sessions
-            where scriptid  {baseline_where} -- only pull out baseline
-            group by 1,2
-             )
-            select
-            earliest_baseline.scriptid,
-            earliest_baseline.uid,
-            earliest_baseline.id,
-            sessions.ingested_at,
-            data
-            from earliest_baseline join sessions
-            on earliest_baseline.id = sessions.id where sessions.scriptid {baseline_where}
-            ); '''
-
-def deduplicate_mat_completeness_query(mat_completeness_where):
-    return  f'''drop table if exists scratch.deduplicated_maternity_completeness cascade;
-            create table scratch.deduplicated_maternity_completeness as 
-            (
-            with earliest_mat_completeness as (
-            select
-            scriptid,
-            uid, 
-            min(id) as id -- This takes the first upload 
-                    -- of the session as the deduplicated record. 
-                    -- We could replace with max(id) to take the 
-                    -- most recently uploaded
-            from public.sessions
-            where scriptid {mat_completeness_where} -- only pull out maternity completeness data
-            group by 1,2
-            )
-            select
-            earliest_mat_completeness.scriptid,
-            earliest_mat_completeness.uid,
-            earliest_mat_completeness.id,
-            sessions.ingested_at,
-            data
-            from earliest_mat_completeness join sessions
-            on earliest_mat_completeness.id = sessions.id where sessions.scriptid {mat_completeness_where}
-            ); '''
-
-
-def deduplicate_vitals_query(vitals_where):
-    return f'''drop table if exists scratch.deduplicated_vitals cascade;
-                create table scratch.deduplicated_vitals as 
-                (
-                with earliest_vitals as (
-                select
-                scriptid,
-                uid, 
-                min(id) as id -- This takes the first upload 
-                    -- of the session as the deduplicated record. 
-                    -- We could replace with max(id) to take the 
-                    -- most recently uploaded
-                from public.sessions
-                where scriptid {vitals_where} -- only pull out vitals
-                group by 1,2
-                )
-                select
-                earliest_vitals.scriptid,
-                earliest_vitals.uid,
-                earliest_vitals.id,
-                sessions.ingested_at,
-                data
-                from earliest_vitals join sessions
-                on earliest_vitals.id = sessions.id where sessions.scriptid {vitals_where}
-                ); '''
-
+#TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 def deduplicate_neolab_query(neolab_where):
     return f'''
-            drop table if exists scratch.deduplicated_neolabs cascade;
-            create table scratch.deduplicated_neolabs as 
+            drop table if exists scratch.deduplicated_neolab cascade;
+            create table scratch.deduplicated_neolab as 
             (
             with earliest_neolab as (
             select
@@ -142,173 +37,57 @@ def deduplicate_neolab_query(neolab_where):
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
             ); '''
 
-def deduplicate_maternal_query(mat_outcomes_where):
-    return f'''
-            drop table if exists scratch.deduplicated_maternals cascade;
-            create table scratch.deduplicated_maternals as 
+def deduplicate_data_query(condition,destination_table):
+    if(destination_table!='public.sessions'):
+        return f'''drop table if exists {destination_table} cascade;
+            create table {destination_table} as 
             (
-            with earliest_maternal as (
+            with earliest_record as (
             select
             scriptid,
             uid, 
-            min(id) as id -- This takes the first upload 
+            max(id) as id -- This takes the first upload 
                     -- of the session as the deduplicated record. 
                     -- We could replace with max(id) to take the 
                     -- most recently uploaded
             from public.sessions
-            where scriptid {mat_outcomes_where} -- only pull out maternal  data
+            where scriptid {condition} -- only pull out discharges
             group by 1,2
             )
             select
-            earliest_maternal.scriptid,
-            earliest_maternal.uid,
-            earliest_maternal.id,
+            earliest_record.scriptid,
+            earliest_record.uid,
+            earliest_record.id,
             sessions.ingested_at,
             data
-            from earliest_maternal join sessions
-            on earliest_maternal.id = sessions.id where sessions.scriptid {mat_outcomes_where}  
-            ); '''
-
-def deduplicate_discharges_query(disc_where):
-    return f'''drop table if exists scratch.deduplicated_discharges cascade;
-            create table scratch.deduplicated_discharges as 
-            (
-            with earliest_discharges as (
-            select
-            scriptid,
-            uid, 
-            min(id) as id -- This takes the first upload 
-                    -- of the session as the deduplicated record. 
-                    -- We could replace with max(id) to take the 
-                    -- most recently uploaded
-            from public.sessions
-            where scriptid {disc_where} -- only pull out discharges
-            group by 1,2
-            )
-            select
-            earliest_discharges.scriptid,
-            earliest_discharges.uid,
-            earliest_discharges.id,
-            sessions.ingested_at,
-            data
-            from earliest_discharges join sessions
-            on earliest_discharges.id = sessions.id where sessions.scriptid {disc_where}
-            ); '''
-
-def read_admissions_query(admissions_case,adm_where):
-    return f'''
-            select 
-                uid,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" {admissions_case} 
-            from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';
+            from earliest_record join sessions
+            on earliest_record.id = sessions.id where sessions.scriptid {condition}
+            );
             '''
-def read_discharges_query(dicharges_case,disc_where):
-    return   f'''
-             select 
-                uid,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" {dicharges_case}
-             from scratch.deduplicated_discharges where scriptid {disc_where} and uid!='null';
-             '''
-
-def read_maternal_outcome_query(maternal_case,mat_outcomes_from,mat_outcomes_where):
-    return  f'''
-            select 
-                scriptid,
-                uid,
-                id,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                    "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" {maternal_case}
-            from {mat_outcomes_from} where scriptid {mat_outcomes_where} and uid!='null'; 
-            '''
-def read_vitalsigns_query(vitals_case,vital_signs_from,vitals_where):
-    return f'''
-            select 
-                scriptid,
-                uid,
-                id,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" {vitals_case}
-            from {vital_signs_from} where scriptid {vitals_where} and uid!='null';
-            '''
-
-def read_baselines_query(baseline_case,baseline_from,baseline_where):
-    return  f'''
-            select 
-                scriptid,
-                uid,
-                id,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" {baseline_case}
-            from {baseline_from} where scriptid {baseline_where} and uid!='null';
-        '''
-
-def read_mat_completeness_query(maternity_completeness_case,mat_completeness_from,mat_completeness_where):
-    return f'''
-            select 
-                scriptid,
-                uid,
-                id,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" {maternity_completeness_case}
-            from {mat_completeness_from} where scriptid{mat_completeness_where} and uid!='null';
-            '''
-
-def derived_admissions_query():
+            
+def read_deduplicated_data_query(case_condition,where_condition,source_table):
     return f'''
                 select 
-                    *
-                from derived.admissions where uid!='null';
-            '''
-
-def derived_discharges_query():
-    return f'''
-            select 
-                *
-            from derived.discharges where uid!='null';
-            '''
-
-
-def read_noelab_query(neolabs_case,neolab_from,neolab_where):
-   return f'''
-            select 
-                scriptid,
                 uid,
-                id,
                 ingested_at,
                 "data"->'appVersion' as "appVersion",
                 "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
-                    "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries" {neolabs_case}
-            from {neolab_from} where scriptid {neolab_where};
+                "data"->'completed_at' as "completed_at",
+                "data"->'entries' as "entries"
+                {case_condition}
+            from {source_table} where scriptid {where_condition} and uid!='null';
+   
+  '''
+  
+def read_derived_data_query(source_table):
+     return f'''
+                select 
+                    *
+                from derived.{source_table} where uid!='null';
             '''
 
+##SPECIAL CASE
 def read_diagnoses_query(admissions_case,adm_where):
     return f'''
             select 
@@ -410,20 +189,28 @@ def update_maternal_outer_uid(uid):
 
 def get_discharges_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid='-ZYDiO2BTM4kSGZDVXAO';
+             ("data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%'
+             or "data"->'entries'->'ModeDelivery'->'values'->'label'::text->>0 like '%%Mode of Delivery%%') 
+             and scriptid in ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka','-KYDiO2BTM4kSGZDVXAO');
              '''
 def get_maternal_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid='-MDPYzHcFVHt02D1Tz4Z';
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid in ('-MDPYzHcFVHt02D1Tz4Z' 
+             ,'-MYk0A3-Z_QjaXYU5MsS','-MOAjJ_In4TOoe0l_Gl5');
              '''
 def get_admissions_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%%Presenting complaint%%' and scriptid='-ZO1TK4zMvLhxTw6eKia';
+             ("data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%%Presenting complaint%%'
+             or "data"->'entries'->'ModeDelivery'->'values'->'label'::text->>0 like '%%Mode of Delivery%%'
+             or "data"->'entries'->'HIVtestResult'->'values'->'label'::text->>0 like '%%What%%'
+             ) and scriptid in ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK','-KO1TK4zMvLhxTw6eKia');
              '''
 def get_baseline_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid='-MX3bKFIUQxrUw9nmtfb';
+             "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
+             ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');
              '''
+                         
 def update_eronous_label(uid,script_id,type,key,label,value):
             return '''update public.sessions set data = JSONB_SET(
              data,

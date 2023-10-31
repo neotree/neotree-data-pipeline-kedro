@@ -4,10 +4,7 @@ sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.admissions_manually_fix_records_sql import manually_fix_admissions_query
-from conf.base.catalog import cron_log_file
-from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
-
-
+from conf.base.catalog import cron_log_file,cron_time,env
 
 
 #Passing Step 2 Output So That It can Wait For Step 2 Data Tyding To Happen
@@ -31,7 +28,7 @@ def manually_fix_admissions(tidy_data_output):
         logging.error(
             "!!! An error occured manually fixing admissions: ")
         cron_log = open(cron_log_file,"a+")
-        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Manually Fixing Admissions ".format(cron_time,mode))
+        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Manually Fixing Admissions ".format(cron_time,env))
         cron_log.close()
         logging.error(formatError(e))
         sys.exit(1)

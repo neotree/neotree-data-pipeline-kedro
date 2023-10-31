@@ -201,4 +201,15 @@ To fix the above error, please install 'psycopg2-binary' in your virtual environ
 Try installing libraries suggested in the post below:
 `https://stackoverflow.com/questions/69624327/failed-building-wheel-for-pillow`
 
+### ADDING A NEW SCRIPT
+> Two scenarios exist: 1. Adding a script to an existing facility  2.Adding a new facility with new scripts
+1. In scenario 1 add the script id to the hospitals.ini file using the derived table name
+e.g pgc_admissions = -KW34DF56778FGH
+2. In scenario 2, follow the format below:
+
+[NFC]
+name= Parirenyatwa Group of Hospitals
+country=  zimbabwe
+new_script = DNPARDEMOSERTDOOO
+
 

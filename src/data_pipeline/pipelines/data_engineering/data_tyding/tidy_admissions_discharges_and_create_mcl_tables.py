@@ -3,7 +3,6 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
-from conf.common.sql_functions import inject_sql
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
@@ -12,6 +11,8 @@ from data_pipeline.pipelines.data_engineering.queries.update_uid import update_u
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from .neolab_data_cleanup import neolab_cleanup
+from .tidy_dynamic_tables import tidy_dynamic_tables
+
 from conf.base.catalog import params
 import datetime
 # Import libraries
@@ -56,6 +57,12 @@ def tidy_tables():
     #     raise ex;
 
     # Read the raw admissions and discharge data into dataframes
+    try:
+        tidy_dynamic_tables()
+        
+    except Exception as e:
+        logging.error("!!! An error occured processing Dynamic Scripts ")
+        logging.error(formatError(e))
     logging.info("... Fetching raw admission and discharge data")
     
     try:
@@ -66,15 +73,15 @@ def tidy_tables():
         #Read Maternal OutComes from Kedro Catalog
         mat_outcomes_raw = catalog.load('read_maternal_outcomes')
         #Read Vital Signs from Kedro Catalog
-        vit_signs_raw = catalog.load('read_vital_signs')
+        vit_signs_raw = catalog.load('read_vitalsigns')
         #Read Neo Lab Data from Kedro Catalog
-        neolab_raw = catalog.load('read_neolab_data')
+        neolab_raw = catalog.load('read_neolab')
         #Read Baseline Data from Kedro Catalog
-        baseline_raw = catalog.load('read_baseline_data')
+        baseline_raw = catalog.load('read_baseline')
         #Read Diagnoses Data from Kedro Catalog
         diagnoses_raw = catalog.load('read_diagnoses_data') 
         #Read Maternity Completeness Data from Kedro Catalog
-        mat_completeness_raw = catalog.load('read_mat_completeness_data') 
+        mat_completeness_raw = catalog.load('read_maternity_completeness') 
 
 
     
@@ -582,7 +589,7 @@ def tidy_tables():
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
          #Save Derived Vital Signs To The DataBase Using Kedro
         if not vit_signs_df.empty:
-            catalog.save('create_derived_vital_signs',vit_signs_df)
+            catalog.save('create_derived_vitalsigns',vit_signs_df)
         #Save Derived NeoLab To The DataBase Using Kedro
         if not neolab_df.empty:
             #SET INDEX 
@@ -593,7 +600,7 @@ def tidy_tables():
             catalog.save('create_derived_neolab',neolab_df)
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
-            catalog.save('create_derived_baselines',baseline_df)
+            catalog.save('create_derived_baseline',baseline_df)
 
          #Save Derived Diagnoses To The DataBase Using Kedro
         if not diagnoses_df.empty:
@@ -629,4 +636,5 @@ def tidy_tables():
     except Exception as e:
         logging.error("!!! An error occured exploding MCL  columns: ")
         logging.error(formatError(e))
-
+        
+   

@@ -1,11 +1,10 @@
-from conf.base.catalog import cron_log_file
+from conf.base.catalog import cron_log_file,cron_time,env
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.queries.check_table_count_sql import table_data_count
 from data_pipeline.pipelines.data_engineering.queries.create_summary_vitalsigns_sql import summary_vital_signs_query
 from data_pipeline.pipelines.data_engineering.queries.create_summary_day_one_vitals_sql import summary_day_one_vitals_query
 from data_pipeline.pipelines.data_engineering.queries.create_summary_day_three_vitals_sql import summary_day_three_vitals_query
 from data_pipeline.pipelines.data_engineering.queries.create_summary_day_two_vitals_sql import summary_day_two_vitals_query
-from data_pipeline.pipelines.data_engineering.nodes_grouped.step_1_nodes.deduplicate_admissions import mode,cron_time
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
 import logging
@@ -42,7 +41,7 @@ def create_summary_vitalsigns():
     except Exception as e:
         logging.error("!!! An error occured creating Vital Signs Summaries: ")
         cron_log = open(cron_log_file,"a+")
-        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Maternal Outcomes ".format(cron_time,mode))
+        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed   Stage: Creating Summary Maternal Outcomes ".format(cron_time,env))
         cron_log.close()
         logging.error(formatError(e))
         sys.exit(1)
