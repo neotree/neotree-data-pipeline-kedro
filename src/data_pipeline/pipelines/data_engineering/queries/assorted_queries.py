@@ -4,8 +4,8 @@ import logging
 #TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 def deduplicate_neolab_query(neolab_where):
     return f'''
-            drop table if exists scratch.deduplicated_neolabs cascade;
-            create table scratch.deduplicated_neolabs as 
+            drop table if exists scratch.deduplicated_neolab cascade;
+            create table scratch.deduplicated_neolab as 
             (
             with earliest_neolab as (
             select
