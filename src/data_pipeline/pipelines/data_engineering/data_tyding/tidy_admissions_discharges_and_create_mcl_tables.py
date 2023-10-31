@@ -590,7 +590,7 @@ def tidy_tables():
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
          #Save Derived Vital Signs To The DataBase Using Kedro
         if not vit_signs_df.empty:
-            catalog.save('create_derived_vital_signs',vit_signs_df)
+            catalog.save('create_derived_vitalsigns',vit_signs_df)
         #Save Derived NeoLab To The DataBase Using Kedro
         if not neolab_df.empty:
             #SET INDEX 
@@ -601,7 +601,7 @@ def tidy_tables():
             catalog.save('create_derived_neolab',neolab_df)
         #Save Derived Baseline To The DataBase Using Kedro
         if not baseline_df.empty:
-            catalog.save('create_derived_baselines',baseline_df)
+            catalog.save('create_derived_baseline',baseline_df)
 
          #Save Derived Diagnoses To The DataBase Using Kedro
         if not diagnoses_df.empty:
