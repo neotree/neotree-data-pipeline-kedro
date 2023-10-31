@@ -13,7 +13,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (g
                             read_new_smch_discharges_query,read_old_smch_admissions_query,read_old_smch_discharges_query,
                             read_old_smch_matched_view_query,read_new_smch_matched_query,get_duplicate_maternal_query,
                             get_discharges_tofix_query,get_maternal_data_tofix_query,get_admissions_data_tofix_query,
-                            get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query)
+                            get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query,read_diagnoses_query)
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -107,13 +107,15 @@ if hospital_scripts:
                else:
                   condition =  f''' in {tuple(myIds)} '''
                if condition !='':
-                  deduplication_query = deduplicate_data_query(condition+additional_where,dedup_destination)
                   if(script_name=='neolab'):
                      deduplication_query= deduplicate_neolab_query(condition+additional_where)
+                  else:
+                     deduplication_query = deduplicate_data_query(condition+additional_where,dedup_destination)
                   generic_dedup_queries.append(deduplication_query)
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
                      script_case = case_object[0][script_name]  
+                     logging.info("*********MY DG************"+dedup_destination)
                   read_query = read_deduplicated_data_query(script_case,condition,dedup_destination)
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
@@ -122,7 +124,9 @@ if hospital_scripts:
                                  )
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
                   read_table = f'''read_{script_name}'''
+                  logging.info("*********MY READ************"+read_table)
                   create_table =f'''create_derived_{script_name}'''  
+                  logging.info("*********MY CREATE************"+create_table)
                   generic_catalog.update({read_table: SQLQueryDataSet(
                                           sql= read_query,
                                           credentials=dict(con=con)
@@ -132,8 +136,9 @@ if hospital_scripts:
                                           })
                   ### ADD READ DIAGNOSIS QUERY
                   if(script_name=='admissions'):
+                     diagnoses_query = read_diagnoses_query(script_case,condition)
                      generic_catalog.update({"read_diagnoses_data": SQLQueryDataSet(
-                                          sql= read_query,
+                                          sql= diagnoses_query,
                                           credentials=dict(con=con)
                                           )}
                                           ) 

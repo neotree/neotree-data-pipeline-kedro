@@ -20,7 +20,7 @@ def create_pipeline(**kwargs):
     return Pipeline(
         [
         import_raw_json_files_node,
-      deduplicate_data_node,
+        deduplicate_data_node,
         tidy_data_node,
         manually_fix_admissions_node,
         manually_fix_discharges_node,
