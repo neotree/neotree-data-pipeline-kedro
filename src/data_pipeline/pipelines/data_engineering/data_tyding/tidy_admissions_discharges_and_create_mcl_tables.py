@@ -57,7 +57,6 @@ def tidy_tables():
     #     raise ex;
 
     # Read the raw admissions and discharge data into dataframes
-    logging.info("****************Processing Dynamic Scripts*******************")
     try:
         tidy_dynamic_tables()
         

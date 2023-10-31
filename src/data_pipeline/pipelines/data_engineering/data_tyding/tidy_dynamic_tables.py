@@ -50,7 +50,6 @@ def tidy_dynamic_tables():
                             ##### REMOVE INVALID CHARACTERS FROM DATAFRAMES 
                             script_df.columns = script_df.columns.str.replace(r"[()-]", "_")
                             catalog_save_name = f'''create_derived_{script}'''
-                            logging.info("****************SAVING***************"+catalog_save_name)
                             catalog.save(catalog_save_name,script_df)
                             logging.info("... Creating MCL count tables for Generic Scripts")
                             explode_column(script_df,script_mcl,script+'_')      

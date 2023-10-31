@@ -115,7 +115,6 @@ if hospital_scripts:
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
                      script_case = case_object[0][script_name]  
-                     logging.info("*********MY DG************"+dedup_destination)
                   read_query = read_deduplicated_data_query(script_case,condition,dedup_destination)
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
@@ -124,9 +123,7 @@ if hospital_scripts:
                                  )
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
                   read_table = f'''read_{script_name}'''
-                  logging.info("*********MY READ************"+read_table)
-                  create_table =f'''create_derived_{script_name}'''  
-                  logging.info("*********MY CREATE************"+create_table)
+                  create_table =f'''create_derived_{script_name}''' 
                   generic_catalog.update({read_table: SQLQueryDataSet(
                                           sql= read_query,
                                           credentials=dict(con=con)
