@@ -31,7 +31,6 @@ def data_labels_cleanup(script):
                                             
                         if value is not None and label is not None:
                             query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                            logging.info("QUERY=="+query)
                             inject_sql(query,f'''FIX {script} ERRORS''')
 
     
