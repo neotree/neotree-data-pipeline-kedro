@@ -15,7 +15,8 @@ def fix_neotree_oucome(value):
             return 'Transferred to other ward'
         if value== 'DAMA':
             return 'Discharged against medical advice'
-
+        if value== 'UK':
+            return 'Unknown'
         if value== 'null':
             return None
 
@@ -62,6 +63,18 @@ def fix_mode_of_delivery(value):
             return 'Elective Caesarean section'
         if value== 'Vent':
             return 'Ventouse'
+        if value =='1':
+            return 'Spontaneous Vaginal Delivery (SVD)'
+        if value =='2':
+            return 'Vacuum extraction'
+        if value=='3':
+            return 'Forceps extraction'
+        if value =='4':
+            return 'Elective Ceasarian Section (ELCS)'
+        if value =='5':
+            return 'Emergency Ceasarian Section (EMCS)'
+        if value =='6':
+            return 'Breech extraction (vaginal'
         return None
 
 def fix_transfare_wards(value):
