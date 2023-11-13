@@ -890,7 +890,11 @@ def fix_adm_yes_no_na(value):
 def fix_hiv_result(value):
     if value=='P':
         return 'Positive'
+    if value=='R':
+        return 'Positive'
     if value == 'N':
+        return 'Negative'
+    if value == 'NR':
         return 'Negative'
     if value == 'U':
         return 'Unknown'
