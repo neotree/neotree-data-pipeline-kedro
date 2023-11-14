@@ -75,6 +75,8 @@ def fix_mode_of_delivery(value):
             return 'Emergency Ceasarian Section (EMCS)'
         if value =='6':
             return 'Breech extraction (vaginal'
+        if value=='7':
+            return 'Unknown'
         return None
 
 def fix_transfare_wards(value):
@@ -490,10 +492,8 @@ def fix_admission_reason(value):
             return 'Gastroschisis'
         if value== 'MJ':
             return 'Physiological Jaundice'
-
         if value== 'LBW':
             return 'Low Birth Weight (1500-2499g)'
-
         if value== 'VLBW':
             return 'Very Low Birth Weight (1000-1499g)'
 
@@ -605,6 +605,8 @@ def fix_maternal_mode_of_delivery(value):
         return 'Emergency Caesarian Section (EMCS)'
     if value == '6':
         return 'Breech extraction (vaginal)'
+    if value=='7':
+        return 'Unknown'
     return None
 
 def fix_maternal_neonatal_outcome(value):
@@ -982,7 +984,7 @@ def fix_adm_admission_reason(value):
         return 'HIV exposed'
     if value == 'J':
         return 'Jaundice'
-    if value == 'LowBirthWeight':
+    if value == 'LowBirthWeight'or value=='LBW':
         return 'Low Birth Weight'
     if value == 'Apg':
         return 'Low Apgars'
@@ -1006,6 +1008,8 @@ def fix_adm_admission_reason(value):
         return 'Safekeeping'
     if value == 'Risk':
         return 'Risk factors for sepsis'
+    if value=='BA':
+        return 'Hypoxic ischaemic encephalopathy'
     if value == 'O':
         return 'Other'
     return None
