@@ -9,7 +9,7 @@ from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import fix_
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 
 def data_labels_cleanup(script):
-       #####IDENTIFY THE FAULTY DISCHARGES
+       #####IDENTIFY THE FAULTY RECORDS
         faulty_df = pd.DataFrame()
         if table_exists('public','sessions'):
             faulty_df = catalog.load(f'''{script}_to_fix''')

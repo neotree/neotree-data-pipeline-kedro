@@ -19,9 +19,9 @@ def deduplicate_neolab_query(neolab_where):
             THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  END AS "DateBCR",
             max(id) as id -- This takes the last upload 
-                    -- of the session as the deduplicated record. 
-                    -- We could replace with min(id) to take the 
-                    -- first uploaded
+                  -- of the session as the deduplicated record. 
+                  -- We could replace with min(id) to take the 
+                  -- first uploaded
             from public.sessions
             where scriptid {neolab_where} -- only pull out neloab data
             group by 1,2,3,4,5
@@ -33,7 +33,7 @@ def deduplicate_neolab_query(neolab_where):
             sessions.ingested_at,
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
-            data
+            sessions.data
             from earliest_neolab join sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
             ); '''
@@ -48,8 +48,12 @@ def deduplicate_data_query(condition,destination_table):
             scriptid,
             uid, 
             unique_key,
+            max(id) as id -- This takes the last upload 
+                  -- of the session as the deduplicated record. 
+                  -- We could replace with min(id) to take the 
+                  -- first uploaded
             from public.sessions
-            where scriptid {condition} -- only pull out discharges
+            where scriptid {condition} -- only pull out records for the specified script
             group by 1,2,3
             )
             select
@@ -57,7 +61,7 @@ def deduplicate_data_query(condition,destination_table):
             earliest_record.uid,
             earliest_record.id,
             sessions.ingested_at,
-            data
+            sessions.data
             from earliest_record join sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );

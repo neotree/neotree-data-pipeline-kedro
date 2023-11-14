@@ -15,7 +15,8 @@ def fix_neotree_oucome(value):
             return 'Transferred to other ward'
         if value== 'DAMA':
             return 'Discharged against medical advice'
-
+        if value== 'UK':
+            return 'Unknown'
         if value== 'null':
             return None
 
@@ -62,6 +63,20 @@ def fix_mode_of_delivery(value):
             return 'Elective Caesarean section'
         if value== 'Vent':
             return 'Ventouse'
+        if value =='1':
+            return 'Spontaneous Vaginal Delivery (SVD)'
+        if value =='2':
+            return 'Vacuum extraction'
+        if value=='3':
+            return 'Forceps extraction'
+        if value =='4':
+            return 'Elective Ceasarian Section (ELCS)'
+        if value =='5':
+            return 'Emergency Ceasarian Section (EMCS)'
+        if value =='6':
+            return 'Breech extraction (vaginal'
+        if value=='7':
+            return 'Unknown'
         return None
 
 def fix_transfare_wards(value):
@@ -477,10 +492,8 @@ def fix_admission_reason(value):
             return 'Gastroschisis'
         if value== 'MJ':
             return 'Physiological Jaundice'
-
         if value== 'LBW':
             return 'Low Birth Weight (1500-2499g)'
-
         if value== 'VLBW':
             return 'Very Low Birth Weight (1000-1499g)'
 
@@ -592,6 +605,8 @@ def fix_maternal_mode_of_delivery(value):
         return 'Emergency Caesarian Section (EMCS)'
     if value == '6':
         return 'Breech extraction (vaginal)'
+    if value=='7':
+        return 'Unknown'
     return None
 
 def fix_maternal_neonatal_outcome(value):
@@ -890,7 +905,11 @@ def fix_adm_yes_no_na(value):
 def fix_hiv_result(value):
     if value=='P':
         return 'Positive'
+    if value=='R':
+        return 'Positive'
     if value == 'N':
+        return 'Negative'
+    if value == 'NR':
         return 'Negative'
     if value == 'U':
         return 'Unknown'
@@ -965,7 +984,7 @@ def fix_adm_admission_reason(value):
         return 'HIV exposed'
     if value == 'J':
         return 'Jaundice'
-    if value == 'LowBirthWeight':
+    if value == 'LowBirthWeight'or value=='LBW':
         return 'Low Birth Weight'
     if value == 'Apg':
         return 'Low Apgars'
@@ -989,6 +1008,8 @@ def fix_adm_admission_reason(value):
         return 'Safekeeping'
     if value == 'Risk':
         return 'Risk factors for sepsis'
+    if value=='BA':
+        return 'Hypoxic ischaemic encephalopathy'
     if value == 'O':
         return 'Other'
     return None
