@@ -104,16 +104,13 @@ if hospital_scripts:
                if len(myIds)==1:
                   script_id = myIds[0]
                   condition = f''' = '{script_id}' '''
-                  logging.info("======MY IDS====="+condition)
                else:
                   condition =  f''' in {tuple(myIds)} '''
-                  logging.info("======MY LIST IDS====="+condition)
                if condition !='':
                   if(script_name=='neolab'):
                      deduplication_query= deduplicate_neolab_query(condition+additional_where)
                   else:
                      deduplication_query = deduplicate_data_query(condition+additional_where,dedup_destination)
-                     logging.info("======MY DEDUP====="+deduplication_query)
                   generic_dedup_queries.append(deduplication_query)
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
