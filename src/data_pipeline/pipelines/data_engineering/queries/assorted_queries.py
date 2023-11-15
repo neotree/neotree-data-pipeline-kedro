@@ -33,7 +33,8 @@ def deduplicate_neolab_query(neolab_where):
             sessions.ingested_at,
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
-            sessions.data
+            earliest_record.unique_key,
+            data
             from earliest_neolab join sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
             ); '''
@@ -57,15 +58,16 @@ def deduplicate_data_query(condition,destination_table):
             group by 1,2,3
             )
             select
+            earliest_record.unique_key,
             earliest_record.scriptid,
             earliest_record.uid,
             earliest_record.id,
             sessions.ingested_at,
-            sessions.data
+            data
             from earliest_record join sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );
-            '''
+            '''      
             
 def read_deduplicated_data_query(case_condition,where_condition,source_table):
     return f'''
@@ -145,7 +147,7 @@ def get_duplicate_maternal_query():
             select uid, s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 as "DA",s."data"->'entries' as "entries"
             from public.sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
             s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' order by
-            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 
+            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 ;
            '''
 
 def update_maternal_uid_query_new(uid,date_condition,old_uid):
