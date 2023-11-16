@@ -17,6 +17,8 @@ def fix_neotree_oucome(value):
             return 'Discharged against medical advice'
         if value== 'UK':
             return 'Unknown'
+        if value =='BID':
+            return 'Brought in dead'
         if value== 'null':
             return None
 
@@ -77,7 +79,8 @@ def fix_mode_of_delivery(value):
             return 'Breech extraction (vaginal'
         if value=='7':
             return 'Unknown'
-        return None
+        if value =='null':
+           return None
 
 def fix_transfare_wards(value):
     

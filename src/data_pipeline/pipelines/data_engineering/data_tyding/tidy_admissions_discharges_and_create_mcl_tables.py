@@ -112,30 +112,30 @@ def tidy_tables():
     try:
 
         adm_df = pd.json_normalize(adm_new_entries)
-        if "uid" in adm_df:
-            adm_df.set_index(['uid'])
+        if "unique_key" in adm_df:
+            adm_df.set_index(['unique_key'])
         dis_df = pd.json_normalize(dis_new_entries)
-        if "uid" in dis_df:
-            dis_df.set_index(['uid'])
+        if "unique_key" in dis_df:
+            dis_df.set_index(['unique_key'])
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
-        if "uid" in mat_outcomes_df:
-            mat_outcomes_df.set_index(['uid'])
+        if "unique_key" in mat_outcomes_df:
+            mat_outcomes_df.set_index(['unique_key'])
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
-        if "uid" in vit_signs_df:
-            vit_signs_df.set_index(['uid'])
+        if "unique_key" in vit_signs_df:
+            vit_signs_df.set_index(['unique_key'])
         neolab_df = pd.json_normalize(neolab_new_entries)
        
         baseline_df = pd.json_normalize(baseline_new_entries)
-        if "uid" in baseline_df:
-            baseline_df.set_index(['uid'])
+        if "unique_key" in baseline_df:
+            baseline_df.set_index(['unique_key'])
 
         diagnoses_df = pd.json_normalize(diagnoses_new_entries)
         # if "uid" in diagnoses_df:
         #     diagnoses_df.set_index(['uid'])
 
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
-        if "uid" in mat_completeness_df:
-            mat_completeness_df.set_index(['uid'])
+        if "unique_key" in mat_completeness_df:
+            mat_completeness_df.set_index(['unique_key'])
 
         # INITIALISE THE EPISODE COLUMN ON NEOAB DF SO THAT THE COLUMN GETS CREATED
         
@@ -186,8 +186,8 @@ def tidy_tables():
         if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
             neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None):
             
-            neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
-                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
+            neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True) -
+                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)).astype('timedelta64[h]')
         else:
             neolab_df['BCReturnTime'] = None
 

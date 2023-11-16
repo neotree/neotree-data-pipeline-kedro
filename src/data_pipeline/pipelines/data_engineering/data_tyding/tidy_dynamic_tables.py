@@ -27,8 +27,8 @@ def tidy_dynamic_tables():
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
                 try:
                     script_df = pd.json_normalize(script_new_entries)
-                    if "uid" in script_df:
-                        script_df.set_index(['uid'])
+                    if "unique_key" in script_df:
+                        script_df.set_index(['unique_key'])
                      # ADD TIME SPENT TO ALL DFs
                     if "started_at" in script_df and 'completed_at' in script_df :
                         format_date_without_timezone(script_df,'started_at'); 

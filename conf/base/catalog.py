@@ -37,7 +37,7 @@ generic_dedup_queries = []
 # Hospital Scripts Configs
 hospital_scripts = hospital_conf()
 
-old_scripts = ['admissions','discharges','maternal_outcomes','maternals_dev','vitalsigns','neolab','baseline','maternity_completeness','country','name']
+old_scripts = ['admissions','discharges','maternal_outcomes','maternals_dev','vitalsigns','neolab','baseline','maternity_completeness']
 
 ##INITIALISE NEW SCRIPTS
 new_scripts = []
@@ -51,7 +51,7 @@ if hospital_scripts:
       additional_where = " "
       #Else Remove All Records That Were Created In App Mode Dev
       if(env=="prod"):
-         additional_where = "  and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
+         additional_where = "  and (\"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\')"
          
       ###This Assumes One Script Id Per Script, Per Hospital
       processed_scripts = []
@@ -86,7 +86,7 @@ if hospital_scripts:
                                     existing_case =  case[key]
                                     existing_case = existing_case+ f''' WHEN scriptid ='{script_id}' THEN '{hospital}' '''
                                     case[key] = existing_case
-                                    break
+                                    
       #########CLOSE CASE STATEMENTS
       for case in processed_case:
          for key in case.keys():
