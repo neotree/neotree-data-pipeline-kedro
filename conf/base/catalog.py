@@ -51,7 +51,7 @@ if hospital_scripts:
       additional_where = " "
       #Else Remove All Records That Were Created In App Mode Dev
       if(env=="prod"):
-         additional_where = "  and \"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\'"
+         additional_where = "  and (\"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\')"
          
       ###This Assumes One Script Id Per Script, Per Hospital
       processed_scripts = []
