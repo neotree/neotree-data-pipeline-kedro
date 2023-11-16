@@ -186,8 +186,8 @@ def tidy_tables():
         if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
             neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None):
             
-            neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]') -
-                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True).astype('datetime64[ns]')).astype('timedelta64[h]')
+            neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True) -
+                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)).astype('timedelta64[h]')
         else:
             neolab_df['BCReturnTime'] = None
 
