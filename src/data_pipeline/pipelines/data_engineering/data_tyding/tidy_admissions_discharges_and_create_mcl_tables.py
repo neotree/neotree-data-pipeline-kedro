@@ -91,8 +91,7 @@ def tidy_tables():
 
     # Now let's fetch the list of properties recorded in that table
     logging.info("... Extracting keys")
-    try:
-         
+    try:  
         adm_new_entries, adm_mcl = get_key_values(adm_raw)
         dis_new_entries, dis_mcl = get_key_values(dis_raw)
         mat_outcomes_new_entries,mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
@@ -110,8 +109,9 @@ def tidy_tables():
     logging.info(
         "... Creating normalized dataframes - one for admissions and one for discharges")
     try:
-
         adm_df = pd.json_normalize(adm_new_entries)
+        logging.info("******************DEDBUG********************"+len(adm_df))
+        logging.info("******************DEDBUG2********************"+str('unique_key' in adm_df))
         if "unique_key" in adm_df:
             adm_df.set_index(['unique_key'])
         dis_df = pd.json_normalize(dis_new_entries)

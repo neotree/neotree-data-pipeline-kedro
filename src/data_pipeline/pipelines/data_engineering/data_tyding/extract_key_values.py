@@ -3,6 +3,7 @@ import logging
 from conf.common.format_error import formatError
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import  reduce
+import pandas as pd
 
 
 def get_key_values(data_raw):
@@ -16,6 +17,7 @@ def get_key_values(data_raw):
             # add uid and ingested_at first
             app_version = None
             script_version = None
+            ingested_at =None
             if 'appVersion' in row:
                 app_version = row['appVersion']
             if(app_version!=None and app_version!=''):
@@ -45,13 +47,14 @@ def get_key_values(data_raw):
             
             if 'ingested_at' in row:
              new_entry['ingested_at'] = row['ingested_at']
+             ingested_at = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S',utc=True)
 
 
         # iterate through key, value and add to dict
             for c in row['entries']:
            
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-                if((script_version!=None and script_version)>40 or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
+                if((ingested_at>='2022-01-01')or(script_version==None and script_version)>40 or (script_version!=None and script_version)>40 or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
                     try:            
                         k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
                     #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
