@@ -27,11 +27,10 @@ def data_labels_cleanup(script):
                         elif(script=='maternals'):
                             label= fix_maternal_label(key,value)
                         elif(script=='baselines'):
-                            label= fix_baseline_label(key,value)
+                            label= fix_baseline_label(key,value)    
                                             
-                        if value is not None and label is not None:
-                            query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                            inject_sql(query,f'''FIX {script} ERRORS''')
+                        query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
+                        inject_sql(query,f'''FIX {script} ERRORS''')
 
     
     
