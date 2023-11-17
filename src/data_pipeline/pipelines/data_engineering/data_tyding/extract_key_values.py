@@ -48,14 +48,14 @@ def get_key_values(data_raw):
             
             if 'ingested_at' in row:
              new_entry['ingested_at'] = row['ingested_at']
-             ingested_at = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S',utc=True)
+             ingested_at = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S').dt.tz_localize(None)
 
 
         # iterate through key, value and add to dict
             for c in row['entries']:
            
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-                if((ingested_at>=datetime(2022,1,1,0,0))or(script_version==None and script_version)>40 or (script_version!=None and script_version)>40 or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
+                if((ingested_at>=datetime(2022,1,1,0,0,0))or(script_version==None and script_version)>40 or (script_version!=None and script_version)>40 or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
                     try:            
                         k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
                     #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
