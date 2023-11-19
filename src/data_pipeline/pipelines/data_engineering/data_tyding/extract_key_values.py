@@ -55,13 +55,14 @@ def get_key_values(data_raw):
             for c in row['entries']:
            
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-                if((ingested_at>=datetime(2022,1,1,0,0,0))or(script_version==None and script_version)>40 or (script_version!=None and script_version)>40 or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
+                if((ingested_at>=datetime(2022,1,1,0,0,0)) or (script_version!=None and script_version>40) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5))): 
                     try:            
                         k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
                     #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
                         if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                             new_entry['uid'] = v.value;
                     except Exception:
+                        logging.info("UID="+"--APP V="+str(app_version)+"--INGESTED_AR-"+str(ingested_at) + '--UID=='+str(row['uid']))
                         logging.info("RESTRUCTURING ERROR ON RECORD WITH UID"+str(row['uid']))
 
             #ELSE USE THE OLD FORMAT
