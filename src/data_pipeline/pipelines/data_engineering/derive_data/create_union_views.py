@@ -5,7 +5,7 @@ import logging
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
-from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date
 from conf.base.catalog import params
 
 def union_views():
@@ -291,11 +291,11 @@ def union_views():
                 format_date_without_timezone(old_matched_smch_data,'DateAdmissionDC.value')  
                 format_date(old_matched_smch_data,'DateDischVitals.value')
                 format_date(old_matched_smch_data,'DateDischWeight.value')
-                format_date_without_timezone(old_matched_smch_data,'DateTimeDischarge.value')
+                format_date(old_matched_smch_data,'DateTimeDischarge.value')
                 format_date_without_timezone(old_matched_smch_data,'EndScriptDatetime.value')
                 format_date(old_matched_smch_data,'DateWeaned.value')
-                format_date_without_timezone(old_matched_smch_data,'DateTimeDeath.value')
-                format_date_without_timezone(old_matched_smch_data,'DateAdmission.value')
+                format_date(old_matched_smch_data,'DateTimeDeath.value')
+                format_date(old_matched_smch_data,'DateAdmission.value')
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
             if new_smch_admissions is not None and old_smch_admissions  is not None:
