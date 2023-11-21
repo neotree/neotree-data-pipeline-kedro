@@ -137,6 +137,7 @@ def tidy_tables():
             set_key_to_none(adm_df,'ROMlength.value')
             set_key_to_none(adm_df,'ROMLength.label')
             set_key_to_none(adm_df,'ROMLength.value')
+            set_key_to_none(adm_df,'TempThermia.value')
             #Format Dates Admissions Tables
             format_date(adm_df,'DateTimeAdmission.value')
             format_date(adm_df,'EndScriptDatetime.value')
