@@ -110,8 +110,6 @@ def tidy_tables():
         "... Creating normalized dataframes - one for admissions and one for discharges")
     try:
         adm_df = pd.json_normalize(adm_new_entries)
-        logging.info("******************DEDBUG********************"+len(adm_df))
-        logging.info("******************DEDBUG2********************"+str('unique_key' in adm_df))
         if "unique_key" in adm_df and 'uid' in adm_df:
             adm_df.set_index(['unique_key','uid'])
         dis_df = pd.json_normalize(dis_new_entries)
