@@ -376,7 +376,9 @@ def tidy_tables():
 
                     else:
                         pass;  
-
+                if(type(period)!=int):
+                    period=0;
+                    
                 if period>0:
                     adm_df.loc[position,'Age.value'] = period
                     if period< 2:
