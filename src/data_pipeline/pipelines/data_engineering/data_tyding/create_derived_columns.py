@@ -44,7 +44,7 @@ def create_columns(table: pd.DataFrame):
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   if not table.empty and 'Gestation.value' in table:
                               table.loc[table['Gestation.value'].isnull(
-                              ), 'GestGroup.value'] = float('nan')
+                              ) or type(table['Gestation.value']!=int), 'GestGroup.value'] = float('nan')
                               table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
                               table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
                               table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
@@ -53,7 +53,7 @@ def create_columns(table: pd.DataFrame):
             else:
                   if not table.empty  and 'Gestation.value' in table:
                         table.loc[table['Gestation.value'].isnull(
-                        ), 'GestGroup.value'] = float('nan')
+                        ) or type(table['Gestation.value']!=int), 'GestGroup.value'] = float('nan')
                         table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
                         table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
                         table.loc[table['Gestation.value'] < 34, 'GestGroup.value'] = "32-34 wks"
@@ -63,7 +63,7 @@ def create_columns(table: pd.DataFrame):
 
             # order of statements matters
             if 'BirthWeight.value' in table:
-                  table.loc[table['BirthWeight.value'].isnull(), 'BWGroup.value'] = "Unknown"
+                  table.loc[table['BirthWeight.value'].isnull() or type(table['BirthWeight.value']!=int), 'BWGroup.value'] = "Unknown"
                   table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
                   table.loc[table['BirthWeight.value'] < 4000, 'BWGroup.value'] = "NBW"
                   table.loc[table['BirthWeight.value'] < 2500, 'BWGroup.value'] = "LBW"
@@ -72,7 +72,7 @@ def create_columns(table: pd.DataFrame):
                   table['BirthWeightCategory'] =table['BWGroup.value']
             else:
                   if ('BW.value' in table):
-                        table.loc[table['BW.value'].isnull() , 'BirthWeightCategory'] = "Unknown"
+                        table.loc[table['BW.value'].isnull() or type(table['BW.value']!=int) , 'BirthWeightCategory'] = "Unknown"
                         table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
                         table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
                         table.loc[table['BW.value'] < 2500, 'BirthWeightCategory'] = "LBW"
@@ -82,7 +82,7 @@ def create_columns(table: pd.DataFrame):
             # For Baseline Tables
 
             if 'AdmissionWeight.value' in table:
-                  table.loc[table['AdmissionWeight.value'].isnull(), 'AWGroup.value'] = "Unknown"
+                  table.loc[table['AdmissionWeight.value'].isnull() or type(table['AdmissionWeight.value']!=int), 'AWGroup.value'] = "Unknown"
                   table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                   table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
                   table.loc[table['AdmissionWeight.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
@@ -91,7 +91,7 @@ def create_columns(table: pd.DataFrame):
 
             # order of statements matters
             elif 'AW.value' in table:
-                  table.loc[table['AW.value'].isnull(), 'AWGroup.value'] = "Unknown"
+                  table.loc[table['AW.value'].isnull() or type(table['AW.value']!=int), 'AWGroup.value'] = "Unknown"
                   table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                   table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
                   table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
