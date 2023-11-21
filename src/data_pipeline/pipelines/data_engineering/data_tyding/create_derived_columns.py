@@ -168,7 +168,7 @@ def create_columns(table: pd.DataFrame):
                               table.loc[table['Temperature.value'].isnull(),
                               'TempThermia.value'] = "Unknown"
                         except:
-                              pass
+                              table.loc['TempThermia.value'] = "Unknown"
                   
                   
             else:
@@ -180,7 +180,7 @@ def create_columns(table: pd.DataFrame):
                         table.loc[table['Temperature.value'] < 36.5,
                         'TempThermia.value'] = "Hypothermia"
                   except:
-                        pass
+                        table.loc['TempThermia.value'] = "Unknown"
 
             if 'BirthWeight.value' in table: 
                   try:
