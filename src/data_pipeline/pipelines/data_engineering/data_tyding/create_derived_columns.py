@@ -42,62 +42,79 @@ def create_columns(table: pd.DataFrame):
                   table['Gestation.value'] = float('nan') 
                   
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
-                  if not table.empty and 'Gestation.value' in table:
-                              table.loc[table['Gestation.value'].isnull(
-                              ) or type(table['Gestation.value']!=int), 'GestGroup.value'] = float('nan')
-                              table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
-                              table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
-                              table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
-                              table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
-                              table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
+                  try:
+                        if not table.empty and 'Gestation.value' in table:
+                                    table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = float('nan')
+                                    table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
+                                    table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
+                                    table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
+                                    table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
+                                    table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
+                  except:
+                        pass
             else:
                   if not table.empty  and 'Gestation.value' in table:
-                        table.loc[table['Gestation.value'].isnull(
-                        ) or type(table['Gestation.value']!=int), 'GestGroup.value'] = float('nan')
-                        table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
-                        table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
-                        table.loc[table['Gestation.value'] < 34, 'GestGroup.value'] = "32-34 wks"
-                        table.loc[table['Gestation.value'] < 32, 'GestGroup.value'] = "28-32 wks"
-                        table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"   
+                        try:
+                              table.loc[table['Gestation.value'].isnull(
+                              ), 'GestGroup.value'] = float('nan')
+                              table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
+                              table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
+                              table.loc[table['Gestation.value'] < 34, 'GestGroup.value'] = "32-34 wks"
+                              table.loc[table['Gestation.value'] < 32, 'GestGroup.value'] = "28-32 wks"
+                              table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28" 
+                        except:
+                              pass  
 
 
             # order of statements matters
             if 'BirthWeight.value' in table:
-                  table.loc[table['BirthWeight.value'].isnull() or type(table['BirthWeight.value']!=int), 'BWGroup.value'] = "Unknown"
-                  table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
-                  table.loc[table['BirthWeight.value'] < 4000, 'BWGroup.value'] = "NBW"
-                  table.loc[table['BirthWeight.value'] < 2500, 'BWGroup.value'] = "LBW"
-                  table.loc[table['BirthWeight.value'] < 1500, 'BWGroup.value'] = "VLBW"
-                  table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
-                  table['BirthWeightCategory'] =table['BWGroup.value']
+                  try:
+                        table.loc[table['BirthWeight.value'].isnull(), 'BWGroup.value'] = "Unknown"
+                        table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
+                        table.loc[table['BirthWeight.value'] < 4000, 'BWGroup.value'] = "NBW"
+                        table.loc[table['BirthWeight.value'] < 2500, 'BWGroup.value'] = "LBW"
+                        table.loc[table['BirthWeight.value'] < 1500, 'BWGroup.value'] = "VLBW"
+                        table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
+                        table['BirthWeightCategory'] =table['BWGroup.value']
+                  except:
+                        pass
             else:
                   if ('BW.value' in table):
-                        table.loc[table['BW.value'].isnull() or type(table['BW.value']!=int) , 'BirthWeightCategory'] = "Unknown"
-                        table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
-                        table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
-                        table.loc[table['BW.value'] < 2500, 'BirthWeightCategory'] = "LBW"
-                        table.loc[table['BW.value'] < 1500, 'BirthWeightCategory'] = "VLBW"
-                        table.loc[table['BW.value'] < 1000, 'BirthWeightCategory'] = "ELBW"
+                        try:
+                              table.loc[table['BW.value'].isnull() , 'BirthWeightCategory'] = "Unknown"
+                              table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
+                              table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
+                              table.loc[table['BW.value'] < 2500, 'BirthWeightCategory'] = "LBW"
+                              table.loc[table['BW.value'] < 1500, 'BirthWeightCategory'] = "VLBW"
+                              table.loc[table['BW.value'] < 1000, 'BirthWeightCategory'] = "ELBW"
+                        except:
+                              pass
 
             # For Baseline Tables
 
             if 'AdmissionWeight.value' in table:
-                  table.loc[table['AdmissionWeight.value'].isnull() or type(table['AdmissionWeight.value']!=int), 'AWGroup.value'] = "Unknown"
-                  table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
-                  table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
-                  table.loc[table['AdmissionWeight.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
-                  table.loc[table['AdmissionWeight.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
-                  table.loc[table['AdmissionWeight.value'] < 1000, 'AWGroup.value'] = "<1000g"
+                  try:
+                        table.loc[table['AdmissionWeight.value'].isnull(), 'AWGroup.value'] = "Unknown"
+                        table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
+                        table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
+                        table.loc[table['AdmissionWeight.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
+                        table.loc[table['AdmissionWeight.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
+                        table.loc[table['AdmissionWeight.value'] < 1000, 'AWGroup.value'] = "<1000g"
+                  except:
+                        pass
 
             # order of statements matters
             elif 'AW.value' in table:
-                  table.loc[table['AW.value'].isnull() or type(table['AW.value']!=int), 'AWGroup.value'] = "Unknown"
-                  table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
-                  table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
-                  table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
-                  table.loc[table['AW.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
-                  table.loc[table['AW.value'] < 1000, 'AWGroup.value'] = "<1000g"
-                  table['AdmissionWeight.value']= table["AW.value"]
+                  try:
+                        table.loc[table['AW.value'].isnull(), 'AWGroup.value'] = "Unknown"
+                        table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
+                        table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
+                        table.loc[table['AW.value'] < 2500, 'AWGroup.value'] = "1500-2500g"
+                        table.loc[table['AW.value'] < 1500, 'AWGroup.value'] = "1000-1500g"
+                        table.loc[table['AW.value'] < 1000, 'AWGroup.value'] = "<1000g"
+                        table['AdmissionWeight.value']= table["AW.value"]
+                  except:
+                        pass
 
             else:
                   table['AdmissionWeight.value']= None
@@ -105,70 +122,89 @@ def create_columns(table: pd.DataFrame):
 
             # order of statements matters
             if 'Temperature.value' in table:
-                  table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
-                  table.loc[table['Temperature.value'] <
-                              41.5, 'TempGroup.value'] = "40.5-41.5"
-                  table.loc[table['Temperature.value'] <
-                              40.5, 'TempGroup.value'] = "39.5-40.5"
-                  table.loc[table['Temperature.value'] <
-                              39.5, 'TempGroup.value'] = "38.5-39.5"
-                  table.loc[table['Temperature.value'] <
-                              38.5, 'TempGroup.value'] = "37.5-38.5"
-                  table.loc[table['Temperature.value'] <
-                              37.5, 'TempGroup.value'] = "36.5-37.5"
-                  table.loc[table['Temperature.value'] <
-                              36.5, 'TempGroup.value'] = "35.5-36.5"
-                  table.loc[table['Temperature.value'] <
-                              35.5, 'TempGroup.value'] = "34.5-35.5"
-                  table.loc[table['Temperature.value'] <
-                              34.5, 'TempGroup.value'] = "33.5-34.5"
-                  table.loc[table['Temperature.value'] <
-                              33.5, 'TempGroup.value'] = "32.5-33.5"
-                  table.loc[table['Temperature.value'] <
-                              32.5, 'TempGroup.value'] = "31.5-32.5"
-                  table.loc[table['Temperature.value'] <
-                              31.5, 'TempGroup.value'] = "30.5-31.5"
-                  table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
+                  try:
+                        
+                        table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
+                        table.loc[table['Temperature.value'] <
+                                    41.5, 'TempGroup.value'] = "40.5-41.5"
+                        table.loc[table['Temperature.value'] <
+                                    40.5, 'TempGroup.value'] = "39.5-40.5"
+                        table.loc[table['Temperature.value'] <
+                                    39.5, 'TempGroup.value'] = "38.5-39.5"
+                        table.loc[table['Temperature.value'] <
+                                    38.5, 'TempGroup.value'] = "37.5-38.5"
+                        table.loc[table['Temperature.value'] <
+                                    37.5, 'TempGroup.value'] = "36.5-37.5"
+                        table.loc[table['Temperature.value'] <
+                                    36.5, 'TempGroup.value'] = "35.5-36.5"
+                        table.loc[table['Temperature.value'] <
+                                    35.5, 'TempGroup.value'] = "34.5-35.5"
+                        table.loc[table['Temperature.value'] <
+                                    34.5, 'TempGroup.value'] = "33.5-34.5"
+                        table.loc[table['Temperature.value'] <
+                                    33.5, 'TempGroup.value'] = "32.5-33.5"
+                        table.loc[table['Temperature.value'] <
+                                    32.5, 'TempGroup.value'] = "31.5-32.5"
+                        table.loc[table['Temperature.value'] <
+                                    31.5, 'TempGroup.value'] = "30.5-31.5"
+                        table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
+                  except:
+                        pass
 
             
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   if 'Temperature.value' in table:
-                        table.loc[table['Temperature.value'] >37.5,
-                              'TempThermia.value'] = "Fever"
-                        table.loc[(table['Temperature.value'] >= 36.5) & (table['Temperature.value'] <= 37.5),
-                              'TempThermia.value'] = "Normothermia"
-                        table.loc[(table['Temperature.value'] >= 36.0) & (table['Temperature.value'] <= 36.4),
-                              'TempThermia.value'] = "Mild Hypothermia"
-                        table.loc[(table['Temperature.value'] >= 32.1) & (table['Temperature.value'] <= 35.9),
-                              'TempThermia.value'] = "Moderate Hypothermia"
-                        table.loc[table['Temperature.value'] <= 32,
-                              'TempThermia.value'] = "Severe Hypothermia"
-                        table.loc[table['Temperature.value'].isnull(),
-                        'TempThermia.value'] = "Unknown"
+                        try:
+                              table.loc[table['Temperature.value'] >37.5,
+                                    'TempThermia.value'] = "Fever"
+                              table.loc[(table['Temperature.value'] >= 36.5) & (table['Temperature.value'] <= 37.5),
+                                    'TempThermia.value'] = "Normothermia"
+                              table.loc[(table['Temperature.value'] >= 36.0) & (table['Temperature.value'] <= 36.4),
+                                    'TempThermia.value'] = "Mild Hypothermia"
+                              table.loc[(table['Temperature.value'] >= 32.1) & (table['Temperature.value'] <= 35.9),
+                                    'TempThermia.value'] = "Moderate Hypothermia"
+                              table.loc[table['Temperature.value'] <= 32,
+                                    'TempThermia.value'] = "Severe Hypothermia"
+                              table.loc[table['Temperature.value'].isnull(),
+                              'TempThermia.value'] = "Unknown"
+                        except:
+                              pass
                   
                   
             else:
-                  table.loc[table['Temperature.value'] >= 37.5,
-                        'TempThermia.value'] = "Hyperthermia"
-                  table.loc[table['Temperature.value'] < 37.5,
-                        'TempThermia.value'] = "Normothermia"
-                  table.loc[table['Temperature.value'] < 36.5,
+                  try:
+                        table.loc[table['Temperature.value'] >= 37.5,
+                              'TempThermia.value'] = "Hyperthermia"
+                        table.loc[table['Temperature.value'] < 37.5,
+                              'TempThermia.value'] = "Normothermia"
+                        table.loc[table['Temperature.value'] < 36.5,
                         'TempThermia.value'] = "Hypothermia"
+                  except:
+                        pass
 
             if 'BirthWeight.value' in table: 
-                  table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
-                                          ((table['BirthWeight.value'] < 1000) | (table['Gestation.value'] < 28)))
-                  table['LBWBinary'] = ((table['BirthWeight.value'] > 0) & (table['BirthWeight.value'] < 2500)) 
+                  try:
+                        table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
+                                                ((table['BirthWeight.value'] < 1000) | (table['Gestation.value'] < 28)))
+                        table['LBWBinary'] = ((table['BirthWeight.value'] > 0) & (table['BirthWeight.value'] < 2500)) 
+                  except:
+                        pass
 
             else:
                   if 'BW.value' in table:
-                        table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
-                                          ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
-                        table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
+                        try:
+                              table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
+                                                ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
+                              table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
+                        except:
+                              pass
                   if 'Bw.value' in table:
-                        table['<28wks/1kg.value'] = ((table['Bw.value'] > 0)  &
-                                          ((table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
-                        table['LBWBinary']=((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
+                        try:
+                              table['<28wks/1kg.value'] = ((table['Bw.value'] > 0)  &
+                                                ((table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
+                              table['LBWBinary']=((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
+                        except:
+                              pass
             # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
             return table
     except Exception as e:
