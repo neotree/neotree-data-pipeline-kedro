@@ -21,18 +21,13 @@ def explode_column(df, mcl,db):
         if parent_column is not None and column is not None:
             mcl_column = df[[column]] 
             mcl_column_exp = mcl_column.explode(column)
-            if('unique_key' in df):
-                mcl_column_exp['unique_key'] = df['unique_key']
             mcl_column_exp['uid'] = df['uid']
             mcl_column_exp['facility'] = df['facility']
             mcl_column_exp[parent_column] = mcl_column_exp[column]
             #Drop All Rows With Label Other, The Values Will Be Collected In The Method Explode_Other_Columns
             mcl_column_exp = mcl_column_exp.loc[(mcl_column_exp[column] != "Other") &
              (mcl_column_exp[column].notna()) & (mcl_column_exp[column] is not None)]
-            if('unique_key' in df):
-                mcl_column_exp.set_index(['unique_key','uid'])
-            else:
-                mcl_column_exp.set_index(['uid'])       
+            mcl_column_exp.set_index(['uid'])       
             column_name = ("exploded_"+db+parent_column)
             schema = 'derived'
             if str(c).endswith('Oth'):

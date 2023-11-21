@@ -11,7 +11,6 @@ def deduplicate_neolab_query(neolab_where):
             select
             scriptid,
             uid,
-            unique_key,
             CASE WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
             THEN "data"->'entries'::text->1->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCT'->'values'->'value'::text->>0  END AS "DateBCT",
@@ -24,7 +23,7 @@ def deduplicate_neolab_query(neolab_where):
                   -- first uploaded
             from public.sessions
             where scriptid {neolab_where} -- only pull out neloab data
-            group by 1,2,3,4,5
+            group by 1,2,3,4
             )
             select
             earliest_neolab.scriptid,
@@ -33,7 +32,6 @@ def deduplicate_neolab_query(neolab_where):
             sessions.ingested_at,
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
-             earliest_neolab.unique_key,
             data
             from earliest_neolab join sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
@@ -48,17 +46,15 @@ def deduplicate_data_query(condition,destination_table):
             select
             scriptid,
             uid, 
-            unique_key,
             max(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.sessions
             where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2,3
+            group by 1,2
             )
             select
-            earliest_record.unique_key,
             earliest_record.scriptid,
             earliest_record.uid,
             earliest_record.id,

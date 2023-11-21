@@ -110,30 +110,22 @@ def tidy_tables():
         "... Creating normalized dataframes - one for admissions and one for discharges")
     try:
         adm_df = pd.json_normalize(adm_new_entries)
-        if "unique_key" in adm_df and 'uid' in adm_df:
-            adm_df.set_index(['unique_key','uid'])
+        adm_df.set_index(['uid'])
         dis_df = pd.json_normalize(dis_new_entries)
-        if "unique_key" in dis_df and 'uid' in dis_df:
-            dis_df.set_index(['unique_key','uid'])
+        dis_df.set_index(['uid'])
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
-        if "unique_key" in mat_outcomes_df and 'uid' in mat_outcomes_df:
-            mat_outcomes_df.set_index(['unique_key','uid'])
+        mat_outcomes_df.set_index(['uid'])
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
-        if "unique_key" in vit_signs_df and 'uid' in vit_signs_df:
-            vit_signs_df.set_index(['unique_key','uid'])
+        vit_signs_df.set_index(['uid'])
         neolab_df = pd.json_normalize(neolab_new_entries)
-       
         baseline_df = pd.json_normalize(baseline_new_entries)
-        if "unique_key" in baseline_df and 'uid' in baseline_df:
-            baseline_df.set_index(['unique_key','uid'])
+        baseline_df.set_index(['uid'])
 
         diagnoses_df = pd.json_normalize(diagnoses_new_entries)
         # if "uid" in diagnoses_df:
         #     diagnoses_df.set_index(['uid'])
-
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
-        if "unique_key" in mat_completeness_df and 'uid' in mat_completeness_df:
-            mat_completeness_df.set_index(['unique_key','uid'])
+        mat_completeness_df.set_index(['uid'])
 
         # INITIALISE THE EPISODE COLUMN ON NEOAB DF SO THAT THE COLUMN GETS CREATED
         
@@ -493,7 +485,7 @@ def tidy_tables():
                 # Data Cleaning
                 neolab_cleanup(neolab_df,index)  
                 #Set Episodes
-                control_df = neolab_df[neolab_df['uid','unique_key'] == row['uid','unique_key']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 if not control_df.empty:
                     episode =1;
                     if neolab_df.at[index,'episode'] ==0:
@@ -523,7 +515,7 @@ def tidy_tables():
                         # Loop is necessary since BCType is dependant on the set episodes
 
                         for control_index, bct_row in control_df.iterrows() :  
-                            bct_type_df = control_df[(control_df['uid','unique_key'] == bct_row['uid','unique_key']) & (control_df['episode'] == bct_row['episode'])].copy().sort_values(by=['DateBCR.value']).reset_index(drop=True)
+                            bct_type_df = control_df[(control_df['uid'] == bct_row['uid']) & (control_df['episode'] == bct_row['episode'])].copy().sort_values(by=['DateBCR.value']).reset_index(drop=True)
                             
                             if not bct_type_df.empty:
                                 preliminary_index= 1;
