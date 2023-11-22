@@ -32,6 +32,9 @@ def get_key_values(data_raw):
             
             # Convert All UIDS TO UPPER CASE
             new_entry['uid'] = str(row['uid']).upper()
+            if 'unique_key' in row:
+                new_entry['unique_key'] = row['unique_key']
+                
             if 'ingested_at_admission' in row:
                 new_entry['ingested_at'] = row['ingested_at_admission']
             if 'ingested_at_discharge' in row:
