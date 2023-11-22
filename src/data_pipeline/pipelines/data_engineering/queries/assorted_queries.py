@@ -33,7 +33,7 @@ def deduplicate_neolab_query(neolab_where):
             sessions.ingested_at,
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
-            earliest_neolab.unique_key
+            earliest_neolab.unique_key,
             data
             from earliest_neolab join sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
