@@ -36,7 +36,7 @@ def create_columns(table: pd.DataFrame):
                   pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), float('nan'))
 
             # order of statements matters
-            if 'Gestation.value' in table.keys():
+            if 'Gestation.value' in table.keys() and isinstance(table['Gestation.value'], (int, float, complex)):
                   pass;
             else:
                   table['Gestation.value'] = float('nan') 
@@ -191,25 +191,44 @@ def create_columns(table: pd.DataFrame):
 
             if 'BirthWeight.value' in table: 
                   try:
-                        table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
-                                                ((table['BirthWeight.value'] < 1000) | (table['Gestation.value'] < 28)))
-                        table['LBWBinary'] = ((table['BirthWeight.value'] > 0) & (table['BirthWeight.value'] < 2500)) 
+                        if isinstance(table['BirthWeight.value'], (int, float, complex)):
+                              table['LBWBinary'] = ((table['BirthWeight.value'] > 0) & (table['BirthWeight.value'] < 2500)) 
+
+                              table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
+                                                ((table['BirthWeight.value'] < 1000) |
+                                                 (isinstance(table['BirthWeight.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
+                        
+                        
                   except:
+                        
                         pass
 
             else:
                   if 'BW.value' in table:
                         try:
-                              table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
-                                                ((table['BW.value'] < 1000) | (table['Gestation.value'] < 28)))
-                              table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
+                              if isinstance(table['BW.value'], (int, float, complex)):
+                                    
+                                    table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500)) 
+
+                                    table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
+                                                ((table['BW.value'] < 1000) |
+                                                 (isinstance(table['BW.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
+                              else:
+                                 table['LBWBinary'] = float('nan') 
+                  
                         except:
                               pass
                   if 'Bw.value' in table:
                         try:
-                              table['<28wks/1kg.value'] = ((table['Bw.value'] > 0)  &
-                                                ((table['Bw.value'] < 1000) | (table['Gestation.value'] < 28)))
-                              table['LBWBinary']=((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
+                              if isinstance(table['Bw.value'], (int, float, complex)):
+                                    
+                                    table['LBWBinary'] = ((table['Bw.value'] > 0) & (table['Bw.value'] < 2500)) 
+
+                                    table['<28wks/1kg.value'] = ((table['Bw.value'] > 0) &
+                                                ((table['Bw.value'] < 1000) |
+                                                 (isinstance(table['Bw.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
+                              else:
+                                 table['LBWBinary'] = float('nan') 
                         except:
                               pass
             # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
