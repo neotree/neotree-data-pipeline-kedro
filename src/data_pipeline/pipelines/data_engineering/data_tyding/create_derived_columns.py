@@ -149,7 +149,7 @@ def create_columns(table: pd.DataFrame):
                                     31.5, 'TempGroup.value'] = "30.5-31.5"
                         table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
                   except:
-                        pass
+                        table.loc['TempGroup.value'] = "UNKNOWN"
 
             
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
