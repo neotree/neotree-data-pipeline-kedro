@@ -11,17 +11,13 @@ def deduplicate_neolab_query(neolab_where):
             select
             scriptid,
             uid,
-            unique_key,
             CASE WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
             THEN "data"->'entries'::text->1->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCT'->'values'->'value'::text->>0  END AS "DateBCT",
             CASE WHEN "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null 
             THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  END AS "DateBCR",
-            max(id) as id -- This takes the last upload 
-                  -- of the session as the deduplicated record. 
-                  -- We could replace with min(id) to take the 
-                  -- first uploaded
+            max(id) as id
             from public.sessions
             where scriptid {neolab_where} -- only pull out neloab data
             group by 1,2,3,4
@@ -33,7 +29,6 @@ def deduplicate_neolab_query(neolab_where):
             sessions.ingested_at,
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
-            earliest_neolab.unique_key,
             data
             from earliest_neolab join sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
@@ -48,7 +43,6 @@ def deduplicate_data_query(condition,destination_table):
             select
             scriptid,
             uid, 
-            unique_key,
             max(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
@@ -62,7 +56,6 @@ def deduplicate_data_query(condition,destination_table):
             earliest_record.uid,
             earliest_record.id,
             sessions.ingested_at,
-            earliest_record.unique_key,
             data
             from earliest_record join sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
@@ -74,7 +67,6 @@ def read_deduplicated_data_query(case_condition,where_condition,source_table):
                 select 
                 uid,
                 ingested_at,
-                unique_key,
                 "data"->'appVersion' as "appVersion",
                 "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
@@ -98,7 +90,6 @@ def read_diagnoses_query(admissions_case,adm_where):
             select 
                 uid,
                 ingested_at,
-                unique_key,
                 "data"->'appVersion' as "appVersion",
                 "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
