@@ -50,8 +50,8 @@ def get_key_values(data_raw):
                 new_entry['completed_at'] = row['completed_at']
             
             if 'ingested_at' in row:
-             new_entry['ingested_at'] = row['ingested_at']
-             ingested_at = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
+                new_entry['ingested_at'] = row['ingested_at']
+                ingested_at = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
 
 
         # iterate through key, value and add to dict

@@ -111,7 +111,7 @@ def tidy_tables():
     try:
         adm_df = pd.json_normalize(adm_new_entries)
         if not adm_df.empty:
-            adm_df.set_index(['uid','unique_key'])
+            adm_df.set_index(['uid'])
               # ADD TIME SPENT TO ALL DFs
             if "started_at" in adm_df and 'completed_at' in adm_df :
                 format_date_without_timezone(adm_df,'started_at') 
@@ -131,8 +131,6 @@ def tidy_tables():
             set_key_to_none(adm_df,'LengthHAART.label')
             set_key_to_none(adm_df,'NVPgiven.value')
             set_key_to_none(adm_df,'NVPgiven.label')
-            set_key_to_none(adm_df,'DateTimeAdmission.value')
-            set_key_to_none(adm_df,'DateTimeAdmission.label')
             set_key_to_none(adm_df,'ROMlength.label')
             set_key_to_none(adm_df,'ROMlength.value')
             set_key_to_none(adm_df,'ROMLength.label')
@@ -280,12 +278,16 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label')
 
             if "Age.value" in adm_df:
-                adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce')
+                adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce',downcast='integer')
 
             if 'AdmissionWeight.value' in adm_df:
-                 adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
+                 adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce',downcast='float')
             if 'BirthWeight.value' in adm_df:
-                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
+                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce',downcast='float')
+            if 'BloodSugarmg.value' in adm_df:
+                adm_df['BloodSugarmg.value'] = pd.to_numeric(adm_df['BloodSugarmg.value'], errors='coerce',downcast='float')
+            if 'Temperature.value' in adm_df:
+                adm_df['Temperature.value'] = pd.to_numeric(adm_df['Temperature.value'], errors='coerce',downcast='float')
             ## DROP UNNECESSARY COLUMNS
             if 'BW.value' in adm_df:
                 adm_df = adm_df.drop(columns=['BW.value'])
@@ -302,7 +304,7 @@ def tidy_tables():
         ##################################DISCHARGES SCRIPT#################################################### 
         dis_df = pd.json_normalize(dis_new_entries)
         if not dis_df.empty:   
-            dis_df.set_index(['uid','unique_key'])
+            dis_df.set_index(['uid'])
             if "started_at" in dis_df and 'completed_at' in dis_df :
                 format_date_without_timezone(dis_df,'started_at') 
                 format_date_without_timezone(dis_df,'completed_at') 
@@ -356,7 +358,7 @@ def tidy_tables():
         ##################################MATERNAL OUTCOMES########################################33
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
         if not mat_outcomes_df.empty:
-            mat_outcomes_df.set_index(['uid','unique_key'])
+            mat_outcomes_df.set_index(['uid'])
             if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
                 format_date_without_timezone(mat_outcomes_df,'started_at') 
                 format_date_without_timezone(mat_outcomes_df,'completed_at') 
@@ -382,7 +384,7 @@ def tidy_tables():
         
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
         if not vit_signs_df.empty:
-            vit_signs_df.set_index(['uid','unique_key'])
+            vit_signs_df.set_index(['uid'])
 
             if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
                 format_date_without_timezone(vit_signs_df,'started_at') 
@@ -426,7 +428,7 @@ def tidy_tables():
                 # Data Cleaning
                 neolab_cleanup(neolab_df,index)  
                 #Set Episodes
-                control_df = neolab_df[neolab_df['uid'] == row['uid'] and neolab_df['unique_key']==row['unique_key']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
+                control_df = neolab_df[neolab_df['uid'] == row['uid']].copy().sort_values(by=['DateBCT.value']).reset_index(drop=True)
                 if not control_df.empty:
                     episode =1
                     if neolab_df.at[index,'episode'] ==0:
@@ -492,7 +494,7 @@ def tidy_tables():
             neolab_df = create_columns(neolab_df)
               #SET INDEX 
             if "uid" in neolab_df:
-                neolab_df.set_index(['uid','unique_key'])
+                neolab_df.set_index(['uid'])
                 if ("episode" in neolab_df):
                     neolab_df.sort_values(by=['uid','episode'])  
             ########SAVE DATA#####################################
@@ -501,7 +503,7 @@ def tidy_tables():
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
-            baseline_df.set_index(['uid','unique_key']) 
+            baseline_df.set_index(['uid']) 
             
             if "started_at" in baseline_df and 'completed_at' in baseline_df :
                 format_date_without_timezone(baseline_df,'started_at') 
@@ -571,7 +573,7 @@ def tidy_tables():
         ###################MATERNAL COMPLETENES CASE OF MALAWI###################   
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if not mat_completeness_df.empty:
-            mat_completeness_df.set_index(['uid','unique_key'])
+            mat_completeness_df.set_index(['uid'])
             # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
             if not mat_outcomes_df.empty: 
                 previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value']) >='2021-10-01']
