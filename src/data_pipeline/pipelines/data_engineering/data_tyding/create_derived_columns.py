@@ -44,7 +44,8 @@ def create_columns(table: pd.DataFrame):
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:
                         if not table.empty and 'Gestation.value' in table:
-                                    table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = float('nan')
+                                    table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = None
+                                    table.loc[not isinstance(table['Gestation.value'], (int, float, complex)),'GestGroup.value'] = "Unknown"
                                     table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
                                     table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
                                     table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
@@ -55,8 +56,8 @@ def create_columns(table: pd.DataFrame):
             else:
                   if not table.empty  and 'Gestation.value' in table:
                         try:
-                              table.loc[table['Gestation.value'].isnull(
-                              ), 'GestGroup.value'] = float('nan')
+                              table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = None
+                              table.loc[not isinstance(table['Gestation.value'], (int, float, complex)),'GestGroup.value'] = "Unknown"
                               table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
                               table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
                               table.loc[table['Gestation.value'] < 34, 'GestGroup.value'] = "32-34 wks"
@@ -69,6 +70,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             if 'BirthWeight.value' in table:
                   try:
+                        table.loc[ not isinstance(table['BirthWeight.value'], (int, float, complex)),'BWGroup.value'] = "Unknown"
                         table.loc[table['BirthWeight.value'].isnull(), 'BWGroup.value'] = "Unknown"
                         table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
                         table.loc[table['BirthWeight.value'] < 4000, 'BWGroup.value'] = "NBW"
@@ -81,6 +83,7 @@ def create_columns(table: pd.DataFrame):
             else:
                   if ('BW.value' in table):
                         try:
+                              table.loc[not isinstance(table['BW.value'], (int, float, complex)),'BirthWeightCategory'] = "Unknown"
                               table.loc[table['BW.value'].isnull() , 'BirthWeightCategory'] = "Unknown"
                               table.loc[table['BW.value'] >= 4000, 'BirthWeightCategory'] = "HBW"
                               table.loc[table['BW.value'] < 4000, 'BirthWeightCategory'] = "NBW"
@@ -94,6 +97,7 @@ def create_columns(table: pd.DataFrame):
 
             if 'AdmissionWeight.value' in table:
                   try:
+                        table.loc[not isinstance(table['AdmissionWeight.value'], (int, float, complex)),'AWGroup.value'] = "Unknown"
                         table.loc[table['AdmissionWeight.value'].isnull(), 'AWGroup.value'] = "Unknown"
                         table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                         table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
@@ -106,6 +110,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             elif 'AW.value' in table:
                   try:
+                        table.loc[not isinstance(table['AW.value'], (int, float, complex)),'AWGroup.value'] = "Unknown"
                         table.loc[table['AW.value'].isnull(), 'AWGroup.value'] = "Unknown"
                         table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                         table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
@@ -123,7 +128,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             if 'Temperature.value' in table:
                   try:
-                        
+                        table.loc[not isinstance(table['Temperature.value'], (int, float, complex)),'TempGroup.value'] = "Unknown"
                         table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
                         table.loc[table['Temperature.value'] <
                                     41.5, 'TempGroup.value'] = "40.5-41.5"
@@ -149,12 +154,13 @@ def create_columns(table: pd.DataFrame):
                                     31.5, 'TempGroup.value'] = "30.5-31.5"
                         table.loc[table['Temperature.value'] < 30.5, 'TempGroup.value'] = "<30.5"
                   except:
-                        table.loc['TempGroup.value'] = "UNKNOWN"
+                        table.loc['TempGroup.value'] = "Unknown"
 
             
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   if 'Temperature.value' in table:
                         try:
+                              table.loc[not isinstance(table['Temperature.value'], (int, float, complex)),'TempThermia.value'] = "Unknown"
                               table.loc[table['Temperature.value'] >37.5,
                                     'TempThermia.value'] = "Fever"
                               table.loc[(table['Temperature.value'] >= 36.5) & (table['Temperature.value'] <= 37.5),
@@ -173,6 +179,7 @@ def create_columns(table: pd.DataFrame):
                   
             else:
                   try:
+                        table.loc[not isinstance(table['Temperature.value'], (int, float, complex)),'TempThermia.value'] = "Unknown"
                         table.loc[table['Temperature.value'] >= 37.5,
                               'TempThermia.value'] = "Hyperthermia"
                         table.loc[table['Temperature.value'] < 37.5,
