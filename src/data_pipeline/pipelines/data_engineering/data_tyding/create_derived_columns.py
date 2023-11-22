@@ -31,15 +31,15 @@ def create_columns(table: pd.DataFrame):
 
             # float("nan") used to make sure nan's are set not a string "nan"
             table['EXTERNALSOURCE.label'] = np.where(table['AdmittedFrom.label'].isnull(), table['AdmittedFrom.label'].mask(
-                  pd.isnull, (table['ReferredFrom.label'].mask(pd.isnull, table['ReferredFrom2.label']))), float('nan'))
+                  pd.isnull, (table['ReferredFrom.label'].mask(pd.isnull, table['ReferredFrom2.label']))),None)
             table['EXTERNALSOURCE.value'] = np.where(table['AdmittedFrom.value'].isnull(), table['AdmittedFrom.value'].mask(
-                  pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), float('nan'))
+                  pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), None)
 
             # order of statements matters
             if 'Gestation.value' in table.keys() and isinstance(table['Gestation.value'], (int, float, complex)):
                   pass;
             else:
-                  table['Gestation.value'] = float('nan') 
+                  table['Gestation.value'] = None
                   
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:
@@ -214,7 +214,7 @@ def create_columns(table: pd.DataFrame):
                                                 ((table['BW.value'] < 1000) |
                                                  (isinstance(table['BW.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
                               else:
-                                 table['LBWBinary'] = float('nan') 
+                                 table['LBWBinary'] = None 
                   
                         except:
                               pass
@@ -228,7 +228,7 @@ def create_columns(table: pd.DataFrame):
                                                 ((table['Bw.value'] < 1000) |
                                                  (isinstance(table['Bw.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
                               else:
-                                 table['LBWBinary'] = float('nan') 
+                                 table['LBWBinary'] = None 
                         except:
                               pass
             # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
