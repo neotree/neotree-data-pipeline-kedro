@@ -10,6 +10,7 @@ def deduplicate_neolab_query(neolab_where):
             with earliest_neolab as (
             select
             scriptid,
+            unique_key,
             uid,
             CASE WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
             THEN "data"->'entries'::text->1->'values'->0->'value'::text->>0
@@ -23,7 +24,7 @@ def deduplicate_neolab_query(neolab_where):
                   -- first uploaded
             from public.sessions
             where scriptid {neolab_where} -- only pull out neloab data
-            group by 1,2,3,4
+            group by 1,2,3,4,5
             )
             select
             earliest_neolab.scriptid,
@@ -32,6 +33,7 @@ def deduplicate_neolab_query(neolab_where):
             sessions.ingested_at,
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
+            earliest_neolab.unique_key
             data
             from earliest_neolab join sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
@@ -46,19 +48,21 @@ def deduplicate_data_query(condition,destination_table):
             select
             scriptid,
             uid, 
+            unique_key,
             max(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.sessions
             where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2
+            group by 1,2,3
             )
             select
             earliest_record.scriptid,
             earliest_record.uid,
             earliest_record.id,
             sessions.ingested_at,
+            earliest_record.unique_key,
             data
             from earliest_record join sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
@@ -70,6 +74,7 @@ def read_deduplicated_data_query(case_condition,where_condition,source_table):
                 select 
                 uid,
                 ingested_at,
+                unique_key,
                 "data"->'appVersion' as "appVersion",
                 "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
@@ -93,6 +98,7 @@ def read_diagnoses_query(admissions_case,adm_where):
             select 
                 uid,
                 ingested_at,
+                unique_key,
                 "data"->'appVersion' as "appVersion",
                 "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
