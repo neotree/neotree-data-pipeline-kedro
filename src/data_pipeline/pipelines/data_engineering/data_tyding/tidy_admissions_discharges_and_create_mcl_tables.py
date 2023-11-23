@@ -138,8 +138,8 @@ def tidy_tables():
             set_key_to_none(adm_df,'TempThermia.value')
             set_key_to_none(adm_df,'AWGroup.value')
             #Format Dates Admissions Tables
-            format_date(adm_df,'DateTimeAdmission.value')
-            format_date(adm_df,'EndScriptDatetime.value')
+            format_date_without_timezone(adm_df,'DateTimeAdmission.value')
+            format_date_without_timezone(adm_df,'EndScriptDatetime.value')
             format_date(adm_df,'DateHIVtest.value')
             format_date(adm_df,'ANVDRLDate.value')
             
@@ -278,26 +278,26 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label')
 
             if "Age.value" in adm_df:
-                adm_df['Age.value'] = pd.to_numeric(adm_df['Age.value'], errors='coerce',downcast='integer')
+                adm_df['Age.value'] = adm_df['Age.value'].astype(float)
 
             if 'AdmissionWeight.value' in adm_df:
-                 adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce',downcast='float')
+                 adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(float)
             if 'BirthWeight.value' in adm_df:
-                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce',downcast='float')
+                adm_df['BirthWeight.value'] = adm_df['BirthWeight.value'].astype(float)
             if 'BloodSugarmg.value' in adm_df:
-                adm_df['BloodSugarmg.value'] = pd.to_numeric(adm_df['BloodSugarmg.value'], errors='coerce',downcast='float')
+                adm_df['BloodSugarmg.value'] = adm_df['BloodSugarmg.value'].astype(float)
             if 'Temperature.value' in adm_df:
-                adm_df['Temperature.value'] = pd.to_numeric(adm_df['Temperature.value'], errors='coerce',downcast='float')
+                adm_df['Temperature.value'] = adm_df['Temperature.value'].astype(float)
             ## DROP UNNECESSARY COLUMNS
             if 'BW.value' in adm_df:
                 adm_df = adm_df.drop(columns=['BW.value'])
             if 'BW .value' in adm_df:
                 adm_df=adm_df.drop(columns=['BW .value'])
+                
         # Make changes to admissions and baseline data to match fields in power bi  
             adm_df = create_columns(adm_df)
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             #Save Derived Admissions To The DataBase Using Kedro
-            adm_df = adm_df.convert_dtypes()
             catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")   
@@ -313,13 +313,13 @@ def tidy_tables():
             else:
                 dis_df['time_spent'] = None
              #Format Dates Discharge Table
-            format_date(dis_df,'DateAdmissionDC.value')  
+            format_date_without_timezone(dis_df,'DateAdmissionDC.value')  
             format_date(dis_df,'DateDischVitals.value')
             format_date(dis_df,'DateDischWeight.value')
-            format_date(dis_df,'DateTimeDischarge.value')
-            format_date(dis_df,'EndScriptDatetime.value')
+            format_date_without_timezone(dis_df,'DateTimeDischarge.value')
+            format_date_without_timezone(dis_df,'EndScriptDatetime.value')
             format_date(dis_df,'DateWeaned.value')
-            format_date(dis_df,'DateTimeDeath.value')
+            format_date_without_timezone(dis_df,'DateTimeDeath.value')
             format_date(dis_df,'DateAdmission.value')
             format_date(dis_df,'BirthDateDis.value')
             format_date(dis_df,'DateHIVtest.value')
@@ -351,7 +351,6 @@ def tidy_tables():
                 else:
                     key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
              #Save Derived Admissions To The DataBase Using Kedro
-            dis_df =dis_df.convert_dtypes() 
             catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
@@ -380,7 +379,6 @@ def tidy_tables():
             set_key_to_none(mat_outcomes_df,'PregConditions.label')
             set_key_to_none(mat_outcomes_df,'BirthDateDis.value')                 
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
-            mat_outcomes_df = mat_outcomes_df.convert_dtypes()
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
@@ -400,8 +398,7 @@ def tidy_tables():
             format_date(vit_signs_df,'TimeTemp1.value')
             format_date(vit_signs_df,'TimeTemp2.value')
             format_date(vit_signs_df,'EndScriptDatetime.value')
-              #Save Derived Vital Signs To The DataBase Using Kedro
-            vit_signs_df = vit_signs_df.convert_dtypes()  
+              #Save Derived Vital Signs To The DataBase Using Kedro 
             catalog.save('create_derived_vitalsigns',vit_signs_df)
             logging.info("... Creating MCL count tables for Vital Signs DF")
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
@@ -494,7 +491,7 @@ def tidy_tables():
                                             ==bct_type_df.at[bct_index,'uid']) & (neolab_df['DateBCT.value']
                                             ==bct_type_df.at[bct_index,'DateBCT.value']) & (neolab_df['DateBCR.value']
                                             == bct_type_df.at[bct_index,'DateBCR.value']),'BCType'] = bct_type_df.at[bct_index,'BCType']
-            ####CREATING COLUMNS                            
+            ####CREATING COLUMNS                          
             neolab_df = create_columns(neolab_df)
               #SET INDEX 
             if "uid" in neolab_df:
@@ -502,7 +499,6 @@ def tidy_tables():
                 if ("episode" in neolab_df):
                     neolab_df.sort_values(by=['uid','episode'])  
             ########SAVE DATA#####################################
-            neolab_df = neolab_df.convert_dtypes()
             catalog.save('create_derived_neolab',neolab_df)
             
         #########################BASELINE###############################################################    
@@ -565,7 +561,6 @@ def tidy_tables():
             ###############CREATE COLUMNS#################################
             baseline_df = create_columns(baseline_df)        
             #Save Derived Baseline To The DataBase Using Kedro
-            baseline_df= baseline_df.convert_dtypes()
             catalog.save('create_derived_baseline',baseline_df)
             logging.info("... Creating MCL count tables for Baseline DF")
             explode_column(baseline_df,baseline_mcl,"bsl_")
@@ -585,7 +580,6 @@ def tidy_tables():
                 latest_mat_outcomes_df= mat_completeness_df[pd.to_datetime(mat_completeness_df['DateAdmission.value']) >='2021-09-30']
                 mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df], ignore_index=True)
                 ##########SAVING DATA####################################
-            mat_completeness_df = mat_completeness_df.convert_dtypes()  
             catalog.save('create_derived_maternity_completeness',mat_completeness_df)
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
 

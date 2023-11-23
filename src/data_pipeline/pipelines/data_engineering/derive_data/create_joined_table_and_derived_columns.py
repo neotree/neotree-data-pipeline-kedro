@@ -39,7 +39,7 @@ def join_table():
         jn_adm_dis['LengthOfLife.label'] = None
 
         if 'Gestation.value' in jn_adm_dis:
-                    jn_adm_dis['Gestation.value'] = pd.to_numeric(jn_adm_dis['Gestation.value'], errors='coerce')
+                    jn_adm_dis['Gestation.value'] = jn_adm_dis['Gestation.value'].astype(float)
         
         #Length of Life and Length of Stay
         date_format = "%Y-%m-%d"

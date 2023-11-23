@@ -166,11 +166,11 @@ def union_views():
                     key_change(old_smch_admissions,admission,position,'BSmmol.value','BloodSugarmmol.value')
                     key_change(old_smch_admissions,admission,position,'BSmg.value','BloodSugarmg.value')
                 if "Age.value" in old_smch_admissions:
-                    old_smch_admissions['Age.value'] = pd.to_numeric(old_smch_admissions['Age.value'], errors='coerce')
+                    old_smch_admissions['Age.value'] = old_smch_admissions['Age.value'].astype(float)
                 if 'AdmissionWeight.value' in old_smch_admissions:
-                    old_smch_admissions['AdmissionWeight.value'] = pd.to_numeric(old_smch_admissions['AdmissionWeight.value'], errors='coerce')
+                    old_smch_admissions['AdmissionWeight.value'] =old_smch_admissions['AdmissionWeight.value'].astype(float)
                 if 'BirthWeight.value' in old_smch_admissions:
-                    old_smch_admissions['BirthWeight.value'] = pd.to_numeric(old_smch_admissions['BirthWeight.value'], errors='coerce')   
+                    old_smch_admissions['BirthWeight.value'] = old_smch_admissions['BirthWeight.value'].astype(float)   
                 
                 format_date(old_smch_admissions,'DateTimeAdmission.value')
                 format_date(old_smch_admissions,'EndScriptDatetime.value')
@@ -276,13 +276,13 @@ def union_views():
                     key_change(old_matched_smch_data,matched_admission,position,'GestBirth.value','Gestation.value')
                     key_change(old_matched_smch_data,matched_admission,position,'PresComp.value','AdmReason.value')
                 if "Age.value" in old_matched_smch_data:
-                    old_matched_smch_data['Age.value'] = pd.to_numeric(old_matched_smch_data['Age.value'], errors='coerce')
+                    old_matched_smch_data['Age.value'] = old_matched_smch_data['Age.value'].astype(float)
                 if 'AdmissionWeight.value' in old_matched_smch_data:
-                    old_matched_smch_data['AdmissionWeight.value'] = pd.to_numeric(old_matched_smch_data['AdmissionWeight.value'], errors='coerce')
+                    old_matched_smch_data['AdmissionWeight.value'] = old_matched_smch_data['AdmissionWeight.value'].astype(float)
                 if 'BirthWeight.value' in old_matched_smch_data:
-                    old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value'], errors='coerce')
+                    old_matched_smch_data['BirthWeight.value'] = old_matched_smch_data['BirthWeight.value'].astype(float)
                 if 'BirthWeight.value_discharge' in old_matched_smch_data:
-                    old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
+                    old_matched_smch_data['BirthWeight.value'] = old_matched_smch_data['BirthWeight.value_value'].astype(float)
                 format_date(old_matched_smch_data,'DateTimeAdmission.value')
                 format_date(old_matched_smch_data,'EndScriptDatetime.value')
                 format_date(old_matched_smch_data,'DateHIVtest.value')
