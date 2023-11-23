@@ -165,8 +165,7 @@ def union_views():
                     key_change(old_smch_admissions,admission,position,'BSmgdL.value','BSUnitmg.value')
                     key_change(old_smch_admissions,admission,position,'BSmmol.value','BloodSugarmmol.value')
                     key_change(old_smch_admissions,admission,position,'BSmg.value','BloodSugarmg.value')
-                if "Age.value" in old_smch_admissions:
-                    old_smch_admissions['Age.value'] = old_smch_admissions['Age.value'].astype(float)
+              
                 if 'AdmissionWeight.value' in old_smch_admissions:
                     old_smch_admissions['AdmissionWeight.value'] =old_smch_admissions['AdmissionWeight.value'].astype(float)
                 if 'BirthWeight.value' in old_smch_admissions:
@@ -275,8 +274,7 @@ def union_views():
                     key_change(old_matched_smch_data,matched_admission,position,'NNUAdmTemp.value','Temperature.value') 
                     key_change(old_matched_smch_data,matched_admission,position,'GestBirth.value','Gestation.value')
                     key_change(old_matched_smch_data,matched_admission,position,'PresComp.value','AdmReason.value')
-                if "Age.value" in old_matched_smch_data:
-                    old_matched_smch_data['Age.value'] = old_matched_smch_data['Age.value'].astype(float)
+                
                 if 'AdmissionWeight.value' in old_matched_smch_data:
                     old_matched_smch_data['AdmissionWeight.value'] = old_matched_smch_data['AdmissionWeight.value'].astype(float)
                 if 'BirthWeight.value' in old_matched_smch_data:

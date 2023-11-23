@@ -277,9 +277,6 @@ def tidy_tables():
                 if  "ROMlength.label" in admission and str(admission["ROMlength.label"]) != 'nan' and admission["ROMlength.label"] is not None:
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label')
 
-            if "Age.value" in adm_df:
-                adm_df['Age.value'] = adm_df['Age.value'].astype(float)
-
             if 'AdmissionWeight.value' in adm_df:
                  adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(float)
             if 'BirthWeight.value' in adm_df:
