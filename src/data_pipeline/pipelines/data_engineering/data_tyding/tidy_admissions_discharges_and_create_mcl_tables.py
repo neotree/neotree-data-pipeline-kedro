@@ -12,7 +12,6 @@ from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
-from data_pipeline.pipelines.data_engineering.utils.validation_utils import is_float
 import numpy as np
 
 from conf.base.catalog import params
@@ -155,12 +154,12 @@ def tidy_tables():
                     if len(str(admission['Age.value']))>10 and 'T' in str(admission['Age.value']):
                         if "DateTimeAdmission.value" in admission and admission["DateTimeAdmission.value"] is not None:
                             #FIX BUG WHERE DOB IS GREATER THAN DATE OF ADMISSIONS
-                            if (pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)<
-                            pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)):
-                                admission['Age.value'] = pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)-pd.Timedelta(hours=24)
+                            if (pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce')<
+                            pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce')):
+                                admission['Age.value'] = pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce')-pd.Timedelta(hours=24)
 
-                            admission['Age.value']=(pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True) -
-                                        pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True))/ pd.Timedelta(hours=1)
+                            admission['Age.value']=(pd.to_datetime(admission['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce') -
+                                        pd.to_datetime(admission['Age.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce'))/ pd.Timedelta(hours=1)
                                         
                         if admission['Age.value']>0:
                             if admission['Age.value'] <1:
@@ -280,17 +279,14 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label')
 
             if 'AdmissionWeight.value' in adm_df:
-                adm_df.loc[not is_float(adm_df['AdmissionWeight.value']),"AdmissionWeight.value"]=np.nan
-                adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(float)
+                adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
+
             if 'BirthWeight.value' in adm_df:
-                adm_df.loc[not is_float(adm_df['BirthWeight.value']),"BirthWeight.value"]=np.nan
-                adm_df['BirthWeight.value'] = adm_df['BirthWeight.value'].astype(float)
+                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
             if 'BloodSugarmg.value' in adm_df:
-                adm_df.loc[not is_float(adm_df['BloodSugarmg.value']),"BloodSugarmg.value"]=np.nan
-                adm_df['BloodSugarmg.value'] = adm_df['BloodSugarmg.value'].astype(float)
+                adm_df['BloodSugarmg.value'] = pd.to_numeric(adm_df['BloodSugarmg.value'], errors='coerce')
             if 'Temperature.value' in adm_df:
-                adm_df.loc[not is_float(adm_df['Temperature.value']),"Temperature.value"]=np.nan
-                adm_df['Temperature.value'] = adm_df['Temperature.value'].astype(float)
+                adm_df['Temperature.value'] = pd.to_numeric(adm_df['Temperature.value'], errors='coerce')
             ## DROP UNNECESSARY COLUMNS
             if 'BW.value' in adm_df:
                 adm_df = adm_df.drop(columns=['BW.value'])
@@ -411,8 +407,8 @@ def tidy_tables():
             if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
                 neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None):
             
-                neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True) -
-                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True)).astype('timedelta64[h]')
+                neolab_df['BCReturnTime'] = (pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce') -
+                                        pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce')).astype('timedelta64[h]')
             else:
                 neolab_df['BCReturnTime'] = None
             if "started_at" in neolab_df and 'completed_at' in neolab_df :
@@ -426,7 +422,7 @@ def tidy_tables():
             neolab_df['episode'] = 0
             # Initialise BCR TYPE
             neolab_df['BCType']= None
-            neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'])
+            neolab_df['DateBCT.value']=pd.to_datetime(neolab_df['DateBCT.value'],errors='coerce')
             
             for index,row in neolab_df.iterrows():
                 # Data Cleaning
@@ -579,8 +575,8 @@ def tidy_tables():
             mat_completeness_df.set_index(['uid'])
             # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
             if not mat_outcomes_df.empty: 
-                previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value']) >='2021-10-01']
-                latest_mat_outcomes_df= mat_completeness_df[pd.to_datetime(mat_completeness_df['DateAdmission.value']) >='2021-09-30']
+                previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value'],errors='coerce') >='2021-10-01']
+                latest_mat_outcomes_df= mat_completeness_df[pd.to_datetime(mat_completeness_df['DateAdmission.value'],errors='coerce') >='2021-09-30']
                 mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df], ignore_index=True)
                 ##########SAVING DATA####################################
             catalog.save('create_derived_maternity_completeness',mat_completeness_df)

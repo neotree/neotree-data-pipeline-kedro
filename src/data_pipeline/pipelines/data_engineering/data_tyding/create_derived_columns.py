@@ -45,8 +45,7 @@ def create_columns(table: pd.DataFrame):
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:
                         if not table.empty and 'Gestation.value' in table:
-                                    table.loc[not is_float(table['Gestation.value']),"Gestation.value"]=np.nan
-                                    table['Gestation.value'] = table['Gestation.value'].astype(float)
+                                    table['Gestation.value'] = pd.to_numeric(table['Gestation.value'], errors='coerce')
                                     table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = None
                                     table.loc[not isinstance(table['Gestation.value'], (int, float, complex)),'GestGroup.value'] = "Unknown"
                                     table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
@@ -59,8 +58,7 @@ def create_columns(table: pd.DataFrame):
             else:
                   if not table.empty  and 'Gestation.value' in table:
                         try:
-                              table.loc[not is_float(table['Gestation.value']),"Gestation.value"]=np.nan
-                              table['Gestation.value'] = table['Gestation.value'].astype(float)
+                              table['Gestation.value'] = pd.to_numeric(table['Gestation.value'], errors='coerce')
                               table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = None
                               table.loc[not isinstance(table['Gestation.value'], (int, float, complex)),'GestGroup.value'] = "Unknown"
                               table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
@@ -75,8 +73,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             if 'BirthWeight.value' in table:
                   try:
-                        table.loc[not is_float(table['BirthWeight.value']),"BirthWeight.value"]=np.nan
-                        table['BirthWeight.value'] = table['BirthWeight.value'].astype(float)
+                        table['BirthWeight.value'] =  pd.to_numeric(table['BirthWeight.value'], errors='coerce')
                         table.loc[ not isinstance(table['BirthWeight.value'], (int, float, complex)),'BWGroup.value'] = "Unknown"
                         table.loc[table['BirthWeight.value'].isnull(), 'BWGroup.value'] = "Unknown"
                         table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
@@ -90,8 +87,7 @@ def create_columns(table: pd.DataFrame):
             else:
                   if ('BW.value' in table):
                         try:
-                              table.loc[not is_float(table['BW.value']),"BW.value"]=np.nan
-                              table['BW.value'] = table['BW.value'].astype(float)
+                              table['BW.value'] = pd.to_numeric(table['BW.value'], errors='coerce')
                               table.loc[not isinstance(table['BW.value'], (int, float, complex)),'BWGroup.value'] = "Unknown"
                               table.loc[table['BW.value'].isnull() , 'BWGroup.value'] = "Unknown"
                               table.loc[table['BW.value'] >= 4000, 'BWGroup.value'] = "HBW"
@@ -106,8 +102,8 @@ def create_columns(table: pd.DataFrame):
 
             if 'AdmissionWeight.value' in table:
                   try:
-                        table.loc[not is_float(table['AdmissionWeight.value']),"AdmissionWeight.value"]=np.nan
-                        table['AdmissionWeight.value'] = table['AdmissionWeight.value'].astype(float)
+
+                        table['AdmissionWeight.value'] = pd.to_numeric(table['AdmissionWeight.value'], errors='coerce')
                         table.loc[not isinstance(table['AdmissionWeight.value'], (int, float, complex)),'AWGroup.value'] = "Unknown"
                         table.loc[table['AdmissionWeight.value'].isnull(), 'AWGroup.value'] = "Unknown"
                         table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
@@ -121,8 +117,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             elif 'AW.value' in table:
                   try: 
-                        table.loc[not is_float(table['AW.value']),"AW.value"]=np.nan
-                        table.loc[table['AW.value'] != 'Unknown', 'AW.value'] = table.loc[table['AW.value'].astype(float)]
+                        table['AW.value']= pd.to_numeric(table['AdmissionWeight.value'], errors='coerce')
                         table.loc[table['AW.value'].isnull(), 'AWGroup.value'] = "Unknown"
                         table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                         table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
@@ -140,8 +135,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             if 'Temperature.value' in table:
                   try:
-                        table.loc[not is_float(table['Temperature.value']),"Temperature.value"]=np.nan
-                        table['Temperature.value'] = table['Temperature.value'].astype(float)
+                        table['Temperature.value'] = pd.to_numeric(table['Temperature.value'], errors='coerce')
                         table.loc[not isinstance(table['Temperature.value'], (int, float, complex)),'TempGroup.value'] = "Unknown"
                         table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
                         table.loc[table['Temperature.value'] <
