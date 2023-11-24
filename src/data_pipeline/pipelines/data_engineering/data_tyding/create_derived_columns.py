@@ -71,6 +71,7 @@ def create_columns(table: pd.DataFrame):
 
 
             # order of statements matters
+            table['BWGroup.value']= "Unknown"
             if 'BirthWeight.value' in table:
                   try:
                         table['BirthWeight.value'] =  pd.to_numeric(table['BirthWeight.value'], errors='coerce')
@@ -99,7 +100,7 @@ def create_columns(table: pd.DataFrame):
                               pass
 
             # For Baseline Tables
-
+            table['AWGroup.value']= "Unknown"
             if 'AdmissionWeight.value' in table:
                   try:
 
@@ -133,6 +134,7 @@ def create_columns(table: pd.DataFrame):
                   table['AWGroup.value']= np.nan   
 
             # order of statements matters
+            table['TempGroup.value']= "Unknown"
             if 'Temperature.value' in table:
                   try:
                         table['Temperature.value'] = pd.to_numeric(table['Temperature.value'], errors='coerce')
