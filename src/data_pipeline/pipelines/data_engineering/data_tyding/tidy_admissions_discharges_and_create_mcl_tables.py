@@ -12,6 +12,8 @@ from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
+from data_pipeline.pipelines.data_engineering.utils.validation_utils import is_float
+import numpy as np
 
 from conf.base.catalog import params
 import datetime
@@ -278,12 +280,16 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label')
 
             if 'AdmissionWeight.value' in adm_df:
-                 adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(float)
+                adm_df.loc[not is_float(adm_df['AdmissionWeight.value']),"AdmissionWeight.value"]=np.nan
+                adm_df['AdmissionWeight.value'] = adm_df['AdmissionWeight.value'].astype(float)
             if 'BirthWeight.value' in adm_df:
+                adm_df.loc[not is_float(adm_df['BirthWeight.value']),"BirthWeight.value"]=np.nan
                 adm_df['BirthWeight.value'] = adm_df['BirthWeight.value'].astype(float)
             if 'BloodSugarmg.value' in adm_df:
+                adm_df.loc[not is_float(adm_df['BloodSugarmg.value']),"BloodSugarmg.value"]=np.nan
                 adm_df['BloodSugarmg.value'] = adm_df['BloodSugarmg.value'].astype(float)
             if 'Temperature.value' in adm_df:
+                adm_df.loc[not is_float(adm_df['Temperature.value']),"Temperature.value"]=np.nan
                 adm_df['Temperature.value'] = adm_df['Temperature.value'].astype(float)
             ## DROP UNNECESSARY COLUMNS
             if 'BW.value' in adm_df:

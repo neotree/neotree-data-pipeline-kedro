@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from conf.base.catalog import params
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
+from data_pipeline.pipelines.data_engineering.utils.validation_utils import is_float
 
 
 
@@ -241,15 +242,7 @@ def create_columns(table: pd.DataFrame):
     except Exception as e:
           raise e
     
-def is_float(element: any) -> bool:
-    #If you expect None to be passed:
-    if element is None: 
-        return False
-    try:
-        float(element)
-        return True
-    except ValueError:
-        return False
+
             
       
 
