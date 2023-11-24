@@ -102,14 +102,26 @@ def read_new_smch_admissions_query():
     return f'''
             select 
                 *
-            from derived.admissions where TO_DATE("DateTimeAdmission.value"::TEXT,'YYYY-MM-DD') >='2021-02-01' AND facility = 'SMCH';'''
+            from derived.admissions where
+            "DateTimeAdmission.value" ~ '^\d{4}-\d{2}' and
+            TO_DATE("DateTimeAdmission.value"::TEXT,'YYYY-MM-DD') >='2021-02-01' AND facility = 'SMCH';'''
 
 def read_new_smch_discharges_query():
     return f'''
             select 
-                *
-            from derived.discharges where TO_DATE("DateTimeDischarge.value"::TEXT,'YYYY-MM-DD') >='2021-02-01' 
-                or TO_DATE("DateTimeDeath.value" ::TEXT,'YYYY-MM-DD')>'2021-02-01'  AND facility = 'SMCH';'''
+                *,
+		  CASE WHEN "DateTimeDischarge.value" ~ '^\d{4}-\d{2}' 
+		  THEN TO_DATE("DateTimeDischarge.value"::TEXT,'YYYY-MM-DD')
+		  ELSE null
+		  END AS "DateTimeDeath.value",
+		   CASE WHEN "DateTimeDeath.value" ~ '^\d{4}-\d{2}' 
+		  THEN TO_DATE("DateTimeDeath.value"::TEXT,'YYYY-MM-DD')
+		  ELSE null
+		  END AS "DateTimeDischarge.value"
+            from derived.discharges where
+			("DateTimeDischarge.value" ~ '^\d{4}-\d{2}' and "DateTimeDischarge.value">='2021-02-01')
+			or ("DateTimeDeath.value" ~ '^\d{4}-\d{2}' and "DateTimeDeath.value">='2021-02-01') AND facility = 'SMCH' ;
+            '''
 
 def read_old_smch_admissions_query():
     return f'''
