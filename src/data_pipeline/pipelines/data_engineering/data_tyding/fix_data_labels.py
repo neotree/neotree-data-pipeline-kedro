@@ -18,7 +18,8 @@ def data_labels_cleanup(script):
                     if row['data'][key] is not None and row['data'][key]['values'] is not None and len(row['data'][key]['values']['value'])>0:
                         value = row['data'][key]['values']['value'][0]
                         type = row['data'][key]['type'] if 'type' in row['data'][key] else None
-                        label = None
+                        
+                        label = 'Undefined'
                         if(script=='admissions'):
                             label = fix_admissions_label(key,value)
                         elif(script=='discharges'):
@@ -26,9 +27,10 @@ def data_labels_cleanup(script):
                         elif(script=='maternals'):
                             label= fix_maternal_label(key,value)
                         elif(script=='baselines'):
-                            label= fix_baseline_label(key,value)                        
-                        query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                        inject_sql(query,f'''FIX {script} ERRORS''')
+                            label= fix_baseline_label(key,value)   
+                        if label !='Undefined':                     
+                            query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
+                            inject_sql(query,f'''FIX {script} ERRORS''')
 
     
     
