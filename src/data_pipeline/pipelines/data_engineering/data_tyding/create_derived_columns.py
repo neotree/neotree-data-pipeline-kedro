@@ -40,19 +40,18 @@ def create_columns(table: pd.DataFrame):
             if 'Gestation.value' in table.keys() and isinstance(table['Gestation.value'], (int, float, complex)):
                   pass;
             else:
-                  table['Gestation.value'] = None
+                  table['Gestation.value'] = np.nan
                   
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:
                         if not table.empty and 'Gestation.value' in table:
-                                    table['Gestation.value'] = pd.to_numeric(table['Gestation.value'],downcast='integer', errors='coerce')
-                                    table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = None
-                                    table.loc[not isinstance(table['Gestation.value'], (int, float, complex)),'GestGroup.value'] = "Unknown"
-                                    table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
-                                    table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
-                                    table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
-                                    table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
-                                    table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
+                              table['Gestation.value'] = pd.to_numeric(table['Gestation.value'],downcast='integer', errors='coerce')
+                              table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = "Unknowwn"
+                              table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
+                              table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
+                              table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "33-36 wks"
+                              table.loc[table['Gestation.value'] < 33, 'GestGroup.value'] = "28-32 wks"
+                              table.loc[table['Gestation.value'] < 28, 'GestGroup.value'] = "<28"
                   except:
                         pass
             else:
@@ -60,7 +59,6 @@ def create_columns(table: pd.DataFrame):
                         try:
                               table['Gestation.value'] = pd.to_numeric(table['Gestation.value'],downcast='integer', errors='coerce')
                               table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = None
-                              table.loc[not isinstance(table['Gestation.value'], (int, float, complex)),'GestGroup.value'] = "Unknown"
                               table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
                               table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
                               table.loc[table['Gestation.value'] < 34, 'GestGroup.value'] = "32-34 wks"
@@ -71,11 +69,9 @@ def create_columns(table: pd.DataFrame):
 
 
             # order of statements matters
-            table['BWGroup.value']= "Unknown"
             if 'BirthWeight.value' in table:
                   try:
                         table['BirthWeight.value'] =  pd.to_numeric(table['BirthWeight.value'],downcast='integer', errors='coerce')
-                        table.loc[ not isinstance(table['BirthWeight.value'], (int, float, complex)),'BWGroup.value'] = "Unknown"
                         table.loc[table['BirthWeight.value'].isnull(), 'BWGroup.value'] = "Unknown"
                         table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
                         table.loc[table['BirthWeight.value'] < 4000, 'BWGroup.value'] = "NBW"
@@ -89,7 +85,6 @@ def create_columns(table: pd.DataFrame):
                   if ('BW.value' in table):
                         try:
                               table['BW.value'] = pd.to_numeric(table['BW.value'],downcast='integer', errors='coerce')
-                              table.loc[not isinstance(table['BW.value'], (int, float, complex)),'BWGroup.value'] = "Unknown"
                               table.loc[table['BW.value'].isnull() , 'BWGroup.value'] = "Unknown"
                               table.loc[table['BW.value'] >= 4000, 'BWGroup.value'] = "HBW"
                               table.loc[table['BW.value'] < 4000, 'BWGroup.value'] = "NBW"
@@ -100,12 +95,10 @@ def create_columns(table: pd.DataFrame):
                               pass
 
             # For Baseline Tables
-            table['AWGroup.value']= "Unknown"
             if 'AdmissionWeight.value' in table:
                   try:
 
                         table['AdmissionWeight.value'] = pd.to_numeric(table['AdmissionWeight.value'],downcast='integer', errors='coerce')
-                        table.loc[not isinstance(table['AdmissionWeight.value'], (int, float, complex)),'AWGroup.value'] = "Unknown"
                         table.loc[table['AdmissionWeight.value'].isnull(), 'AWGroup.value'] = "Unknown"
                         table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                         table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
@@ -134,7 +127,6 @@ def create_columns(table: pd.DataFrame):
                   table['AWGroup.value']= np.nan   
 
             # order of statements matters
-            table['TempGroup.value']= "Unknown"
             if 'Temperature.value' in table:
                   try:
                         table['Temperature.value'] = pd.to_numeric(table['Temperature.value'],downcast='float', errors='coerce')
@@ -206,7 +198,7 @@ def create_columns(table: pd.DataFrame):
 
                         table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
                                                 ((table['BirthWeight.value'] < 1000) |
-                                                 (isinstance(table['BirthWeight.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
+                                                 (isinstance(table['Gestation.value'], (int, float, complex)) & (table[''] < 28))))
                         
                         
                   except:
@@ -220,7 +212,7 @@ def create_columns(table: pd.DataFrame):
 
                               table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
                                                 ((table['BW.value'] < 1000) |
-                                                 (isinstance(table['BW.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
+                                                 (isinstance(table['Gestation.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
                   
                         except:
                               pass
@@ -230,7 +222,7 @@ def create_columns(table: pd.DataFrame):
 
                               table['<28wks/1kg.value'] = ((table['Bw.value'] > 0) &
                                                 ((table['Bw.value'] < 1000) |
-                                                 (isinstance(table['Bw.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
+                                                 (isinstance(table['Gestation.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
                         except:
                               pass
             # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
