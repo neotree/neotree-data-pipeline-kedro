@@ -70,7 +70,7 @@ def deduplicate_baseline_query(condition):
             select
             scriptid,
             uid,
-            unique_key 
+            unique_key,
             max(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
