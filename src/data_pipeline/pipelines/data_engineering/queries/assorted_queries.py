@@ -212,7 +212,6 @@ def get_admissions_data_tofix_query():
              ("data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%%Presenting complaint%%'
              or "data"->'entries'->'ModeDelivery'->'values'->'label'::text->>0 like '%%Mode of Delivery%%'
              or "data"->'entries'->'HIVtestResult'->'values'->'label'::text->>0 like '%%What%%'
-             or "data"->'entries'->'DangerSigns'->'values'->'label'::text->>0 like '%%None%%'
              ) and scriptid in ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK','-KO1TK4zMvLhxTw6eKia');;
              '''
 def get_baseline_data_tofix_query():
