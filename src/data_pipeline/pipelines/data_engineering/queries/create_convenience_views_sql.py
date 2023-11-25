@@ -58,7 +58,7 @@ def create_convinience_views_query():
             END AS "OutcomeMonthYear",
             derived.joined_admissions_discharges."ANSteroids.label" As "AntenatalSteroids",
             CASE WHEN 
-            derived.joined_admissions_discharges."Gestation.value"  ~ '^\\d{1}' 
+            derived.joined_admissions_discharges."Gestation.value"  ~ '^\\d{1}' AND
             derived.joined_admissions_discharges."Gestation.value" < 28 AND
             derived.joined_admissions_discharges."BirthWeight.value"  ~ '^\\d{1}' AND 
             derived.joined_admissions_discharges."BirthWeight.value" < 1000 then 1 End AS "Less28wks/1kgCount",

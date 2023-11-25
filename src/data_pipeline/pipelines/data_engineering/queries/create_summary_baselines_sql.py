@@ -54,7 +54,9 @@ def summary_baseline_query():
             ) THEN NULL 
             END AS "OutcomeMonthYear",
             {ANSteroids}
-            CASE WHEN derived.baseline."Gestation.value" < 28 AND derived.baseline."BW.value" < 1000 then 1 End AS "Less28wks/1kgCount",
+            CASE WHEN derived.baseline."Gestation.value" < 28 AND
+            derived.baseline."Gestation.value"  ~ '^\\d{1}'
+            AND derived.baseline."BW.value" < 1000 then 1 End AS "Less28wks/1kgCount",
             CASE WHEN derived.baseline."GestGroup.value" <> 'Term' THEN 1 END AS "PretermCount",
             CASE 
             WHEN derived.baseline."NeoTreeOutcome.label" like '%%Death%%' THEN 1 
