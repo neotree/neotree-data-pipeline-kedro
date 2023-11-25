@@ -29,6 +29,9 @@ def get_key_values(data_raw):
 
             if 'facility' in row:
                 new_entry['facility'] = row['facility']
+                
+            if 'unique_key' in row:
+                new_entry['unique_key'] = row['unique_key']
             
             # Convert All UIDS TO UPPER CASE
             new_entry['uid'] = str(row['uid']).upper()

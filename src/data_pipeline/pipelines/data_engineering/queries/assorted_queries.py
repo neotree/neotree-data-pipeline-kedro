@@ -61,6 +61,37 @@ def deduplicate_data_query(condition,destination_table):
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
             '''      
+
+def deduplicate_baseline_query(condition):
+        return f'''drop table if exists scratch.deduplicated_baseline cascade;;
+            create table scratch.deduplicated_baseline as 
+            (
+            with earliest_record as (
+            select
+            scriptid,
+            uid,
+            unique_key 
+            max(id) as id -- This takes the last upload 
+                  -- of the session as the deduplicated record. 
+                  -- We could replace with min(id) to take the 
+                  -- first uploaded
+            from public.sessions
+            where scriptid {condition} -- only pull out records for the specified script
+            group by 1,2,3
+            )
+            select
+            earliest_record.scriptid,
+            earliest_record.uid,
+            earliest_record.id,
+             earliest_record.unique_key,
+            sessions.ingested_at,
+            
+            data
+            from earliest_record join sessions
+            on earliest_record.id = sessions.id where sessions.scriptid {condition}
+            and sessions.unique_key is not null
+            );;
+            '''    
             
 def read_deduplicated_data_query(case_condition,where_condition,source_table):
     return f'''

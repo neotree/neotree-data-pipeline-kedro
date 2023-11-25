@@ -13,7 +13,8 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (g
                             read_new_smch_discharges_query,read_old_smch_admissions_query,read_old_smch_discharges_query,
                             read_old_smch_matched_view_query,read_new_smch_matched_query,get_duplicate_maternal_query,
                             get_discharges_tofix_query,get_maternal_data_tofix_query,get_admissions_data_tofix_query,
-                            get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query,read_diagnoses_query)
+                            get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query,read_diagnoses_query,
+                            deduplicate_baseline_query)
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -109,6 +110,8 @@ if hospital_scripts:
                if condition !='':
                   if(script_name=='neolab'):
                      deduplication_query= deduplicate_neolab_query(condition+additional_where)
+                  elif(script_name=='baseline'):
+                     deduplication_query = deduplicate_baseline_query(condition+additional_where)   
                   else:
                      deduplication_query = deduplicate_data_query(condition+additional_where,dedup_destination)
                   generic_dedup_queries.append(deduplication_query)

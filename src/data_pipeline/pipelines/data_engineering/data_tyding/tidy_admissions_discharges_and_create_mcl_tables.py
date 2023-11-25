@@ -503,7 +503,7 @@ def tidy_tables():
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
-            baseline_df.set_index(['uid']) 
+            baseline_df.set_index(['uid','unique_key']) 
             
             if "started_at" in baseline_df and 'completed_at' in baseline_df :
                 format_date_without_timezone(baseline_df,'started_at') 
