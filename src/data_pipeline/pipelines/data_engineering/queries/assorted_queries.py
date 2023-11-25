@@ -4,7 +4,7 @@ import logging
 #TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 def deduplicate_neolab_query(neolab_where):
     return f'''
-            drop table if exists scratch.deduplicated_neolab cascade;
+            drop table if exists scratch.deduplicated_neolab cascade;;
             create table scratch.deduplicated_neolab as 
             (
             with earliest_neolab as (
@@ -32,11 +32,11 @@ def deduplicate_neolab_query(neolab_where):
             data
             from earliest_neolab join sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
-            ); '''
+            );; '''
 
 def deduplicate_data_query(condition,destination_table):
     if(destination_table!='public.sessions'):
-        return f'''drop table if exists {destination_table} cascade;
+        return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
             (
             with earliest_record as (
@@ -59,7 +59,7 @@ def deduplicate_data_query(condition,destination_table):
             data
             from earliest_record join sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
-            );
+            );;
             '''      
             
 def read_deduplicated_data_query(case_condition,where_condition,source_table):
@@ -73,7 +73,7 @@ def read_deduplicated_data_query(case_condition,where_condition,source_table):
                 "data"->'completed_at' as "completed_at",
                 "data"->'entries' as "entries"
                 {case_condition}
-            from {source_table} where scriptid {where_condition} and uid!='null';
+            from {source_table} where scriptid {where_condition} and uid!='null';;
    
   '''
   
@@ -81,7 +81,7 @@ def read_derived_data_query(source_table):
      return f'''
                 select 
                     *
-                from derived.{source_table} where uid!='null';
+                from derived.{source_table} where uid!='null';;
             '''
 
 ##SPECIAL CASE
@@ -95,7 +95,7 @@ def read_diagnoses_query(admissions_case,adm_where):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case}
-            from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';
+            from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';;
             '''
 
 def read_new_smch_admissions_query():
@@ -104,7 +104,7 @@ def read_new_smch_admissions_query():
                 *
             from derived.admissions where
             "DateTimeAdmission.value" ~ '^\d{4}-\d{2}' and
-            TO_DATE("DateTimeAdmission.value"::TEXT,'YYYY-MM-DD') >='2021-02-01' AND facility = 'SMCH';'''
+            TO_DATE("DateTimeAdmission.value"::TEXT,'YYYY-MM-DD') >='2021-02-01' AND facility = 'SMCH';;'''
 
 def read_new_smch_discharges_query():
     return f'''
@@ -120,39 +120,39 @@ def read_new_smch_discharges_query():
 		  END AS "DateTimeDischarge.value"
             from derived.discharges where
 			("DateTimeDischarge.value" ~ '^\d{4}-\d{2}' and "DateTimeDischarge.value">='2021-02-01')
-			or ("DateTimeDeath.value" ~ '^\d{4}-\d{2}' and "DateTimeDeath.value">='2021-02-01') AND facility = 'SMCH' ;
+			or ("DateTimeDeath.value" ~ '^\d{4}-\d{2}' and "DateTimeDeath.value">='2021-02-01') AND facility = 'SMCH' ;;
             '''
 
 def read_old_smch_admissions_query():
     return f'''
             select 
                 *
-            from derived.old_smch_admissions;'''
+            from derived.old_smch_admissions;;'''
 
 def read_old_smch_discharges_query():
     return f'''
             select 
                 *
-            from derived.old_smch_discharges;'''
+            from derived.old_smch_discharges;;'''
 
 def read_old_smch_matched_view_query():
     return f'''
             select 
                 *
-            from derived.old_smch_matched_admissions_discharges;'''
+            from derived.old_smch_matched_admissions_discharges;;'''
 
 def read_new_smch_matched_query():
     return f'''
             select 
                 *
-            from derived.joined_admissions_discharges;'''
+            from derived.joined_admissions_discharges;;'''
 
 def get_duplicate_maternal_query():
     return f'''
             select uid, s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 as "DA",s."data"->'entries' as "entries"
             from public.sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
             s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' order by
-            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 ;
+            s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 ;;
            '''
 
 def update_maternal_uid_query_new(uid,date_condition,old_uid):
@@ -169,7 +169,7 @@ def update_maternal_uid_query_new(uid,date_condition,old_uid):
                 
                 }}
                 }}'::TEXT::jsonb,
-               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
             '''.format(uid,date_condition,old_uid)
 
 def update_maternal_uid_query_old(uid,date_condition,old_uid):
@@ -186,7 +186,7 @@ def update_maternal_uid_query_old(uid,date_condition,old_uid):
                 }}
                 ]
                 }}'::TEXT::jsonb,
-               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};
+               true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
             '''.format(uid,date_condition,old_uid)
 
 def update_maternal_outer_uid(uid):
@@ -194,33 +194,34 @@ def update_maternal_outer_uid(uid):
              data,
             '{{uid}}',
              to_json(uid)::TEXT::JSONB,
-             true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';'''.format(uid)
+             true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';;'''.format(uid)
 
 def get_discharges_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
              ("data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%'
              or "data"->'entries'->'ModeDelivery'->'values'->'label'::text->>0 like '%%Mode of Delivery%%') 
-             and scriptid in ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka','-KYDiO2BTM4kSGZDVXAO');
+             and scriptid in ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka','-KYDiO2BTM4kSGZDVXAO');;
              '''
 def get_maternal_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
              "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid in ('-MDPYzHcFVHt02D1Tz4Z' 
-             ,'-MYk0A3-Z_QjaXYU5MsS','-MOAjJ_In4TOoe0l_Gl5');
+             ,'-MYk0A3-Z_QjaXYU5MsS','-MOAjJ_In4TOoe0l_Gl5');;
              '''
 def get_admissions_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
              ("data"->'entries'->'AdmReason'->'values'->'label'::text->>0 like '%%Presenting complaint%%'
              or "data"->'entries'->'ModeDelivery'->'values'->'label'::text->>0 like '%%Mode of Delivery%%'
              or "data"->'entries'->'HIVtestResult'->'values'->'label'::text->>0 like '%%What%%'
-             ) and scriptid in ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK','-KO1TK4zMvLhxTw6eKia');
+             ) and scriptid in ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK','-KO1TK4zMvLhxTw6eKia');;
              '''
 def get_baseline_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
              "data"->'entries'->'NeoTreeOutcome'->'values'->'label'::text->>0 like '%%Outcome%%' and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
-             ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');
+             ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');;
              '''
                          
 def update_eronous_label(uid,script_id,type,key,label,value):
+           
             return '''update public.sessions set data = JSONB_SET(
              data,
             '{{entries,{3}}}',
@@ -234,5 +235,5 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 
                 }}
                 }}'::TEXT::jsonb,
-               true) where "uid" = '{0}' and "scriptid"='{1}';
+               true) where "uid" = '{0}' and "scriptid"='{1}';;
             '''.format(uid,script_id,type,key,label,value)

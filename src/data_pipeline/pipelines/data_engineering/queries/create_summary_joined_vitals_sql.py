@@ -1,7 +1,7 @@
 #Query to create summary day one vitals table
 def summary_joined_vitals_query():
     return f'''
-                DROP TABLE IF EXISTS derived.summary_joined_vitals;
+                DROP TABLE IF EXISTS derived.summary_joined_vitals;;
                     CREATE TABLE derived.summary_joined_vitals AS 
                     SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
                     "derived"."summary_day1_vitals"."NeoTreeID" AS "NeoTreeID",
@@ -88,5 +88,5 @@ def summary_joined_vitals_query():
                     "derived"."summary_day3_vitals"."Temperature2" AS "Temperature2",
                     "derived"."summary_day3_vitals"."Temperature2 Time" AS "Temperature2 Time",
                     "derived"."summary_day3_vitals"."Day" AS "Day"
-                FROM "derived"."summary_day3_vitals";
+                FROM "derived"."summary_day3_vitals";;
         '''

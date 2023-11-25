@@ -1,7 +1,7 @@
 
 #Query to create summary neolab table
 def summary_neolab_query():
-  return   f''' drop table if exists derived.summary_neolab cascade;
+  return   f''' drop table if exists derived.summary_neolab cascade;;
             create table derived.summary_neolab as 
             (
             with latest_neolab as (
@@ -40,4 +40,4 @@ def summary_neolab_query():
                     derived.neolab."BCResult.value" END AS "CombinedResult"   
             from latest_neolab join derived.neolab
             on latest_neolab.uid=derived.neolab."uid" and latest_neolab."DateBCR" = derived.neolab."DateBCR.value" 
-            );'''
+            );;'''

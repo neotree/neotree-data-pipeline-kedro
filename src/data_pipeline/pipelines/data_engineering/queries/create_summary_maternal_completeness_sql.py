@@ -1,7 +1,7 @@
 
 #Query to create summary_maternala_completeness table
 def summary_maternal_completeness_query():
-  return   f''' DROP TABLE IF EXISTS derived.summary_maternal_completeness;
+  return   f''' DROP TABLE IF EXISTS derived.summary_maternal_completeness;;
                 CREATE TABLE derived.summary_maternal_completeness AS 
                 SELECT "facility" AS "facility",
                     "uid" AS "Neotree_ID",
@@ -38,4 +38,4 @@ def summary_maternal_completeness_query():
                     "PeritonitisTreatment.label" AS "Peritonitis Treatment",
                     "DurationInWard.value" AS "Duration in the Ward",
                     "NoOfTimesInTheater.value" AS "Number of times in theatre"
-                FROM "derived"."maternity_completeness"; '''
+                FROM "derived"."maternity_completeness";; '''

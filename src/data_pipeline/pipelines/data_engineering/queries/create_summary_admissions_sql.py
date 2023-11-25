@@ -1,7 +1,7 @@
 
 #Query to create summary_maternala_completeness table
 def summary_admissions_query():
-  return   f''' DROP TABLE IF EXISTS derived.summary_admissions;
+  return   f''' DROP TABLE IF EXISTS derived.summary_admissions;;
                 CREATE TABLE derived.summary_admissions AS 
                 SELECT "facility" AS "Facility Name",
                     "uid" AS "NeoTree_ID",
@@ -166,4 +166,4 @@ def summary_admissions_query():
                     "AgeCategory"
                     ELSE "AgeCat.label" END AS "Age Category",
                     "BirthWeight.value" AS "BirthWeight"
-                FROM "derived"."admissions"; '''
+                FROM "derived"."admissions";; '''

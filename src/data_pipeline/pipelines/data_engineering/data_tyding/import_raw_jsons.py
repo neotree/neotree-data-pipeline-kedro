@@ -28,7 +28,7 @@ def createAdmissionsAndDischargesFromRawData():
                 ingested_at = datetime.now()
                 scriptId = sess["script"]["id"]
                 uid = sess["uid"]
-                insertion_query = '''INSERT INTO public.sessions (ingested_at,uid, scriptid,data) VALUES('{0}','{1}','{2}','{3}');'''.format(ingested_at,uid,scriptId,json_string)
+                insertion_query = '''INSERT INTO public.sessions (ingested_at,uid, scriptid,data) VALUES('{0}','{1}','{2}','{3}');;'''.format(ingested_at,uid,scriptId,json_string)
                 inject_sql(insertion_query,"DATA INSERTION")
     else:
        logging.warn("Importing JSON Files Skipped Because No Data is Available In The specified Directory") 

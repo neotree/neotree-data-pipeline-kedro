@@ -1,11 +1,11 @@
 from .column_exists_sql import column_exists
 def summary_baseline_query():
 
-    ANSteroids = '';
+    ANSteroids = ''
     if column_exists('derived','baseline','ANSteroids.label'):
           ANSteroids = 'derived.baseline."ANSteroids.label" As "AntenatalSteroids", '
           
-    return f''' DROP TABLE IF EXISTS derived.summary_baseline;
+    return f''' DROP TABLE IF EXISTS derived.summary_baseline;;
             CREATE TABLE derived.summary_baseline AS 
             SELECT derived.baseline."uid" AS "uid", 
             derived.baseline."facility" AS "facility", 
@@ -114,4 +114,4 @@ def summary_baseline_query():
                 WHEN derived.baseline."AgeCat.label" = 'Infant (> 3 days old)' THEN 5
             END AS "AgeCatSort"
             FROM derived.baseline
-            ORDER BY derived.baseline."uid" ASC; '''
+            ORDER BY derived.baseline."uid" ASC;; '''

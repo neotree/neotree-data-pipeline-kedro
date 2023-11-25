@@ -961,8 +961,6 @@ def fix_adm_type_birth(value):
         return '3rd Triplet'
     return None
 
-    return None;
-
 def fix_adm_admission_reason(value):
     if value =='AD':
         return 'Abdominal distension'

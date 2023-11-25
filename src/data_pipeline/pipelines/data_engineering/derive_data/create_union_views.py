@@ -34,7 +34,7 @@ def union_views():
                         try:
                             if str(data_type) != str(row2['data_type']):
                                 using = f'''USING "{col_name}"::{data_type}'''
-                                query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};'''
+                                query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};;'''
                                 inject_sql(query,"OLD ADMISSIONS")
                         except Exception as ex:
                             query = f'''ALTER table derived.old_smch_admissions DROP column "{col_name}" '''
@@ -51,10 +51,10 @@ def union_views():
                         try:
                             if str(data_type) != str(row2['data_type']):
                                 using = f'''USING "{col_name}"::{data_type}'''
-                                query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
+                                query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"OLD DISCHARGES")
                         except Exception as ex:
-                            query = f'''ALTER table derived.old_smch_discharges DROP column "{col_name}" '''
+                            query = f'''ALTER table derived.old_smch_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING DISCHARGE COLL {col_name}''')
 
             # Match Data Types For Matched Data
@@ -67,10 +67,10 @@ def union_views():
                         try:
                             if str(data_type) != str(row2['data_type']):
                                 using = f'''USING "{col_name}"::{data_type}'''
-                                query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
+                                query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"Union Views")
                         except Exception as ex:
-                            query = f'''ALTER table derived.old_smch_matched_admissions_discharges DROP column "{col_name}" '''
+                            query = f'''ALTER table derived.old_smch_matched_admissions_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING MATCHED COLL {col_name} ''')
 
             old_smch_admissions =  None

@@ -1,7 +1,7 @@
 
 #Query to create summary_maternala_completeness table
 def summary_discharges_query():
-  return   f''' DROP TABLE IF EXISTS derived.summary_discharges;
+  return   f''' DROP TABLE IF EXISTS derived.summary_discharges;;
                 CREATE TABLE derived.summary_discharges AS 
                 SELECT
                   "facility" AS "Facility Name",
@@ -56,4 +56,4 @@ def summary_discharges_query():
                   "DiscDiagSurgicalCond.label" AS "Discharge Surgical Conditions diagnosis",
                   "CovidRepResults.label" AS "Covid Repeat Results",
                   "CovidConfirmation.label" AS "Covid Confirmation"
-                FROM "derived"."discharges"; '''
+                FROM "derived"."discharges";; '''
