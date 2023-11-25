@@ -166,7 +166,6 @@ def union_views():
                     key_change(old_smch_admissions,admission,position,'BSmmol.value','BloodSugarmmol.value')
                     key_change(old_smch_admissions,admission,position,'BSmg.value','BloodSugarmg.value')
               
-                    pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
                 if 'AdmissionWeight.value' in old_smch_admissions:
                     old_smch_admissions['AdmissionWeight.value'] = pd.to_numeric(old_smch_admissions['AdmissionWeight.value'], errors='coerce')
                 if 'BirthWeight.value' in old_smch_admissions:
