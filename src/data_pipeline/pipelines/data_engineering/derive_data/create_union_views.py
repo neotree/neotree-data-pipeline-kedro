@@ -298,12 +298,12 @@ def union_views():
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
             if new_smch_admissions is not None and old_smch_admissions  is not None:
-                combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], ignore_index=True)
+                combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions])
                 if not combined_adm_df.empty:   
                     catalog.save('create_derived_old_new_admissions_view',combined_adm_df)   
             # SAVE OLD NEW DISCHARGES
             if new_smch_discharges  is not None and old_smch_discharges  is not None:
-                combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges], ignore_index=True)
+                combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges])
                 if not combined_dis_df.empty:   
                     catalog.save('create_derived_old_new_discharges_view',combined_dis_df)   
 
@@ -312,7 +312,7 @@ def union_views():
                 #Correct UID column to suit the lower case uid in new_smch_matched_data
                 if 'UID' in old_matched_smch_data.columns:
                     old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'}, inplace = False)
-                combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data], ignore_index=True)
+                combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data])
                 if not combined_matched_df.empty:   
                     catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
             
