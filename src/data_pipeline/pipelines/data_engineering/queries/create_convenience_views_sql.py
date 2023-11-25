@@ -57,7 +57,10 @@ def create_convinience_views_query():
             ) THEN NULL 
             END AS "OutcomeMonthYear",
             derived.joined_admissions_discharges."ANSteroids.label" As "AntenatalSteroids",
-            CASE WHEN derived.joined_admissions_discharges."Gestation.value" < 28 AND derived.joined_admissions_discharges."BirthWeight.value" < 1000 then 1 End AS "Less28wks/1kgCount",
+            CASE WHEN 
+            
+            derived.joined_admissions_discharges."Gestation.value" < 28 AND
+            derived.joined_admissions_discharges."BirthWeight.value"::integer < 1000 then 1 End AS "Less28wks/1kgCount",
             CASE WHEN derived.joined_admissions_discharges."GestGroup.value" <> 'Term' THEN 1 END AS "PretermCount",
             CASE 
             WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Death%%' THEN 1 

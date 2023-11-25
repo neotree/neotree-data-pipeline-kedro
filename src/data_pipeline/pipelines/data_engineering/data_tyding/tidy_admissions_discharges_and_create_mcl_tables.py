@@ -279,14 +279,14 @@ def tidy_tables():
                     key_change(adm_df,admission,position,'ROMlength.label','ROMLength.label')
 
             if 'AdmissionWeight.value' in adm_df:
-                adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
+                adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'],downcast='integer', errors='coerce')
 
             if 'BirthWeight.value' in adm_df:
-                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'], errors='coerce')
+                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'],downcast='integer', errors='coerce')
             if 'BloodSugarmg.value' in adm_df:
-                adm_df['BloodSugarmg.value'] = pd.to_numeric(adm_df['BloodSugarmg.value'], errors='coerce')
+                adm_df['BloodSugarmg.value'] = pd.to_numeric(adm_df['BloodSugarmg.value'],downcast='integer', errors='coerce')
             if 'Temperature.value' in adm_df:
-                adm_df['Temperature.value'] = pd.to_numeric(adm_df['Temperature.value'], errors='coerce')
+                adm_df['Temperature.value'] = pd.to_numeric(adm_df['Temperature.value'],downcast='float', errors='coerce')
             ## DROP UNNECESSARY COLUMNS
             if 'BW.value' in adm_df:
                 adm_df = adm_df.drop(columns=['BW.value'])
