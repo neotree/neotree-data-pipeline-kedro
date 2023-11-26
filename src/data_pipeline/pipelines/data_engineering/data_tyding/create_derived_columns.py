@@ -124,7 +124,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             if 'Temperature.value' in table:
                   try:
-                        table.loc[not isinstance(table['Temperature.value'], (int, float, complex)),'TempGroup.value'] = "Unknown"
+                        table['Temperature.value'] = pd.to_numeric(table['Temperature.value'],downcast='integer', errors='coerce')
                         table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
                         table.loc[table['Temperature.value'] <
                                     41.5, 'TempGroup.value'] = "40.5-41.5"
