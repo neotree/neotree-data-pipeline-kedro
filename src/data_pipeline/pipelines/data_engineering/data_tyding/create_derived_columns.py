@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 from conf.base.catalog import params
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
-from data_pipeline.pipelines.data_engineering.utils.validation_utils import is_float
 
 
 
@@ -37,11 +36,6 @@ def create_columns(table: pd.DataFrame):
                   pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), None)
 
             # order of statements matters
-            if 'Gestation.value' in table.keys():
-                  if    isinstance(table['Gestation.value'], (int, float, complex)):
-                        pass
-                  else:
-                        table['Gestation.value'] = None
                   
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:

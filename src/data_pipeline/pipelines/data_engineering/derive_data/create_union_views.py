@@ -170,6 +170,14 @@ def union_views():
                     old_smch_admissions['AdmissionWeight.value'] = pd.to_numeric(old_smch_admissions['AdmissionWeight.value'],downcast='integer', errors='coerce')
                 if 'BirthWeight.value' in old_smch_admissions:
                     old_smch_admissions['BirthWeight.value'] = pd.to_numeric(old_smch_admissions['BirthWeight.value'],downcast='integer', errors='coerce')
+                
+                if 'Gestation.value' in old_smch_admissions:
+                    old_smch_admissions['Gestation.value'] = pd.to_numeric(old_smch_admissions['Gestation.value'],downcast='integer', errors='coerce')
+                
+                if 'Temperature.value' in old_smch_admissions:
+                    old_smch_admissions['Temperature.value'] = pd.to_numeric(old_smch_admissions['Temperature.value'],downcast='integer', errors='coerce')
+           
+                
                 format_date(old_smch_admissions,'DateTimeAdmission.value')
                 format_date(old_smch_admissions,'EndScriptDatetime.value')
                 format_date(old_smch_admissions,'DateHIVtest.value')
