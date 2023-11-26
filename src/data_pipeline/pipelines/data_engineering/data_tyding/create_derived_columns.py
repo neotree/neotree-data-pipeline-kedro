@@ -41,7 +41,7 @@ def create_columns(table: pd.DataFrame):
                   if    isinstance(table['Gestation.value'], (int, float, complex)):
                         pass
                   else:
-                        table['Gestation.value'] = np.nan
+                        table['Gestation.value'] = None
                   
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:
@@ -124,13 +124,12 @@ def create_columns(table: pd.DataFrame):
                         pass
 
             else:
-                  table['AdmissionWeight.value']= np.nan
-                  table['AWGroup.value']= np.nan   
+                  table['AdmissionWeight.value']= None
+                  table['AWGroup.value']= None  
 
             # order of statements matters
             if 'Temperature.value' in table:
                   try:
-                        table['Temperature.value'] = pd.to_numeric(table['Temperature.value'], errors='coerce')
                         table.loc[not isinstance(table['Temperature.value'], (int, float, complex)),'TempGroup.value'] = "Unknown"
                         table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
                         table.loc[table['Temperature.value'] <

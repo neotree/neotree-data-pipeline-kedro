@@ -281,12 +281,6 @@ def tidy_tables():
             if 'AdmissionWeight.value' in adm_df:
                 adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'],downcast='integer', errors='coerce')
 
-            if 'BirthWeight.value' in adm_df:
-                adm_df['BirthWeight.value'] = pd.to_numeric(adm_df['BirthWeight.value'],downcast='integer', errors='coerce')
-            if 'BloodSugarmg.value' in adm_df:
-                adm_df['BloodSugarmg.value'] = pd.to_numeric(adm_df['BloodSugarmg.value'],downcast='integer', errors='coerce')
-            if 'Temperature.value' in adm_df:
-                adm_df['Temperature.value'] = pd.to_numeric(adm_df['Temperature.value'],downcast='float', errors='coerce')
             ## DROP UNNECESSARY COLUMNS
             if 'BW.value' in adm_df:
                 adm_df = adm_df.drop(columns=['BW.value'])
@@ -295,6 +289,7 @@ def tidy_tables():
                 
         # Make changes to admissions and baseline data to match fields in power bi  
             adm_df = create_columns(adm_df)
+            adm_df= adm_df[(adm_df['uid'] != 'Unknown')]
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             #Save Derived Admissions To The DataBase Using Kedro
             catalog.save('create_derived_admissions',adm_df)
