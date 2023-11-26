@@ -4,7 +4,11 @@ def create_convinience_views_query():
             CREATE TABLE derived.summary_joined_admissions_discharges AS
             SELECT derived.joined_admissions_discharges."uid" AS "uid", 
             derived.joined_admissions_discharges."facility" AS "facility", 
-            derived.joined_admissions_discharges."DateTimeAdmission.value" AS "AdmissionDateTime",
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"='NaT'
+            THEN NULL
+            ELSE
+            derived.joined_admissions_discharges."DateTimeAdmission.value" 
+            END AS "AdmissionDateTime",
             derived.joined_admissions_discharges."Readmission.label" AS "Readmitted", 
             derived.joined_admissions_discharges."AdmittedFrom.label" AS "admission_source",
             derived.joined_admissions_discharges."ReferredFrom2.label" AS "referredFrom", 
@@ -39,14 +43,14 @@ def create_convinience_views_query():
             derived.joined_admissions_discharges."BloodSugarmg.value" AS "BloodSugar_mg_dL",
             derived.joined_admissions_discharges."OFC.value" AS "HeadCircumf",
             derived.joined_admissions_discharges."SatsO2.value" AS "OxygenSats",
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'Mon-YYYY') AS text) AS "AdmissionMonthYear", 
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'YYYYmm') AS decimal) AS "AdmissionMonthYearSort",
-            CASE WHEN derived.joined_admissions_discharges."DateTimeDischarge.value"  IS NOT NULL THEN 
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeDischarge.value") :: DATE, 'Mon-YYYY') AS text)
+            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text) AS "AdmissionMonthYear", 
+            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'YYYYmm') AS decimal) AS "AdmissionMonthYearSort",
+            CASE WHEN "AdmissionDateTime"  IS NOT NULL THEN 
+            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text)
             WHEN derived.joined_admissions_discharges."DateTimeDeath.value" IS NOT NULL THEN
             CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeDeath.value") :: DATE, 'Mon-YYYY') AS text)
             WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' THEN
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'Mon-YYYY') AS text)
+            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text)
             WHEN  (derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Discharged' AND 
             derived.joined_admissions_discharges."DateTimeDischarge.value" IS NULL) OR
             ((derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Death%%' OR 
