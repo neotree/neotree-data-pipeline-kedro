@@ -37,10 +37,11 @@ def create_columns(table: pd.DataFrame):
                   pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), None)
 
             # order of statements matters
-            if 'Gestation.value' in table.keys() and isinstance(table['Gestation.value'], (int, float, complex)):
-                  pass;
-            else:
-                  table['Gestation.value'] = np.nan
+            if 'Gestation.value' in table.keys():
+                  if    isinstance(table['Gestation.value'], (int, float, complex)):
+                        pass
+                  else:
+                        table['Gestation.value'] = np.nan
                   
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:
@@ -198,7 +199,7 @@ def create_columns(table: pd.DataFrame):
 
                         table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
                                                 ((table['BirthWeight.value'] < 1000) |
-                                                 (isinstance(table['Gestation.value'], (int, float, complex)) & (table[''] < 28))))
+                                                 (isinstance(table['Gestation.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
                         
                         
                   except:

@@ -350,6 +350,7 @@ def tidy_tables():
                 else:
                     key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
              #Save Derived Admissions To The DataBase Using Kedro
+            dis_df = create_columns(dis_df) 
             catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
