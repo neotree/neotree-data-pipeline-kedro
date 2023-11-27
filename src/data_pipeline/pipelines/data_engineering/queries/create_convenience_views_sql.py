@@ -4,7 +4,8 @@ def create_convinience_views_query():
             CREATE TABLE derived.summary_joined_admissions_discharges AS
             SELECT derived.joined_admissions_discharges."uid" AS "uid", 
             derived.joined_admissions_discharges."facility" AS "facility", 
-            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"='NaT'
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT ='NaT' or
+            derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
             THEN NULL
             ELSE
             derived.joined_admissions_discharges."DateTimeAdmission.value" 
@@ -47,7 +48,10 @@ def create_convinience_views_query():
             CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'YYYYmm') AS decimal) AS "AdmissionMonthYearSort",
             CASE WHEN "AdmissionDateTime"  IS NOT NULL THEN 
             CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text)
-            WHEN derived.joined_admissions_discharges."DateTimeDeath.value" IS NOT NULL THEN
+            WHEN derived.joined_admissions_discharges."DateTimeDeath.value" IS NOT NULL 
+            and  derived.joined_admissions_discharges."DateTimeDeath.value"::TEXT not like 'Unk%%'
+            and  derived.joined_admissions_discharges."DateTimeDeath.value"::TEXT not like 'NaT%%'
+            THEN
             CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeDeath.value") :: DATE, 'Mon-YYYY') AS text)
             WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' THEN
             CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text)
