@@ -145,11 +145,11 @@ def read_new_smch_discharges_query():
     return f'''
             select 
                 *,
-		  CASE WHEN "DateTimeDischarge.value" ='NaT' 
+		  CASE WHEN "DateTimeDischarge.value"::TEXT ='NaT' 
 		  THEN NULL
 		  ELSE  TO_DATE("DateTimeDischarge.value"::TEXT,'YYYY-MM-DD') 
 		  END AS "DateTimeDischarge.value",
-		  CASE WHEN "DateTimeDeath.value" = 'NaT' 
+		  CASE WHEN "DateTimeDeath.value"::TEXT = 'NaT' 
 		  THEN NULL
 		  ELSE TO_DATE("DateTimeDeath.value"::TEXT,'YYYY-MM-DD')
 		  END AS "DateTimeDischarge.value"
