@@ -499,8 +499,7 @@ def tidy_tables():
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
-            baseline_df.set_index(['uid','unique_key']) 
-            
+        
             if "started_at" in baseline_df and 'completed_at' in baseline_df :
                 format_date_without_timezone(baseline_df,'started_at') 
                 format_date_without_timezone(baseline_df,'completed_at') 
@@ -556,6 +555,7 @@ def tidy_tables():
             ###############CREATE COLUMNS#################################
             baseline_df = create_columns(baseline_df)        
             #Save Derived Baseline To The DataBase Using Kedro
+            baseline_df.set_index(['uid','unique_key']) 
             catalog.save('create_derived_baseline',baseline_df)
             logging.info("... Creating MCL count tables for Baseline DF")
             explode_column(baseline_df,baseline_mcl,"bsl_")
