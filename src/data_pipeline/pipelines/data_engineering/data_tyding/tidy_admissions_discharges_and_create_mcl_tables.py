@@ -510,6 +510,17 @@ def tidy_tables():
             baseline_df['LengthOfStay.label'] = None
             baseline_df['LengthOfLife.value'] = None
             baseline_df['LengthOfLife.label'] = None
+            if 'AdmissionWeight.value' in baseline_df:
+                 baseline_df['AdmissionWeight.value'] = pd.to_numeric(baseline_df['AdmissionWeight.value'],downcast='integer', errors='coerce')
+            if 'BirthWeight.value' in baseline_df:
+                baseline_df['BirthWeight.value'] = pd.to_numeric(baseline_df['BirthWeight.value'],downcast='integer', errors='coerce')
+                
+            if 'Gestation.value' in baseline_df:
+                baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'],downcast='integer', errors='coerce')
+                
+            if 'Temperature.value' in baseline_df:
+                baseline_df['Temperature.value'] = pd.to_numeric(baseline_df['Temperature.value'],downcast='integer', errors='coerce')
+           
              #Length of Life and Length of Stay on Baseline Data
             date_format = "%Y-%m-%d"
             for index, row in baseline_df.iterrows():
