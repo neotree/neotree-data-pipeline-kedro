@@ -586,11 +586,12 @@ def tidy_tables():
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if not mat_completeness_df.empty:
             mat_completeness_df.set_index(['uid'])
-            mat_completeness_df= mat_completeness_df[(mat_completeness_df['uid'] != 'Unknown')] 
             # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
             if not mat_outcomes_df.empty: 
                 previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value'],errors='coerce') >='2021-10-01']
                 latest_mat_outcomes_df= mat_completeness_df[pd.to_datetime(mat_completeness_df['DateAdmission.value'],errors='coerce') >='2021-09-30']
+                previous_mat_outcomes_df = previous_mat_outcomes_df.reset_index(drop=True) 
+                latest_mat_outcomes_df = latest_mat_outcomes_df.reset_index(drop=True) 
                 mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df], ignore_index=True)
                 ##########SAVING DATA####################################
             catalog.save('create_derived_maternity_completeness',mat_completeness_df)
