@@ -515,8 +515,6 @@ def tidy_tables():
             if 'BirthWeight.value' in baseline_df:
                 baseline_df['BirthWeight.value'] = pd.to_numeric(baseline_df['BirthWeight.value'],downcast='integer', errors='coerce')
                 
-            if 'Gestation.value' in baseline_df:
-                baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'],downcast='integer', errors='coerce')
                 
             if 'Temperature.value' in baseline_df:
                 baseline_df['Temperature.value'] = pd.to_numeric(baseline_df['Temperature.value'],downcast='integer', errors='coerce')
@@ -564,7 +562,9 @@ def tidy_tables():
             set_key_to_none(baseline_df,'GestGroup.label') 
             set_key_to_none(baseline_df,'GestGroup.value') 
             ###############CREATE COLUMNS#################################
-            baseline_df = create_columns(baseline_df)        
+            baseline_df = create_columns(baseline_df)  
+            if 'Gestation.value' in baseline_df:
+                baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'], errors='coerce')      
             #Save Derived Baseline To The DataBase Using Kedro
             catalog.save('create_derived_baseline',baseline_df)
             logging.info("... Creating MCL count tables for Baseline DF")
