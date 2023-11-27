@@ -555,7 +555,6 @@ def tidy_tables():
             ###############CREATE COLUMNS#################################
             baseline_df = create_columns(baseline_df)        
             #Save Derived Baseline To The DataBase Using Kedro
-            baseline_df.set_index(['uid','unique_key']) 
             catalog.save('create_derived_baseline',baseline_df)
             logging.info("... Creating MCL count tables for Baseline DF")
             explode_column(baseline_df,baseline_mcl,"bsl_")
