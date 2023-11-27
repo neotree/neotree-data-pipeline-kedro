@@ -319,8 +319,8 @@ def union_views():
             if new_smch_matched_data  is not None and old_matched_smch_data  is not None:
                 #Correct UID column to suit the lower case uid in new_smch_matched_data
                 if 'UID' in old_matched_smch_data.columns:
-                    old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'}, inplace = False)
-                combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data])
+                    old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'}, inplace = False)  
+                combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],ignore_index=True)
                 if not combined_matched_df.empty:   
                     catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
             
