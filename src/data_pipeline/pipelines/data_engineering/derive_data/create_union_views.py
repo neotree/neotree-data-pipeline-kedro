@@ -320,9 +320,9 @@ def union_views():
             # SAVE OLD NEW DISCHARGES
             try:
                 if new_smch_discharges  is not None and old_smch_discharges  is not None:
-                    old_smch_discharges = old_smch_discharges.reset_index(drop=True) 
                     new_smch_discharges.set_index(['uid'])
-                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0)
+                    old_smch_discharges.set_index(['uid'])
+                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0).reset_index(drop=True)
                     if not combined_dis_df.empty:   
                         catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
             except Exception as e:
@@ -337,7 +337,7 @@ def union_views():
                     if 'UID' in old_matched_smch_data.columns:
                         new_smch_matched_data = new_smch_matched_data.reset_index(drop=True)
                         old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'})  
-                    combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0,ignore_index=True)
+                    combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0).reset_index(drop=True)
                     if not combined_matched_df.empty:   
                         catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
             except Exception as e:
