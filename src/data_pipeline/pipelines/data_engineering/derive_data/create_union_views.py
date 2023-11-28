@@ -308,8 +308,9 @@ def union_views():
             # SAVE OLD NEW ADMISSIONS
             try:
                 if new_smch_admissions is not None and old_smch_admissions  is not None:
+                    new_smch_admissions.set_index(['uid'])
                     old_smch_admissions= old_smch_admissions.reset_index(drop=True)
-                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
+                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions])
                     if not combined_adm_df.empty:   
                         catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
             except Exception as e:
@@ -320,7 +321,8 @@ def union_views():
             try:
                 if new_smch_discharges  is not None and old_smch_discharges  is not None:
                     old_smch_discharges = old_smch_discharges.reset_index(drop=True) 
-                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
+                    new_smch_discharges.set_index(['uid'])
+                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0)
                     if not combined_dis_df.empty:   
                         catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
             except Exception as e:
