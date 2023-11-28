@@ -314,7 +314,7 @@ def union_views():
                     else:
                         new_smch_admissions = new_smch_admissions.reset_index(drop=True)
                         old_smch_admissions= old_smch_admissions.reset_index(drop=True)
-                        combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],ignore_index=True)
+                        combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions]).drop_duplicates().reset_index(drop=True)
                     if not combined_adm_df.empty:   
                         catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
             except Exception as e:
