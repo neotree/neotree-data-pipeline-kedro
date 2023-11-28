@@ -309,9 +309,7 @@ def union_views():
             try:
                 combined_adm_df = pd.DataFrame()
                 if new_smch_admissions is not None and old_smch_admissions  is not None:
-                    logging.info("*********IS UNIQUE******"+str(new_smch_admissions.index.is_unique))
-                    logging.info("*********IS UNIQUE 22***55*"+str(old_smch_admissions.index.is_unique))  
-                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions]).drop_duplicates().reset_index(drop=True)
+                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions]).drop_duplicates()
                     if not combined_adm_df.empty:   
                         catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
             except Exception as e:
