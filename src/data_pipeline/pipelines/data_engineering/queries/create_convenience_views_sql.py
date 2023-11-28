@@ -48,12 +48,12 @@ def create_convinience_views_query():
             derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
             THEN NULL
             ELSE
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value"):: DATE, 'Mon-YYYY') AS text) 
+            CAST(TO_CHAR(DATE("derived.joined_admissions_discharges.DateTimeAdmission.value"):: DATE, 'Mon-YYYY') AS text) 
             END AS "AdmissionMonthYear", 
             CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT ='NaT' or
             derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
             THEN NULL
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'YYYYmm') AS decimal)
+            CAST(TO_CHAR(DATE("derived.joined_admissions_discharges.DateTimeAdmission.value") :: DATE, 'YYYYmm') AS decimal)
             END "AdmissionMonthYearSort",
             CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"  IS NOT NULL 
             and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT !='NaT'
