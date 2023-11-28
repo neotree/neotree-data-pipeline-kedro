@@ -307,10 +307,14 @@ def union_views():
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
             try:
+                combined_adm_df = pd.DataFrame()
                 if new_smch_admissions is not None and old_smch_admissions  is not None:
-                    new_smch_admissions.set_index(['uid'])
-                    old_smch_admissions= old_smch_admissions.reset_index(drop=True)
-                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions])
+                    if new_smch_admissions.index.is_unique and old_smch_admissions.index.is_unique:
+                        combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],ignore_index=True)
+                    else:
+                        new_smch_admissions = new_smch_admissions.reset_index(drop=True)
+                        old_smch_admissions= old_smch_admissions.reset_index(drop=True)
+                        combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],ignore_index=True)
                     if not combined_adm_df.empty:   
                         catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
             except Exception as e:
