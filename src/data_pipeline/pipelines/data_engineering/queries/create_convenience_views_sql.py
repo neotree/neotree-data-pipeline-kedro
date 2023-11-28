@@ -44,17 +44,33 @@ def create_convinience_views_query():
             derived.joined_admissions_discharges."BloodSugarmg.value" AS "BloodSugar_mg_dL",
             derived.joined_admissions_discharges."OFC.value" AS "HeadCircumf",
             derived.joined_admissions_discharges."SatsO2.value" AS "OxygenSats",
-            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text) AS "AdmissionMonthYear", 
-            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'YYYYmm') AS decimal) AS "AdmissionMonthYearSort",
-            CASE WHEN "AdmissionDateTime"  IS NOT NULL THEN 
-            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text)
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT ='NaT' or
+            derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
+            THEN NULL
+            ELSE
+            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value"):: DATE, 'Mon-YYYY') AS text) 
+            END AS "AdmissionMonthYear", 
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT ='NaT' or
+            derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
+            THEN NULL
+            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'YYYYmm') AS decimal)
+            END "AdmissionMonthYearSort",
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"  IS NOT NULL 
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT !='NaT'
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT not like 'Unk%%'
+            THEN 
+            CAST(TO_CHAR(DATE("derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'Mon-YYYY') AS text)
             WHEN derived.joined_admissions_discharges."DateTimeDeath.value" IS NOT NULL 
             and  derived.joined_admissions_discharges."DateTimeDeath.value"::TEXT not like 'Unk%%'
             and  derived.joined_admissions_discharges."DateTimeDeath.value"::TEXT not like 'NaT%%'
             THEN
             CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeDeath.value") :: DATE, 'Mon-YYYY') AS text)
-            WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' THEN
-            CAST(TO_CHAR(DATE("AdmissionDateTime") :: DATE, 'Mon-YYYY') AS text)
+            WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' and
+            derived.joined_admissions_discharges."DateTimeAdmission.value"  IS NOT NULL 
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT !='NaT'
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT not like 'Unk%%'
+            THEN
+            CAST(TO_CHAR(DATE("derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'Mon-YYYY') AS text)
             WHEN  (derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Discharged' AND 
             derived.joined_admissions_discharges."DateTimeDischarge.value" IS NULL) OR
             ((derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Death%%' OR 
