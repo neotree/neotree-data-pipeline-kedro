@@ -305,31 +305,42 @@ def union_views():
                 format_date(old_matched_smch_data,'DateAdmission.value')
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
-            if new_smch_admissions is not None and old_smch_admissions  is not None:
-                new_smch_admissions= new_smch_admissions.reset_index(drop=True)
-                old_smch_admissions= old_smch_admissions.reset_index(drop=True)
-                combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0)
-                if not combined_adm_df.empty:   
-                    catalog.save('create_derived_old_new_admissions_view',combined_adm_df)   
+            try:
+                if new_smch_admissions is not None and old_smch_admissions  is not None:
+                    new_smch_admissions= new_smch_admissions.reset_index(drop=True)
+                    old_smch_admissions= old_smch_admissions.reset_index(drop=True)
+                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
+                    if not combined_adm_df.empty:   
+                        catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
+            except:
+                logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED ADMISSIONS")
+                pass   
             # SAVE OLD NEW DISCHARGES
-            if new_smch_discharges  is not None and old_smch_discharges  is not None:
-                new_smch_discharges= new_smch_discharges.reset_index(drop=True)
-                old_smch_discharges = old_smch_discharges.reset_index(drop=True) 
-                combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0)
-                if not combined_dis_df.empty:   
-                    catalog.save('create_derived_old_new_discharges_view',combined_dis_df)   
+            try:
+                if new_smch_discharges  is not None and old_smch_discharges  is not None:
+                    new_smch_discharges= new_smch_discharges.reset_index(drop=True)
+                    old_smch_discharges = old_smch_discharges.reset_index(drop=True) 
+                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
+                    if not combined_dis_df.empty:   
+                        catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
+            except:
+                logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED DISCHARGES")
+                pass  
 
             # SAVE MATCHED DATA 
-            if new_smch_matched_data  is not None and old_matched_smch_data  is not None:
-                #Correct UID column to suit the lower case uid in new_smch_matched_data
-                if 'UID' in old_matched_smch_data.columns:
-                    old_matched_smch_data=old_matched_smch_data.reset_index(drop=True)
-                    new_smch_matched_data = new_smch_matched_data.reset_index(drop=True)
-                    old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'}, inplace = False)  
-                combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0)
-                if not combined_matched_df.empty:   
-                    catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
-            
+            try:
+                if new_smch_matched_data  is not None and old_matched_smch_data  is not None:
+                    #Correct UID column to suit the lower case uid in new_smch_matched_data
+                    if 'UID' in old_matched_smch_data.columns:
+                        old_matched_smch_data=old_matched_smch_data.reset_index(drop=True)
+                        new_smch_matched_data = new_smch_matched_data.reset_index(drop=True)
+                        old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'})  
+                    combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0,ignore_index=True)
+                    if not combined_matched_df.empty:   
+                        catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
+            except:
+                logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED MATCHED")
+                pass
 
         except Exception as ex:
             logging.error("!!! An error occured creating union views: ")

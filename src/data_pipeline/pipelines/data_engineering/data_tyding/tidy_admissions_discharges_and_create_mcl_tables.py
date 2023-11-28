@@ -591,7 +591,7 @@ def tidy_tables():
                 latest_mat_outcomes_df= mat_completeness_df[pd.to_datetime(mat_completeness_df['DateAdmission.value'],errors='coerce') >='2021-09-30']
                 previous_mat_outcomes_df = previous_mat_outcomes_df.reset_index(drop=True) 
                 latest_mat_outcomes_df = latest_mat_outcomes_df.reset_index(drop=True) 
-                mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df],axis=0)
+                mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df],axis=0,ignore_index=True)
                 ##########SAVING DATA####################################
             catalog.save('create_derived_maternity_completeness',mat_completeness_df)
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
