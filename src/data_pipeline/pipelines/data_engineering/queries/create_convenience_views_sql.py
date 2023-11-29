@@ -1,10 +1,15 @@
 #Query to create the Summary_Joined_Admissions_Discharges table.
 def create_convinience_views_query():
-  return ''' DROP TABLE IF EXISTS derived.summary_joined_admissions_discharges;
+  return ''' DROP TABLE IF EXISTS derived.summary_joined_admissions_discharges;;
             CREATE TABLE derived.summary_joined_admissions_discharges AS
             SELECT derived.joined_admissions_discharges."uid" AS "uid", 
             derived.joined_admissions_discharges."facility" AS "facility", 
-            derived.joined_admissions_discharges."DateTimeAdmission.value" AS "AdmissionDateTime",
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT ='NaT' or
+            derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
+            THEN NULL
+            ELSE
+            derived.joined_admissions_discharges."DateTimeAdmission.value" 
+            END AS "AdmissionDateTime",
             derived.joined_admissions_discharges."Readmission.label" AS "Readmitted", 
             derived.joined_admissions_discharges."AdmittedFrom.label" AS "admission_source",
             derived.joined_admissions_discharges."ReferredFrom2.label" AS "referredFrom", 
@@ -39,13 +44,33 @@ def create_convinience_views_query():
             derived.joined_admissions_discharges."BloodSugarmg.value" AS "BloodSugar_mg_dL",
             derived.joined_admissions_discharges."OFC.value" AS "HeadCircumf",
             derived.joined_admissions_discharges."SatsO2.value" AS "OxygenSats",
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'Mon-YYYY') AS text) AS "AdmissionMonthYear", 
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'YYYYmm') AS decimal) AS "AdmissionMonthYearSort",
-            CASE WHEN derived.joined_admissions_discharges."DateTimeDischarge.value"  IS NOT NULL THEN 
-            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeDischarge.value") :: DATE, 'Mon-YYYY') AS text)
-            WHEN derived.joined_admissions_discharges."DateTimeDeath.value" IS NOT NULL THEN
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT ='NaT' or
+            derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
+            THEN NULL
+            ELSE
+            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value"):: DATE, 'Mon-YYYY') AS text) 
+            END AS "AdmissionMonthYear", 
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT ='NaT' or
+            derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
+            THEN NULL
+            ELSE
+            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'YYYYmm') AS decimal)
+            END "AdmissionMonthYearSort",
+            CASE WHEN derived.joined_admissions_discharges."DateTimeAdmission.value"  IS NOT NULL 
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT !='NaT'
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT not like 'Unk%%'
+            THEN 
+            CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'Mon-YYYY') AS text)
+            WHEN derived.joined_admissions_discharges."DateTimeDeath.value" IS NOT NULL 
+            and  derived.joined_admissions_discharges."DateTimeDeath.value"::TEXT not like 'Unk%%'
+            and  derived.joined_admissions_discharges."DateTimeDeath.value"::TEXT not like 'NaT%%'
+            THEN
             CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeDeath.value") :: DATE, 'Mon-YYYY') AS text)
-            WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' THEN
+            WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Absconded' and
+            derived.joined_admissions_discharges."DateTimeAdmission.value"  IS NOT NULL 
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT !='NaT'
+            and derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT not like 'Unk%%'
+            THEN
             CAST(TO_CHAR(DATE(derived.joined_admissions_discharges."DateTimeAdmission.value") :: DATE, 'Mon-YYYY') AS text)
             WHEN  (derived.joined_admissions_discharges."NeoTreeOutcome.label" = 'Discharged' AND 
             derived.joined_admissions_discharges."DateTimeDischarge.value" IS NULL) OR
@@ -57,7 +82,9 @@ def create_convinience_views_query():
             ) THEN NULL 
             END AS "OutcomeMonthYear",
             derived.joined_admissions_discharges."ANSteroids.label" As "AntenatalSteroids",
-            CASE WHEN derived.joined_admissions_discharges."Gestation.value" < 28 AND derived.joined_admissions_discharges."BirthWeight.value" < 1000 then 1 End AS "Less28wks/1kgCount",
+            CASE WHEN 
+            derived.joined_admissions_discharges."Gestation.value" < 28 AND
+            derived.joined_admissions_discharges."BirthWeight.value" < 1000 then 1 End AS "Less28wks/1kgCount",
             CASE WHEN derived.joined_admissions_discharges."GestGroup.value" <> 'Term' THEN 1 END AS "PretermCount",
             CASE 
             WHEN derived.joined_admissions_discharges."NeoTreeOutcome.label" like '%%Death%%' THEN 1 
@@ -117,4 +144,4 @@ def create_convinience_views_query():
                 WHEN derived.joined_admissions_discharges."AgeCategory" = 'Infant (> 3 days old)' THEN 5
             END AS "AgeCatSort"
             FROM derived.joined_admissions_discharges
-            ORDER BY derived.joined_admissions_discharges."uid" ASC; '''
+            ORDER BY derived.joined_admissions_discharges."uid" ASC;; '''

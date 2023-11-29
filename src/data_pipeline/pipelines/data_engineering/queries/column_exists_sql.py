@@ -7,10 +7,10 @@ def column_exists(schema, table_name,column_name):
                 WHERE  table_schema = '{schema}'
                 AND    table_name   = '{table_name}'
                 AND column_name = '{column_name}'
-                );'''
-    query_result = inject_sql_with_return(query);
+                );;'''
+    query_result = inject_sql_with_return(query)
     if len(query_result) >0:
-        result = query_result[0];
+        result = query_result[0]
         if 'exists' in result.keys():
             return result['exists']
         else:

@@ -7,6 +7,7 @@ from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date
 from conf.base.catalog import params
+from conf.common.format_error import formatError
 
 def union_views():
     if('country' in params and str(params['country']).lower()) =='zimbabwe':
@@ -34,7 +35,7 @@ def union_views():
                         try:
                             if str(data_type) != str(row2['data_type']):
                                 using = f'''USING "{col_name}"::{data_type}'''
-                                query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};'''
+                                query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};;'''
                                 inject_sql(query,"OLD ADMISSIONS")
                         except Exception as ex:
                             query = f'''ALTER table derived.old_smch_admissions DROP column "{col_name}" '''
@@ -51,10 +52,10 @@ def union_views():
                         try:
                             if str(data_type) != str(row2['data_type']):
                                 using = f'''USING "{col_name}"::{data_type}'''
-                                query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
+                                query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"OLD DISCHARGES")
                         except Exception as ex:
-                            query = f'''ALTER table derived.old_smch_discharges DROP column "{col_name}" '''
+                            query = f'''ALTER table derived.old_smch_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING DISCHARGE COLL {col_name}''')
 
             # Match Data Types For Matched Data
@@ -67,10 +68,10 @@ def union_views():
                         try:
                             if str(data_type) != str(row2['data_type']):
                                 using = f'''USING "{col_name}"::{data_type}'''
-                                query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};'''
+                                query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"Union Views")
                         except Exception as ex:
-                            query = f'''ALTER table derived.old_smch_matched_admissions_discharges DROP column "{col_name}" '''
+                            query = f'''ALTER table derived.old_smch_matched_admissions_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING MATCHED COLL {col_name} ''')
 
             old_smch_admissions =  None
@@ -165,12 +166,18 @@ def union_views():
                     key_change(old_smch_admissions,admission,position,'BSmgdL.value','BSUnitmg.value')
                     key_change(old_smch_admissions,admission,position,'BSmmol.value','BloodSugarmmol.value')
                     key_change(old_smch_admissions,admission,position,'BSmg.value','BloodSugarmg.value')
-                if "Age.value" in old_smch_admissions:
-                    old_smch_admissions['Age.value'] = pd.to_numeric(old_smch_admissions['Age.value'], errors='coerce')
+              
                 if 'AdmissionWeight.value' in old_smch_admissions:
-                    old_smch_admissions['AdmissionWeight.value'] = pd.to_numeric(old_smch_admissions['AdmissionWeight.value'], errors='coerce')
+                    old_smch_admissions['AdmissionWeight.value'] = pd.to_numeric(old_smch_admissions['AdmissionWeight.value'],downcast='integer', errors='coerce')
                 if 'BirthWeight.value' in old_smch_admissions:
-                    old_smch_admissions['BirthWeight.value'] = pd.to_numeric(old_smch_admissions['BirthWeight.value'], errors='coerce')   
+                    old_smch_admissions['BirthWeight.value'] = pd.to_numeric(old_smch_admissions['BirthWeight.value'],downcast='integer', errors='coerce')
+                
+                if 'Gestation.value' in old_smch_admissions:
+                    old_smch_admissions['Gestation.value'] = pd.to_numeric(old_smch_admissions['Gestation.value'],downcast='integer', errors='coerce')
+                
+                if 'Temperature.value' in old_smch_admissions:
+                    old_smch_admissions['Temperature.value'] = pd.to_numeric(old_smch_admissions['Temperature.value'],downcast='integer', errors='coerce')
+           
                 
                 format_date(old_smch_admissions,'DateTimeAdmission.value')
                 format_date(old_smch_admissions,'EndScriptDatetime.value')
@@ -275,14 +282,15 @@ def union_views():
                     key_change(old_matched_smch_data,matched_admission,position,'NNUAdmTemp.value','Temperature.value') 
                     key_change(old_matched_smch_data,matched_admission,position,'GestBirth.value','Gestation.value')
                     key_change(old_matched_smch_data,matched_admission,position,'PresComp.value','AdmReason.value')
-                if "Age.value" in old_matched_smch_data:
-                    old_matched_smch_data['Age.value'] = pd.to_numeric(old_matched_smch_data['Age.value'], errors='coerce')
+                
                 if 'AdmissionWeight.value' in old_matched_smch_data:
-                    old_matched_smch_data['AdmissionWeight.value'] = pd.to_numeric(old_matched_smch_data['AdmissionWeight.value'], errors='coerce')
+                    old_matched_smch_data['AdmissionWeight.value'] = pd.to_numeric(old_matched_smch_data['AdmissionWeight.value'],downcast='integer', errors='coerce')
+
                 if 'BirthWeight.value' in old_matched_smch_data:
-                    old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value'], errors='coerce')
+                    old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value'],downcast='integer', errors='coerce')
                 if 'BirthWeight.value_discharge' in old_matched_smch_data:
-                    old_matched_smch_data['BirthWeight.value'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_value'], errors='coerce')
+                    old_matched_smch_data['BirthWeight.value_discharge'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_discharge'],downcast='integer', errors='coerce')
+                    
                 format_date(old_matched_smch_data,'DateTimeAdmission.value')
                 format_date(old_matched_smch_data,'EndScriptDatetime.value')
                 format_date(old_matched_smch_data,'DateHIVtest.value')
@@ -298,25 +306,44 @@ def union_views():
                 format_date(old_matched_smch_data,'DateAdmission.value')
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
-            if new_smch_admissions is not None and old_smch_admissions  is not None:
-                combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], ignore_index=True)
-                if not combined_adm_df.empty:   
-                    catalog.save('create_derived_old_new_admissions_view',combined_adm_df)   
+            try:
+                combined_adm_df = pd.DataFrame()
+                if new_smch_admissions is not None and old_smch_admissions  is not None:
+                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],
+                                                axis=0, join='outer', ignore_index=True,verify_integrity=False)
+                    if not combined_adm_df.empty:   
+                        catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
+            except Exception as e:
+                logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED ADMISSIONS")
+                logging.error(formatError(e))
+                pass   
             # SAVE OLD NEW DISCHARGES
-            if new_smch_discharges  is not None and old_smch_discharges  is not None:
-                combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges], ignore_index=True)
-                if not combined_dis_df.empty:   
-                    catalog.save('create_derived_old_new_discharges_view',combined_dis_df)   
+            try:
+                if new_smch_discharges  is not None and old_smch_discharges  is not None:
+                    new_smch_discharges.set_index(['uid'])
+                    old_smch_discharges.set_index(['uid'])
+                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0).reset_index(drop=True)
+                    if not combined_dis_df.empty:   
+                        catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
+            except Exception as e:
+                logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED DISCHARGES")
+                logging.error(formatError(e))
+                pass  
 
             # SAVE MATCHED DATA 
-            if new_smch_matched_data  is not None and old_matched_smch_data  is not None:
-                #Correct UID column to suit the lower case uid in new_smch_matched_data
-                if 'UID' in old_matched_smch_data.columns:
-                    old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'}, inplace = False)
-                combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data], ignore_index=True)
-                if not combined_matched_df.empty:   
-                    catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
-            
+            try:
+                if new_smch_matched_data  is not None and old_matched_smch_data  is not None:
+                    #Correct UID column to suit the lower case uid in new_smch_matched_data
+                    if 'UID' in old_matched_smch_data.columns:
+                        new_smch_matched_data = new_smch_matched_data.reset_index(drop=True)
+                        old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'})  
+                    combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0).reset_index(drop=True)
+                    if not combined_matched_df.empty:   
+                        catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
+            except Exception as e:
+                logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED MATCHED")
+                logging.error(formatError(e))
+                pass
 
         except Exception as ex:
             logging.error("!!! An error occured creating union views: ")

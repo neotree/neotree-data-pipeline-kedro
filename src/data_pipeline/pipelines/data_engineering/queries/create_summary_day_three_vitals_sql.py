@@ -1,6 +1,6 @@
 #Query to create summary day one vitals table
 def summary_day_three_vitals_query():
-    return f'''DROP TABLE IF EXISTS derived.summary_day3_vitals;
+    return f'''DROP TABLE IF EXISTS derived.summary_day3_vitals;;
                 CREATE TABLE derived.summary_day3_vitals AS 
                 SELECT "derived"."vitalsigns"."facility" AS "Facility Name",
                 "derived"."vitalsigns"."uid" AS "NeoTreeID",
@@ -39,5 +39,5 @@ def summary_day_three_vitals_query():
                 case
                 when "derived"."vitalsigns"."D3Date.value" IS NOT NULL THEN 3
                 end As "Day"
-            FROM "derived"."vitalsigns"; 
+            FROM "derived"."vitalsigns";; 
         '''

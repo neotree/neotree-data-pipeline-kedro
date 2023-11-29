@@ -22,7 +22,7 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unknown'
         END AS "GestationGroup"
         '''
-    return f'''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;
+    return f'''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
         CREATE TABLE derived.summary_maternal_outcomes AS 
         SELECT derived.maternal_outcomes."uid" AS "NeoTreeID",
         derived.maternal_outcomes."facility" AS "facility",
@@ -83,4 +83,4 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."BWTDis.value" >= 4000 THEN 6
         WHEN derived.maternal_outcomes."BWTDis.value" IS NULL THEN 7
         END AS "BirthWeightGroupSort"
-        FROM derived.maternal_outcomes; '''
+        FROM derived.maternal_outcomes;; '''

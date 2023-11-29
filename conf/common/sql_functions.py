@@ -26,7 +26,7 @@ def inject_sql_procedure(sql_script, file_name):
 
 def inject_sql(sql_script, file_name):
     # ref: https://stackoverflow.com/questions/19472922/reading-external-sql-script-in-python/19473206
-    sql_commands = sql_script.split(';')
+    sql_commands = sql_script.split(';;')
     for command in sql_commands[:-1]:
         try:
             engine.connect().execute(text(command))

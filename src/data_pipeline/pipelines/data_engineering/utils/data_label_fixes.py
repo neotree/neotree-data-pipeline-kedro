@@ -54,7 +54,6 @@ def fix_place_of_birth(value):
         return None
 
 def fix_mode_of_delivery(value):
-    
         if value== 'SVD':
             return 'Spontaneous vaginal delivery'
         if value== 'IVD':
@@ -79,7 +78,7 @@ def fix_mode_of_delivery(value):
             return 'Breech extraction (vaginal'
         if value=='7':
             return 'Unknown'
-        if value =='null':
+        if value =='null' or value is None:
            return None
 
 def fix_transfare_wards(value):
@@ -961,8 +960,6 @@ def fix_adm_type_birth(value):
     if value == 'Tr3':
         return '3rd Triplet'
     return None
-
-    return None;
 
 def fix_adm_admission_reason(value):
     if value =='AD':

@@ -1,6 +1,6 @@
 #Query to create summary_vitalsigns table
 def summary_vital_signs_query():
-    return ''' DROP TABLE IF EXISTS derived.summary_vitalsigns;
+    return ''' DROP TABLE IF EXISTS derived.summary_vitalsigns;;
             CREATE TABLE derived.summary_vitalsigns AS 
             SELECT "derived"."vitalsigns"."uid" AS "NeoTreeID",
             derived.vitalsigns."facility" AS "facility",
@@ -40,4 +40,4 @@ def summary_vital_signs_query():
             derived.vitalsigns."TimeTemp1.value" AS "TimeOfTemperature1",
             derived.vitalsigns."Temp2done.label" AS "WasFollowUpTemperatureDone",
             derived.vitalsigns."Temp2.value" AS "Temperature2",
-            derived.vitalsigns."TimeTemp2.value" AS "TimeOfTemperature2"FROM derived.vitalsigns; '''
+            derived.vitalsigns."TimeTemp2.value" AS "TimeOfTemperature2"FROM derived.vitalsigns;; '''

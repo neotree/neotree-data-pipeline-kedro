@@ -10,7 +10,7 @@ def summary_counts_query():
            #Add Outcome Year Month For Zim Use Case
            outcome_month_year ='derived.summary_joined_admissions_discharges."OutcomeMonthYear" AS "OutcomeMonthYear",'   
            group_by_additional_columns = ',derived.summary_joined_admissions_discharges."OutcomeMonthYear" '
-        return '''DROP TABLE IF EXISTS derived.summary_counts;
+        return '''DROP TABLE IF EXISTS derived.summary_counts;;
                 CREATE TABLE derived.summary_counts AS
                 SELECT  
                 derived.summary_joined_admissions_discharges."AdmissionMonthYear" AS "AdmissionMonthYear",
@@ -34,5 +34,5 @@ def summary_counts_query():
                 summary_joined_admissions_discharges."facility",
                 derived.summary_joined_admissions_discharges."AdmissionMonthYearSort" {1} 
                  ORDER BY derived.summary_joined_admissions_discharges."AdmissionMonthYearSort" ASC, 
-                derived.summary_joined_admissions_discharges."AdmissionMonthYear" ASC;
+                derived.summary_joined_admissions_discharges."AdmissionMonthYear" ASC;;
                 '''.format(outcome_month_year, group_by_additional_columns)
