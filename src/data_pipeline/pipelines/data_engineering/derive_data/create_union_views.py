@@ -7,6 +7,7 @@ from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date
 from conf.base.catalog import params
+from conf.common.format_error import formatError
 
 def union_views():
     if('country' in params and str(params['country']).lower()) =='zimbabwe':
@@ -306,25 +307,27 @@ def union_views():
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
             try:
-                if not new_smch_admissions.empty and not old_smch_admissions.empty:
+                if not new_smch_admissions.empty and old_smch_admissions.empty:
                     new_smch_admissions.reset_index(drop=True,inplace=True)
                     old_smch_admissions.reset_index(drop=True,inplace=True)
                     combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
                     if not combined_adm_df.empty:   
                         catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
-            except:
+            except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED ADMISSIONS")
+                logging.error(formatError(e))
                 pass   
             # SAVE OLD NEW DISCHARGES
             try:
                 if not new_smch_discharges.empty and old_smch_discharges.empty:
-                    new_smch_discharges.reset_index(drop=True)
-                    old_smch_discharges.reset_index(drop=True) 
+                    new_smch_discharges.reset_index(drop=True,inplace=True)
+                    old_smch_discharges.reset_index(drop=True,inplace=True) 
                     combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
                     if not combined_dis_df.empty:   
                         catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
-            except:
+            except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED DISCHARGES")
+                logging.error(formatError(e))
                 pass  
 
             # SAVE MATCHED DATA 
@@ -335,11 +338,12 @@ def union_views():
                         old_matched_smch_data.reset_index(drop=True,inplace=True)
                         new_smch_matched_data.reset_index(drop=True,inplace=True)
                         old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'})  
-                    combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0,ignore_index=True)
+                    combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0).reset_index(drop=True)
                     if not combined_matched_df.empty:   
                         catalog.save('create_derived_old_new_matched_view',combined_matched_df)   
-            except:
+            except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED MATCHED")
+                logging.error(formatError(e))
                 pass
 
         except Exception as ex:
