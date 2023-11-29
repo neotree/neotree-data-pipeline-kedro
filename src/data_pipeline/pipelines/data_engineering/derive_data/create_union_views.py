@@ -73,12 +73,12 @@ def union_views():
                             query = f'''ALTER table derived.old_smch_matched_admissions_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING MATCHED COLL {col_name} ''')
 
-            old_smch_admissions =  None
-            old_smch_discharges =  None
-            old_matched_smch_data = None
-            new_smch_admissions =   None
-            new_smch_discharges =   None
-            new_smch_matched_data = None            
+            old_smch_admissions =   pd.DataFrame()
+            old_smch_discharges =    pd.DataFrame()
+            old_matched_smch_data =  pd.DataFrame()
+            new_smch_admissions =    pd.DataFrame()
+            new_smch_discharges =    pd.DataFrame()
+            new_smch_matched_data =  pd.DataFrame()            
             if table_exists('derived','old_smch_admissions'):
                 old_smch_admissions =   catalog.load('read_old_smch_admissions')
             if table_exists('derived','old_smch_discharges'):
@@ -306,9 +306,9 @@ def union_views():
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
             try:
-                if new_smch_admissions is not None and old_smch_admissions  is not None:
-                    new_smch_admissions= new_smch_admissions.reset_index(drop=True)
-                    old_smch_admissions= old_smch_admissions.reset_index(drop=True)
+                if not new_smch_admissions.empty and not old_smch_admissions.empty:
+                    new_smch_admissions.reset_index(drop=True,inplace=True)
+                    old_smch_admissions.reset_index(drop=True,inplace=True)
                     combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
                     if not combined_adm_df.empty:   
                         catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
@@ -317,9 +317,9 @@ def union_views():
                 pass   
             # SAVE OLD NEW DISCHARGES
             try:
-                if new_smch_discharges  is not None and old_smch_discharges  is not None:
-                    new_smch_discharges= new_smch_discharges.reset_index(drop=True)
-                    old_smch_discharges = old_smch_discharges.reset_index(drop=True) 
+                if not new_smch_discharges.empty and old_smch_discharges.empty:
+                    new_smch_discharges.reset_index(drop=True)
+                    old_smch_discharges.reset_index(drop=True) 
                     combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
                     if not combined_dis_df.empty:   
                         catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
@@ -329,11 +329,11 @@ def union_views():
 
             # SAVE MATCHED DATA 
             try:
-                if new_smch_matched_data  is not None and old_matched_smch_data  is not None:
+                if not new_smch_matched_data.empty and old_matched_smch_data.empty:
                     #Correct UID column to suit the lower case uid in new_smch_matched_data
                     if 'UID' in old_matched_smch_data.columns:
-                        old_matched_smch_data=old_matched_smch_data.reset_index(drop=True)
-                        new_smch_matched_data = new_smch_matched_data.reset_index(drop=True)
+                        old_matched_smch_data.reset_index(drop=True,inplace=True)
+                        new_smch_matched_data.reset_index(drop=True,inplace=True)
                         old_matched_smch_data = old_matched_smch_data.rename(columns = {'UID': 'uid'})  
                     combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data],axis=0,ignore_index=True)
                     if not combined_matched_df.empty:   
