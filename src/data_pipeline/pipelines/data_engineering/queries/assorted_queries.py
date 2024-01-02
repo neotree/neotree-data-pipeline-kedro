@@ -38,7 +38,7 @@ def deduplicate_neolab_query(neolab_where):
 
 def deduplicate_data_query(condition,destination_table):
     if(destination_table!='public.sessions'):
-        return f'''drop table if exists {destination_table} cascade;
+        return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
             (
             with earliest_record as (
@@ -67,7 +67,7 @@ def deduplicate_data_query(condition,destination_table):
             '''      
 
 def deduplicate_baseline_query(condition):
-        return f'''drop table if exists scratch.deduplicated_baseline cascade;
+        return f'''drop table if exists scratch.deduplicated_baseline cascade;;
             create table scratch.deduplicated_baseline as 
             (
             with earliest_record as (
@@ -95,7 +95,7 @@ def deduplicate_baseline_query(condition):
             from earliest_record join sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             and sessions.unique_key is not null
-            );
+            );;
             '''    
             
 def read_deduplicated_data_query(case_condition,where_condition,source_table):
