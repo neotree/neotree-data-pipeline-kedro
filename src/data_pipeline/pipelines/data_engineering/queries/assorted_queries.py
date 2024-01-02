@@ -11,16 +11,18 @@ def deduplicate_neolab_query(neolab_where):
             select
             scriptid,
             uid,
+            extract(year from ingested_at) as year,
+            extract(month from ingested_at) as month,
             CASE WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
             THEN "data"->'entries'::text->1->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCT'->'values'->'value'::text->>0  END AS "DateBCT",
             CASE WHEN "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null 
             THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  END AS "DateBCR",
-            max(id) as id
+            min(id) as id
             from public.sessions
             where scriptid {neolab_where} -- only pull out neloab data
-            group by 1,2,3,4
+            group by 1,2,3,4,5,6
             )
             select
             earliest_neolab.scriptid,
@@ -43,13 +45,15 @@ def deduplicate_data_query(condition,destination_table):
             select
             scriptid,
             uid, 
-            max(id) as id -- This takes the last upload 
+            extract(year from ingested_at) as year,
+            extract(month from ingested_at) as month,
+            min(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.sessions
             where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2
+            group by 1,2,3,4
             )
             select
             earliest_record.scriptid,
@@ -71,21 +75,22 @@ def deduplicate_baseline_query(condition):
             scriptid,
             uid,
             unique_key,
-            max(id) as id -- This takes the last upload 
+            extract(year from ingested_at) as year,
+            extract(month from ingested_at) as month,
+            min(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.sessions
             where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2,3
+            group by 1,2,3,4,5
             )
             select
             earliest_record.scriptid,
             earliest_record.uid,
             earliest_record.id,
-             earliest_record.unique_key,
-            sessions.ingested_at,
-            
+            earliest_record.unique_key,
+            sessions.ingested_at, 
             data
             from earliest_record join sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
