@@ -1,5 +1,8 @@
+import re
 import logging
 
+def escape_special_characters(input_string): 
+    return str(input_string).replace("\\","\\\\").replace("'","''")
 
 #TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 def deduplicate_neolab_query(neolab_where):
@@ -70,31 +73,31 @@ def deduplicate_baseline_query(condition):
         return f'''drop table if exists scratch.deduplicated_baseline cascade;;
             create table scratch.deduplicated_baseline as 
             (
-            with earliest_record as (
-            select
-            scriptid,
-            uid,
-            unique_key,
-            extract(year from ingested_at) as year,
-            extract(month from ingested_at) as month,
-            min(id) as id -- This takes the last upload 
-                  -- of the session as the deduplicated record. 
-                  -- We could replace with min(id) to take the 
-                  -- first uploaded
-            from public.sessions
-            where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2,3,4,5
-            )
-            select
-            earliest_record.scriptid,
-            earliest_record.uid,
-            earliest_record.id,
-            earliest_record.unique_key,
-            sessions.ingested_at, 
-            data
-            from earliest_record join sessions
-            on earliest_record.id = sessions.id where sessions.scriptid {condition}
-            and sessions.unique_key is not null
+                with earliest_record as (
+                    select
+                    scriptid,
+                    uid,
+                    unique_key,
+                    extract(year from ingested_at) as year,
+                    extract(month from ingested_at) as month,
+                    min(id) as id -- This takes the last upload 
+                        -- of the session as the deduplicated record. 
+                        -- We could replace with min(id) to take the 
+                        -- first uploaded
+                    from public.sessions
+                    where scriptid {condition} -- only pull out records for the specified script
+                    group by 1,2,3,4,5
+                )
+                select
+                earliest_record.scriptid,
+                earliest_record.uid,
+                earliest_record.id,
+                earliest_record.unique_key,
+                sessions.ingested_at, 
+                data
+                from earliest_record join sessions
+                on earliest_record.id = sessions.id where sessions.scriptid {condition}
+                and sessions.unique_key is not null
             );;
             '''    
             
@@ -135,7 +138,7 @@ def read_diagnoses_query(admissions_case,adm_where):
             '''
 
 def read_new_smch_admissions_query():
-    return f'''
+    return '''
             select 
                 *,
                 CASE WHEN "DateTimeAdmission.value"::TEXT ='NaT'
@@ -147,7 +150,7 @@ def read_new_smch_admissions_query():
             "DateTimeAdmission.value">='2021-02-01' AND facility = 'SMCH';;'''
 
 def read_new_smch_discharges_query():
-    return f'''
+    return '''
             select 
                 *,
 		  CASE WHEN "DateTimeDischarge.value"::TEXT ='NaT' 
@@ -164,31 +167,31 @@ def read_new_smch_discharges_query():
             '''
 
 def read_old_smch_admissions_query():
-    return f'''
+    return '''
             select 
                 *
             from derived.old_smch_admissions;;'''
 
 def read_old_smch_discharges_query():
-    return f'''
+    return '''
             select 
                 *
             from derived.old_smch_discharges;;'''
 
 def read_old_smch_matched_view_query():
-    return f'''
+    return '''
             select 
                 *
             from derived.old_smch_matched_admissions_discharges;;'''
 
 def read_new_smch_matched_query():
-    return f'''
+    return '''
             select 
                 *
             from derived.joined_admissions_discharges;;'''
 
 def get_duplicate_maternal_query():
-    return f'''
+    return '''
             select uid, s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 as "DA",s."data"->'entries' as "entries"
             from public.sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
             s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' order by
@@ -196,9 +199,9 @@ def get_duplicate_maternal_query():
            '''
 
 def update_maternal_uid_query_new(uid,date_condition,old_uid):
-            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+    return '''update public.sessions set uid = '{0}',data = JSONB_SET(
              data,
-            '{{entries,NeoTreeID}}',
+             '{{entries,NeoTreeID}}',
                '{{
                 "type": "string",
                 "values": {{
@@ -210,12 +213,12 @@ def update_maternal_uid_query_new(uid,date_condition,old_uid):
                 }}
                 }}'::TEXT::jsonb,
                true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
-            '''.format(uid,date_condition,old_uid)
+            '''.format(uid,date_condition,old_uid) 
 
 def update_maternal_uid_query_old(uid,date_condition,old_uid):
-            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+    return '''update public.sessions set uid = '{0}',data = JSONB_SET(
              data,
-            '{{entries,0}}',
+             '{{entries,0}}',
                '{{
                 "key":"NeotreeID",
                 "type": "string",
@@ -227,7 +230,7 @@ def update_maternal_uid_query_old(uid,date_condition,old_uid):
                 ]
                 }}'::TEXT::jsonb,
                true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
-            '''.format(uid,date_condition,old_uid)
+            '''.format(uid,date_condition,old_uid) 
 
 def update_maternal_outer_uid(uid):
     return ''' update public.sessions set data= JSONB_SET(
@@ -261,10 +264,12 @@ def get_baseline_data_tofix_query():
              '''
                          
 def update_eronous_label(uid,script_id,type,key,label,value):
-           
-            return '''update public.sessions set data = JSONB_SET(
+    label = escape_special_characters(label)
+    value = escape_special_characters(value)
+    
+    return '''update public.sessions set data = JSONB_SET(
              data,
-            '{{entries,{3}}}',
+             '{{entries,{3}}}',
                '{{
                 "type": "{2}",
                 "values": {{
@@ -276,4 +281,4 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 }}
                 }}'::TEXT::jsonb,
                true) where "uid" = '{0}' and "scriptid"='{1}';;
-            '''.format(uid,script_id,type,key,label,value)
+            '''.format(uid,script_id,type,key,label,value)  
