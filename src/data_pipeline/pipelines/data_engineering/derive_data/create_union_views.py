@@ -305,26 +305,52 @@ def union_views():
                 format_date(old_matched_smch_data,'DateTimeDeath.value')
                 format_date(old_matched_smch_data,'DateAdmission.value')
                 format_date(old_matched_smch_data,'BirthDateDis.value')
-            # SAVE OLD NEW ADMISSIONS
+            # SAVE OLD NEW ADMISSIONS  
+ 
+            # Assuming new_smch_admissions is a DataFrame
+            # if not new_smch_admissions.empty:
+            #     logging.info("Saving new_smch_admissions to catalog")
+            #     try:
+            #         catalog.save('create_derived_old_new_admissions_view', new_smch_admissions)
+            #         logging.info("Save operation successful")
+            #     except Exception as e:
+            #         logging.error("Error saving new_smch_admissions to catalog", exc_info=True)
+            # else:
+            #     logging.info("new_smch_admissions is empty. No save operation performed.")
+
             try:
-                if not new_smch_admissions.empty and old_smch_admissions.empty:
-                    new_smch_admissions.reset_index(drop=True,inplace=True)
-                    old_smch_admissions.reset_index(drop=True,inplace=True)
-                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
-                    if not combined_adm_df.empty:   
-                        catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
+                # if not new_smch_admissions.empty and old_smch_admissions.empty:
+                #     new_smch_admissions.reset_index(drop=True,inplace=True)
+                #     old_smch_admissions.reset_index(drop=True,inplace=True)
+                #     combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
+                #     if not combined_adm_df.empty:   
+                if not new_smch_admissions.empty:  
+                    catalog.save('create_derived_old_new_admissions_view',new_smch_admissions)  
             except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED ADMISSIONS")
                 logging.error(formatError(e))
-                pass   
+                pass 
+              
             # SAVE OLD NEW DISCHARGES
+            # if not new_smch_discharges.empty:
+            #     logging.info("Saving new_smch_admissions to catalog")
+            #     try:
+            #         catalog.save('create_derived_old_new_discharges_view', new_smch_discharges)
+            #         logging.info("Save operation successful")
+            #     except Exception as e:
+            #         logging.error("Error saving create_derived_old_new_discharges_view to catalog", exc_info=True)
+            # else:
+            #     logging.info("create_derived_old_new_discharges_view is empty. No save operation performed.")
+            
             try:
-                if not new_smch_discharges.empty and old_smch_discharges.empty:
-                    new_smch_discharges.reset_index(drop=True,inplace=True)
-                    old_smch_discharges.reset_index(drop=True,inplace=True) 
-                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
-                    if not combined_dis_df.empty:   
-                        catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
+                # if not new_smch_discharges.empty and old_smch_discharges.empty:
+                #     new_smch_discharges.reset_index(drop=True,inplace=True)
+                #     old_smch_discharges.reset_index(drop=True,inplace=True) 
+                #     combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
+                #     if not combined_dis_df.empty:  
+                        
+                if not new_smch_discharges.empty:
+                    catalog.save('create_derived_old_new_discharges_view',new_smch_discharges)  
             except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED DISCHARGES")
                 logging.error(formatError(e))
