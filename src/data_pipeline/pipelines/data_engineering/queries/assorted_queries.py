@@ -6,78 +6,18 @@ def escape_special_characters(input_string):
 
 #TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 def deduplicate_neolab_query(neolab_where):
-    return f'''
-            drop table if exists scratch.deduplicated_neolab cascade;;
-            create table scratch.deduplicated_neolab as 
-            (
-            with earliest_neolab as (
-            select
-            scriptid,
-            uid,
-            extract(year from ingested_at) as year,
-            extract(month from ingested_at) as month,
-            CASE WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
-            THEN "data"->'entries'::text->1->'values'->0->'value'::text->>0
-            ELSE "data"->'entries'->'DateBCT'->'values'->'value'::text->>0  END AS "DateBCT",
-            CASE WHEN "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null 
-            THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
-            ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  END AS "DateBCR",
-            min(id) as id
-            from public.sessions
-            where scriptid {neolab_where} -- only pull out neloab data
-            group by 1,2,3,4,5,6
-            )
-            select
-            earliest_neolab.scriptid,
-            earliest_neolab.uid,
-            earliest_neolab.id,
-            sessions.ingested_at,
-            earliest_neolab."DateBCT",
-            earliest_neolab."DateBCR",
-            data
-            from earliest_neolab join sessions
-            on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
-            );; '''
+    return deduplicate_data_query(neolab_where, "scratch.deduplicated_neolab")
+
 
 def deduplicate_data_query(condition,destination_table):
     if(destination_table!='public.sessions'):
         return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
             (
-            with earliest_record as (
-            select
-            scriptid,
-            uid, 
-            extract(year from ingested_at) as year,
-            extract(month from ingested_at) as month,
-            min(id) as id -- This takes the last upload 
-                  -- of the session as the deduplicated record. 
-                  -- We could replace with min(id) to take the 
-                  -- first uploaded
-            from public.sessions
-            where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2,3,4
-            )
-            select
-            earliest_record.scriptid,
-            earliest_record.uid,
-            earliest_record.id,
-            sessions.ingested_at,
-            data
-            from earliest_record join sessions
-            on earliest_record.id = sessions.id where sessions.scriptid {condition}
-            );;
-            '''      
-
-def deduplicate_baseline_query(condition):
-        return f'''drop table if exists scratch.deduplicated_baseline cascade;;
-            create table scratch.deduplicated_baseline as 
-            (
                 with earliest_record as (
                     select
                     scriptid,
-                    uid,
-                    unique_key,
+                    uid, 
                     extract(year from ingested_at) as year,
                     extract(month from ingested_at) as month,
                     min(id) as id -- This takes the last upload 
@@ -86,20 +26,24 @@ def deduplicate_baseline_query(condition):
                         -- first uploaded
                     from public.sessions
                     where scriptid {condition} -- only pull out records for the specified script
-                    group by 1,2,3,4,5
+                    group by 1,2,3,4
                 )
                 select
+                earliest_record.id,
                 earliest_record.scriptid,
                 earliest_record.uid,
-                earliest_record.id,
-                earliest_record.unique_key,
-                sessions.ingested_at, 
+                earliest_record.year,
+                earliest_record.month,
+                sessions.ingested_at,
                 data
                 from earliest_record join sessions
                 on earliest_record.id = sessions.id where sessions.scriptid {condition}
-                and sessions.unique_key is not null
             );;
-            '''    
+            '''      
+
+def deduplicate_baseline_query(condition):
+    return deduplicate_data_query(condition, "scratch.deduplicated_baseline")
+ 
             
 def read_deduplicated_data_query(case_condition,where_condition,source_table):
     return f'''
