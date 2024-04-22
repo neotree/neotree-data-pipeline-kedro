@@ -33,4 +33,8 @@ def manually_fix_admissions_query():
             UPDATE derived.admissions SET "BirthWeight.value"=3800 WHERE uid='A7C6-0350';;
             UPDATE derived.admissions SET "BirthWeight.value"=3800 WHERE uid='A7C6-0378';; 
             UPDATE derived.admissions SET "InOrOut.label" ='Within SMCH' WHERE "InOrOut.label" = 'Within HCH';;
-            UPDATE derived.admissions SET "InOrOut.label" ='Outside SMCH' WHERE "InOrOut.label" = 'Outside HCH';; '''
+            UPDATE derived.admissions SET "InOrOut.label" ='Outside SMCH' WHERE "InOrOut.label" = 'Outside HCH';; 
+            
+            UPDATE derived.admissions SET "HIVtestResult.label" = "HIVtestResult.value" WHERE "HIVtestResult.label" = 'None';;
+            
+            '''

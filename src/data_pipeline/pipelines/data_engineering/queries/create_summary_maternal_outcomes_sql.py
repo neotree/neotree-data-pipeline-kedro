@@ -4,8 +4,8 @@ from conf.base.catalog import params
 #Query to create summary_maternala_outcomes table
 def summary_maternal_outcomes_query():
     #Defaulting to Malawi Case 
-    logging.info(">>>>>>>>> START SOX <<<<<<<<<")
-    gestation_case = f''' CASE
+    
+    gestation_case = ''' CASE
         WHEN derived.maternal_outcomes."Gestation.value"::NUMERIC < 28 THEN '<28wks'
         WHEN derived.maternal_outcomes."Gestation.value"::NUMERIC >= 28 AND derived.maternal_outcomes."Gestation.value"::NUMERIC < 32 THEN '28-32wks'
         WHEN derived.maternal_outcomes."Gestation.value"::NUMERIC >= 32 AND derived.maternal_outcomes."Gestation.value"::NUMERIC < 34 THEN '34-34wks'
@@ -15,7 +15,7 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unknown'
         END AS "GestationGroup" '''
     if('country' in params and str(params['country']).lower()) =='zimbabwe':
-        gestation_case= f''' CASE
+        gestation_case= ''' CASE
         WHEN derived.maternal_outcomes."Gestation.value"::NUMERIC < 28 THEN '<28 weeks'
         WHEN derived.maternal_outcomes."Gestation.value"::NUMERIC >= 28 AND derived.maternal_outcomes."Gestation.value"::NUMERIC < 32 THEN '28-31 weeks'
         WHEN derived.maternal_outcomes."Gestation.value"::NUMERIC >= 32 AND derived.maternal_outcomes."Gestation.value"::NUMERIC < 34 THEN '32-33 weeks'
@@ -25,8 +25,6 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unknown'
         END AS "GestationGroup"
         '''
-        
-        logging.info(gestation_case)
         
     sql= f'''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
         CREATE TABLE derived.summary_maternal_outcomes AS 
@@ -91,6 +89,4 @@ def summary_maternal_outcomes_query():
         END AS "BirthWeightGroupSort"
         FROM derived.maternal_outcomes;; '''
         
-    logging.info(sql)
-    logging.info(">>>>>>>>> END SOX <<<<<<<<<")
     return sql
