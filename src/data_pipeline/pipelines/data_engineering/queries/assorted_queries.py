@@ -2,15 +2,6 @@ import re
 import logging
 
 def escape_special_characters(input_string): 
-    logging.info("")
-    logging.info("escape_special_characters:")
-    logging.info(input_string)
-    
-    # Check if the input is None and return an appropriate value
-    if input_string is None:
-        logging.info("Input is None. Returning None without changes.")
-        return input_string
-    
     return str(input_string).replace("\\","\\\\").replace("'","''")
 
 #TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
