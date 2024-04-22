@@ -6,12 +6,15 @@ from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import fix_disharge_label,fix_maternal_label,fix_admissions_label,fix_baseline_label
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from datetime import datetime
+import logging
 
 def data_labels_cleanup(script):
        #####IDENTIFY THE FAULTY RECORDS
+        logging.info("data_labels_cleanup: " + script)
         faulty_df = pd.DataFrame()
         if table_exists('public','sessions'):
             faulty_df = catalog.load(f'''{script}_to_fix''')
+            # faulty_df = catalog.load(script)
         if not faulty_df.empty:
             for index,row in faulty_df.iterrows():
                 for key in row['data']:
@@ -31,6 +34,9 @@ def data_labels_cleanup(script):
                         if label !='Undefined':                     
                             query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
                             inject_sql(query,f'''FIX {script} ERRORS''')
-
+                            
+                        logging.info("Label: " + label)    
+        else:
+            logging.info("Facility empty: %s_to_fix", script)
     
     

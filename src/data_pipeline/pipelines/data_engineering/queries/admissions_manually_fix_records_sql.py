@@ -1,5 +1,8 @@
 # Query To Manually correct Admissions with the specified UIDS
+import logging
+
 def manually_fix_admissions_query():
+    logging.info("Executing -> manually_fix_admissions_query")
     return '''UPDATE derived.admissions SET "AW.value" = 1640,"AdmissionWeight.value"=1640 WHERE "uid" ='F55F-0513';;
             UPDATE derived.admissions SET "AW.value" = 2000,"AdmissionWeight.value"=2000 WHERE "uid" ='6367-0975';;
             UPDATE derived.admissions SET "AW.value" = 2350,"AdmissionWeight.value"=2350 WHERE "uid" ='F55F-0118';;

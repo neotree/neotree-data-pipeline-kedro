@@ -1,5 +1,6 @@
 ## DISCHARGES DATA
 from ast import Return
+import logging
 
 
 def fix_neotree_oucome(value):
@@ -905,6 +906,7 @@ def fix_adm_yes_no_na(value):
     return None;
 
 def fix_hiv_result(value):
+    logging.info("fix_hiv_result: " + value)
     if value=='P':
         return 'Positive'
     if value=='R':
@@ -915,6 +917,9 @@ def fix_hiv_result(value):
         return 'Negative'
     if value == 'U':
         return 'Unknown'
+    
+    logging.info("Return none for HIV label: " + value) #-> SOX 
+    
     return None;
 
 def fix_anvdrl_result(value):

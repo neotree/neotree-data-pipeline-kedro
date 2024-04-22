@@ -144,4 +144,7 @@ def create_convinience_views_query():
                 WHEN derived.joined_admissions_discharges."AgeCategory" = 'Infant (> 3 days old)' THEN 5
             END AS "AgeCatSort"
             FROM derived.joined_admissions_discharges
-            ORDER BY derived.joined_admissions_discharges."uid" ASC;; '''
+            ORDER BY derived.joined_admissions_discharges."uid" ASC;; 
+            UPDATE DERIVED.JOINED_ADMISSIONS_DISCHARGES SET "HIVtestResult.label" = "HIVtestResult.value" WHERE "HIVtestResult.label" = 'None';;
+            
+            '''
