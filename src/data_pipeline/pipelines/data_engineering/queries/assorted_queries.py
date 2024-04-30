@@ -287,7 +287,7 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 }}'::TEXT::jsonb,
                true) where "uid" = '{0}' and "scriptid"='{1}';;
             '''.format(uid,script_id,type,key,label,value)  
-    logging.info(f'update_eronous_label: {sql}')
+    #logging.info(f'update_eronous_label: {sql}')
     return sql
             
 def update_label_reloaded(table): 
