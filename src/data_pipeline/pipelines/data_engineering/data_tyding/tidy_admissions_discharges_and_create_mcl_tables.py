@@ -12,6 +12,7 @@ from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
+from .derived_data_patching import *
 import numpy as np
 
 from conf.base.catalog import params
@@ -294,6 +295,7 @@ def tidy_tables():
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             #Save Derived Admissions To The DataBase Using Kedro
             catalog.save('create_derived_admissions',adm_df)
+            patch_derived_admissions()
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")   
         
@@ -349,6 +351,7 @@ def tidy_tables():
             dis_df = create_columns(dis_df) 
             dis_df= dis_df[(dis_df['uid'] != 'Unknown')]
             catalog.save('create_derived_discharges',dis_df)
+            patch_derived_discharges()
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
             
@@ -378,6 +381,7 @@ def tidy_tables():
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
             mat_outcomes_df= mat_outcomes_df[(mat_outcomes_df['uid'] != 'Unknown')]
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
+            patch_derived_maternal_outcomes()
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
         
@@ -401,6 +405,7 @@ def tidy_tables():
             catalog.save('create_derived_vitalsigns',vit_signs_df)
             logging.info("... Creating MCL count tables for Vital Signs DF")
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
+            patch_derived_vital_signs()
     ##################### NEOLAB ###################################################################################    
         neolab_df = pd.json_normalize(neolab_new_entries)
         if not neolab_df.empty:
@@ -500,9 +505,11 @@ def tidy_tables():
             neolab_df= neolab_df[(neolab_df['uid'] != 'Unknown')] 
             ########SAVE DATA#####################################
             catalog.save('create_derived_neolab',neolab_df)
+            patch_derived_neolab()
             
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
+        
         if not baseline_df.empty:
         
             if "started_at" in baseline_df and 'completed_at' in baseline_df :
@@ -573,6 +580,7 @@ def tidy_tables():
             #Save Derived Baseline To The DataBase Using Kedro
             baseline_df= baseline_df[(baseline_df['uid'] != 'Unknown')] 
             catalog.save('create_derived_baseline',baseline_df)
+            patch_derived_baseline()
             logging.info("... Creating MCL count tables for Baseline DF")
             explode_column(baseline_df,baseline_mcl,"bsl_")
         
@@ -582,6 +590,7 @@ def tidy_tables():
             if 'uid' in diagnoses_df:
                 diagnoses_df= diagnoses_df[(diagnoses_df['uid'] != 'Unknown')] 
             catalog.save('create_derived_diagnoses',diagnoses_df)
+            patch_derived_diagnoses()
          
         ###################MATERNAL COMPLETENES CASE OF MALAWI###################   
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
@@ -595,6 +604,7 @@ def tidy_tables():
                 mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df],axis=0,ignore_index=True)
                 ##########SAVING DATA####################################
             catalog.save('create_derived_maternity_completeness',mat_completeness_df)
+            patch_derived_maternity_completeness()
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
 
 

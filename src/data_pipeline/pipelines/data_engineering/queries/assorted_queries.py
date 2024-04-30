@@ -40,6 +40,7 @@ def deduplicate_neolab_query(neolab_where):
             );; '''
 
 def deduplicate_data_query(condition,destination_table):
+    logging.info(f'destination_table: {destination_table} -> {condition}')
     if(destination_table!='public.sessions'):
         return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
@@ -59,9 +60,11 @@ def deduplicate_data_query(condition,destination_table):
             group by 1,2,3,4
             )
             select
+            earliest_record.id,
             earliest_record.scriptid,
             earliest_record.uid,
-            earliest_record.id,
+            earliest_record.year,
+            earliest_record.month,
             sessions.ingested_at,
             data
             from earliest_record join sessions
@@ -89,9 +92,11 @@ def deduplicate_baseline_query(condition):
                     group by 1,2,3,4,5
                 )
                 select
+                earliest_record.id,
                 earliest_record.scriptid,
                 earliest_record.uid,
-                earliest_record.id,
+                earliest_record.year,
+                earliest_record.month,
                 earliest_record.unique_key,
                 sessions.ingested_at, 
                 data
@@ -267,7 +272,7 @@ def update_eronous_label(uid,script_id,type,key,label,value):
     label = escape_special_characters(label)
     value = escape_special_characters(value)
     
-    return '''update public.sessions set data = JSONB_SET(
+    sql = '''update public.sessions set data = JSONB_SET(
              data,
              '{{entries,{3}}}',
                '{{
@@ -282,3 +287,26 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 }}'::TEXT::jsonb,
                true) where "uid" = '{0}' and "scriptid"='{1}';;
             '''.format(uid,script_id,type,key,label,value)  
+    logging.info(f'update_eronous_label: {sql}')
+    return sql
+            
+def update_label_reloaded(table): 
+    update_sql = f"""
+    UPDATE {table}
+    SET data = jsonb_set(
+        data,
+        '{entries, HR, values, label}',
+        '["Heart Rate (beats/min)"]'::jsonb
+    )
+    WHERE data->'entries'->'HR'->'values'->'label' ? 'None';
+    """
+    
+    return update_sql
+           
+    # return f '''UPDATE public.sessions
+    # SET data = jsonb_set(
+    #     data,
+    #     '{entries, HR, values, label}',  -- JSONB path to the label array
+    #     '["Heart Rate (beats/min)"]'::jsonb  -- New value to replace the existing array
+    # )
+    # WHERE data->'entries'->'HR'->'values'->'label' ? 'None';''';
