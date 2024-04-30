@@ -28,6 +28,11 @@ def patch_derived_discharges():
 
 def patch_derived_maternal_outcomes():
     logging.info("patch_derived_maternal_outcomes")
+    sql_script = '''
+    UPDATE derived.maternal_outcomes SET "ModeDelivery.label" = "ModeDelivery.value" WHERE "ModeDelivery.label" = 'None';;
+    '''
+    inject_sql(sql_script, "manually-fix-derived_maternal_outcomes")
+    
 
 def patch_derived_vital_signs():
     logging.info("patch_derived_vital_signs")
