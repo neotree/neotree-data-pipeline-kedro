@@ -35,12 +35,10 @@ def manually_fix_admissions_query():
             UPDATE derived.admissions SET "InOrOut.label" ='Within SMCH' WHERE "InOrOut.label" = 'Within HCH';;
             UPDATE derived.admissions SET "InOrOut.label" ='Outside SMCH' WHERE "InOrOut.label" = 'Outside HCH';; 
             
+            UPDATE derived.admissions SET "HIVtestResult.label" = "HIVtestResult.value" WHERE "HIVtestResult.label" = 'None';;
+            UPDATE derived.admissions SET "Temperature.label" = 'Temperature (degs C)' WHERE "Temperature.label" = 'None';;
+            
             UPDATE derived.admissions SET "InOrOut.label" = CASE WHEN "InOrOut.value"::BOOLEAN = FALSE THEN 'Outside ' || FACILITY WHEN "InOrOut.value"::BOOLEAN = TRUE THEN 'Within ' || FACILITY ELSE "InOrOut.label" END WHERE "InOrOut.label" = 'None';;
 
             
             '''
-
-            
-            # UPDATE derived.admissions SET "HIVtestResult.label" = "HIVtestResult.value" WHERE "HIVtestResult.label" = 'None';;
-            # UPDATE derived.admissions SET "Temperature.label" = 'Temperature (degs C)' WHERE "Temperature.label" = 'None';;
-            # UPDATE derived.admissions SET "InOrOut.label" = 'Within SMCH' WHERE "InOrOut.label" = 'None';;
