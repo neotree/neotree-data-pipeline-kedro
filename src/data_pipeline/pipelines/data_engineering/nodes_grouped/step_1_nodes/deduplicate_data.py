@@ -14,6 +14,7 @@ def deduplicate_data(data_import_output):
     try:
         
         if data_import_output is not None:
+            logging.debug("3333333333---"+str(params.values))
             if('data_fix' in params and params['data_fix']==True):
                 data_labels_cleanup('admissions')
                 data_labels_cleanup('discharges')
