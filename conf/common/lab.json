@@ -1,0 +1,19 @@
+[
+    {
+        "key": "BCResult",
+        "labels": [
+            "Positive",
+            "Positive (Preliminary awaiting Antibiotic sensitivity testing)",
+            "Negative (PRELIMINARY)",
+            "Negative (FINAL)",
+            "Possible Contaminant"
+        ],
+        "values": [
+            "Pos",
+            "PosP",
+            "NegP",
+            "Neg",
+            "PC"
+        ]
+    }
+]

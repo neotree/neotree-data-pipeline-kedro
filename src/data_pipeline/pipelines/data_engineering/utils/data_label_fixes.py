@@ -1,7 +1,7 @@
 ## DISCHARGES DATA
 from ast import Return
 
-
+@DeprecationWarning
 def fix_neotree_oucome(value):
         if value== 'DC':
             return 'Discharged'
@@ -21,7 +21,7 @@ def fix_neotree_oucome(value):
             return 'Brought in dead'
         if value== 'null':
             return None
-
+@DeprecationWarning
 def fix_discharge_sex(value):
         if value== 'F':
             return 'Female'
@@ -32,7 +32,7 @@ def fix_discharge_sex(value):
 
         if value== 'null':
             return None
-
+@DeprecationWarning
 def fix_maternal_outcome(value):
     
         if value== 'A':
@@ -40,7 +40,7 @@ def fix_maternal_outcome(value):
         if value== 'D':
             return 'Deceased' 
         return None
-
+@DeprecationWarning
 def fix_place_of_birth(value):
     
         if value== 'SMCH':
@@ -52,7 +52,7 @@ def fix_place_of_birth(value):
         if value== 'H':
             return 'Home' 
         return None
-
+@DeprecationWarning
 def fix_mode_of_delivery(value):
         if value== 'SVD':
             return 'Spontaneous vaginal delivery'
@@ -80,7 +80,7 @@ def fix_mode_of_delivery(value):
             return 'Unknown'
         if value =='null' or value is None:
            return None
-
+@DeprecationWarning
 def fix_transfare_wards(value):
     
         if value== 'PostA':
@@ -92,7 +92,7 @@ def fix_transfare_wards(value):
         if value== 'OTH':
             return 'Other'
         return None
-
+@DeprecationWarning
 def fix_transfare_wards(value):
     
         if value== 'PostA':
@@ -104,7 +104,7 @@ def fix_transfare_wards(value):
         if value== 'OTH':
             return 'Other'
         return None
-
+@DeprecationWarning
 def fix_bcresults(value):
     
         if value== 'NO':
@@ -142,7 +142,7 @@ def fix_bcresults(value):
         if value== 'OTH':
             return 'Other'
         return None
-
+@DeprecationWarning
 def fix_hivpcr(value):
     
         if value== 'P':
@@ -154,7 +154,7 @@ def fix_hivpcr(value):
         if value== 'I':
             return 'Indeterminate'
         return None
-
+@DeprecationWarning
 def fix_mat_hivpr(value):
     
         if value== 'P':
@@ -166,7 +166,7 @@ def fix_mat_hivpr(value):
         if value== 'I':
             return 'Indeterminate'
         return None        
-
+@DeprecationWarning
 def fix_matrprr(value):
     
         if value== 'P':
@@ -181,7 +181,7 @@ def fix_matrprr(value):
         if value== 'U':
             return 'Unknown'
         return None
-
+@DeprecationWarning
 def fix_matpart(value):
     
         if value== 'Y':
@@ -194,7 +194,7 @@ def fix_matpart(value):
             return 'Unknown'
 
         return None
-
+@DeprecationWarning
 def fix_lpgluc(value):
     
         if value== 'Y':
@@ -207,7 +207,7 @@ def fix_lpgluc(value):
             return 'Not Done'
         return None
 
-
+@DeprecationWarning
 def fix_thomp_tone(value):
     
         if value== '0':
@@ -219,7 +219,7 @@ def fix_thomp_tone(value):
         if value== '3':
             return '3 = flaccid'
         return None
-
+@DeprecationWarning
 def fix_thomp_alert(value):
     
         if value== '0':
@@ -231,7 +231,7 @@ def fix_thomp_alert(value):
         if value== '3':
             return '3 = Comatose'
         return None
-
+@DeprecationWarning
 def fix_thomp_seize(value):
     
         if value== '0':
@@ -241,7 +241,7 @@ def fix_thomp_seize(value):
         if value== '2':
             return '2 = More than 2 per day'
         return None
-
+@DeprecationWarning
 def fix_thomp_refl(value):
     
         if value== '0':
@@ -253,7 +253,7 @@ def fix_thomp_refl(value):
         if value== '3':
             return '3 = Decerebrate'
         return None
-
+@DeprecationWarning
 def fix_thomp_resp(value):
     
         if value== '0':
@@ -265,7 +265,7 @@ def fix_thomp_resp(value):
         if value== '3':
             return '3 = Apnoea needing ventilatory support'
         return None
-
+@DeprecationWarning
 def fix_thomp_moro(value):
     
         if value== '0':
@@ -275,7 +275,7 @@ def fix_thomp_moro(value):
         if value== '2':
             return '2 = Absent'
         return None
-
+@DeprecationWarning
 def fix_thomp_grasp(value):
     
         if value== '0':
@@ -285,7 +285,7 @@ def fix_thomp_grasp(value):
         if value== '2':
             return '2 = Absent'
         return None
-
+@DeprecationWarning
 def fix_thomp_font(value):
     
         if value== '0':
@@ -295,7 +295,7 @@ def fix_thomp_font(value):
         if value== '2':
             return '2 = tense'
         return None
-
+@DeprecationWarning
 def fix_thomp_feeds(value):
     
         if value== '0':
@@ -305,7 +305,7 @@ def fix_thomp_feeds(value):
         if value== '2':
             return '2 = Absent or with bites'
         return None
-
+@DeprecationWarning
 def fix_thomp_feed(value):
     
         if value== '0':
@@ -315,7 +315,7 @@ def fix_thomp_feed(value):
         if value== '2':
             return '2 = Absent or with bites'
         return None
-
+@DeprecationWarning
 def fix_thomp_resp(value):
     
         if value== '0':
@@ -327,7 +327,7 @@ def fix_thomp_resp(value):
         if value== '3':
             return '3 = Apnoea needing ventilatory support'
         return None
-
+@DeprecationWarning
 def fix_thomp_front(value):
     
         if value== '0':
@@ -337,7 +337,7 @@ def fix_thomp_front(value):
         if value== '2':
             return '2 = tense'
         return None
-
+@DeprecationWarning
 def fix_transfusion(value):
     
         if value== 'Y':
@@ -345,7 +345,7 @@ def fix_transfusion(value):
         if value== 'N':
             return 'No' 
         return None
-
+@DeprecationWarning
 def fix_high_risk(value):
     
         if value== 'Y':
@@ -355,7 +355,7 @@ def fix_high_risk(value):
         if value== 'NS':
             return 'Not Sure' 
         return None
-
+@DeprecationWarning
 def fix_trans_type(value):
     
         if value== 'R':
@@ -369,7 +369,7 @@ def fix_trans_type(value):
         if value== 'M':
             return 'More than one kind' 
         return None
-
+@DeprecationWarning
 def fix_spec_type(value):
     
         if value== 'Neph':
@@ -389,7 +389,7 @@ def fix_spec_type(value):
         if value== 'Oth':
             return 'Other' 
         return None
-
+@DeprecationWarning
 def fix_rev_clinic_type(value):
     
         if value== 'KMC':
@@ -405,7 +405,7 @@ def fix_rev_clinic_type(value):
         if value== 'OTH':
             return 'Other clinic'   
         return None
-
+@DeprecationWarning
 def fix_cadre_disc(value):
     
         if value== 'S':
@@ -423,7 +423,7 @@ def fix_cadre_disc(value):
         if value== 'O':
             return 'Other'     
         return None
-
+@DeprecationWarning
 def fix_good_prog(value):
     
         if value== 'OB':
@@ -455,7 +455,7 @@ def fix_good_prog(value):
         if value== 'OTH':
             return 'Additional Information not covered above' 
         return None
-
+@DeprecationWarning
 def fix_admission_reason(value):
     
         if value== 'An':
@@ -594,6 +594,7 @@ def fix_admission_reason(value):
         return None
 
 ##FIX MATERNAL DATA
+@DeprecationWarning
 def fix_maternal_mode_of_delivery(value):
     if value=='1':
         return 'Spontaneous Vaginal Delivery'
@@ -610,7 +611,7 @@ def fix_maternal_mode_of_delivery(value):
     if value=='7':
         return 'Unknown'
     return None
-
+@DeprecationWarning
 def fix_maternal_neonatal_outcome(value):
     if value == 'LB':
         return 'Live Birth'
@@ -621,7 +622,7 @@ def fix_maternal_neonatal_outcome(value):
     if value == 'STBF':
         return 'Stillbirth Fresh'
     return None
-
+@DeprecationWarning
 def fix_maternal_mother_outcome(value):
     if value == 'D':
         return 'Died'
@@ -630,13 +631,14 @@ def fix_maternal_mother_outcome(value):
     return None
 
 ## FIX ADMISSIONS
+@DeprecationWarning
 def fix_adm_yes_no(value):
     if value=='Y':
         return 'Yes'
     if value == 'N':
         return 'No'
     return None;
-
+@DeprecationWarning
 def fix_adm_yes_no_ns(value):
     if value=='Y':
         return 'Yes'
@@ -645,14 +647,14 @@ def fix_adm_yes_no_ns(value):
     if value == 'NS':
         return 'Not Sure'
     return None;
-
+@DeprecationWarning
 def fix_adm_rom_length(value):
     if value=='NOPROM':
         return '< 18 hours'
     if value == 'PROM':
         return '> 18 hours'
     return None;
-
+@DeprecationWarning
 def fix_adm_presentation(value):
     if value=='Vertex':
         return 'Vertex'
@@ -665,7 +667,7 @@ def fix_adm_presentation(value):
     if value == 'Unk':
         return 'Unknown'
     return None;
-
+@DeprecationWarning
 def fix_adm_mode_delivery(value):
     if value=='1':
         return 'Spontaneous Vaginal Delivery'
@@ -682,7 +684,7 @@ def fix_adm_mode_delivery(value):
     if value == '7':
         return 'Induced Vaginal Delivery'
     return None;
-
+@DeprecationWarning
 def fix_adm_balad_score(value):
     if value=='0':
         return '0'
@@ -699,7 +701,7 @@ def fix_adm_balad_score(value):
     if value == '-1':
         return '-1'
     return None;
-
+@DeprecationWarning
 def fix_adm_cadre(value):
     if value=='GMO':
         return 'Government Medical Officer'
@@ -738,7 +740,7 @@ def fix_adm_cadre(value):
     if value == 'NeoCon':
         return 'Paediatric Consultant'
     return None;
-
+@DeprecationWarning
 def fix_adm_firm(value):
     if value=='GC':
         return 'Dr Gwen Chimhini'
@@ -751,7 +753,7 @@ def fix_adm_firm(value):
     if value == 'AS':
         return 'Dr Alex Stevenson'
     return None
-
+@DeprecationWarning
 def fix_adm_review_cadre(value):
     if value=='SHO':
         return 'SHO'
@@ -763,7 +765,7 @@ def fix_adm_review_cadre(value):
         return 'Consultant'
     return None
 
-
+@DeprecationWarning
 def fix_adm_thomp_tone(value):
     if value=='0':
         return '0 = normal'
@@ -774,7 +776,7 @@ def fix_adm_thomp_tone(value):
     if value == '3':
         return '3 = flaccid'
     return None
-
+@DeprecationWarning
 def fix_adm_thomp_refl(value):
     if value=='0':
         return '0 = Normal'
@@ -785,7 +787,7 @@ def fix_adm_thomp_refl(value):
     if value == '3':
         return '3 = Decerebrate'
     return None
-
+@DeprecationWarning
 def fix_adm_thomp_alert(value):
     if value=='0':
         return '0 = Alert'
@@ -796,7 +798,7 @@ def fix_adm_thomp_alert(value):
     if value == '3':
         return '3 = Comatose'
     return None
-
+@DeprecationWarning
 def fix_adm_thomp_seiz(value):
     if value=='0':
         return '0 = none'
@@ -805,7 +807,7 @@ def fix_adm_thomp_seiz(value):
     if value == '2':
         return '2 = More than 2 per day'
     return None
-
+@DeprecationWarning
 def fix_adm_thomp_moro(value):
     if value=='0':
         return '0 = Normal'
@@ -814,7 +816,7 @@ def fix_adm_thomp_moro(value):
     if value == '2':
         return '2 = Absent'
     return None
-
+@DeprecationWarning
 def fix_adm_thomp_grasp(value):
     if value=='0':
         return '0 = Normal'
@@ -823,7 +825,7 @@ def fix_adm_thomp_grasp(value):
     if value == '2':
         return '2 = Absent'
     return None
-    
+@DeprecationWarning   
 def fix_adm_reason_for_cs(value):
     if value=='FD':
         return 'Foetal Distress'
@@ -848,7 +850,7 @@ def fix_adm_reason_for_cs(value):
     if value == 'O':
         return 'Other'
     return None;
-
+@DeprecationWarning
 def fix_adm_yes_no_unknown(value):
     if value=='Y':
         return 'Yes'
@@ -857,7 +859,7 @@ def fix_adm_yes_no_unknown(value):
     if value == 'U':
         return 'Unknown'
     return None;
-
+@DeprecationWarning
 def fix_adm_place_of_birth(value):
     if value=='H':
         return 'Home'
@@ -870,7 +872,7 @@ def fix_adm_place_of_birth(value):
     if value == 'O':
         return 'Other'
     return None;
-
+@DeprecationWarning
 def fix_adm_cpr_out(value):
     if value=='Six':
         return 'HR Remained below 60 so CPR stopped'
@@ -881,7 +883,7 @@ def fix_adm_cpr_out(value):
     if value == 'Resp':
         return 'HR came above 100 gasping respirations only BVM cont'
     return None;
-
+@DeprecationWarning
 def fix_adm_who_delivered(value):
     if value=='S':
         return 'Self'
@@ -894,7 +896,7 @@ def fix_adm_who_delivered(value):
     if value == 'N':
         return 'Nurse in ambulance'
     return None;
-
+@DeprecationWarning
 def fix_adm_yes_no_na(value):
     if value=='Y':
         return 'Yes'
@@ -903,7 +905,7 @@ def fix_adm_yes_no_na(value):
     if value == 'NA':
         return 'Not applicable'
     return None;
-
+@DeprecationWarning
 def fix_hiv_result(value):
     if value=='P':
         return 'Positive'
@@ -916,7 +918,7 @@ def fix_hiv_result(value):
     if value == 'U':
         return 'Unknown'
     return None;
-
+@DeprecationWarning
 def fix_anvdrl_result(value):
     if value=='R':
         return 'Positive'
@@ -925,14 +927,14 @@ def fix_anvdrl_result(value):
     if value == 'U':
         return 'Unknown'
     return None;
-
+@DeprecationWarning
 def fix_hiv_report(value):
     if value=='Self':
         return 'Self-reported from mother'
     if value == 'Doc':
         return 'From her documentation'
     return None;
-
+@DeprecationWarning
 def fix_age_estimate(value):
     if value=='FNB':
         return 'Fresh Newborn (< 2 hours old)'
@@ -945,7 +947,7 @@ def fix_age_estimate(value):
     if value == 'INF':
         return 'Infant (> 3 days old)'
     return None
-
+@DeprecationWarning
 def fix_adm_type_birth(value):
     if value=='S':
         return 'Single'
@@ -960,7 +962,7 @@ def fix_adm_type_birth(value):
     if value == 'Tr3':
         return '3rd Triplet'
     return None
-
+@DeprecationWarning
 def fix_adm_admission_reason(value):
     if value =='AD':
         return 'Abdominal distension'
@@ -1013,7 +1015,7 @@ def fix_adm_admission_reason(value):
     if value == 'O':
         return 'Other'
     return None
-
+@DeprecationWarning
 def fix_adm_gest_method(value):
     if value=='LMP':
         return 'Last Menstrual Period (LMP)'
@@ -1022,7 +1024,7 @@ def fix_adm_gest_method(value):
     if value == 'USS':
         return 'USS'
     return None;
-
+@DeprecationWarning
 def fix_adm_jaundice(value):
     if value=='1':
         return 'Head and neck (TSB 100umol/L)'
@@ -1035,7 +1037,7 @@ def fix_adm_jaundice(value):
     if value == '5':
         return 'Palms and soles (TSB >250umol/L)'
     return None;
-
+@DeprecationWarning
 def fix_adm_feeding_review(value):
     if value=='NFY':
         return 'Has not had a breast feed yet'
@@ -1052,7 +1054,7 @@ def fix_adm_feeding_review(value):
     if value == 'BOT':
         return 'Bottle feeding'
     return None;
-
+@DeprecationWarning
 def fix_adm_meconium(value):
     if value=='MecLiq':
         return 'Meconium present in the liquor'
@@ -1063,7 +1065,7 @@ def fix_adm_meconium(value):
     if value == 'NoMec':
         return 'No meconium in 1st 24 hrs'
     return None;
-
+@DeprecationWarning
 def fix_adm_stools_infant(value):
     if value=='Norm':
         return 'Opening bowels normally'
@@ -1074,7 +1076,7 @@ def fix_adm_stools_infant(value):
     if value == 'BlDi':
         return 'Bloody Diarrhoea'
     return None;
-
+@DeprecationWarning
 def fix_adm_pu_newborn(value):
     if value=='Yes':
         return 'Has passed urine in 1st 24 hrs'
@@ -1085,7 +1087,7 @@ def fix_adm_pu_newborn(value):
     if value == 'Unk':
         return 'Not sure'
     return None;
-
+@DeprecationWarning
 def fix_adm_pu_infant(value):
     if value=='Norm':
         return 'Passing urine normally'
@@ -1095,6 +1097,7 @@ def fix_adm_pu_infant(value):
         return 'Not passing urine'
     return None;
 
+@DeprecationWarning
 def fix_adm_length_of_haart(value):
     if value=='1stTrim':
         return '1st Trimester or earlier'
@@ -1108,6 +1111,7 @@ def fix_adm_length_of_haart(value):
         return 'Unknown'
     return None;
 
+@DeprecationWarning
 def fix_adm_mat_place(value):
     if value=='PostA':
         return 'Postnatal A'
@@ -1120,7 +1124,7 @@ def fix_adm_mat_place(value):
     if value == 'Other':
         return ' Other'
     return None;
-
+@DeprecationWarning
 def fix_adm_mat_ethnicity(value):
     if value=='AA':
         return 'African/AfricanAmerican'
@@ -1133,7 +1137,7 @@ def fix_adm_mat_ethnicity(value):
     if value == 'O':
         return ' Other'
     return None;
-
+@DeprecationWarning
 def fix_adm_mat_province(value):
     if value=='HA':
         return 'Harare'
@@ -1156,7 +1160,7 @@ def fix_adm_mat_province(value):
     if value == 'MID':
         return 'Midlands'
     return None;
-
+@DeprecationWarning
 def fix_adm_mat_district(value):
     if value=='Av':
         return 'Avondale'
@@ -1224,6 +1228,7 @@ def fix_adm_mat_district(value):
    
 
 ## FIX DISCHARGES
+@DeprecationWarning
 def fix_disharge_label(key,value):
         if key== 'NeoTreeOutcome':
             return fix_neotree_oucome(value)
@@ -1310,6 +1315,7 @@ def fix_disharge_label(key,value):
         pass
 
 ## MATERNAL OUTCOMES
+@DeprecationWarning
 def fix_maternal_label(key,value):
     if(key =='SexDis'):
         return fix_discharge_sex(value)
@@ -1323,6 +1329,7 @@ def fix_maternal_label(key,value):
 
 
 ## ADMISSIONS
+@DeprecationWarning
 def fix_admissions_label(key,value):
     if(key =='GLUSTX'):
         return fix_adm_yes_no(value)
@@ -1443,6 +1450,7 @@ def fix_admissions_label(key,value):
     pass
 
 ## MATERNAL OUTCOMES
+@DeprecationWarning
 def fix_baseline_label(key,value):
     if(key =='NeoTreeOutcome'):
         return fix_neotree_oucome(value)
