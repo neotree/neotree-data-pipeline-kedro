@@ -14,7 +14,7 @@ def deduplicate_data(data_import_output):
     try:
         
         if data_import_output is not None:
-            if(params['fix_data']==True):
+            if('data_fix' in params and params['data_fix']==True):
                 data_labels_cleanup('admissions')
                 data_labels_cleanup('discharges')
                 data_labels_cleanup('maternals')
