@@ -572,7 +572,8 @@
     {
         "key": "TalipesSev",
         "labels": [
-            "Yes,No"
+            "Yes",
+            "No"
         ],
         "values": [
             "Yes",
@@ -582,7 +583,8 @@
     {
         "key": "YColour",
         "labels": [
-            "Yes,No"
+            "Yes",
+            "No"
         ],
         "values": [
             "Y",
