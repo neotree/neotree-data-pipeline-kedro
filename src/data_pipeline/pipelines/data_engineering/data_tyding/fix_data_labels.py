@@ -6,6 +6,7 @@ from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.utils.data_label_fix_new import fix_data_label
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from datetime import datetime
+import logging
 
 def data_labels_cleanup(script):
        #####IDENTIFY THE FAULTY RECORDS

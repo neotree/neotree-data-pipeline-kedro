@@ -1076,11 +1076,15 @@
         "key": "ANVDRL",
         "labels": [
             "Yes",
+            "No",
+            "Yes",
             "No"
         ],
         "values": [
             "Yes",
-            "No"
+            "No",
+            "Y",
+            "N"
         ]
     },
     {
@@ -1165,12 +1169,14 @@
         "labels": [
             "Yes",
             "No",
-            "Unknown"
+            "Unknown",
+            "No TTV doses"
         ],
         "values": [
             "Y",
             "N",
-            "U"
+            "U",
+            "TTV0"
         ]
     },
     {
@@ -1235,11 +1241,15 @@
         "key": "ROM",
         "labels": [
             "Yes",
+            "No",
+            "Yes",
             "No"
         ],
         "values": [
             "Yes",
-            "No"
+            "No",
+            "Y",
+            "N"
         ]
     },
     {
