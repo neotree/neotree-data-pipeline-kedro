@@ -15,12 +15,16 @@ def deduplicate_data(data_import_output):
         
         if data_import_output is not None:
             if('data_fix' in params and str(params['data_fix']).lower()=='true'):
-                logging.info("************FIXING LABELS******************************")
+                logging.info("************FIXING ADM LABELS******************************")
                 data_labels_cleanup('admissions')
+                logging.info("************FIXING DIS LABELS******************************")
                 data_labels_cleanup('discharges')
+                logging.info("************FIXING MATER LABELS******************************")
                 data_labels_cleanup('maternals')
-                maternal_data_duplicates_cleanup()
+                logging.info("************FIXING BL LABELS******************************")
                 data_labels_cleanup('baselines')
+                # maternal_data_duplicates_cleanup()
+                
             ###DEDUPLICATE DYNAMICALLY
             for index,dedup_query in enumerate(generic_dedup_queries):
                 current_dedup = f'''deduplicate-generic_{index}'''

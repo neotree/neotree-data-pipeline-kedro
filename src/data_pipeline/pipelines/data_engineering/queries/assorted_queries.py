@@ -233,22 +233,22 @@ def update_maternal_outer_uid(uid):
 
 def get_discharges_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-            ingested_at>'2023-01-01'
+            ingested_at>='2024-01-01'
              and scriptid in ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka','-KYDiO2BTM4kSGZDVXAO');;
              '''
 def get_maternal_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             ingested_at>'2023-01-01' and scriptid in ('-MDPYzHcFVHt02D1Tz4Z' 
+             ingested_at>'2024-01-01' and scriptid in ('-MDPYzHcFVHt02D1Tz4Z' 
              ,'-MYk0A3-Z_QjaXYU5MsS','-MOAjJ_In4TOoe0l_Gl5');;
              '''
 def get_admissions_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             ingested_at>'2023-01-01'
+             ingested_at>='2024-01-01'
              and scriptid in ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK','-KO1TK4zMvLhxTw6eKia');;
              '''
 def get_baseline_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-            ingested_at>'2023-01-01' and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
+            ingested_at>'2024-01-01' and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
              ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');;
              '''
                          
