@@ -263,7 +263,7 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 "label": [
                     {4}
                 ],
-                "value": ["{5}"]
+                "value": [{5}]
                 
                 }}
                 }}'::TEXT::jsonb,

@@ -61,7 +61,7 @@ def data_labels_cleanup(script):
                                             else:
                                                 label = fix_data_label(key,value,'baseline')
                                         if label!='Undefined':                     
-                                                query = update_eronous_label(row['uid'],row['scriptid'],type,key,'"{label}"',value)
+                                                query = update_eronous_label(row['uid'],row['scriptid'],type,key,'"{label}"','"{value}"')
                                                 inject_sql(query,f'''FIX {script} ERRORS''')
                                 
                                 elif  len(row['data'][key]['values']['value'])>1:
@@ -77,6 +77,7 @@ def data_labels_cleanup(script):
                                     
                                     if(label!='Undefined' and len(label)>0):
                                         processed_label =', '.join(f'"{x}"' for x in label)
+                                        value = ', '.join(f'"{x}"' for x in value)
                                         query = update_eronous_label(row['uid'],row['scriptid'],type,key,processed_label,value)
                                         inject_sql(query,f'''FIX {script}  MULTI SELECT ERRORS''')
                                     
