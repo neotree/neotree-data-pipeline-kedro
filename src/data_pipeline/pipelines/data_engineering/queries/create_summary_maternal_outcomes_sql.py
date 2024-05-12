@@ -70,7 +70,7 @@ def summary_maternal_outcomes_query():
         END AS "BirthWeightGroup",
         CASE
          WHEN derived.maternal_outcomes."Gestation.value" IS NULL 
-        OR derived.maternal_outcomes."Gestation.value" !~ '^[0-9]*\.?[0-9]+$' THEN 7
+        OR derived.maternal_outcomes."Gestation.value" !~'^[0-9]*\.?[0-9]+$' THEN 7
         WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN 1
         WHEN derived.maternal_outcomes."Gestation.value" >= 28 AND derived.maternal_outcomes."Gestation.value" < 32 THEN 2
         WHEN derived.maternal_outcomes."Gestation.value" >= 32 AND derived.maternal_outcomes."Gestation.value" < 34 THEN 3
@@ -80,7 +80,7 @@ def summary_maternal_outcomes_query():
         END AS "GestationGroupSort",
         CASE
          WHEN derived.maternal_outcomes."BWTDis.value" IS NULL 
-        OR derived.maternal_outcomes."BWTDis.value" !~ '^[0-9]*\.?[0-9]+$' THEN 7
+        OR derived.maternal_outcomes."BWTDis.value" !~'^[0-9]*\.?[0-9]+$' THEN 7
         WHEN derived.maternal_outcomes."BWTDis.value" < 1000 THEN 1
         WHEN derived.maternal_outcomes."BWTDis.value" >= 1000 AND derived.maternal_outcomes."BWTDis.value" < 1500 THEN 2
         WHEN derived.maternal_outcomes."BWTDis.value" >= 1500 AND derived.maternal_outcomes."BWTDis.value" < 2500 THEN 3
