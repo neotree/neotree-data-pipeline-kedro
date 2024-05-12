@@ -75,7 +75,7 @@ def data_labels_cleanup(script):
                                     elif script == 'baselines':
                                         label = fix_multiple_data_label(key,value,'baseline')
                                     
-                                    if(label!='Undefined' and len(label)>0):
+                                    if(label is not None and label!='Undefined' and len(label)>0):
                                         processed_label =', '.join(f'"{x}"' for x in label)
                                         value = ', '.join(f'"{x}"' for x in value)
                                         query = update_eronous_label(row['uid'],row['scriptid'],type,key,processed_label,value)
