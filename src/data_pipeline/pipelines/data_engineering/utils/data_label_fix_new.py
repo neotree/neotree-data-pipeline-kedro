@@ -10,7 +10,7 @@ def fix_data_label(key,value,script):
             if item:
                 if value in item["values"]:
                     value_index = item["values"].index(value)
-                    if isinstance(value_index, int):
+                    if isinstance(value_index, int) and value_index>=0:
                         label = item["labels"][value_index]
                         return label
         return None
@@ -25,7 +25,7 @@ def fix_data_value(key,label,script):
             if item:
                 if label in item["labels"]:
                     value_index = item["labels"].index(label)
-                    if isinstance(value_index, int):
+                    if isinstance(value_index, int) and value_index>=0:
                         value = item["values"][value_index]
                         return value
         return None
@@ -42,7 +42,7 @@ def fix_multiple_data_label(key,value,script):
                 for v in value:
                     if v in item["values"]:
                         value_index = item["values"].index(v)
-                        if isinstance(value_index, int):
+                        if isinstance(value_index, int) and value_index>=0:
                             values.append(item["labels"][value_index])
                 return values
             return None
