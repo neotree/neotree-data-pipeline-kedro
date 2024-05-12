@@ -24,9 +24,9 @@ def data_labels_cleanup(script):
                         if(script=='admissions'):
                             label = fix_data_label(key,value,'admission')
                         elif(script=='discharges'):
-                              label = fix_data_label(key,value,'admission')
+                              label = fix_data_label(key,value,'discharge')
                         elif(script=='maternals'):
-                             label = fix_data_label(key,value,'materninty')
+                             label = fix_data_label(key,value,'maternity')
                         elif(script=='baselines'):
                             label= fix_data_label(key,value,'baseline') 
                         if label is not None:                     
