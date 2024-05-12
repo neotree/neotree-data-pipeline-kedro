@@ -261,7 +261,7 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 "type": "{2}",
                 "values": {{
                 "label": [
-                    "{4}"
+                    {4}
                 ],
                 "value": ["{5}"]
                 
