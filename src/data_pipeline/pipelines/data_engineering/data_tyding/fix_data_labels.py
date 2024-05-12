@@ -22,7 +22,8 @@ def data_labels_cleanup(script):
                         pass
                     else:
                         for key in row['data']:
-                            if row['data'][key] is not None and row['data'][key]['values'] is not None:
+                            if (row['data'][key] is not None and row['data'][key]['values'] is not None
+                                and len(row['data'][key]['values']['label'])>0 and len(row['data'][key]['values']['value'])>0):
                                 label =row['data'][key]['values']['label'][0]
                                 type = row['data'][key]['type'] if 'type' in row['data'][key] else None
                                 ##FIX LABELS
@@ -35,29 +36,42 @@ def data_labels_cleanup(script):
                                         
                                     else:
                                         if(script=='admissions'):
-                                            if str(value).lower()!='none' and str(label).lower()=='none':
-                                                       
-                                                value = fix_data_value(key,value,'admission')
-                                                label = value
-                                            else:
-                                                label = fix_data_label(key,value,'admission')
+                                            try:
+                                                if str(value).lower()!='none' and str(label).lower()=='none':
+                                                    
+                                                    v = fix_data_value(key,value,'admission')
+                                                    if v is not None:
+                                                        label = value
+                                                        value= v    
+                                                else:
+                                                    label = fix_data_label(key,value,'admission')
+                                            except Exception as ex:
+                                                logging.error("---NJUGA PANO PANO")
                                                 
                                         elif(script=='discharges'):
                                             if str(value).lower()!='none' and str(label).lower()=='none':
-                                                value = fix_data_value(key,value,'discharge')
-                                                label = value
+                                                v = fix_data_value(key,value,'discharge')
+                                                if v is not None:
+                                                    label = value
+                                                    value= v  
                                             else:
                                                 label = fix_data_label(key,value,'discharge')
                                         elif(script=='maternals'):
-                                            if str(value).lower()!='none' and str(label).lower()=='none':   
-                                                value = fix_data_value(key,value,'maternity')
-                                                label = value
+                                            if str(value).lower()!='none' and str(label).lower()=='none': 
+                                                  
+                                                v = fix_data_value(key,value,'maternity')
+                                                if v is not None:
+                                                    label = value
+                                                    value= v 
                                             else:
                                                 label = fix_data_label(key,value,'maternity')
                                         elif(script=='baselines'):
                                             if str(value).lower()!='none' and str(label).lower()=='none':
-                                                value = fix_data_value(key,value,'baseline')
-                                                label = value
+                                                
+                                                v = fix_data_value(key,value,'baseline')
+                                                if v is not None:
+                                                    label = value
+                                                    value= v 
                                             else:
                                                 label = fix_data_label(key,value,'baseline')
                                         if label!='Undefined':                     
@@ -65,6 +79,7 @@ def data_labels_cleanup(script):
                                                 inject_sql(query,f'''FIX {script} ERRORS''')
                                 
                                 elif  len(row['data'][key]['values']['value'])>1:
+                                    
                                     value=row['data'][key]['values']['value']
                                     if script =='admissions':
                                         label = fix_multiple_data_label(key,value,'admission')
@@ -74,13 +89,13 @@ def data_labels_cleanup(script):
                                         label = fix_multiple_data_label(key,value,'maternity')
                                     elif script == 'baselines':
                                         label = fix_multiple_data_label(key,value,'baseline')
-                                    
+                                        
                                     if(label is not None and label!='Undefined' and len(label)>0):
                                         processed_label =', '.join(f'"{x}"' for x in label)
                                         value = ', '.join(f'"{x}"' for x in value)
                                         query = update_eronous_label(row['uid'],row['scriptid'],type,key,processed_label,value)
                                         inject_sql(query,f'''FIX {script}  MULTI SELECT ERRORS''')
-                                    
+                                       
                                     
 
         
