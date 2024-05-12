@@ -72,9 +72,10 @@ def data_labels_cleanup(script):
                                                     value= v 
                                             else:
                                                 label = fix_data_label(key,value,'baseline')
-                                        if label!='Undefined' and label is not None and str(label).lower()!='none':                     
-                                                query = update_eronous_label(row['uid'],row['scriptid'],type,key,f'"{label}"'.replace("'","''"),
-                                                                             f'"{value}"').replace("'","''")
+                                        if label!='Undefined' and label is not None:
+                                                                     
+                                                query = update_eronous_label(row['uid'],row['scriptid'],type,key,f'"{label}"',
+                                                                             f'"{value}"')
                                                 inject_sql(query,f'''FIX {script} ERRORS''')
                                 
                                 elif  len(row['data'][key]['values']['value'])>1:
