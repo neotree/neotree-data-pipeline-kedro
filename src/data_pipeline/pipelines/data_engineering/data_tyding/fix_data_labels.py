@@ -36,17 +36,15 @@ def data_labels_cleanup(script):
                                         
                                     else:
                                         if(script=='admissions'):
-                                            try:
-                                                if str(value).lower()!='none' and str(label).lower()=='none':
+                                            
+                                            if str(value).lower()!='none' and str(label).lower()=='none':
                                                     
-                                                    v = fix_data_value(key,value,'admission')
-                                                    if v is not None:
-                                                        label = value
-                                                        value= v    
+                                                v = fix_data_value(key,value,'admission')
+                                                if v is not None:
+                                                    label = value
+                                                    value= v    
                                                 else:
                                                     label = fix_data_label(key,value,'admission')
-                                            except Exception as ex:
-                                                logging.error("---NJUGA PANO PANO")
                                                 
                                         elif(script=='discharges'):
                                             if str(value).lower()!='none' and str(label).lower()=='none':
@@ -75,7 +73,7 @@ def data_labels_cleanup(script):
                                             else:
                                                 label = fix_data_label(key,value,'baseline')
                                         if label!='Undefined':                     
-                                                query = update_eronous_label(row['uid'],row['scriptid'],type,key,'"{label}"','"{value}"')
+                                                query = update_eronous_label(row['uid'],row['scriptid'],type,key,f'"{label}"',f'"{value}"')
                                                 inject_sql(query,f'''FIX {script} ERRORS''')
                                 
                                 elif  len(row['data'][key]['values']['value'])>1:
