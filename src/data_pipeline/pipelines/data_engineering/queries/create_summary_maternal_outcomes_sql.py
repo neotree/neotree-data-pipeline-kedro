@@ -4,7 +4,7 @@ def summary_maternal_outcomes_query():
     #Defaulting to Malawi Case 
     gestation_case = f''' CASE
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL 
-        OR WHEN derived.maternal_outcomes."Gestation.value" !~ '^[0-9]*\.?[0-9]+$' THEN 'Unkown'
+        OR derived.maternal_outcomes."Gestation.value" !~ '^[0-9]*\.?[0-9]+$' THEN 'Unkown'
         WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN '<28wks'
         WHEN derived.maternal_outcomes."Gestation.value" >= 28 AND derived.maternal_outcomes."Gestation.value" < 32 THEN '28-32wks'
         WHEN derived.maternal_outcomes."Gestation.value" >= 32 AND derived.maternal_outcomes."Gestation.value" < 34 THEN '34-34wks'
@@ -15,7 +15,7 @@ def summary_maternal_outcomes_query():
     if('country' in params and str(params['country']).lower()) =='zimbabwe':
         gestation_case= f''' CASE
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL 
-        OR WHEN derived.maternal_outcomes."Gestation.value" !~ '^[0-9]*\.?[0-9]+$' THEN 'Unkown'
+        OR derived.maternal_outcomes."Gestation.value" !~ '^[0-9]*\.?[0-9]+$' THEN 'Unkown'
         WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN '<28 weeks'
         WHEN derived.maternal_outcomes."Gestation.value" >= 28 AND derived.maternal_outcomes."Gestation.value" < 32 THEN '28-31 weeks'
         WHEN derived.maternal_outcomes."Gestation.value" >= 32 AND derived.maternal_outcomes."Gestation.value" < 34 THEN '32-33 weeks'
@@ -60,7 +60,7 @@ def summary_maternal_outcomes_query():
         {gestation_case},
         CASE
          WHEN derived.maternal_outcomes."BWTDis.value" IS NULL 
-        OR WHEN derived.maternal_outcomes."BWTDis.value" !~ '^[0-9]*\.?[0-9]+$' THEN 'Unknown'
+        OR derived.maternal_outcomes."BWTDis.value" !~ '^[0-9]*\.?[0-9]+$' THEN 'Unknown'
         WHEN derived.maternal_outcomes."BWTDis.value" < 1000 THEN '<1000g'
         WHEN derived.maternal_outcomes."BWTDis.value" >= 1000 AND derived.maternal_outcomes."BWTDis.value" < 1500 THEN '1000-1500g'
         WHEN derived.maternal_outcomes."BWTDis.value" >= 1500 AND derived.maternal_outcomes."BWTDis.value" < 2500 THEN '1500-2500g'
@@ -70,7 +70,7 @@ def summary_maternal_outcomes_query():
         END AS "BirthWeightGroup",
         CASE
          WHEN derived.maternal_outcomes."Gestation.value" IS NULL 
-        OR WHEN derived.maternal_outcomes."Gestation.value" !~ '^[0-9]*\.?[0-9]+$' THEN 7
+        OR derived.maternal_outcomes."Gestation.value" !~ '^[0-9]*\.?[0-9]+$' THEN 7
         WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN 1
         WHEN derived.maternal_outcomes."Gestation.value" >= 28 AND derived.maternal_outcomes."Gestation.value" < 32 THEN 2
         WHEN derived.maternal_outcomes."Gestation.value" >= 32 AND derived.maternal_outcomes."Gestation.value" < 34 THEN 3
@@ -80,7 +80,7 @@ def summary_maternal_outcomes_query():
         END AS "GestationGroupSort",
         CASE
          WHEN derived.maternal_outcomes."BWTDis.value" IS NULL 
-        OR WHEN derived.maternal_outcomes."BWTDis.value" !~ '^[0-9]*\.?[0-9]+$' THEN 7
+        OR derived.maternal_outcomes."BWTDis.value" !~ '^[0-9]*\.?[0-9]+$' THEN 7
         WHEN derived.maternal_outcomes."BWTDis.value" < 1000 THEN 1
         WHEN derived.maternal_outcomes."BWTDis.value" >= 1000 AND derived.maternal_outcomes."BWTDis.value" < 1500 THEN 2
         WHEN derived.maternal_outcomes."BWTDis.value" >= 1500 AND derived.maternal_outcomes."BWTDis.value" < 2500 THEN 3
