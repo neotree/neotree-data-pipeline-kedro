@@ -11,8 +11,9 @@ def fix_data_label(key,value,script):
             if item:
                 if value in item["values"]:
                     value_index = item["values"].index(value)
-                    label = item["labels"][value_index]
-                    return label
+                    if isinstance(value_index, int):
+                        label = item["labels"][value_index]
+                        return label
         return None
     except Exception as ex:
         logging.error("**********"+str(key)+"-----"+str(value)+"+++++"+str(script))
