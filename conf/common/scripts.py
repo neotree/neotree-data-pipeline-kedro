@@ -7,7 +7,6 @@ def get_script(script_type):
         return convert_json_to_dict('conf/common/admission.json')   
     elif(script_type=='discharge'):
         return convert_json_to_dict('conf/common/discharge.json')
-    
     elif(script_type=='maternity'):
         return convert_json_to_dict('conf/common/maternity.json')
     elif(script_type=='baseline'):

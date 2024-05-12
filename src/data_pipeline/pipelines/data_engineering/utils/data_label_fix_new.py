@@ -7,7 +7,6 @@ def fix_data_label(key,value,script):
         script_json = get_script(script)
         if(script_json is not None):
             item = script_json.get(key)
-            
             if item:
                 if value in item["values"]:
                     value_index = item["values"].index(value)

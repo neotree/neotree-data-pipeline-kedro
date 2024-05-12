@@ -7,6 +7,7 @@ from data_pipeline.pipelines.data_engineering.utils.data_label_fix_new import fi
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from datetime import datetime
 import logging
+import json
 
 def data_labels_cleanup(script):
        #####IDENTIFY THE FAULTY RECORDS
@@ -15,23 +16,28 @@ def data_labels_cleanup(script):
             faulty_df = catalog.load(f'''{script}_to_fix''')
         if not faulty_df.empty:
             for index,row in faulty_df.iterrows():
-                for key in row['data']:
-                    if row['data'][key] is not None and row['data'][key]['values'] is not None and len(row['data'][key]['values']['value'])>0:
-                        value = row['data'][key]['values']['value'][0]
-                        type = row['data'][key]['type'] if 'type' in row['data'][key] else None
-                        
-                        label = None
-                        if(script=='admissions'):
-                            label = fix_data_label(key,value,'admission')
-                        elif(script=='discharges'):
-                              label = fix_data_label(key,value,'discharge')
-                        elif(script=='maternals'):
-                             label = fix_data_label(key,value,'maternity')
-                        elif(script=='baselines'):
-                            label= fix_data_label(key,value,'baseline') 
-                        if label is not None:                     
-                            query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
-                            inject_sql(query,f'''FIX {script} ERRORS''')
+                if 'data' in row:
+                    if 'key' in row['data']:
+                        #Means Its Old Data Format Found In New Era
+                        pass
+                    else:
+                        for key in row['data']:
+                             if row['data'][key] is not None and row['data'][key]['values'] is not None and len(row['data'][key]['values']['value'])>0:
+                                value = row['data'][key]['values']['value'][0]
+                                type = row['data'][key]['type'] if 'type' in row['data'][key] else None
+                                
+                                label = None
+                                if(script=='admissions'):
+                                    label = fix_data_label(key,value,'admission')
+                                elif(script=='discharges'):
+                                    label = fix_data_label(key,value,'discharge')
+                                elif(script=='maternals'):
+                                    label = fix_data_label(key,value,'maternity')
+                                elif(script=='baselines'):
+                                    label= fix_data_label(key,value,'baseline') 
+                                if label is not None:                     
+                                    query = update_eronous_label(row['uid'],row['scriptid'],type,key,label,value)
+                                    inject_sql(query,f'''FIX {script} ERRORS''')
 
-    
-    
+        
+        
