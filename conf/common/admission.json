@@ -86,12 +86,18 @@
         "labels": [
             "Female",
             "Male",
+            "Not sure",
+            "Female",
+            "Male",
             "Not sure"
         ],
         "values": [
             "F",
             "M",
-            "NS"
+            "NS",
+            "Female",
+            "Male",
+            "Not sure"
         ]
     },
     {
@@ -211,14 +217,14 @@
     {
         "key": "Tone",
         "labels": [
-            "Hypertonic",
-            "Hypotonic",
-            "Normal"
+            "Normal tone, movement in all limbs",
+            "Reduced tone = Hypotonia (floppy)",
+            "Increased tone = Hypertonia (stiff)"
         ],
         "values": [
+            "Norm",
             "High",
-            "Low",
-            "Norm"
+            "Low"
         ]
     },
     {

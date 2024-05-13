@@ -27,9 +27,10 @@ def data_labels_cleanup(script):
                                 label =row['data'][key]['values']['label'][0]
                                 type = row['data'][key]['type'] if 'type' in row['data'][key] else None
                                 ##FIX LABELS
-                                label = 'Undefined'
                                 if  len(row['data'][key]['values']['value'])==1:
                                     value = row['data'][key]['values']['value'][0]
+                                    
+                                    logging.info("***"+str(value)+ "str--"+str(label)+"---"+script)
                                         
                                     if str(value).lower() == 'null':
                                         label= value
@@ -37,7 +38,8 @@ def data_labels_cleanup(script):
                                     else:
                                         if(script=='admissions'):
                                             
-                                            if str(value).lower()!='none' and str(label).lower()=='none':
+                                            if (str(value).lower()!='none' and str(label).lower()=='none' 
+                                                and (type!='number' or type!='date' or type!='datetime' or type!='string')):
                                                     
                                                 v = fix_data_value(key,value,'admission')
                                                 if v is not None:
@@ -72,8 +74,9 @@ def data_labels_cleanup(script):
                                                     value= v 
                                             else:
                                                 label = fix_data_label(key,value,'baseline')
-                                        if label!='Undefined' and label is not None:
-                                                                     
+                                                logging.info("**BEF*"+str(value)+ "str--"+str(label)+"---"+script)
+                                        if ((value is None and label is  None) or (value is not None and label is not None) ):
+                                                logging.info("**AFT*"+str(value)+ "str--"+str(label)+"---"+script)                     
                                                 query = update_eronous_label(row['uid'],row['scriptid'],type,key,f'"{label}"',
                                                                              f'"{value}"')
                                                 inject_sql(query,f'''FIX {script} ERRORS''')
@@ -90,7 +93,8 @@ def data_labels_cleanup(script):
                                     elif script == 'baselines':
                                         label = fix_multiple_data_label(key,value,'baseline')
                                         
-                                    if(label is not None and label!='Undefined' and len(label)>0):
+                                    logging.info("*MULTI**"+str(value)+ "---str1--"+str(label)+"---K-"+key)
+                                    if(label is not None and len(label)>0):
                                         processed_label =', '.join(f'"{x}"' for x in label)
                                         value = ', '.join(f'"{x}"' for x in value)
                                         query = update_eronous_label(row['uid'],row['scriptid'],type,key,processed_label,value)
