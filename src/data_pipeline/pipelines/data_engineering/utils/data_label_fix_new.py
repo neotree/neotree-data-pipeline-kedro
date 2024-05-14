@@ -13,7 +13,7 @@ def fix_data_label(key,value,script):
                     if isinstance(value_index, int) and value_index>=0:
                         label = item["labels"][value_index]
                         return label
-        return None
+        return "Undefined"
     except Exception as ex:
         logging.error("**********"+str(key)+"-----"+str(value)+"+++++"+str(script))
         
@@ -45,6 +45,6 @@ def fix_multiple_data_label(key,value,script):
                         if isinstance(value_index, int) and value_index>=0:
                             values.append(item["labels"][value_index])
                 return values
-            return None
+        return "Undefined"
     except Exception as ex:
         logging.error("**********"+str(key))

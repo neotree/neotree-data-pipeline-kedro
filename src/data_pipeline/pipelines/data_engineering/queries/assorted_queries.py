@@ -35,7 +35,7 @@ def deduplicate_neolab_query(neolab_where):
             );; '''
 
 def deduplicate_data_query(condition,destination_table):
-    if(destination_table!='public.sessions'):
+    if(destination_table!='public.clean_sessions'):
         return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
             (
@@ -47,7 +47,7 @@ def deduplicate_data_query(condition,destination_table):
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
-            from public.sessions
+            from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
             group by 1,2
             )
@@ -75,7 +75,7 @@ def deduplicate_baseline_query(condition):
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
-            from public.sessions
+            from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
             group by 1,2,3
             )
@@ -185,13 +185,13 @@ def read_new_smch_matched_query():
 def get_duplicate_maternal_query():
     return f'''
             select uid, s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 as "DA",s."data"->'entries' as "entries"
-            from public.sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
+            from public.clean_sessions s where scriptid= '-MDPYzHcFVHt02D1Tz4Z' group by 
             s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0,s."data"->'entries' order by
             s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 ;;
            '''
 
 def update_maternal_uid_query_new(uid,date_condition,old_uid):
-            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+            return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
             '{{entries,NeoTreeID}}',
                '{{
@@ -208,7 +208,7 @@ def update_maternal_uid_query_new(uid,date_condition,old_uid):
             '''.format(uid,date_condition,old_uid)
 
 def update_maternal_uid_query_old(uid,date_condition,old_uid):
-            return '''update public.sessions set uid = '{0}',data = JSONB_SET(
+            return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
             '{{entries,0}}',
                '{{
@@ -225,36 +225,36 @@ def update_maternal_uid_query_old(uid,date_condition,old_uid):
             '''.format(uid,date_condition,old_uid)
 
 def update_maternal_outer_uid(uid):
-    return ''' update public.sessions set data= JSONB_SET(
+    return ''' update public.clean_sessions set data= JSONB_SET(
              data,
             '{{uid}}',
              to_json(uid)::TEXT::JSONB,
              true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';;'''.format(uid)
 
 def get_discharges_tofix_query():
-    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-              "uid" in ('0EE2-6244','5EDE-5814','60E3-4202','5EDE-5772','60E3-4166','60E3-4147','DDZZ-1438')
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
+              ingested_at>='2024-01-01'
              and scriptid in ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka','-KYDiO2BTM4kSGZDVXAO');;
              '''
 def get_maternal_data_tofix_query():
-    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-             "uid" in ('0EE2-6244','5EDE-5814','60E3-4202','5EDE-5772','60E3-4166','60E3-4147','DDZZ-1438') and scriptid in ('-MDPYzHcFVHt02D1Tz4Z' 
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
+             ingested_at>='2024-01-01' and scriptid in ('-MDPYzHcFVHt02D1Tz4Z' 
              ,'-MYk0A3-Z_QjaXYU5MsS','-MOAjJ_In4TOoe0l_Gl5');;
              '''
 def get_admissions_data_tofix_query():
-    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-              "uid" in ('0EE2-6244','5EDE-5814','60E3-4202','5EDE-5772','60E3-4166','60E3-4147','DDZZ-1438') 
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
+              ingested_at>='2024-01-01'
              and scriptid in ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK','-KO1TK4zMvLhxTw6eKia');;
              '''
 def get_baseline_data_tofix_query():
-    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.sessions where 
-              "uid" in ('0EE2-6244','5EDE-5814','60E3-4202','5EDE-5772','60E3-4166','60E3-4147','DDZZ-1438') and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
+    return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
+              ingested_at>='2024-01-01' and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
              ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');;
              '''
                          
 def update_eronous_label(uid,script_id,type,key,label,value):
            
-            return '''update public.sessions set data = JSONB_SET(
+            return '''update public.clean_sessions set data = JSONB_SET(
              data,
             '{{entries,{3}}}',
                '{{
@@ -269,3 +269,17 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 }}'::TEXT::jsonb,
                true) where "uid" = '{0}' and "scriptid"='{1}';;
             '''.format(uid,script_id,type,key,label,value)
+            
+def insert_sessions_data():
+    return f''' create table if not exists public.clean_sessions(
+    id integer,
+    uid text,
+    ingested_at timestamp without time zone,
+    data jsonb,
+    scriptid text,
+    unique_key character varying);;
+    
+    INSERT INTO public.clean_sessions
+    SELECT *
+    FROM public.sessions where uid not in (select uid from  public.clean_sessions);;
+'''

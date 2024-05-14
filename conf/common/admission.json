@@ -43,7 +43,7 @@
     {
         "key": "Fontanelle",
         "labels": [
-            "Flat",
+            "Flat, Not Tense (normal)",
             "Bulging",
             "Sunken"
         ],
@@ -101,6 +101,23 @@
         ]
     },
     {
+        "key": "MatAdmPlace",
+        "labels": [
+            "Postnatal A",
+            "Postnatal B",
+            "Labour Ward",
+            "ICU",
+            "Other"
+        ],
+        "values": [
+            "PostA",
+            "PostB",
+            "Labour",
+            "ICU",
+            "Other"
+        ]
+    },
+    {
         "key": "AgeA",
         "labels": [
             "Yes",
@@ -109,6 +126,17 @@
         "values": [
             "Y",
             "N"
+        ]
+    },
+    {
+        "key": "RiskCovid",
+        "labels": [
+            "Yes",
+            "No"
+        ],
+        "values": [
+            "Yes",
+            "No"
         ]
     },
     {
@@ -167,7 +195,7 @@
     {
         "key": "SuckReflex",
         "labels": [
-            "Suck reflex absent",
+            "Absent",
             "Present and strong",
             "Present but weak"
         ],
@@ -180,12 +208,16 @@
     {
         "key": "Palate",
         "labels": [
-            "Palate intact",
-            "Cleft palate"
+            "Palate and lip intact",
+            "Cleft palate",
+            "Cleft lip",
+            "Cleft lip and palate"
         ],
         "values": [
             "Palate",
-            "Cleft"
+            "Cleft",
+            "Lip",
+            "LipPalate"
         ]
     },
     {
@@ -194,13 +226,15 @@
             "Normal",
             "Swelling",
             "Moulding",
-            "Hydrocephalus"
+            "Hydrocephalus",
+            "Microcephaly"
         ],
         "values": [
             "Norm",
             "Swell",
             "Mold",
-            "Hydro"
+            "Hydro",
+            "Micro"
         ]
     },
     {
@@ -231,13 +265,13 @@
         "key": "Spine",
         "labels": [
             "Normal",
-            "Neural Tube Defec",
-            "Other abnormality"
+            "Neural Tube Defect / Spina Bifida",
+            "Other spinal abnormality"
         ],
         "values": [
             "Norm",
             "NTD",
-            "Oabn"
+            "OAbn"
         ]
     },
     {
@@ -252,9 +286,9 @@
         "values": [
             "Alert",
             "Coma",
-            "Conv",
+            "Convulsions",
             "Irrit",
-            "Letharg"
+            "Leth"
         ]
     },
     {
@@ -271,12 +305,13 @@
     {
         "key": "SignsRD",
         "labels": [
-            "Nasal Flare",
+            "Nasal Flaring",
             "Grunting",
             "Head nodding",
             "Tracheal Tug",
             "Gasping",
             "Chest Indrawing",
+            "Stridor",
             "None"
         ],
         "values": [
@@ -286,11 +321,12 @@
             "TT",
             "Gasp",
             "CHI",
+            "ST",
             "NONE"
         ]
     },
     {
-        "key": "Wob",
+        "key": "WOB",
         "labels": [
             "Mild",
             "Moderate",
@@ -430,22 +466,20 @@
     {
         "key": "ChestAusc",
         "labels": [
-            "Clear",
-            "Bilateral Crackles",
+            "Chest is clear",
             "Unequal air entry",
+            "Unilateral crackles",
             "Unilateral Wheeze",
-            "Unilateral Crackles",
-            "Stridor",
-            "Not confident using the stethoscope"
+            "Bilateral crackles/wheeze",
+            "Stridor"
         ],
         "values": [
             "Clear",
-            "BilatCr",
             "UeqAE",
-            "UniWh",
             "UniCr",
-            "Strid",
-            "NotCon"
+            "UniWh",
+            "BilatCr",
+            "Strid"
         ]
     },
     {
@@ -466,8 +500,8 @@
     {
         "key": "CRT",
         "labels": [
-            "Normal",
-            "Prolonged"
+            "Less than 3 seconds",
+            "3 or more seconds"
         ],
         "values": [
             "Norm",
@@ -493,12 +527,12 @@
         "key": "Abdomen",
         "labels": [
             "Abdominal Mass",
-            "Hepatomegaly (an enlarged liver)",
-            "Splenomegaly (an enlarged spleen)",
-            "Prune belly",
-            "Gastroschisis (Birth defect in which the baby's intestines extend outside of the body through a hole next to the belly button)",
-            "Omphalocele (intestines and other organs are outside of the belly wall but covered in a sac.",
-            "Normal",
+            "Hepatomegaly",
+            "Splenomegaly",
+            "Prune Belly",
+            "Gastroschisis or Omphalocele",
+            "Omphalocele",
+            "Soft and normal",
             "Distended",
             "Abdominal wall defect"
         ],
@@ -507,7 +541,7 @@
             "HepMeg",
             "SplenMeg",
             "PrunB",
-            "Gschisis",
+            "GSchisOmph",
             "Opmh",
             "Norm",
             "Dist",
@@ -520,9 +554,10 @@
             "Bleeding",
             "Umbilical Hernia",
             "Meconium stained",
-            "Healthy and clean",
+            "Healthy & clean",
             "Red skin around umbilicus",
-            "Abnormal looking"
+            "Abnormal looking",
+            "Omphalocele"
         ],
         "values": [
             "Bl",
@@ -530,16 +565,17 @@
             "Mec",
             "Norm",
             "Inf",
-            "Abn"
+            "Abn",
+            "Omph"
         ]
     },
     {
         "key": "Genitalia",
         "labels": [
-            "Male",
-            "Female",
-            "Abnormal male",
-            "Abnormal female",
+            "Normal Male genitalia",
+            "Normal Female genitalia",
+            "Abnormal Male genitalia",
+            "Abnormal Female genitalia",
             "Ambiguous genitalia (not sure)"
         ],
         "values": [
@@ -564,15 +600,33 @@
         ]
     },
     {
-        "key": "MSKproblems",
+        "key": "Ortolani",
         "labels": [
-            "Birth injury lower limbs",
-            "Birth injury upper limbs",
-            "Musculoskeletal deformities",
-            "None"
+            "No clunk/click",
+            "There is a clunk or click",
+            "Abnormal Not done"
         ],
         "values": [
-            "BTLL;BTUL;MSKD;None"
+            "NoOrto",
+            "YesOrto",
+            "NDOrto"
+        ]
+    },
+    {
+        "key": "MSKproblems",
+        "labels": [
+            "Birth injury (upper limbs)",
+            "Birth injury (lower limbs)",
+            "Musculoskeletal deformities",
+            "Leg length discrepancy",
+            "NONE"
+        ],
+        "values": [
+            "BTUL",
+            "BTLL",
+            "MSKD",
+            "Legs",
+            "None"
         ]
     },
     {
@@ -587,6 +641,28 @@
         ]
     },
     {
+        "key": "BSmonYN",
+        "labels": [
+            "Yes",
+            "No"
+        ],
+        "values": [
+            "Y",
+            "N"
+        ]
+    },
+    {
+        "key": "BSUnit",
+        "labels": [
+            "mmol/L",
+            "mg/dL"
+        ],
+        "values": [
+            "Mol",
+            "Mg"
+        ]
+    },
+    {
         "key": "YColour",
         "labels": [
             "Yes",
@@ -595,6 +671,19 @@
         "values": [
             "Y",
             "N"
+        ]
+    },
+    {
+        "key": "Femorals",
+        "labels": [
+            "Palpable",
+            "Weak or absent",
+            "Difficult to feel"
+        ],
+        "values": [
+            "Present",
+            "Absent",
+            "Diff"
         ]
     },
     {
@@ -614,13 +703,19 @@
             "Other skin rash",
             "Pustules all over",
             "Big boil/Abscess",
-            "Normal"
+            "Normal",
+            "Uneven skin folds on thighs",
+            "Mongolian blue spot",
+            "Other skin rash"
         ],
         "values": [
             "Rash",
             "PUST",
             "BOIL",
-            "None"
+            "None",
+            "Folds",
+            "Mong",
+            "Rash"
         ]
     },
     {
@@ -635,11 +730,22 @@
         ]
     },
     {
+        "key": "MotherDOBYN",
+        "labels": [
+            "Yes",
+            "No"
+        ],
+        "values": [
+            "Y",
+            "N"
+        ]
+    },
+    {
         "key": "RespSR",
         "labels": [
             "Apnoea",
             "Blue episodes",
-            "Difficulty in breathing",
+            "Fast or laboured breathing",
             "Noisy breathing",
             "Cough"
         ],
@@ -658,7 +764,7 @@
             "Vomiting all feeds",
             "Vomiting with blood",
             "Vomiting bright green",
-            "None"
+            "NONE"
         ],
         "values": [
             "Poss",
@@ -671,13 +777,13 @@
     {
         "key": "FeedingReview",
         "labels": [
-            "Breast feeding",
+            "Breast feeding normally",
             "Needs help breast feeding",
             "Bottle feeding",
-            "Cup or spoon feeding",
+            "Needs cup or spoon",
             "Requires IV fluids",
-            "Not fed yet",
-            "Refusing all feeds: needs Nasogastric tube"
+            "Has not had a breast feed yet",
+            "Refusing all feeds: Needs NG"
         ],
         "values": [
             "BF",
@@ -692,16 +798,18 @@
     {
         "key": "PassedMec",
         "labels": [
-            "Meconium passed in first 24 hours",
-            "Meconium stained liquor",
-            "No meconium yet",
-            "No meconium in first 24 hours"
+            "Passed meconium after delivery",
+            "Meconium present in the liquor",
+            "No meconium in 1st 24 hrs",
+            "Under 24 hours old and no meconium yet",
+            "Not sure"
         ],
         "values": [
             "Mec24",
             "MecLiq",
             "NoMec",
-            "NoMec24"
+            "NoMec24",
+            "Unk"
         ]
     },
     {
@@ -715,6 +823,33 @@
             "Yes",
             "No",
             "Not sure"
+        ]
+    },
+    {
+        "key": "$SymptomReviewNeurology",
+        "labels": [
+            "Fever",
+            "Convulsions",
+            "Crying less than usual",
+            "Crying more than usual",
+            "Floppy",
+            "Jittery",
+            "Jaundice",
+            "Stiff neck or limbs",
+            "Other",
+            "NONE"
+        ],
+        "values": [
+            "F",
+            "Convulsions",
+            "CL",
+            "CrM",
+            "Fl",
+            "Jit",
+            "JA",
+            "St",
+            "Oth",
+            "None"
         ]
     },
     {
@@ -756,13 +891,14 @@
         "labels": [
             "Admissions",
             "Antenatal ward",
-            "Labour ward",
-            "Postnatal ward",
+            "Labour ward (LW)",
+            "Post Natal Ward (PNW)",
             "Theatre",
             "Casualty",
             "Family and Child Health Dept",
             "External Referral",
-            "Private ward"
+            "Private ward",
+            "Kangaroo Mother Care (KMC)"
         ],
         "values": [
             "ADM",
@@ -773,18 +909,21 @@
             "Cas",
             "FCH",
             "ER",
-            "PVW"
+            "PVW",
+            "KMC"
         ]
     },
     {
         "key": "ReferredFrom2",
         "labels": [
             "Home - Self Referral",
-            "Other facility"
+            "Other facility",
+            "Dumped Baby"
         ],
         "values": [
             "H",
-            "F"
+            "F",
+            "DU"
         ]
     },
     {
@@ -866,11 +1005,17 @@
         "key": "Ethnicity",
         "labels": [
             "African/ African American",
-            "Other"
+            "Other",
+            "Asian/Pacific Islander",
+            "White",
+            "NativeAmerican"
         ],
         "values": [
             "AA",
-            "O"
+            "O",
+            "AS",
+            "W",
+            "NA"
         ]
     },
     {
@@ -962,6 +1107,17 @@
     },
     {
         "key": "HIVtestReport",
+        "labels": [
+            "Self-reported from mother",
+            "From her documentation"
+        ],
+        "values": [
+            "Self",
+            "Doc"
+        ]
+    },
+    {
+        "key": "ANVDRLReport",
         "labels": [
             "Self-reported from mother",
             "From her documentation"
@@ -1086,13 +1242,15 @@
             "Yes",
             "No",
             "Yes",
-            "No"
+            "No",
+            "Unsure"
         ],
         "values": [
             "Yes",
             "No",
             "Y",
-            "N"
+            "N",
+            "U"
         ]
     },
     {
@@ -1170,6 +1328,41 @@
             "THY",
             "TU",
             "U"
+        ]
+    },
+    {
+        "key": "BirthFacility",
+        "labels": [
+            "Parirenyatwa",
+            "Budiriro",
+            "Epworth",
+            "Glen View",
+            "Hatcliffe",
+            "Highfield",
+            "Kambuzuma",
+            "Kuwadzana",
+            "Mabvuku",
+            "Mbare",
+            "Rutsanana",
+            "Rujuko",
+            "Warren Park",
+            "Other"
+        ],
+        "values": [
+            "PA",
+            "BU",
+            "EP",
+            "GV",
+            "HC",
+            "HF",
+            "KA",
+            "KU",
+            "MA",
+            "MB",
+            "RS",
+            "RU",
+            "WP",
+            "O"
         ]
     },
     {
@@ -1571,63 +1764,57 @@
         "key": "AdmReason",
         "labels": [
             "Abdominal distension",
-            "Low Apgars",
-            "HIE",
             "Born before arrival",
             "Congenital abnormality",
             "Convulsions",
             "Difficulty in breathing",
             "Dumped baby",
-            "Feeding difficulty",
             "Fever",
+            "Not sucking / feeding difficulties",
             "Gastroschisis",
-            "Grunting",
-            "HIV Exposed",
+            "Neonatal encephalopathy",
+            "HIV exposed",
             "Jaundice",
-            "Low birth weight",
-            "Macrosomia (old- now combined with Macro)",
-            "Macrosomia",
-            "Meconium",
-            "Neural Tube Defect",
-            "Other",
-            "Omphalocele",
+            "Low Birth Weight",
+            "Low Apgars",
+            "Possible Meconium Aspiration",
+            "Neural Tube Defect / Spina Bifida",
             "Prematurity",
-            "Prematurity with respiratory distress",
-            "Risk of sepsis",
+            "Prematurity with RDS",
+            "Severe Pneumonia",
+            "Omphalocele",
+            "Other congenital abnormality",
+            "Macrosomia",
             "Safekeeping",
-            "Severe pneumonia",
-            "Gastroschisis",
-            "Exomphalos/Omphalocele"
+            "Risk factors for sepsis",
+            "Other"
         ],
         "values": [
             "AD",
-            "Apg",
-            "BA",
             "BBA",
             "Cong",
-            "Conv",
+            "Convulsions",
             "DIB",
             "DU",
-            "FD",
             "Fev",
+            "FD",
             "G",
-            "Grun",
+            "NE",
             "HIVX",
             "J",
-            "LBW",
-            "Mac",
-            "Macro",
+            "LowBirthWeight",
+            "Apg",
             "Mec",
             "NTD",
-            "O",
-            "OM",
             "Prem",
             "PremRDS",
-            "Risk",
-            "Safe",
             "SPn",
-            "GSchis",
-            "Omph"
+            "OM",
+            "Cong",
+            "Mac",
+            "Safe",
+            "Risk",
+            "O"
         ]
     },
     {
@@ -1650,8 +1837,9 @@
             "Prematurity",
             "Pneumonia",
             "Respiratory distress",
-            "Other (n.b. no free-text field exists for this choice)",
-            "None"
+            "Other",
+            "None",
+            "Omphalocele"
         ],
         "values": [
             "Cong",
@@ -1672,7 +1860,8 @@
             "Pneum",
             "RDS",
             "OTH",
-            "NONE"
+            "NONE",
+            "OM"
         ]
     },
     {
@@ -2042,70 +2231,40 @@
         ]
     },
     {
-        "key":"MatAddrHaDistrict",
-        "labels":[ 
-   
-        "Avondale",
-    
-        "Belvedere",
-  
-        "Borrowdale",
-   
-        "Budiriro",
-   
-        "Chitungwiza",
-    
-        "Dzivaresekwa",
-  
-        "Epworth",
-   
-        "Glen Norah",
-    
-        "Glen View",
-  
-        "Greendale",  
-    
-        "Hatfield",
-   
-        "Hatcliffe",
-   
-        "Harare Central",
-  
-        "Highlands",
-   
-        "Highfield",
-  
-        "Hopley",
-   
-        "Kambuzuma",
-   
-        "Kuwadzana",
-  
-        "Mabelreign",
-   
-        "Marlborough",
-   
-        "Mabvuku",
-  
-        "Mbare",
-  
-        "Mount Pleasant",
-  
-        "Mufakose",
-   
-        "Southerton",
-   
-        "Sunningdale",
-  
-        "Tafara",
-   
-        "Warren Park",
-   
-        "Waterfalls",
-   
-        "Other"
-    ],
-        "values":[
+        "key": "MatAddrHaDistrict",
+        "labels": [
+            "Avondale",
+            "Belvedere",
+            "Borrowdale",
+            "Budiriro",
+            "Chitungwiza",
+            "Dzivaresekwa",
+            "Epworth",
+            "Glen Norah",
+            "Glen View",
+            "Greendale",
+            "Hatfield",
+            "Hatcliffe",
+            "Harare Central",
+            "Highlands",
+            "Highfield",
+            "Hopley",
+            "Kambuzuma",
+            "Kuwadzana",
+            "Mabelreign",
+            "Marlborough",
+            "Mabvuku",
+            "Mbare",
+            "Mount Pleasant",
+            "Mufakose",
+            "Southerton",
+            "Sunningdale",
+            "Tafara",
+            "Warren Park",
+            "Waterfalls",
+            "Other"
+        ],
+        "values": [
             "Av",
             "Be",
             "Bo",

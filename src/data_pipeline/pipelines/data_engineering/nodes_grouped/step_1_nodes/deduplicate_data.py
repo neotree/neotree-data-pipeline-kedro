@@ -3,7 +3,7 @@ sys.path.append(os.getcwd())
 import logging
 from conf.common.sql_functions import inject_sql
 from conf.base.catalog import cron_log_file,generic_dedup_queries,cron_time,env
-from data_pipeline.pipelines.data_engineering.data_tyding.maternal_data_duplicates_cleanup import maternal_data_duplicates_cleanup
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import insert_sessions_data
 from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import data_labels_cleanup 
 from conf.common.config import config
 
@@ -14,6 +14,7 @@ def deduplicate_data(data_import_output):
     try:
         
         if data_import_output is not None:
+            inject_sql(insert_sessions_data(),"Sessions Data")
             if('data_fix' in params and str(params['data_fix']).lower()=='true'):
                 logging.info("************FIXING ADM LABELS******************************")
                 data_labels_cleanup('admissions')
