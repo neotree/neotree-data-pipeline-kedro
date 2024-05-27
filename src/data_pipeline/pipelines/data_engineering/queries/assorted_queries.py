@@ -1,5 +1,6 @@
 import logging
-
+import json
+from psycopg2 import sql
 
 #TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 def deduplicate_neolab_query(neolab_where):
@@ -252,9 +253,12 @@ def get_baseline_data_tofix_query():
              ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');;
              '''
                          
-def update_eronous_label(uid,script_id,type,key,label,value):
-           
-            return '''update public.clean_sessions set data = JSONB_SET(
+def update_eronous_label_original(uid,script_id,type,key,label,value):
+            # if(label=='NONE'):
+            #     logging.info(f"key is none = {key} <<<<<<<<<<<<<<>>>>>>>>>>>>>>>>")
+            #     return None 
+            
+            query = '''update public.clean_sessions set data = JSONB_SET(
              data,
             '{{entries,{3}}}',
                '{{
@@ -269,8 +273,85 @@ def update_eronous_label(uid,script_id,type,key,label,value):
                 }}'::TEXT::jsonb,
                true) where "uid" = '{0}' and "scriptid"='{1}';;
             '''.format(uid,script_id,type,key,label,value)
-            
+            logging.info(query)
+            return query
+     
+def update_eronous_label2(uid, script_id, type, key, label, value):
+    # Define the JSONB data to be inserted
+    jsonb_data = {
+        "type": type,
+        "values": {
+            "label": [label],
+            "value": [value]
+        }
+    }
+    
+    # Construct the update query using placeholders for parameters
+    update_query = sql.SQL("""
+        UPDATE public.clean_sessions
+        SET data = JSONB_SET(
+            data,
+            %s,
+            %s::jsonb,
+            true
+        )
+        WHERE uid = %s AND scriptid = %s
+    """)
+
+    # Construct the parameters to be used in the query
+    parameters = [
+        f'{{entries,{key}}}',
+        json.dumps(jsonb_data),
+        uid,
+        script_id
+    ]
+
+    return update_query, parameters
+   
+def update_eronous_label(uid, script_id, type, key, label, value):
+    # Define the JSONB data to be inserted
+    jsonb_data = json.dumps({
+        "type": type,
+        "values": {
+            "label": [label],
+            "value": [value]
+        }
+    })
+    
+    # logging.info(jsonb_data)
+
+    # Construct the update query string
+    query = f"""
+        UPDATE public.clean_sessions
+        SET data = JSONB_SET(
+            data,
+            '{{{{entries,{key}}}}}',
+            '{jsonb_data}'::jsonb,
+            true
+        )
+        WHERE uid = '{uid}' AND scriptid = '{script_id}';
+    """
+    # logging.info(query)
+    return query
+
 def insert_sessions_data():
+    table = 'public.clean_sessions'
+    return f''' create table if not exists {table}(
+    id integer,
+    uid text,
+    ingested_at timestamp without time zone,
+    data jsonb,
+    scriptid text,
+    unique_key character varying);;
+    
+    INSERT INTO public.clean_sessions
+    SELECT *
+    FROM public.sessions where uid not in (select uid from  public.clean_sessions)
+    and ingested_at>='2024-01-01'
+    ;;
+'''
+
+def insert_sessions_data_original():
     return f''' create table if not exists public.clean_sessions(
     id integer,
     uid text,

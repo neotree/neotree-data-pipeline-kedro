@@ -20,7 +20,7 @@ def inject_sql_procedure(sql_script, file_name):
             engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute(sql_script)
         except Exception as e:
             logging.error('Something went wrong with the SQL file');
-            logging.error(formatError(e))
+            logging.error(text(sql_script))
             sys.exit()
         logging.info('... {0} has successfully run'.format(file_name))
 
@@ -29,12 +29,14 @@ def inject_sql(sql_script, file_name):
     sql_commands = sql_script.split(';;')
     for command in sql_commands[:-1]:
         try:
+            #logging.info(text(command))
             engine.connect().execute(text(command))
         # last element in list is empty hence need for [:-1] slicing out the last element
         except Exception as e:
             logging.error('Something went wrong with the SQL file');
+            logging.error(text(command))
             raise e
-    logging.info('... {0} has successfully run'.format(file_name))
+    #logging.info('... {0} has successfully run'.format(file_name))
 
 def create_table(df: pd.DataFrame, table_name):
     # create tables in derived schema
