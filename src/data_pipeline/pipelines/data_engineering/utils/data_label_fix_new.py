@@ -21,12 +21,12 @@ def bulk_fix_data_labels(script_id):
                     SET data = jsonb_set(
                         data,
                         '{{entries,{key},values,label}}',
-                        '"{label}"',
+                        '["{label}"]',
                         true
                     )
-                    WHERE data->'entries'->'{key}'->'values'->>'label' = 'None' 
-                    AND data->'entries'->'{key}'->'values'->>'value' = '{value}'
-                    AND data->>'scriptid' = '{script_id}';;'''
+                    WHERE data->'entries'->'{key}'->'values'->>'label' = '["None"]' 
+                    AND data->'entries'->'{key}'->'values'->>'value' = '["{value}"]' 
+                    AND scriptid = '{script_id}';;'''
                 
                 commands.append(command)
             
