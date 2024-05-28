@@ -13,18 +13,24 @@ import json
 def fix_data_errors():
     
     script_df = catalog.load('script_ids')
-    
-    for index, row in script_df.iterrows():
+    logging.info(script_df.shape)
+    for script_index, row in script_df.iterrows():
         script_id = row['scriptid']
-        count = row['count']
-        logging.info(f"Fixing labels for {count} sessions in script : {script_id}")
+        script_count = row['count']
+        logging.info(f"Fixing {script_count} session labels in script : {script_id}")
         commands = bulk_fix_data_labels(script_id)
+        
+        command_count = len(commands)
          
-        for command in commands: 
+        for command_index,command in enumerate(commands): 
             try:
+                logging.info("")
+                logging.info(f'''Script {script_index + 1} of {script_df.shape[0]} Executing command {command_index + 1} of {command_count} in {script_id}''')
+                logging.info(command)
                 inject_sql(command,f'''FIX {script_id} LABEL ERRORS''')
-            except Exception:
-                pass
+                logging.info("")
+            except Exception as e:
+                logging.error(e)
             
     logging.info("done fixing labels for scripts")
 
