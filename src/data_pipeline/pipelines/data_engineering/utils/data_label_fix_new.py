@@ -24,24 +24,15 @@ def bulk_fix_data_labels(script_id):
                         '["{label}"]',
                         true
                     )
-                    WHERE data->'entries'->'{key}'->'values'->>'label' = '["None"]' 
-                    AND data->'entries'->'{key}'->'values'->>'value' = '["{value}"]' 
+                    WHERE 
+                    data->'entries'->'{key}'->'values'->>'label' = '["None"]' 
+                    AND (
+                            data->'entries'->'{key}'->'values'->>'value' = '["{value}"]' 
+                            OR data->'entries'->'{key}'->'values'->>'value' = '["{label}"]'
+                        )
                     AND scriptid = '{script_id}';;'''
                 
-                commands.append(command)
-                
-                command = f'''UPDATE public.clean_sessions
-                    SET data = jsonb_set(
-                        data,
-                        '{{entries,{key},values,label}}',
-                        '["{label}"]',
-                        true
-                    )
-                    WHERE data->'entries'->'{key}'->'values'->>'label' = '["None"]' 
-                    AND data->'entries'->'{key}'->'values'->>'value' = '["{label}"]' 
-                    AND scriptid = '{script_id}';;'''
-                
-                commands.append(command)
+                commands.append(command) 
             
     return commands
 
