@@ -16,19 +16,28 @@ def fix_data_errors():
      
     for script_index, row in script_df.iterrows():
         script_id = row['scriptid']
-        #script_count = row['count']
-        #logging.info(f"Fixing {script_count} session labels in script : {script_id}")
+        
+        logging.info(f'''Fixing labels for script ({script_id}): {script_index + 1} of {script_df.shape[0]}''')
+        
         commands = bulk_fix_data_labels(script_id)
         
-        command_count = len(commands)
+        # command_count = len(commands)
+        
+        errors = False
          
         for command_index,command in enumerate(commands): 
             try: 
-                logging.info(f'''Script {script_index + 1} of {script_df.shape[0]} Executing command {command_index + 1} of {command_count} in {script_id}''')
+                # logging.info(f'''Script {script_index + 1} of {script_df.shape[0]} Executing command {command_index + 1} of {command_count} in {script_id}''')
                 inject_sql(command,f'''FIX {script_id} LABEL ERRORS''')
             except Exception as e:
+                errors = True
                 logging.error(e)
                 logging.error(command)
+                
+        if not errors:
+            command =f"UPDATE public.clean_sessions SET cleaned = true WHERE scriptid = '{script_id}';;"
+            inject_sql(command,f'''FIX {script_id} LABEL ERRORS''')
+            
             
     logging.info("done fixing labels for scripts")
 

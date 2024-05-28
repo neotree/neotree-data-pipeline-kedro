@@ -26,6 +26,7 @@ def inject_sql_procedure(sql_script, file_name):
         try:
             engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute(sql_script)
         except Exception as e:
+            logging.error(e)
             logging.error('Something went wrong with the SQL file');
             logging.error(text(sql_script))
             sys.exit()
@@ -40,8 +41,9 @@ def inject_sql(sql_script, file_name):
             engine.connect().execute(text(command))
         # last element in list is empty hence need for [:-1] slicing out the last element
         except Exception as e:
-            logging.error('Something went wrong with the SQL file');
-            logging.error(text(command))
+            # logging.error('Something went wrong with the SQL file');
+            # logging.error(text(command))
+            logging.error(e)
             raise e
     #logging.info('... {0} has successfully run'.format(file_name))
 
@@ -50,6 +52,7 @@ def create_table(df: pd.DataFrame, table_name):
     try:
        df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)
     except Exception as e:
+        logging.error(e)
         raise e
 
 def create_exploded_table(df: pd.DataFrame, table_name):
@@ -69,6 +72,7 @@ def inject_sql_with_return(sql_script):
         result.close()
         return data
     except Exception as e:
+        logging.error(e)
         raise e
 
 def get_table_columns(table_name,table_schema):

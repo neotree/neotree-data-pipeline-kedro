@@ -30,7 +30,7 @@ def bulk_fix_data_labels(script_id):
                             data->'entries'->'{key}'->'values'->>'value' = '["{value}"]' 
                             OR data->'entries'->'{key}'->'values'->>'value' = '["{label}"]'
                         )
-                    AND scriptid = '{script_id}';;'''
+                    AND scriptid = '{script_id}' AND NOT cleaned;;'''
                 
                 commands.append(command) 
             
