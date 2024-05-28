@@ -31,7 +31,7 @@ def deduplicate_neolab_query(neolab_where):
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
             data
-            from earliest_neolab join clean_sessions
+            from earliest_neolab join clean_sessions sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
             );; '''
 
