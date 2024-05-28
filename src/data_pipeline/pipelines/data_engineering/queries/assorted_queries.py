@@ -254,7 +254,7 @@ def get_baseline_data_tofix_query():
              '''
               
 def get_script_ids_query():
-    return "select distinct scriptid from public.sessions;;"
+    return "select scriptid, count(*) from public.sessions group by scriptid;;"
                          
 def update_eronous_label_original(uid,script_id,type,key,label,value):
             # if(label=='NONE'):

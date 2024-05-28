@@ -16,7 +16,8 @@ def fix_data_errors():
     
     for index, row in script_df.iterrows():
         script_id = row['scriptid']
-        logging.info(f"Fixing labels for script : {script_id}")
+        count = row['count']
+        logging.info(f"Fixing labels for {count} sessions in script : {script_id}")
         commands = bulk_fix_data_labels(script_id)
          
         for command in commands: 
