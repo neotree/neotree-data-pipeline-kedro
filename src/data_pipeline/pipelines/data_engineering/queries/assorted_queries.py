@@ -31,7 +31,7 @@ def deduplicate_neolab_query(neolab_where):
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
             data
-            from earliest_neolab join sessions
+            from earliest_neolab join clean_sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
             );; '''
 
@@ -58,7 +58,7 @@ def deduplicate_data_query(condition,destination_table):
             earliest_record.id,
             sessions.ingested_at,
             data
-            from earliest_record join sessions
+            from earliest_record join clean_sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
             '''      
@@ -88,7 +88,7 @@ def deduplicate_baseline_query(condition):
             sessions.ingested_at,
             
             data
-            from earliest_record join sessions
+            from earliest_record join clean_sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             and sessions.unique_key is not null
             );;
