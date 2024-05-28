@@ -3,11 +3,29 @@ import pandas as pd
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_eronous_label
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
-from data_pipeline.pipelines.data_engineering.utils.data_label_fix_new import fix_data_label,fix_data_value,fix_multiple_data_label
+from data_pipeline.pipelines.data_engineering.utils.data_label_fix_new import fix_data_label,fix_data_value,fix_multiple_data_label,bulk_fix_data_labels
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from datetime import datetime
 import logging
 import json
+
+
+def fix_data_errors():
+    
+    script_df = catalog.load('script_ids')
+    
+    for index, row in script_df.iterrows():
+        script_id = row['scriptid']
+        logging.info(f"Fixing labels for script : {script_id}")
+        commands = bulk_fix_data_labels(script_id)
+         
+        for command in commands: 
+            try:
+                inject_sql(command,f'''FIX {script_id} LABEL ERRORS''')
+            except Exception:
+                pass
+            
+    logging.info("done fixing labels for scripts")
 
 def data_labels_cleanup(script):
        #####IDENTIFY THE FAULTY RECORDS
@@ -28,7 +46,7 @@ def data_labels_cleanup(script):
                             for key in row['data']:
                                 sid = row['scriptid']
                                 uid = row['uid']  
-                                logging.info(f'{script} : {index} of {total_size} - {key} {sid} {uid}')
+                                #logging.info(f'{script} : {index} of {total_size} - {key} {sid} {uid}')
                                 if (row['data'][key] is not None and row['data'][key]['values'] is not None
                                     and len(row['data'][key]['values']['label'])>0 and len(row['data'][key]['values']['value'])>0):
                                     label = row['data'][key]['values']['label'][0]
@@ -42,18 +60,24 @@ def data_labels_cleanup(script):
                                         elif (type!='number' or type!='date' or type!='datetime' or type!='string'):
                                     
                                             label = fix_data_label(key,value,row['scriptid']) 
+                                                   
+                                            if(key=='MatOutcome'):
+                                                logging.info(f'{key} {label} {uid} {sid}')       
                                                         
                                             # sanitise label - remove special characters
                                             if (label !="Undefined"):                   
                                                 query = update_eronous_label(row['uid'],row['scriptid'],type,key,f'"{label}"',
                                                                                     f'"{value}"')
+                                                if(key=='MatOutcome'):
+                                                    logging.info(f'{query}') 
+                                                    logging.info('')
                                                 inject_sql(query,f'''FIX {script} ERRORS''')
                                     
                                     elif len(row['data'][key]['values']['value']) > 0:
                                         
                                         value=row['data'][key]['values']['value']
                                         
-                                        label = fix_multiple_data_label(key,value,row['scriptid']) 
+                                        label = fix_multiple_data_label(key,value,row['scriptid'],row['uid']) 
                                             
                                         if(label !="Undefined" and len(label)>0):
                                             processed_label =None

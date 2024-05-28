@@ -11,8 +11,15 @@ params = config()
 con = 'postgresql+psycopg2://' + \
 params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
-engine = create_engine(con, executemany_mode='batch')
+# engine = create_engine(con, executemany_mode='batch')
 
+engine = create_engine(
+    con,
+    pool_size=5,        # Maximum number of connections in the pool
+    max_overflow=10,    # Maximum number of connections to allow in excess of pool_size
+    pool_timeout=30,    # Maximum number of seconds to wait for a connection to become available
+    pool_recycle=1800   # Number of seconds a connection can persist before being recycled
+)
 #Useful functions to inject sql queries
 #Inject SQL Procedures
 def inject_sql_procedure(sql_script, file_name):

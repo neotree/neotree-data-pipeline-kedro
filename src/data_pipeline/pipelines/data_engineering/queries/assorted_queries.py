@@ -252,6 +252,9 @@ def get_baseline_data_tofix_query():
               ingested_at>='2024-01-01' and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
              ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');;
              '''
+              
+def get_script_ids_query():
+    return "select distinct scriptid from public.sessions;;"
                          
 def update_eronous_label_original(uid,script_id,type,key,label,value):
             # if(label=='NONE'):
@@ -325,31 +328,35 @@ def update_eronous_label(uid, script_id, type, key, label, value):
         UPDATE public.clean_sessions
         SET data = JSONB_SET(
             data,
-            '{{{{entries,{key}}}}}',
+            '{{entries,{key}}}',
             '{jsonb_data}'::jsonb,
             true
         )
-        WHERE uid = '{uid}' AND scriptid = '{script_id}';
+        WHERE uid = '{uid}' AND scriptid = '{script_id}';;
     """
     # logging.info(query)
     return query
 
 def insert_sessions_data():
-    table = 'public.clean_sessions'
-    return f''' create table if not exists {table}(
-    id integer,
-    uid text,
-    ingested_at timestamp without time zone,
-    data jsonb,
-    scriptid text,
-    unique_key character varying);;
     
-    INSERT INTO public.clean_sessions
-    SELECT *
-    FROM public.sessions where uid not in (select uid from  public.clean_sessions)
-    and ingested_at>='2024-01-01'
-    ;;
-'''
+    table = 'public.clean_sessions'
+    
+    return f'''drop table if exists {table} cascade;; 
+        create table if not exists {table} (
+        id integer,
+        uid text,
+        ingested_at timestamp without time zone,
+        data jsonb,
+        scriptid text,
+        unique_key character varying);;
+        
+        INSERT INTO public.clean_sessions
+        SELECT *
+        FROM public.sessions;;'''
+#     where uid not in (select uid from  public.clean_sessions)
+#     and ingested_at>='2024-01-01'
+#     ;;
+# '''
 
 def insert_sessions_data_original():
     return f''' create table if not exists public.clean_sessions(

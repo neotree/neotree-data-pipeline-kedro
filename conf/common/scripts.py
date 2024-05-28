@@ -5,22 +5,16 @@ import os
 from conf.common.config import config
 
 def get_script(script_type):
-    
-    # filename = f'conf/common/scripts/{script_type}.json'
+     
     filename = f'conf/local/scripts/{script_type}.json'
      
     if os.path.exists(filename): 
-        
         return convert_json_to_dict(filename)
     else:
-        params = config()
-        logging.info(f'The file {filename} does not exist.')
-        
-        webeditor = params['webeditor']
-        logging.info(f'deownload file from server {webeditor}')
-        # url=f'https://zim-webeditor.neotree.org:10243/script-labels?scriptId={script_type}'
-        url=f'{webeditor}/script-labels?scriptId={script_type}'
-        logging.info(url)
+        params = config() 
+        webeditor = params['webeditor'] 
+        url = f'{webeditor}/script-labels?scriptId={script_type}'
+         
         download_file(url, filename)
 
     return None
@@ -31,6 +25,7 @@ def convert_json_to_dict(filename):
                 data = json.load(file)
             
             converted_data = {}
+            
             for item in data:
                 key = item["key"]
                 del item["key"]
