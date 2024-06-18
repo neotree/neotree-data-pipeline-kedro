@@ -8,6 +8,7 @@ import re
 
 def restructure(c, mcl):
     # branch to manage MCL
+    
     if len(c['values']) > 1:
         v = {}
         current_v = c['values']
@@ -33,6 +34,7 @@ def restructure(c, mcl):
         #Add Other Values T MCL Columns For Exploding and Adm Reason
         if str(k).endswith('Oth') or k=="AdmReason":
             mcl.append(k)
+     
     return k, v, mcl
 
     #Restructure New Formated Data

@@ -13,10 +13,11 @@ def bulk_fix_data_labels(script_id):
             values = value['values']
             labels = value['labels']
             
+            # fix labels
             for index,label in enumerate(labels):
                 value =  str(values[index]).replace("'","''")
                 label = str(label).replace("'","''").strip()
-               
+                
                 command = f'''UPDATE public.clean_sessions
                     SET data = jsonb_set(
                         data,
@@ -31,11 +32,12 @@ def bulk_fix_data_labels(script_id):
                             OR data->'entries'->'{key}'->'values'->>'value' = '["{label}"]'
                         )
                     AND scriptid = '{script_id}' AND NOT cleaned;;'''
-                
+               
                 commands.append(command) 
             
     return commands
 
+        
 def fix_data_label(key,value,script): 
     try: 
         script_json = get_script(script) 

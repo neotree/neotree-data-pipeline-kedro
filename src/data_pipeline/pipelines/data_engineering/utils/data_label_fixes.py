@@ -1,6 +1,19 @@
 ## DISCHARGES DATA
 from ast import Return
+import pandas as pd 
 
+def format_column_as_numeric(df,fields):
+    for field in fields:
+        fld = f'{field}.value'
+        if fld in df.columns:
+            df[fld] = pd.to_numeric(df[fld], errors='coerce') 
+
+def format_column_as_datetime(df,fields):
+    for field in fields:
+        fld = f'{field}.value'
+        if fld in df.columns:
+            df[fld] = pd.to_datetime(df[fld], errors='coerce') 
+            
 @DeprecationWarning
 def fix_neotree_oucome(value):
         if value== 'DC':

@@ -10,6 +10,7 @@ from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_dif
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
+from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, format_column_as_datetime
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
 import numpy as np
@@ -64,6 +65,7 @@ def tidy_tables():
     except Exception as e:
         logging.error("!!! An error occured processing Dynamic Scripts ")
         logging.error(formatError(e))
+        
     logging.info("... Fetching raw admission and discharge data")
     
     try:
@@ -85,7 +87,6 @@ def tidy_tables():
         mat_completeness_raw = catalog.load('read_maternity_completeness') 
 
 
-    
     except Exception as e:
         logging.error("!!! An error occured fetching the data: ")
         logging.error(formatError(e))
@@ -292,6 +293,25 @@ def tidy_tables():
             adm_df= adm_df[(adm_df['uid'] != 'Unknown')]
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             #Save Derived Admissions To The DataBase Using Kedro
+            
+            # fomarting columns
+            
+            numeric_fields = ['Temperature','RR','HR','Age','PAR','OFC',
+              'Apgar1','Apgar5','Length','SatsO2','SatsAir','BalScore',
+              'VLNumber','Gestation','MatAgeYrs','BalScoreWks','BirthWeight',
+              'DurationLab','BloodSugarmg','AntenatalCare','BloodSugarmmol',
+              'AdmissionWeight']
+            
+            format_column_as_numeric(adm_df, numeric_fields)
+    
+    
+            # for field in fields:
+            #     fld=f'{field}.value'
+            #     if fld in adm_df.columns:
+            #         adm_df[fld] = pd.to_numeric(adm_df[fld], errors='coerce')
+            #     else:
+            #         logging.info(f'{fld} not found')
+            
             catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")   

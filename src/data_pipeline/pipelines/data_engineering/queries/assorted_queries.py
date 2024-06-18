@@ -21,7 +21,7 @@ def deduplicate_neolab_query(neolab_where):
             THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
             ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  END AS "DateBCR",
             max(id) as id
-            from public.sessions
+            from public.clean_sessions
             where scriptid {neolab_where} -- only pull out neloab data
             group by 1,2,3,4,5,6
             )
@@ -40,7 +40,7 @@ def deduplicate_neolab_query(neolab_where):
             );; '''
 
 def deduplicate_data_query(condition,destination_table):
-    if(destination_table!='public.clean_sessions'):
+    if(destination_table!='public.clean_sessions'): 
         return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
             (
@@ -78,8 +78,7 @@ def deduplicate_baseline_query(condition):
             with earliest_record as (
             select
             scriptid,
-            uid,
-            unique_key,
+            uid, 
             extract(year from ingested_at) as year,
             extract(month from ingested_at) as month,
             max(id) as id -- This takes the last upload 
@@ -88,41 +87,40 @@ def deduplicate_baseline_query(condition):
                   -- first uploaded
             from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2,3,4,5
+            group by 1,2,3,4
             )
             select
             earliest_record.scriptid,
             earliest_record.uid,
-            earliest_record.id,
-            earliest_record.unique_key,
+            earliest_record.id, 
             earliest_record.year,
             earliest_record.month,
             sessions.ingested_at,
             
             data
             from earliest_record join clean_sessions sessions
-            on earliest_record.id = sessions.id where sessions.scriptid {condition}
-            and sessions.unique_key is not null
+            on earliest_record.id = sessions.id where sessions.scriptid {condition} 
             );;
             '''    
             
-def read_deduplicated_data_query(case_condition,where_condition,source_table):
-    return f'''
-                select 
-                uid,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'entries' as "entries"
-                {case_condition}
+def read_deduplicated_data_query(case_condition,where_condition,source_table): 
+    sql = f'''
+            select 
+            uid,
+            ingested_at,
+            "data"->'appVersion' as "appVersion",
+            "data"->'scriptVersion' as "scriptVersion",
+            "data"->'started_at' as "started_at",
+            "data"->'completed_at' as "completed_at",
+            "data"->'entries' as "entries"
+            {case_condition}
             from {source_table} where scriptid {where_condition} and uid!='null';;
    
-  '''
+            '''  
+    return sql
   
-def read_derived_data_query(source_table):
-     return f'''
+def read_derived_data_query(source_table): 
+    return f'''
                 select 
                     *
                 from derived.{source_table} where uid!='null';;

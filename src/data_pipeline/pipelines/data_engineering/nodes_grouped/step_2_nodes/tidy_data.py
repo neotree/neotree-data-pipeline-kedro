@@ -10,6 +10,7 @@ def tidy_data(deduplicate_data_output):
         #Test If Previous Node Has Completed Successfully
         if (deduplicate_data_output is not None):
             tidy_tables()
+            
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
             status='Success',

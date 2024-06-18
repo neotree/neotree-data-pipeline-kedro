@@ -9,6 +9,7 @@ from datetime import datetime
 
 def get_key_values(data_raw):
     mcl = []
+     
     # Will store the final list of uid, ingested_at & reformed key-value pairs
     data_new = []
     for index, row in data_raw.iterrows():
@@ -57,7 +58,7 @@ def get_key_values(data_raw):
 
         # iterate through key, value and add to dict
             for c in row['entries']:
-           
+                 
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
                 if('key' not in c) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)): 
                     try:            
@@ -76,9 +77,9 @@ def get_key_values(data_raw):
                 if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                         new_entry['uid'] = v.value;
                 new_entry[k] = v
-        # for each row add all the keys & values to a list
-         
+       
             data_new.append(new_entry)
+            
         except Exception as ex:
             logging.error(formatError(ex))
         

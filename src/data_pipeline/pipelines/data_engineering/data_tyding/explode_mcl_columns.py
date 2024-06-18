@@ -1,3 +1,4 @@
+import logging
 from conf.common.sql_functions import create_exploded_table,append_data
 # this function explodes all mcl columns and creates respective tables
 # This input is a set of columns that need to be exploded
@@ -8,6 +9,7 @@ def explode_column(df, mcl,db):
     created_tables = []
     for c in mcl:
         # loop to explode all mcl columns in list 
+        
         parent_column = None
         column = None
         if str(c).endswith('Oth'): 
