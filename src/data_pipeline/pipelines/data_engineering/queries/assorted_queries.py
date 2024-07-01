@@ -104,6 +104,7 @@ def deduplicate_baseline_query(condition):
             '''    
             
 def read_deduplicated_data_query(case_condition,where_condition,source_table): 
+    logging.info(f'source_table={source_table}, where_condition={where_condition}, case_condition={case_condition}')
     sql = f'''
             select 
             uid,

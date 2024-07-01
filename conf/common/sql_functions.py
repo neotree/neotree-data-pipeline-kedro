@@ -76,8 +76,20 @@ def inject_sql_with_return(sql_script):
         raise e
 
 def get_table_columns(table_name,table_schema):
-    query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}' ''';
+    query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';
     return inject_sql_with_return(query);
+
+def insert_old_adm_query(target_table, source_table, columns):
+    # Join the column names with commas
+    columns_str = '","'.join(columns)
+    
+    # Construct the SQL INSERT INTO ... SELECT statement
+    insert_select_statement = (
+        f'INSERT INTO {target_table} ("{columns_str}") '
+        f'SELECT "{columns_str}" FROM {source_table};'
+    )
+    
+    return insert_select_statement
 
 # def create_union_views(view_name,table1,table2,columns, where):
 #     query = f''' DROP VIEW  if exists derived.{view_name} cascade;

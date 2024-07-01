@@ -1,6 +1,6 @@
 import pandas as pd
 import json
-from conf.common.sql_functions import inject_sql,get_table_columns
+from conf.common.sql_functions import inject_sql,get_table_columns,insert_old_adm_query
 import logging
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
@@ -26,6 +26,8 @@ def union_views():
                 'joined_admissions_discharges', 'derived'), columns=["column_name", "data_type"])
 
             # Match Data Types For Admissions
+            old_new_matched_adm_col = []
+            
             for index, row in adm_cols.iterrows():
                 col_name = str(row['column_name']).strip()
                 data_type = row['data_type']
@@ -37,6 +39,9 @@ def union_views():
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};;'''
                                 inject_sql(query,"OLD ADMISSIONS")
+                            
+                            old_new_matched_adm_col.append(col_name)
+                            
                         except Exception as ex:
                             query = f'''ALTER table derived.old_smch_admissions DROP column "{col_name}" '''
                             inject_sql(query,f'''DROPPING ADMISSIONS {col_name}''')
@@ -307,12 +312,17 @@ def union_views():
                 format_date(old_matched_smch_data,'BirthDateDis.value')
             # SAVE OLD NEW ADMISSIONS
             try:
-                if not new_smch_admissions.empty and old_smch_admissions.empty:
+                if not new_smch_admissions.empty and not old_smch_admissions.empty:
                     new_smch_admissions.reset_index(drop=True,inplace=True)
                     old_smch_admissions.reset_index(drop=True,inplace=True)
-                    combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
+                    combined_adm_df = pd.concat([new_smch_admissions],axis=0,ignore_index=True)
                     if not combined_adm_df.empty:   
-                        catalog.save('create_derived_old_new_admissions_view',combined_adm_df)  
+                        catalog.save('create_derived_old_new_admissions_view',combined_adm_df) 
+                        query = insert_old_adm_query("DERIVED.OLD_NEW_ADMISSIONS_VIEW","derived.old_smch_admissions",old_new_matched_adm_col)
+                        logging.info("Adding old admissions")
+                        inject_sql(f'{query};;',"Adding old smch admissions")
+                        logging.info("Added old admissions")
+                         
             except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED ADMISSIONS")
                 logging.error(formatError(e))
@@ -350,3 +360,5 @@ def union_views():
             logging.error("!!! An error occured creating union views: ")
             logging.error(ex)
             exit()
+
+ 
