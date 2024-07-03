@@ -48,6 +48,8 @@ def union_views():
 
             
             # Match Data Types For Discharges
+            old_new_matched_dis_col = []
+            
             for index, row in disc_cols.iterrows():
                 col_name = str(row['column_name']).strip()
                 data_type = row['data_type']
@@ -59,6 +61,9 @@ def union_views():
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"OLD DISCHARGES")
+                            
+                            old_new_matched_dis_col.append(col_name)
+                               
                         except Exception as ex:
                             query = f'''ALTER table derived.old_smch_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING DISCHARGE COLL {col_name}''')
@@ -329,12 +334,17 @@ def union_views():
                 pass   
             # SAVE OLD NEW DISCHARGES
             try:
-                if not new_smch_discharges.empty and old_smch_discharges.empty:
+                if not new_smch_discharges.empty and not old_smch_discharges.empty:
                     new_smch_discharges.reset_index(drop=True,inplace=True)
                     old_smch_discharges.reset_index(drop=True,inplace=True) 
-                    combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
+                    combined_dis_df = pd.concat([new_smch_discharges],axis=0,ignore_index=True)
                     if not combined_dis_df.empty:   
                         catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
+                        
+                        query = insert_old_adm_query("DERIVED.old_new_discharges_view","derived.old_smch_discharges",old_new_matched_dis_col)
+                        logging.info("Adding old discharges")
+                        inject_sql(f'{query};;',"Adding old smch discharges")
+                        logging.info("Added old discharges")
             except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED DISCHARGES")
                 logging.error(formatError(e))
@@ -342,7 +352,7 @@ def union_views():
 
             # SAVE MATCHED DATA 
             try:
-                if not new_smch_matched_data.empty and old_matched_smch_data.empty:
+                if not new_smch_matched_data.empty and not old_matched_smch_data.empty:
                     #Correct UID column to suit the lower case uid in new_smch_matched_data
                     if 'UID' in old_matched_smch_data.columns:
                         old_matched_smch_data.reset_index(drop=True,inplace=True)
