@@ -40,7 +40,42 @@ def deduplicate_neolab_query(neolab_where):
             );; '''
 
 def deduplicate_data_query(condition,destination_table):
-    if(destination_table!='public.clean_sessions'): 
+    if(destination_table=='public.clean_sessions'): 
+        return ""
+    
+    if "maternity_completeness" in destination_table:
+        # special case for malawi -> group on DateAdmission
+        return f'''drop table if exists {destination_table} cascade;;
+            create table {destination_table} as 
+            (
+            with earliest_record as (
+            select
+            scriptid,
+            uid, 
+            extract(year from (data->'entries'->'DateAdmission'->'values'->'value'->>0)::timestamp) as year,
+            extract(month from (data->'entries'->'DateAdmission'->'values'->'value'->>0)::timestamp) as month,
+            max(id) as id -- This takes the last upload 
+                  -- of the session as the deduplicated record. 
+                  -- We could replace with min(id) to take the 
+                  -- first uploaded
+            from public.clean_sessions
+            where scriptid {condition} -- only pull out records for the specified script
+            group by 1,2,3,4
+            )
+            select
+            earliest_record.scriptid,
+            earliest_record.uid,
+            earliest_record.id,
+            sessions.ingested_at,
+            earliest_record.year,
+            earliest_record.month,
+            data
+            from earliest_record join clean_sessions sessions
+            on earliest_record.id = sessions.id where sessions.scriptid {condition}
+            );;
+            '''  
+    else:    
+        # all other cases -> group on ingested_at
         return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
             (
@@ -104,7 +139,7 @@ def deduplicate_baseline_query(condition):
             '''    
             
 def read_deduplicated_data_query(case_condition,where_condition,source_table): 
-    logging.info(f'source_table={source_table}, where_condition={where_condition}, case_condition={case_condition}')
+    # logging.info(f'source_table={source_table}, where_condition={where_condition}, case_condition={case_condition}')
     sql = f'''
             select 
             uid,
