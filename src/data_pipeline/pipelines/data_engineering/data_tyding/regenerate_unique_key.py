@@ -25,6 +25,7 @@ def regenerate_unique_key():
                     if('key' not in value) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)): 
                         for key, entry in value.items():
                             if str(key).lower().startswith(prefix) and any(value is not None for value in entry['values']['value']):
+                                logging.info("--FOUND---"+str(id)+ "--VALUE=="+str(entry['values']['label'][0]))
                                 labels.append(entry['values']['label'][0])
                                 break     
                     # NEW FORMAT
@@ -34,8 +35,11 @@ def regenerate_unique_key():
                         if unique_values:
                             labels.append(unique_values[0])
                             break
+                
                 if len(labels)>0:
+                    logging.info("DONE WITH--"+str(id)+"-VALUE=="+labels[0])
                     query = regenerate_unique_key_query(id,labels[0])
+                    logging.info("-QUERY ="+query)
                     inject_sql(query,"UNIQUE-KEYS")
                 break
                          

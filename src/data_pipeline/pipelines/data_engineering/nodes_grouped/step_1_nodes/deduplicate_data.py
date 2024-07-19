@@ -17,6 +17,7 @@ def deduplicate_data(data_import_output):
         if data_import_output is not None:
             
             inject_sql(insert_sessions_data(),"Sessions Data")
+            logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********")
             
             regenerate_unique_key()
             
