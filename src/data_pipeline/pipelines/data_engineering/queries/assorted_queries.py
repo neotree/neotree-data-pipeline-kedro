@@ -83,23 +83,22 @@ def deduplicate_data_query(condition,destination_table):
             select
             scriptid,
             uid, 
-            extract(year from ingested_at) as year,
-            extract(month from ingested_at) as month,
+            unique_key,
             max(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2,3,4
+            group by 1,2,3
             )
             select
             earliest_record.scriptid,
             earliest_record.uid,
             earliest_record.id,
             sessions.ingested_at,
-            earliest_record.year,
-            earliest_record.month,
+            extract(year from (earliest_record.unique_key)::timestamp) as year,
+            extract(month from (earliest_record.unique_key)::timestamp) as month,
             data
             from earliest_record join clean_sessions sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
@@ -114,24 +113,22 @@ def deduplicate_baseline_query(condition):
             select
             scriptid,
             uid, 
-            extract(year from ingested_at) as year,
-            extract(month from ingested_at) as month,
+            unique_key,
             max(id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
-            group by 1,2,3,4
+            group by 1,2,3
             )
             select
             earliest_record.scriptid,
             earliest_record.uid,
-            earliest_record.id, 
-            earliest_record.year,
-            earliest_record.month,
-            sessions.ingested_at,
-            
+            earliest_record.id,
+            extract(year from (earliest_record.unique_key)::timestamp) as year,
+            extract(month from (earliest_record.unique_key)::timestamp) as month,
+            sessions.ingested_at, 
             data
             from earliest_record join clean_sessions sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition} 

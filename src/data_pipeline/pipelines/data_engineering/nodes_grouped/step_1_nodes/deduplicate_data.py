@@ -6,6 +6,7 @@ from conf.base.catalog import cron_log_file,generic_dedup_queries,cron_time,env
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import insert_sessions_data
 from data_pipeline.pipelines.data_engineering.data_tyding.fix_data_labels import data_labels_cleanup, fix_data_errors 
 from conf.common.config import config
+from data_pipeline.pipelines.data_engineering.data_tyding.regenerate_unique_key import regenerate_unique_key
 
 
 #Not passing any Input To Allow Concurrent running of independent Nodes
@@ -16,6 +17,8 @@ def deduplicate_data(data_import_output):
         if data_import_output is not None:
             
             inject_sql(insert_sessions_data(),"Sessions Data")
+            
+            regenerate_unique_key()
             
             fix_data_errors()
             
