@@ -15,7 +15,7 @@ def deduplicate_data(data_import_output):
     try:
         
         if data_import_output is not None:
-            
+            logging.info("******START DATA CLEANING*********")
             inject_sql(insert_sessions_data(),"Sessions Data")
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********")
             
