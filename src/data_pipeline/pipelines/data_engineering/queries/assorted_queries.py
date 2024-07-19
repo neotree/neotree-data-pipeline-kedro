@@ -354,8 +354,11 @@ def insert_sessions_data():
         CREATE INDEX IF NOT EXISTS idx_clean_sessions_cleaned ON {clean_sessions} (cleaned);;
         
         INSERT INTO {clean_sessions} 
-        SELECT *,false FROM {sessions} 
-        WHERE id NOT IN (SELECT id FROM {clean_sessions});;'''
+        SELECT *,false FROM {sessions} s
+        WHERE NOT EXISTS (
+        SELECT 1
+        FROM {clean_sessions} cs
+        WHERE cs.id = s.id);;'''
         
 def regenerate_unique_key_query(id,unique_key):
      return f''' UPDATE public.clean_sessions set unique_key={unique_key} where id={id};;
