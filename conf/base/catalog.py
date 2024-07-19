@@ -14,7 +14,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (g
                             read_old_smch_matched_view_query,read_new_smch_matched_query,get_duplicate_maternal_query,
                             get_discharges_tofix_query,get_maternal_data_tofix_query,get_admissions_data_tofix_query,
                             get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query,read_diagnoses_query,
-                            deduplicate_baseline_query,get_script_ids_query)
+                            deduplicate_baseline_query,get_script_ids_query,read_data_with_no_unique_key)
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -159,6 +159,7 @@ get_maternal_outcome_to_fix = get_maternal_data_tofix_query()
 get_admissions_data_to_fix = get_admissions_data_tofix_query()
 get_baseline_data_to_fix = get_baseline_data_tofix_query()
 get_script_ids = get_script_ids_query()
+data_with_no_unique_keys = read_data_with_no_unique_key()
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')-
 old_catalog =  {
@@ -205,6 +206,10 @@ old_catalog =  {
           #Read Old Matched SCMH Data
          "read_old_smch_matched_data": SQLQueryDataSet(
             sql= read_old_smch_matched_data,
+            credentials=dict(con=con)
+         ),
+         "no_unique_keys_data":  SQLQueryDataSet(
+            sql= data_with_no_unique_keys,
             credentials=dict(con=con)
          ),
                

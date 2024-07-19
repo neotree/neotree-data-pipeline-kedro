@@ -161,6 +161,12 @@ def read_derived_data_query(source_table):
                     *
                 from derived.{source_table} where uid!='null';;
             '''
+            
+def read_data_with_no_unique_key(): 
+    return f'''
+                select 
+                id,"data"->'entries' as "entries"
+                from public.clean_sessions;;'''
 
 ##SPECIAL CASE
 def read_diagnoses_query(admissions_case,adm_where):
@@ -353,3 +359,10 @@ def insert_sessions_data():
         INSERT INTO {clean_sessions} 
         SELECT *,false FROM {sessions} 
         WHERE id NOT IN (SELECT id FROM {clean_sessions});;'''
+        
+def regenerate_unique_key_query(id,unique_key):
+     return f''' UPDATE public.clean_sessions set unique_key={unique_key} where id={id};;
+ '''
+    
+    
+    
