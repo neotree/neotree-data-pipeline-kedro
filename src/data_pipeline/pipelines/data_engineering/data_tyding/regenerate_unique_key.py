@@ -25,14 +25,18 @@ def regenerate_unique_key():
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
                 if(isinstance(value,list)):
+                    
                     item = value.loc[(value['key'].str.lower().str.contains(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
+                    if id == 161567:
+                        logging.info("---LOGED==")
+                        logging.info(item)
+                        logging.info(value)
+                        
                     if not item.empty:
                         values.append(item.iloc[0]['values'][0]['value'])         
                     # NEW FORMAT
                 else:   
-                    if index<2:
-                        logging.info("-----RESTAST"+str(value.columns))
-                    matching_data = [col for col in value.columns if col.startswith("Date")  
+                    matching_data = [col for col in value.columns if col.startswith(prefix)  
                              and value[col]['values']['value'][0] is not None]
                     if matching_data:
                         values.append(value[matching_data[0]]['values']['value'][0])
