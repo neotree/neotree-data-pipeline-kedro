@@ -26,9 +26,9 @@ def regenerate_unique_key():
                 #Check If It Is Old Format Or New Format
                 if(isinstance(value,list)):
                     value = pd.DataFrame(value)
-                    item = value.loc[(value['key'].str.lower().startswith(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
+                    item = value.loc[(value['key'].str.lower().str.contains(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
                     if not item.empty:
-                        values.append(item.iloc[0]['values'][0]['value'])          
+                        values.append(item.iloc[0]['values'][0]['value'])         
                     # NEW FORMAT
                 else:
                     value = pd.DataFrame.from_dict(value, orient="index")
