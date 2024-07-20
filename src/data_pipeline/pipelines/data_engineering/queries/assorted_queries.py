@@ -362,7 +362,7 @@ def insert_sessions_data():
         WHERE cs.id = s.id);;'''
         
 def regenerate_unique_key_query(id,unique_key):
-     return f''' UPDATE public.clean_sessions set unique_key={unique_key} where id={id};;
+     return f''' UPDATE public.clean_sessions set unique_key='{unique_key}' where id={id};;
  '''
     
     
