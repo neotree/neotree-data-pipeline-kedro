@@ -38,9 +38,9 @@ def regenerate_unique_key():
                 
                 if len(values)>0:
                     query = regenerate_unique_key_query(id,values[0])
-                if index<20 or index>285460:    
-                    logging.info("-QUERY ="+query)
-                inject_sql(query,"UNIQUE-KEYS")
+                    if index<20 or index>285460:    
+                        logging.info("-QUERY ="+query)
+                    inject_sql(query,"UNIQUE-KEYS")
                 break
                          
     except Exception as ex:
