@@ -350,8 +350,7 @@ def insert_sessions_data():
                 scriptid TEXT,
                 unique_key VARCHAR,
                 cleaned BOOLEAN
-            );;
-            
+            );;     
         
         INSERT INTO {clean_sessions} 
         SELECT *,false FROM {sessions} s
