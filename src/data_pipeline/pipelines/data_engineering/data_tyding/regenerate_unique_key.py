@@ -25,13 +25,10 @@ def regenerate_unique_key():
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
                 if('key' not in row['entries']) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):
-                    for key, entry in value.items():
-                        if str(key).lower().startswith(prefix) and any(value is not None for value in entry['values']['value']):
-                            if index<10 or index>600000:
-                                logging.info("--FOUND---"+str(id)+ "--VALUE=="+str(entry['values']['value'][0]))
-                            values.append(entry['values']['value'][0])
-                            break    
-                    # NEW FORMAT
+                    item = value.loc[str(value.index).startswith(prefix) & ~value['values'].apply(lambda x: x['value'][0] is not None)].iloc[0]
+                    if item is not None:
+                        values.append(item['values']['value'][0])            
+                    # OLD FORMAT
                 else:
                     item = value.loc[(str(value['key']).lower().startswith(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
                     if not item.empty:
