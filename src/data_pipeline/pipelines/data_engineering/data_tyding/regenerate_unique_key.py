@@ -31,7 +31,7 @@ def regenerate_unique_key():
                     # NEW FORMAT
                 else:
                     value = pd.DataFrame.from_dict(value, orient="index")
-                    item = value.loc[str(value.index).startswith(prefix) & ~value['values'].apply(lambda x: x['value'][0] is not None)].iloc[0]
+                    item = value.loc[value.index.str.lower().startswith(prefix) & ~value['values'].apply(lambda x: len(x['value']) > 0 and x['value'][0] is not None)].iloc[0]
                     if item is not None:
                         values.append(item['values']['value'][0])
                 
