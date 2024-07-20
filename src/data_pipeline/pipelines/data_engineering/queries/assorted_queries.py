@@ -341,6 +341,7 @@ def insert_sessions_data():
     clean_sessions = 'public.clean_sessions'
     
     # f'''drop table if exists {table} cascade;; 
+    ## CREATE INDEX IF NOT EXISTS idx_clean_sessions_cleaned ON {clean_sessions} (cleaned);;
     return f'''CREATE TABLE IF NOT EXISTS public.clean_sessions (
                 id INTEGER PRIMARY KEY,
                 uid TEXT,
@@ -351,7 +352,6 @@ def insert_sessions_data():
                 cleaned BOOLEAN
             );;
             
-        CREATE INDEX IF NOT EXISTS idx_clean_sessions_cleaned ON {clean_sessions} (cleaned);;
         
         INSERT INTO {clean_sessions} 
         SELECT *,false FROM {sessions} s
