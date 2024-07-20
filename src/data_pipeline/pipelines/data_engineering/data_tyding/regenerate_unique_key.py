@@ -11,12 +11,11 @@ def regenerate_unique_key():
     try:
         #Read Data From The Kedro Catalog
         raw_data = catalog.load('no_unique_keys_data')
-        logging.info("MY ITA-"+str(raw_data.shape[0]))
         for index, row in raw_data.iterrows():
-            if index<20 or index>200000:
-                logging.info("THE ROW=="+str(row))
+           
             app_version = None
             id = row['id']
+            logging.info("-MY ID ="+str(id))
             if 'appVersion' in row:
                 app_version = row['appVersion']
            
@@ -25,10 +24,11 @@ def regenerate_unique_key():
                 value = row['entries']
                 for prefix in possible_unique_keys:
                      #Check If It Is Old Format Or New Format
-                   
+                    logging.info("-MY PREFIX=="+str(prefix))
                     if('key' not in row['entries']) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):
-                       
                         for key, entry in value.items():
+                            if index<10 or index>600000:
+                                logging.info("-MY PREFIX=="+str(key))
                             if str(key).lower().startswith(prefix) and any(value is not None for value in entry['values']['value']):
                                 logging.info("--FOUND---"+str(id)+ "--VALUE=="+str(entry['values']['value'][0]))
                                 values.append(entry['values']['value'][0])
