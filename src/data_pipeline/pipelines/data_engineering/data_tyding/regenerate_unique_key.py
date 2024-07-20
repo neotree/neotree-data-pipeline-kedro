@@ -24,16 +24,16 @@ def regenerate_unique_key():
             value = row['entries']
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
-                if('key' not in row['entries']) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):
+                if(isinstance(value,list)):
+                    item = value.loc[(str(value['key']).lower().startswith(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
+                    if not item.empty:
+                        values.append(item.iloc[0]['values'][0]['value'])          
+                    # NEW FORMAT
+                else:
                     value = pd.DataFrame.from_dict(value, orient="index")
                     item = value.loc[str(value.index).startswith(prefix) & ~value['values'].apply(lambda x: x['value'][0] is not None)].iloc[0]
                     if item is not None:
-                        values.append(item['values']['value'][0])            
-                    # OLD FORMAT
-                else:
-                    item = value.loc[(str(value['key']).lower().startswith(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
-                    if not item.empty:
-                        values.append(item.iloc[0]['values'][0]['value'])
+                        values.append(item['values']['value'][0])
                 
                 if len(values)>0:
                     query = regenerate_unique_key_query(id,values[0])
