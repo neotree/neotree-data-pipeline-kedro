@@ -3,6 +3,7 @@ from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import regenerate_unique_key_query
 from conf.common.format_error import formatError
 import logging
+import pandas as pd
 
 
 #Method To Make Use of Either Date of Admission or Date of Death As Part Of The Unique Key
@@ -15,7 +16,6 @@ def regenerate_unique_key():
            
             app_version = None
             id = row['id']
-            logging.info("-MY ID ="+str(id))
             if 'appVersion' in row:
                 app_version = row['appVersion']
            
@@ -25,6 +25,7 @@ def regenerate_unique_key():
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
                 if('key' not in row['entries']) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):
+                    value = pd.DataFrame.from_dict(value, orient="index")
                     item = value.loc[str(value.index).startswith(prefix) & ~value['values'].apply(lambda x: x['value'][0] is not None)].iloc[0]
                     if item is not None:
                         values.append(item['values']['value'][0])            
@@ -38,7 +39,8 @@ def regenerate_unique_key():
                     query = regenerate_unique_key_query(id,values[0])
                 else:
                     query = regenerate_unique_key_query(id,None)
-                logging.info("-QUERY ="+query)
+                if index<20 or index>285460:    
+                    logging.info("-QUERY ="+query)
                 inject_sql(query,"UNIQUE-KEYS")
                 break
                          
