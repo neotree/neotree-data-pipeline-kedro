@@ -19,33 +19,31 @@ def regenerate_unique_key():
             if 'appVersion' in row:
                 app_version = row['appVersion']
            
-                values = []
-                possible_unique_keys = ['dateadmission','datetimeadmission','datetimedeath']
-                value = row['entries']
-                for prefix in possible_unique_keys:
-                     #Check If It Is Old Format Or New Format
-                    logging.info("-MY PREFIX=="+str(prefix))
-                    if('key' not in row['entries']) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):
-                        for key, entry in value.items():
+            values = []
+            possible_unique_keys = ['dateadmission','datetimeadmission','datetimedeath']
+            value = row['entries']
+            for prefix in possible_unique_keys:
+                #Check If It Is Old Format Or New Format
+                if('key' not in row['entries']) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):
+                    for key, entry in value.items():
+                        if str(key).lower().startswith(prefix) and any(value is not None for value in entry['values']['value']):
                             if index<10 or index>600000:
-                                logging.info("-MY PREFIX=="+str(key))
-                            if str(key).lower().startswith(prefix) and any(value is not None for value in entry['values']['value']):
                                 logging.info("--FOUND---"+str(id)+ "--VALUE=="+str(entry['values']['value'][0]))
-                                values.append(entry['values']['value'][0])
-                                break    
+                            values.append(entry['values']['value'][0])
+                            break    
                     # NEW FORMAT
-                    else:
-                        item = value.loc[(str(value['key']).lower().startswith(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
-                        if not item.empty:
-                            values.append(item.iloc[0]['values'][0]['value'])
+                else:
+                    item = value.loc[(str(value['key']).lower().startswith(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
+                    if not item.empty:
+                        values.append(item.iloc[0]['values'][0]['value'])
                 
-                    if len(values)>0:
-                        query = regenerate_unique_key_query(id,values[0])
-                    else:
-                        query = regenerate_unique_key_query(id,None)
-                    logging.info("-QUERY ="+query)
-                    inject_sql(query,"UNIQUE-KEYS")
-                    break
+                if len(values)>0:
+                    query = regenerate_unique_key_query(id,values[0])
+                else:
+                    query = regenerate_unique_key_query(id,None)
+                logging.info("-QUERY ="+query)
+                inject_sql(query,"UNIQUE-KEYS")
+                break
                          
     except Exception as ex:
         logging.error("UNIQUE KEY GENERATION ERROR:-")

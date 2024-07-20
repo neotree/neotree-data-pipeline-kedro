@@ -162,7 +162,9 @@ def read_derived_data_query(source_table):
 def read_data_with_no_unique_key(): 
     return f'''
                 select 
-                id,"data"->'entries' as "entries"
+                id,
+                "data"->'entries' as "entries",
+                "data"->'appVersion' as "appVersion"
                 from public.clean_sessions;;'''
 
 ##SPECIAL CASE
