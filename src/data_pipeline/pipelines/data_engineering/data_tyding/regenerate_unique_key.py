@@ -11,7 +11,10 @@ def regenerate_unique_key():
     try:
         #Read Data From The Kedro Catalog
         raw_data = catalog.load('no_unique_keys_data')
+        logging.info("MY ITA-"+str(len(raw_data.iterrows())))
         for index, row in raw_data.iterrows():
+            if index<20 or index>200000:
+                logging.info("THE ROW=="+str(row))
             app_version = None
             id = row['id']
             if 'appVersion' in row:
