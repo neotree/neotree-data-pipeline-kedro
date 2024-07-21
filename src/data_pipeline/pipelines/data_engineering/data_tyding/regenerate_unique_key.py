@@ -16,7 +16,7 @@ def regenerate_unique_key():
            
             id = row['id']
             values = []
-            possible_unique_keys = ['DateAdmission','DateTimeAdmission','DateTimeDeath']
+            possible_unique_keys = ['DateAdmission','DateTimeAdmission','DateTimeDeath','DateTimeDischarge','DateDischarge','DateDeath']
             value = pd.DataFrame(row['entries'])
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
@@ -38,7 +38,7 @@ def regenerate_unique_key():
                 if len(values)>0:
                     query = regenerate_unique_key_query(id,values[0])
                     inject_sql(query,"UNIQUE-KEYS")
-                break
+                    break
                          
     except Exception as ex:
         logging.error("UNIQUE KEY GENERATION ERROR:-"+str(id))
