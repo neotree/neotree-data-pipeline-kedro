@@ -16,19 +16,19 @@ def regenerate_unique_key():
            
             id = row['id']
             values = []
-            possible_unique_keys = ['dateadmission','datetimeadmission','datetimedeath']
+            possible_unique_keys = ['DateAdmission','DateTimeAdmission','DateTimeDeath']
             value = pd.DataFrame(row['entries'])
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
                 if('key' in value):
                     
-                    item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] < 0), None)
-                    if id == 161567:
+                    item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] is not None), None)
+                    if id == 403197:
                         logging.info("---LOGED==")
                         logging.info(item)
                         
                     if item:
-                        values.append(item.iloc[0]['values'][0]['value'])         
+                        values.append(item)         
                     # NEW FORMAT
                 else:   
                     matching_data = [col for col in value.columns if col.startswith(prefix)  

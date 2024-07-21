@@ -100,6 +100,7 @@ def deduplicate_data_query(condition, destination_table):
             earliest_record.uid,
             earliest_record.id,
             sessions.ingested_at,
+            earliest_record.unique_key,
         case
             when earliest_record.unique_key is not null and earliest_record.unique_key like '%-%-%'
             then extract(year from cast (earliest_record.unique_key as date))
@@ -138,6 +139,7 @@ def deduplicate_baseline_query(condition):
             earliest_record.scriptid,
             earliest_record.uid,
             earliest_record.id,
+            earliest_record.unique_key,
            case
             when earliest_record.unique_key is not null and earliest_record.unique_key like '%-%-%'
             then extract(year from cast (earliest_record.unique_key as date))
@@ -203,7 +205,8 @@ def read_diagnoses_query(admissions_case, adm_where):
                 "data"->'scriptVersion' as "scriptVersion",
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
-                "data"->'diagnoses' as "diagnoses" {admissions_case}
+                "data"->'diagnoses' as "diagnoses" {admissions_case},
+                unique_key,
             from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';;
             '''
 
