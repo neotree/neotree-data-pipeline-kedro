@@ -138,8 +138,16 @@ def deduplicate_baseline_query(condition):
             earliest_record.scriptid,
             earliest_record.uid,
             earliest_record.id,
-            extract(year from (earliest_record.unique_key)::timestamp) as year,
-            extract(month from (earliest_record.unique_key)::timestamp) as month,
+           case
+            when earliest_record.unique_key is not null and earliest_record.unique_key like '%-%-%'
+            then extract(year from cast (earliest_record.unique_key as date))
+           else null
+           end as year,
+           case
+            when earliest_record.unique_key is not null and earliest_record.unique_key like '%-%-%'
+            then extract(month from cast (earliest_record.unique_key as date))
+            else null
+            end as month,
             sessions.ingested_at, 
             data
             from earliest_record join clean_sessions sessions
@@ -180,7 +188,7 @@ def read_data_with_no_unique_key():
                 id,
                 "data"->'entries' as "entries",
                 "data"->'appVersion' as "appVersion"
-                from public.clean_sessions;;'''
+                from public.clean_sessions where not cleaned;;'''
 
 # SPECIAL CASE
 
