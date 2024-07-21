@@ -14,11 +14,7 @@ def regenerate_unique_key():
         raw_data = catalog.load('no_unique_keys_data')
         for index, row in raw_data.iterrows():
            
-            app_version = None
             id = row['id']
-            if 'appVersion' in row:
-                app_version = row['appVersion']
-           
             values = []
             possible_unique_keys = ['dateadmission','datetimeadmission','datetimedeath']
             value = pd.DataFrame(row['entries'])
