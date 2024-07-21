@@ -50,6 +50,9 @@ def get_key_values(data_raw):
 
             if 'completed_at' in row:
                 new_entry['completed_at'] = row['completed_at']
+                
+            if 'unique_key' in row:
+                new_entry['unique_key'] = row['unique_key']
             
             if 'ingested_at' in row:
                 new_entry['ingested_at'] = row['ingested_at']

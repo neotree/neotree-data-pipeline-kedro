@@ -166,7 +166,8 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table):
             "data"->'scriptVersion' as "scriptVersion",
             "data"->'started_at' as "started_at",
             "data"->'completed_at' as "completed_at",
-            "data"->'entries' as "entries"
+            "data"->'entries' as "entries",
+            unique_key
             {case_condition}
             from {source_table} where scriptid {where_condition} and uid!='null';;
    
