@@ -36,6 +36,7 @@ def deduplicate_neolab_query(neolab_where):
             earliest_neolab.month,
             earliest_neolab."DateBCT",
             earliest_neolab."DateBCR",
+            sessions.unique_key,
             data
             from earliest_neolab join clean_sessions sessions
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
@@ -72,6 +73,7 @@ def deduplicate_data_query(condition, destination_table):
             sessions.ingested_at,
             earliest_record.year,
             earliest_record.month,
+            sessions.unique_key,
             data
             from earliest_record join clean_sessions sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}

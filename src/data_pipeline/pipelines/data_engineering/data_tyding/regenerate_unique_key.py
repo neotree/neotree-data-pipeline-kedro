@@ -21,11 +21,10 @@ def regenerate_unique_key():
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
                 if('key' in value):
-                    
-                    item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] is not None), None)
-                    if id == 403197:
-                        logging.info("---LOGED==")
-                        logging.info(item)
+                    matching_rows = value[value["key"].str.startswith(prefix)]
+                    item=None
+                    if not matching_rows.empty:
+                        item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] is not None), None)
                         
                     if item:
                         values.append(item)         
