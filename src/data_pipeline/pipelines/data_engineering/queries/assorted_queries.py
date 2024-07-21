@@ -193,7 +193,7 @@ def read_data_with_no_unique_key():
                 id,
                 "data"->'entries' as "entries",
                 "data"->'appVersion' as "appVersion"
-                from public.clean_sessions;;'''
+                from public.clean_sessions where not cleaned;;'''
 
 # SPECIAL CASE
 
@@ -208,7 +208,7 @@ def read_diagnoses_query(admissions_case, adm_where):
                 "data"->'started_at' as "started_at",
                 "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case},
-                unique_key,
+                unique_key
             from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';;
             '''
 
