@@ -24,15 +24,14 @@ def regenerate_unique_key():
             value = pd.DataFrame(row['entries'])
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
-                if(isinstance(value,list)):
+                if('key' in value):
                     
-                    item = value.loc[(value['key'].str.lower().str.contains(prefix)) & (value['values'].apply(lambda x: x[0]['value']) is not None)]
+                    item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] < 0), None)
                     if id == 161567:
                         logging.info("---LOGED==")
                         logging.info(item)
-                        logging.info(value)
                         
-                    if not item.empty:
+                    if item:
                         values.append(item.iloc[0]['values'][0]['value'])         
                     # NEW FORMAT
                 else:   
@@ -43,8 +42,6 @@ def regenerate_unique_key():
                 
                 if len(values)>0:
                     query = regenerate_unique_key_query(id,values[0])
-                    if index<20 or index>285460:    
-                        logging.info("-QUERY ="+query)
                     inject_sql(query,"UNIQUE-KEYS")
                 break
                          

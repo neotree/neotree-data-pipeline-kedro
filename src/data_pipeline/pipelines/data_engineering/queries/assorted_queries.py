@@ -2,7 +2,9 @@ import logging
 import json
 from psycopg2 import sql
 
-#TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
+# TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
+
+
 def deduplicate_neolab_query(neolab_where):
     return f'''
             drop table if exists scratch.deduplicated_neolab cascade;;
@@ -39,10 +41,11 @@ def deduplicate_neolab_query(neolab_where):
             on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
             );; '''
 
-def deduplicate_data_query(condition,destination_table):
-    if(destination_table=='public.clean_sessions'): 
+
+def deduplicate_data_query(condition, destination_table):
+    if (destination_table == 'public.clean_sessions'):
         return ""
-    
+
     if "maternity_completeness" in destination_table:
         # special case for malawi -> group on DateAdmission
         return f'''drop table if exists {destination_table} cascade;;
@@ -73,8 +76,8 @@ def deduplicate_data_query(condition,destination_table):
             from earliest_record join clean_sessions sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
-            '''  
-    else:    
+            '''
+    else:
         # all other cases -> group on ingested_at
         return f'''drop table if exists {destination_table} cascade;;
             create table {destination_table} as 
@@ -97,16 +100,25 @@ def deduplicate_data_query(condition,destination_table):
             earliest_record.uid,
             earliest_record.id,
             sessions.ingested_at,
-            extract(year from (earliest_record.unique_key)::timestamp) as year,
-            extract(month from (earliest_record.unique_key)::timestamp) as month,
+        case
+            when earliest_record.unique_key is not null and earliest_record.unique_key like '%-%-%'
+            then extract(year from cast (earliest_record.unique_key as date))
+        else null
+        end as year,
+        case
+            when earliest_record.unique_key is not null and earliest_record.unique_key like '%-%-%'
+            then extract(month from cast (earliest_record.unique_key as date))
+        else null
+        end as month,
             data
             from earliest_record join clean_sessions sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
-            '''      
+            '''
+
 
 def deduplicate_baseline_query(condition):
-        return f'''drop table if exists scratch.deduplicated_baseline cascade;;
+    return f'''drop table if exists scratch.deduplicated_baseline cascade;;
             create table scratch.deduplicated_baseline as 
             (
             with earliest_record as (
@@ -133,9 +145,10 @@ def deduplicate_baseline_query(condition):
             from earliest_record join clean_sessions sessions
             on earliest_record.id = sessions.id where sessions.scriptid {condition} 
             );;
-            '''    
-            
-def read_deduplicated_data_query(case_condition,where_condition,source_table): 
+            '''
+
+
+def read_deduplicated_data_query(case_condition, where_condition, source_table):
     # logging.info(f'source_table={source_table}, where_condition={where_condition}, case_condition={case_condition}')
     sql = f'''
             select 
@@ -149,17 +162,19 @@ def read_deduplicated_data_query(case_condition,where_condition,source_table):
             {case_condition}
             from {source_table} where scriptid {where_condition} and uid!='null';;
    
-            '''  
+            '''
     return sql
-  
-def read_derived_data_query(source_table): 
+
+
+def read_derived_data_query(source_table):
     return f'''
                 select 
                     *
                 from derived.{source_table} where uid!='null';;
             '''
-            
-def read_data_with_no_unique_key(): 
+
+
+def read_data_with_no_unique_key():
     return f'''
                 select 
                 id,
@@ -167,8 +182,10 @@ def read_data_with_no_unique_key():
                 "data"->'appVersion' as "appVersion"
                 from public.clean_sessions;;'''
 
-##SPECIAL CASE
-def read_diagnoses_query(admissions_case,adm_where):
+# SPECIAL CASE
+
+
+def read_diagnoses_query(admissions_case, adm_where):
     return f'''
             select 
                 uid,
@@ -181,6 +198,7 @@ def read_diagnoses_query(admissions_case,adm_where):
             from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';;
             '''
 
+
 def read_new_smch_admissions_query():
     return '''
             select 
@@ -192,6 +210,7 @@ def read_new_smch_admissions_query():
                 END AS "DateTimeAdmission.value"
                 from derived.admissions where
             "DateTimeAdmission.value">='2021-02-01' AND facility = 'SMCH';;'''
+
 
 def read_new_smch_discharges_query():
     return '''
@@ -210,11 +229,13 @@ def read_new_smch_discharges_query():
 			or ("DateTimeDeath.value">='2021-02-01') AND facility = 'SMCH' ;;
             '''
 
+
 def read_old_smch_admissions_query():
     return '''
             select 
                 *
             from derived.old_smch_admissions;;'''
+
 
 def read_old_smch_discharges_query():
     return '''
@@ -222,17 +243,20 @@ def read_old_smch_discharges_query():
                 *
             from derived.old_smch_discharges;;'''
 
+
 def read_old_smch_matched_view_query():
     return '''
             select 
                 *
             from derived.old_smch_matched_admissions_discharges;;'''
 
+
 def read_new_smch_matched_query():
     return '''
             select 
                 *
             from derived.joined_admissions_discharges;;'''
+
 
 def get_duplicate_maternal_query():
     return '''
@@ -242,8 +266,9 @@ def get_duplicate_maternal_query():
             s.uid,s."data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 ;;
            '''
 
-def update_maternal_uid_query_new(uid,date_condition,old_uid):
-            return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
+
+def update_maternal_uid_query_new(uid, date_condition, old_uid):
+    return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
             '{{entries,NeoTreeID}}',
                '{{
@@ -257,10 +282,11 @@ def update_maternal_uid_query_new(uid,date_condition,old_uid):
                 }}
                 }}'::TEXT::jsonb,
                true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
-            '''.format(uid,date_condition,old_uid)
+            '''.format(uid, date_condition, old_uid)
 
-def update_maternal_uid_query_old(uid,date_condition,old_uid):
-            return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
+
+def update_maternal_uid_query_old(uid, date_condition, old_uid):
+    return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
             '{{entries,0}}',
                '{{
@@ -274,7 +300,8 @@ def update_maternal_uid_query_old(uid,date_condition,old_uid):
                 ]
                 }}'::TEXT::jsonb,
                true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
-            '''.format(uid,date_condition,old_uid)
+            '''.format(uid, date_condition, old_uid)
+
 
 def update_maternal_outer_uid(uid):
     return ''' update public.clean_sessions set data= JSONB_SET(
@@ -283,33 +310,39 @@ def update_maternal_outer_uid(uid):
              to_json(uid)::TEXT::JSONB,
              true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';;'''.format(uid)
 
+
 def get_discharges_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
               ingested_at>='2024-01-01'
              and scriptid in ('-ZYDiO2BTM4kSGZDVXAO','-MJCntWHvPaIuxZp35ka','-KYDiO2BTM4kSGZDVXAO');;
              '''
-             
+
+
 def get_maternal_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
              ingested_at>='2024-01-01' and scriptid in ('-MDPYzHcFVHt02D1Tz4Z' 
              ,'-MYk0A3-Z_QjaXYU5MsS','-MOAjJ_In4TOoe0l_Gl5');;
              '''
-             
+
+
 def get_admissions_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
               ingested_at>='2024-01-01'
              and scriptid in ('-ZO1TK4zMvLhxTw6eKia','-MJBnoLY0YLDqLUhPgkK','-KO1TK4zMvLhxTw6eKia');;
              '''
-             
+
+
 def get_baseline_data_tofix_query():
     return '''select uid as "uid",scriptid as "scriptid",to_json("data"->'entries'::text) as "data" from public.clean_sessions where 
               ingested_at>='2024-01-01' and scriptid in ('-MX3bKFIUQxrUw9nmtfb'
              ,'-MX3mjB38q_DWo_XRXJE','-M4TVbN3FzhkDEV3wvWk');;
              '''
-              
+
+
 def get_script_ids_query():
     return "select scriptid, count(*) from public.sessions group by scriptid;;"
-   
+
+
 def update_eronous_label(uid, script_id, type, key, label, value):
     # Define the JSONB data to be inserted
     jsonb_data = json.dumps({
@@ -319,7 +352,7 @@ def update_eronous_label(uid, script_id, type, key, label, value):
             "value": [value]
         }
     })
-    
+
     # logging.info(jsonb_data)
 
     # Construct the update query string
@@ -336,14 +369,15 @@ def update_eronous_label(uid, script_id, type, key, label, value):
     # logging.info(query)
     return query
 
+
 def insert_sessions_data():
-    
+
     sessions = 'public.sessions'
-    
+
     clean_sessions = 'public.clean_sessions'
-    
-    # f'''drop table if exists {table} cascade;; 
-    ## CREATE INDEX IF NOT EXISTS idx_clean_sessions_cleaned ON {clean_sessions} (cleaned);;
+
+    # f'''drop table if exists {table} cascade;;
+    # CREATE INDEX IF NOT EXISTS idx_clean_sessions_cleaned ON {clean_sessions} (cleaned);;
     return f'''CREATE TABLE IF NOT EXISTS public.clean_sessions (
                 id INTEGER PRIMARY KEY,
                 uid TEXT,
@@ -360,10 +394,8 @@ def insert_sessions_data():
         SELECT 1
         FROM {clean_sessions} cs
         WHERE cs.id = s.id);;'''
-        
-def regenerate_unique_key_query(id,unique_key):
-     return f''' UPDATE public.clean_sessions set unique_key='{unique_key}' where id={id};;
+
+
+def regenerate_unique_key_query(id, unique_key):
+    return f''' UPDATE public.clean_sessions set unique_key='{unique_key}' where id={id};;
  '''
-    
-    
-    
