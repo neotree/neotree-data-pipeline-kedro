@@ -1,7 +1,10 @@
+import logging
+
 from conf.base.catalog import params
 #Query to create summary_maternala_outcomes table
 def summary_maternal_outcomes_query():
     #Defaulting to Malawi Case 
+     
     gestation_case = f''' CASE
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unkown'
         WHEN derived.maternal_outcomes."Gestation.value" < 28 THEN '<28wks'
@@ -22,7 +25,9 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."Gestation.value" >=40 AND derived.maternal_outcomes."Gestation.value" <= 44 THEN '40-44 weeks'
         END AS "GestationGroup"
         '''
-    return f'''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
+        
+        
+    sql= f'''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
         CREATE TABLE derived.summary_maternal_outcomes AS 
         SELECT derived.maternal_outcomes."uid" AS "NeoTreeID",
         derived.maternal_outcomes."facility" AS "facility",
@@ -84,3 +89,5 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."BWTDis.value" >= 4000 THEN 6
         END AS "BirthWeightGroupSort"
         FROM derived.maternal_outcomes;; '''
+           
+    return sql

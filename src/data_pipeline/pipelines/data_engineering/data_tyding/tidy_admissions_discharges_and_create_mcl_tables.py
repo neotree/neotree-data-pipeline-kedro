@@ -22,7 +22,6 @@ import pandas as pd
 from datetime import datetime as dt
 import logging
 
-
 def tidy_tables():
 
     # try:
@@ -98,10 +97,12 @@ def tidy_tables():
         dis_new_entries, dis_mcl = get_key_values(dis_raw)
         mat_outcomes_new_entries,mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
         vit_signs_new_entries,vit_signs_mcl = get_key_values(vit_signs_raw)
-        neolab_new_entries,noelab_mcl = get_key_values(neolab_raw)
+        
         baseline_new_entries,baseline_mcl = get_key_values(baseline_raw)
         diagnoses_new_entries = get_diagnoses_key_values(diagnoses_raw)
         mat_completeness_new_entries,mat_completeness_mcl = get_key_values(mat_completeness_raw)
+
+        neolab_new_entries,noelab_mcl = get_key_values(neolab_raw)
 
     except Exception as e:
         logging.error("!!! An error occured extracting keys: ")

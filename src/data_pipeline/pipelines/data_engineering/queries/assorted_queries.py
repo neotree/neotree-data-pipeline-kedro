@@ -1,9 +1,12 @@
+import re
 import logging
 import json
 from psycopg2 import sql
 
 # TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 
+def escape_special_characters(input_string): 
+    return str(input_string).replace("\\","\\\\").replace("'","''")
 
 def deduplicate_neolab_query(neolab_where):
     return f'''
@@ -284,7 +287,7 @@ def get_duplicate_maternal_query():
 def update_maternal_uid_query_new(uid, date_condition, old_uid):
     return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
-            '{{entries,NeoTreeID}}',
+             '{{entries,NeoTreeID}}',
                '{{
                 "type": "string",
                 "values": {{
@@ -302,7 +305,7 @@ def update_maternal_uid_query_new(uid, date_condition, old_uid):
 def update_maternal_uid_query_old(uid, date_condition, old_uid):
     return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
-            '{{entries,0}}',
+             '{{entries,0}}',
                '{{
                 "key":"NeotreeID",
                 "type": "string",
