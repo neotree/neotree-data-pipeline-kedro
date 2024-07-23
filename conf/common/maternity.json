@@ -1,0 +1,195 @@
+[
+    {
+        "key": "Sex",
+        "labels": [
+            "Female",
+            "Male",
+            "Unsure"
+        ],
+        "values": [
+            "F",
+            "M",
+            "U"
+        ]
+    },
+    {
+        "key": "TypeBirth",
+        "labels": [
+            "Singleton",
+            "Twin 1",
+            "Twin 2",
+            "Triplet 1",
+            "Triplet 2",
+            "Triplet 3",
+            "Other"
+        ],
+        "values": [
+            "S",
+            "Tw1",
+            "Tw2",
+            "Tr1",
+            "Tr2",
+            "Tr3",
+            "OT"
+        ]
+    },
+    {
+        "key": "CryBirth",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "ModeDelivery",
+        "labels": [
+            "Spontaneous vaginal delivery",
+            "Vacuum extraction",
+            "Forceps extraction",
+            "Elective Caesarean section",
+            "Emergency Caesarean section",
+            "Breech (vaginal)"
+        ],
+        "values": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+        ]
+    },
+    {
+        "key": "Reason",
+        "labels": [
+            "Foetal distress",
+            "Malpresentation e.g. breech",
+            "Previous scars",
+            "Eclampsia",
+            "Pre-eclampsia",
+            "Fibroids",
+            "Big fundus",
+            "Multiple gestation",
+            "Prolonged labour",
+            "Post term",
+            "Cephalopelvic disproportion",
+            "Other"
+        ],
+        "values": [
+            "FD",
+            "Pres",
+            "Scar",
+            "E",
+            "PE",
+            "Fi",
+            "Fund",
+            "Mult",
+            "Pr",
+            "Post",
+            "CPD",
+            "O"
+        ]
+    },
+    {
+        "key": "Presentation",
+        "labels": [
+            "Vertex",
+            "Brow",
+            "Breech",
+            "Face",
+            "Unknown"
+        ],
+        "values": [
+            "Vertex",
+            "Brow",
+            "Breech",
+            "Face",
+            "Unk"
+        ]
+    },
+    {
+        "key": "PregConditions",
+        "labels": [
+            "Anaemia",
+            "Diabetes",
+            "Heart disease",
+            "Hypertension or pre-eclampsia",
+            "Malaria",
+            "None",
+            "Other",
+            "Sexually transmitted disease other than HIV/syphilis",
+            "Thyroid disease/goitre",
+            "Tuberculosis",
+            "Unkown"
+        ],
+        "values": [
+            "AN",
+            "DM",
+            "HD",
+            "HTN",
+            "MAL",
+            "NONE",
+            "OTH",
+            "STD",
+            "THY",
+            "TU",
+            "U"
+        ]
+    },
+    {
+        "key": "MatOutcome",
+        "labels": [
+            "Survived",
+            "Died"
+        ],
+        "values": [
+            "S",
+            "D"
+        ]
+    },
+    {
+        "key": "BabyNursery",
+        "labels": [
+            "Survived",
+            "Died"
+        ],
+        "values": [
+            "S",
+            "D"
+        ]
+    },
+    {
+        "key": "BabyNursery",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "NeoTreeOutcome",
+        "labels": [
+            "Live Birth",
+            "Stillbirth Fresh",
+            "Stillbirth Mascerated",
+            "Unknown"
+        ],
+        "values": [
+            "LB",
+            "SBF",
+            "SMB",
+            "UNK"
+        ]
+    }
+]

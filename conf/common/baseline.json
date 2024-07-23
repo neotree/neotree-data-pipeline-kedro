@@ -1,0 +1,603 @@
+[
+    {
+        "key": "RPR",
+        "labels": [
+            "Yes",
+            "No"
+        ],
+        "values": [
+            "Y",
+            "N"
+        ]
+    },
+    {
+        "key": "RVI",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "AntenatalCare",
+        "labels": [
+            "None",
+            "1 - 3 visits",
+            "4 visits or more"
+        ],
+        "values": [
+            "ANC0",
+            "ANC1T3",
+            "ANC4P"
+        ]
+    },
+    {
+        "key": "Gestation",
+        "labels": [
+            "Last Menstrual Period (LMP)",
+            "Early USS",
+            "Late USS",
+            "IVF",
+            "Fundal height",
+            "Other"
+        ],
+        "values": [
+            "LMP",
+            "EUSS",
+            "LUSS",
+            "IVF",
+            "FH",
+            "O"
+        ]
+    },
+    {
+        "key": "AntMeds",
+        "labels": [
+            "X penicillin",
+            "Gentamicin",
+            "BCG Vaccine",
+            "Amoxicillin",
+            "Amikacin",
+            "Aminophylline",
+            "Ampicillin",
+            "AZT (Zidovudine)",
+            "Caffeine",
+            "Ceftriaxone",
+            "Chloramphenicol",
+            "Cloxacillin",
+            "Folate",
+            "Imipenem",
+            "Iron",
+            "Metronidazole",
+            "Nevirapine",
+            "Phenobarbitone",
+            "Procaine Penicillin",
+            "Tetanus Vaccine",
+            "Vancomycin",
+            "Vitamin D",
+            "Other",
+            "NONE",
+            "Unknown"
+        ],
+        "values": [
+            "XP",
+            "GENT",
+            "BCG",
+            "AMOX",
+            "AMIK",
+            "AMIN",
+            "AMP",
+            "AZT",
+            "CAF",
+            "CEF",
+            "CHLO",
+            "CLOX",
+            "FOL",
+            "IMI",
+            "IRON",
+            "MET",
+            "NVP",
+            "PHEN",
+            "PROC",
+            "TTV",
+            "VAN",
+            "VITD",
+            "OTH",
+            "NONE",
+            "UK"
+        ]
+    },
+    {
+        "key": "MotSub",
+        "labels": [
+            "Alcohol",
+            "Tobacco",
+            "Illicit Drugs",
+            "None"
+        ],
+        "values": [
+            "ALC",
+            "TOB",
+            "DRUG",
+            "NONE"
+        ]
+    },
+    {
+        "key": "ANSteroids",
+        "labels": [
+            "Partial course in last 48h",
+            "Full course within last week",
+            "Full course 7-14 days ago",
+            "Expired course given > 14 days prior",
+            "Unknown"
+        ],
+        "values": [
+            "PC48",
+            "FC1W",
+            "FC7D14D",
+            "EXP14D",
+            "U"
+        ]
+    },
+    {
+        "key": "MgSO4",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "FoeHrtDoc",
+        "labels": [
+            "Yes",
+            "No"
+        ],
+        "values": [
+            "Y",
+            "N"
+        ]
+    },
+    {
+        "key": "FoeHrtRec",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "FoeBrad",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "FoeDec",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "FoeTach",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "PROM",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "MatChorio",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "Sent",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "Sent",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "ModeDelivery",
+        "labels": [
+            "Spontaneous Vaginal Delivery",
+            "Instrumental Delivery",
+            "Caeser before onset labour",
+            "Caeser after onset labour"
+        ],
+        "values": [
+            "SVD",
+            "ID",
+            "CSPrLab",
+            "CSPoLab"
+        ]
+    },
+    {
+        "key": "CSReason",
+        "labels": [
+            "Pre-eclampsia",
+            "Foetal Distress",
+            "Obstructed Labour",
+            "Multiple Pregnancy",
+            "Previous C/S",
+            "Other"
+        ],
+        "values": [
+            "Precla",
+            "FD",
+            "OL",
+            "MP",
+            "PreCS",
+            "O"
+        ]
+    },
+    {
+        "key": "PrevAdmiss",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "HomeDis",
+        "labels": [
+            "Yes",
+            "No",
+            "Unknown"
+        ],
+        "values": [
+            "Y",
+            "N",
+            "U"
+        ]
+    },
+    {
+        "key": "AppGestation",
+        "labels": [
+            "<24 weeks",
+            "24-28/40",
+            "29-33/40",
+            "34-37/40",
+            "Term",
+            "Post Dates"
+        ],
+        "values": [
+            "<24",
+            "24-28",
+            "29-33",
+            "34-37",
+            "T",
+            "PD"
+        ]
+    },
+    {
+        "key": "FoeNut",
+        "labels": [
+            "Wasted",
+            "Normal",
+            "Over-nourished"
+        ],
+        "values": [
+            "W",
+            "N",
+            "ON"
+        ]
+    },
+    {
+        "key": "RespSuppArr",
+        "labels": [
+            "None",
+            "Nasal Prongs oxygen FiO2<40%",
+            "Nasal Prongs oxygen FiO2 >40%",
+            "CPAP Mechanical ventilation"
+        ],
+        "values": [
+            "N",
+            "NP<40",
+            "NP>40",
+            "CPAP"
+        ]
+    },
+    {
+        "key": "Colour",
+        "labels": [
+            "Pink/normal",
+            "Pale",
+            "Polycythaemic",
+            "Jaundiced",
+            "Cyanosed"
+        ],
+        "values": [
+            "P",
+            "Pal",
+            "PolyC",
+            "J",
+            "C"
+        ]
+    },
+    {
+        "key": "Skin",
+        "labels": [
+            "Phakomatosis/Vascular malformation",
+            "Petechia/Bruising",
+            "Oedema",
+            "Meconium stained",
+            "Rash"
+        ],
+        "values": [
+            "Phak",
+            "PetBru",
+            "OED",
+            "Mec",
+            "Rash"
+        ]
+    },
+    {
+        "key": "BirthTr",
+        "labels": [
+            "Caput",
+            "Cephalohaematoma",
+            "Sub-Galeal haemorrhage",
+            "Facial nerve palsy",
+            "Brachial palsy",
+            "Body or limb bruising",
+            "Other",
+            "None"
+        ],
+        "values": [
+            "Caput",
+            "Cephal",
+            "SGHaem",
+            "FNP",
+            "BracPal",
+            "Bruis",
+            "O",
+            "N"
+        ]
+    },
+    {
+        "key": "CongAnom",
+        "labels": [
+            "No abnormalities discovered",
+            "Subtle/possible syndromic appearing",
+            "Minor congenital abnormality",
+            "major (life threatening) congenital abnormality"
+        ],
+        "values": [
+            "N",
+            "SuSyn",
+            "Min",
+            "Maj"
+        ]
+    },
+    {
+        "key": "EqAir",
+        "labels": [
+            "Yes",
+            "No"
+        ],
+        "values": [
+            "Y",
+            "N"
+        ]
+    },
+    {
+        "key": "Intub",
+        "labels": [
+            "Yes",
+            "No"
+        ],
+        "values": [
+            "Y",
+            "N"
+        ]
+    },
+    {
+        "key": "DSRR",
+        "labels": [
+            "<60 = 0",
+            "60 - 80 = 1",
+            "80+ = 2"
+        ],
+        "values": [
+            "<60",
+            "60-80",
+            "80+"
+        ]
+    },
+    {
+        "key": "DSCyan",
+        "labels": [
+            "None in room air = 0",
+            "None with oxygen = 1",
+            "Cyanosed on oxygen = 2"
+        ],
+        "values": [
+            "NonRA",
+            "NonO2",
+            "CyO"
+        ]
+    },
+    {
+        "key": "DSRetract",
+        "labels": [
+            "None = 0",
+            "Mild = 1",
+            "Severe = 2"
+        ],
+        "values": [
+            "N",
+            "M",
+            "S"
+        ]
+    },
+    {
+        "key": "DSGrunt",
+        "labels": [
+            "None = 0",
+            "Audible with stethoscope = 1",
+            "Audible without stethoscope = 2"
+        ],
+        "values": [
+            "N",
+            "AuSt",
+            "AuNSt"
+        ]
+    },
+    {
+        "key": "DSAirEnt",
+        "labels": [
+            "Good = 0",
+            "Decreased = 1",
+            "Barely Audible = 2"
+        ],
+        "values": [
+            "G",
+            "D",
+            "BA"
+        ]
+    },
+    {
+        "key": "CVS",
+        "labels": [
+            "Normal perfusion",
+            "Borderline perfusion evidence",
+            "Poor perfusion"
+        ],
+        "values": [
+            "NPerf",
+            "BPerf",
+            "PPerf"
+        ]
+    },
+    {
+        "key": "Abdomen",
+        "labels": [
+            "Distended",
+            "Scaphoid",
+            "Tender",
+            "Soft and Normal"
+        ],
+        "values": [
+            "Dist",
+            "Scap",
+            "Tend",
+            "Norm"
+        ]
+    },
+    {
+        "key": "Umbilicus",
+        "labels": [
+            "Healthy & clean",
+            "Bleeding",
+            "Red skin all around umbilicus",
+            "Meconium stained",
+            "Umbilical Hernia",
+            "Abnormal looking"
+        ],
+        "values": [
+            "Norm",
+            "Bl",
+            "Inf",
+            "Mec",
+            "H",
+            "Ab"
+        ]
+    },
+    {
+        "key": "Femorals",
+        "labels": [
+            "Palpable",
+            "Weak or absent",
+            "I am not confident feeling the femoral pulses",
+            "Difficult to feel"
+        ],
+        "values": [
+            "Present",
+            "Absent",
+            "NotCon",
+            "Diff"
+        ]
+    }
+]

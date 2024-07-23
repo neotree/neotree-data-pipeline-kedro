@@ -219,6 +219,9 @@ def create_columns(table: pd.DataFrame):
                                                  (isinstance(table['Gestation.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
                         except:
                               pass
+                  if 'BWTDis.value' in table:
+                        table['BWTDis.value'] = pd.to_numeric(table['BWTDis.value'],downcast='integer', errors='coerce')
+                        
             # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
             return table
     except Exception as e:

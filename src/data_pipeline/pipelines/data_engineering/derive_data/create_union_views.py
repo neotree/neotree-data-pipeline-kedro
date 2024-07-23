@@ -1,6 +1,6 @@
 import pandas as pd
 import json
-from conf.common.sql_functions import inject_sql,get_table_columns
+from conf.common.sql_functions import inject_sql,get_table_columns,insert_old_adm_query
 import logging
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
@@ -26,6 +26,8 @@ def union_views():
                 'joined_admissions_discharges', 'derived'), columns=["column_name", "data_type"])
 
             # Match Data Types For Admissions
+            old_new_matched_adm_col = []
+            
             for index, row in adm_cols.iterrows():
                 col_name = str(row['column_name']).strip()
                 data_type = row['data_type']
@@ -37,12 +39,17 @@ def union_views():
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};;'''
                                 inject_sql(query,"OLD ADMISSIONS")
+                            
+                            old_new_matched_adm_col.append(col_name)
+                            
                         except Exception as ex:
                             query = f'''ALTER table derived.old_smch_admissions DROP column "{col_name}" '''
                             inject_sql(query,f'''DROPPING ADMISSIONS {col_name}''')
 
             
             # Match Data Types For Discharges
+            old_new_matched_dis_col = []
+            
             for index, row in disc_cols.iterrows():
                 col_name = str(row['column_name']).strip()
                 data_type = row['data_type']
@@ -54,6 +61,9 @@ def union_views():
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"OLD DISCHARGES")
+                            
+                            old_new_matched_dis_col.append(col_name)
+                               
                         except Exception as ex:
                             query = f'''ALTER table derived.old_smch_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING DISCHARGE COLL {col_name}''')
@@ -319,13 +329,17 @@ def union_views():
             #     logging.info("new_smch_admissions is empty. No save operation performed.")
 
             try:
-                # if not new_smch_admissions.empty and old_smch_admissions.empty:
-                #     new_smch_admissions.reset_index(drop=True,inplace=True)
-                #     old_smch_admissions.reset_index(drop=True,inplace=True)
-                #     combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions],axis=0,ignore_index=True)
-                #     if not combined_adm_df.empty:   
-                if not new_smch_admissions.empty:  
-                    catalog.save('create_derived_old_new_admissions_view',new_smch_admissions)  
+                if not new_smch_admissions.empty and not old_smch_admissions.empty:
+                    new_smch_admissions.reset_index(drop=True,inplace=True)
+                    old_smch_admissions.reset_index(drop=True,inplace=True)
+                    combined_adm_df = pd.concat([new_smch_admissions],axis=0,ignore_index=True)
+                    if not combined_adm_df.empty:   
+                        catalog.save('create_derived_old_new_admissions_view',combined_adm_df) 
+                        query = insert_old_adm_query("DERIVED.OLD_NEW_ADMISSIONS_VIEW","derived.old_smch_admissions",old_new_matched_adm_col)
+                        logging.info("Adding old admissions")
+                        inject_sql(f'{query};;',"Adding old smch admissions")
+                        logging.info("Added old admissions")
+                         
             except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED ADMISSIONS")
                 logging.error(formatError(e))
@@ -343,14 +357,17 @@ def union_views():
             #     logging.info("create_derived_old_new_discharges_view is empty. No save operation performed.")
             
             try:
-                # if not new_smch_discharges.empty and old_smch_discharges.empty:
-                #     new_smch_discharges.reset_index(drop=True,inplace=True)
-                #     old_smch_discharges.reset_index(drop=True,inplace=True) 
-                #     combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges],axis=0,ignore_index=True)
-                #     if not combined_dis_df.empty:  
+                if not new_smch_discharges.empty and not old_smch_discharges.empty:
+                    new_smch_discharges.reset_index(drop=True,inplace=True)
+                    old_smch_discharges.reset_index(drop=True,inplace=True) 
+                    combined_dis_df = pd.concat([new_smch_discharges],axis=0,ignore_index=True)
+                    if not combined_dis_df.empty:   
+                        catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
                         
-                if not new_smch_discharges.empty:
-                    catalog.save('create_derived_old_new_discharges_view',new_smch_discharges)  
+                        query = insert_old_adm_query("DERIVED.old_new_discharges_view","derived.old_smch_discharges",old_new_matched_dis_col)
+                        logging.info("Adding old discharges")
+                        inject_sql(f'{query};;',"Adding old smch discharges")
+                        logging.info("Added old discharges")
             except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED DISCHARGES")
                 logging.error(formatError(e))
@@ -358,7 +375,7 @@ def union_views():
 
             # SAVE MATCHED DATA 
             try:
-                if not new_smch_matched_data.empty and old_matched_smch_data.empty:
+                if not new_smch_matched_data.empty and not old_matched_smch_data.empty:
                     #Correct UID column to suit the lower case uid in new_smch_matched_data
                     if 'UID' in old_matched_smch_data.columns:
                         old_matched_smch_data.reset_index(drop=True,inplace=True)
@@ -376,3 +393,5 @@ def union_views():
             logging.error("!!! An error occured creating union views: ")
             logging.error(ex)
             exit()
+
+ 
