@@ -67,6 +67,7 @@ def deduplicate_data_query(condition, destination_table):
                   -- first uploaded
             from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
+            AND (CASE WHEN data->'entries'->'DateAdmission'->'values'->'value'->>0 ~* '^\d{4}-\d{2}-\d{2}' THEN TRUE  ELSE FALSE END) 
             group by 1,2,3,4
             )
             select
@@ -98,6 +99,7 @@ def deduplicate_data_query(condition, destination_table):
                   -- first uploaded
             from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
+            AND (CASE WHEN unique_key ~* '^\d{4}-\d{2}-\d{2}' THEN TRUE  ELSE FALSE END)
             group by 1,2,3
             )
             select
