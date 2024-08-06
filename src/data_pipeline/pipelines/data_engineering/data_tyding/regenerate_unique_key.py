@@ -38,7 +38,7 @@ def regenerate_unique_key():
                 
                 if len(values)>0:
                     query = regenerate_unique_key_query(id,values[0])
-                    inject_sql(query,"UNIQUE-KEYS-{id}")
+                    inject_sql(query,f'''UNIQUE-KEYS- {id}''')
                     break
                          
     except Exception as ex:
