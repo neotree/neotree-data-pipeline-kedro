@@ -194,13 +194,13 @@ def read_derived_data_query(source_table):
 
 def read_data_with_no_unique_key():
     return '''
-             select id,scriptid,
+             select id,
                 "data"->'entries' as "entries", 
                 "data"->'appVersion' as "appVersion"
                 from public.clean_sessions 
 				where "data"->'entries'<> '{}' 
-               and scriptid not in ('-LfOH5fWtWEKk1yJPwfo','-LAeXX-JCxWLkIrQxVLD') and (not cleaned 
-				or unique_key not like '%-%-%')
+               and (not cleaned 
+				or (unique_key not like '%-%-%' and scriptid not in ('-LfOH5fWtWEKk1yJPwfo','-LAeXX-JCxWLkIrQxVLD')))
     
     ;;'''
 
