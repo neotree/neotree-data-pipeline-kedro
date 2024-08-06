@@ -36,10 +36,11 @@ def regenerate_unique_key():
                     matching_data = [col for col in value.columns if col.startswith(prefix)  
                              and value[col]['values']['value'][0] is not None]
                     logging.info("PWIM--"+str(id)) 
-                    logging.info(value[matching_data[0]]) 
+                    
                     if matching_data:
+                        logging.info(value[matching_data[0]]['values']['value'][0]) 
                         values.append(value[matching_data[0]]['values']['value'][0])
-                
+                    logging.info(values) 
                 if len(values)>0:
                     query = regenerate_unique_key_query(id,values[0])
                     inject_sql(query,f'''UNIQUE-KEYS- {id}''')
