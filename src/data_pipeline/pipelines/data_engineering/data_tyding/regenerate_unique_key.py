@@ -21,8 +21,6 @@ def regenerate_unique_key():
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
                 if('key' in value):
-                    logging.info("key in--") 
-                    logging.info(value) 
                     matching_rows = value[value["key"].str.startswith(prefix)]
                     item=None
                     if not matching_rows.empty:
