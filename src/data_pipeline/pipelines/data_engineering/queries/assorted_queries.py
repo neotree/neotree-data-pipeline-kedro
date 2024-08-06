@@ -193,12 +193,13 @@ def read_derived_data_query(source_table):
 
 
 def read_data_with_no_unique_key():
-    return f'''
-                select 
+    return '''
                 id,
                 "data"->'entries' as "entries",
                 "data"->'appVersion' as "appVersion"
-                from public.clean_sessions where not cleaned or unique_key not like '%-%-%';;'''
+                from public.clean_sessions 
+				where "data"->'entries'<> '{}' and (not cleaned 
+				or unique_key not like '%-%-%';;'''
 
 # SPECIAL CASE
 
