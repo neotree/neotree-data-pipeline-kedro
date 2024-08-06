@@ -217,7 +217,7 @@ old_catalog =  {
          "create_joined_admissions_discharges": SQLTableDataSet(
             table_name='joined_admissions_discharges',
             credentials=dict(con=con),
-            save_args = dict(schema='derived',if_exists='replace')
+            save_args = dict(schema='derived',if_exists='replace',on_bad_lines='skip')
          ),
 
          "create_derived_diagnoses": SQLTableDataSet(
