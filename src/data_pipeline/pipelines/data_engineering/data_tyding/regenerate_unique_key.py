@@ -12,7 +12,6 @@ def regenerate_unique_key():
     try:
         #Read Data From The Kedro Catalog
         raw_data = catalog.load('no_unique_keys_data')
-        logging.info(raw_data.head())
         for index, row in raw_data.iterrows():
            
             id = row['id']
@@ -22,6 +21,8 @@ def regenerate_unique_key():
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
                 if('key' in value):
+                    logging.info("key in--") 
+                    logging.info(value) 
                     matching_rows = value[value["key"].str.startswith(prefix)]
                     item=None
                     if not matching_rows.empty:
@@ -30,9 +31,12 @@ def regenerate_unique_key():
                     if item:
                         values.append(item)         
                     # NEW FORMAT
-                else:   
+                else: 
+                    logging.info(value)  
                     matching_data = [col for col in value.columns if col.startswith(prefix)  
                              and value[col]['values']['value'][0] is not None]
+                    logging.info("PWIM--") 
+                    logging.info(matching_data) 
                     if matching_data:
                         values.append(value[matching_data[0]]['values']['value'][0])
                 
