@@ -12,7 +12,7 @@ def regenerate_unique_key():
     try:
         #Read Data From The Kedro Catalog
         raw_data = catalog.load('no_unique_keys_data')
-        logging.info("--LENGTH----"+len(raw_data))
+        logging.info(raw_data.head())
         for index, row in raw_data.iterrows():
            
             id = row['id']
@@ -42,5 +42,5 @@ def regenerate_unique_key():
                     break
                          
     except Exception as ex:
-        logging.error("UNIQUE KEY GENERATION ERROR:-"+str(id))
+        logging.error("UNIQUE KEY GENERATION ERROR:-")
         logging.error(formatError(ex))
