@@ -198,7 +198,7 @@ def read_data_with_no_unique_key():
                 "data"->'entries' as "entries", 
                 "data"->'appVersion' as "appVersion"
                 from public.clean_sessions 
-				where unique_key not like '%-%-%' or not cleaned;;'''
+				where not cleaned;;'''
 
 # SPECIAL CASE
 
