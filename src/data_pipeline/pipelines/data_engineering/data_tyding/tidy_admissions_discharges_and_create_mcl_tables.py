@@ -607,6 +607,7 @@ def tidy_tables():
         ###################MATERNAL COMPLETENES CASE OF MALAWI###################   
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if not mat_completeness_df.empty:
+            format_date_without_timezone(adm_df,'DateAdmission.value')
             # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
             if not mat_outcomes_df.empty: 
                 previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value'],errors='coerce') >='2021-10-01']

@@ -40,8 +40,6 @@ def tidy_dynamic_tables():
                     else:
                         script_df['time_spent'] = None
                         
-                    if "DateAdmission.value" in script_df:
-                        format_date_without_timezone(script_df,'DateAdmission.value'); 
                         
                     ########### FORMAT OTHER DATES
                     # Get the date columns
