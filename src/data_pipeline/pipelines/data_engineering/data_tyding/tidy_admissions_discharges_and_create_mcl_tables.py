@@ -394,7 +394,8 @@ def tidy_tables():
             set_key_to_none(mat_outcomes_df,'Apgar5.value') 
             set_key_to_none(mat_outcomes_df,'Apgar10.value')
             set_key_to_none(mat_outcomes_df,'PregConditions.label')
-            set_key_to_none(mat_outcomes_df,'BirthDateDis.value')                 
+            set_key_to_none(mat_outcomes_df,'BirthDateDis.value') 
+            format_date_without_timezone(mat_outcomes_df,'DateAdmission.value')                
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
             mat_outcomes_df = create_columns(mat_outcomes_df)
             mat_outcomes_df= mat_outcomes_df[(mat_outcomes_df['uid'] != 'Unknown')]
@@ -607,7 +608,7 @@ def tidy_tables():
         ###################MATERNAL COMPLETENES CASE OF MALAWI###################   
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if not mat_completeness_df.empty:
-            format_date_without_timezone(adm_df,'DateAdmission.value')
+            format_date_without_timezone(mat_completeness_df,'DateAdmission.value')
             # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
             if not mat_outcomes_df.empty: 
                 previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value'],errors='coerce') >='2021-10-01']
