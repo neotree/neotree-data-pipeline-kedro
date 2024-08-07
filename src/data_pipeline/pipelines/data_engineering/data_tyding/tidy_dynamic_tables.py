@@ -36,6 +36,9 @@ def tidy_dynamic_tables():
                         format_date_without_timezone(script_df,'started_at'); 
                         format_date_without_timezone(script_df,'completed_at'); 
                         script_df['time_spent'] = (script_df['completed_at'] - script_df['started_at']).astype('timedelta64[m]')
+                    # FORMAT DATE ADMISSION FROM TEXT DATE   
+                    if"DateAdmission" in script_df:
+                        format_date_without_timezone(script_df,'DateAdmission'); 
                     else:
                         script_df['time_spent'] = None
                         
