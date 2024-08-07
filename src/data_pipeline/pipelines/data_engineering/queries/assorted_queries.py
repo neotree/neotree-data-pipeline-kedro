@@ -193,7 +193,7 @@ def read_derived_data_query(source_table):
 
 
 def read_data_with_no_unique_key():
-    return '''
+    return f'''
              select id,
                 "data"->'entries' as "entries", 
                 "data"->'appVersion' as "appVersion"
