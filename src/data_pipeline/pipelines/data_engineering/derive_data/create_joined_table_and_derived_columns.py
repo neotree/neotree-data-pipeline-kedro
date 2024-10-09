@@ -1,6 +1,7 @@
 from conf.base.catalog import catalog
 import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 
 # Import libraries
 import logging
@@ -52,6 +53,8 @@ def join_table():
                 DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip(),date_format)
                 delta_los = DateTimeDischarge -DateTimeAdmission
                 jn_adm_dis['LengthOfStay.value'].iloc[index] = delta_los.days
+                format_date_without_timezone(jn_adm_dis,'DateTimeAdmission.value')
+                format_date_without_timezone(jn_adm_dis,'DateTimeDischarge.value')
 
             else:
                 jn_adm_dis['LengthOfStay.value'].iloc[index] = None
