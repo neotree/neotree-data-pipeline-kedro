@@ -44,6 +44,11 @@ def join_table():
         
         #Length of Life and Length of Stay
         date_format = "%Y-%m-%d"
+        if (is_date(str(row['DateTimeDischarge.value']))
+                and is_date(str(row['DateTimeAdmission.value']))):
+            format_date_without_timezone(jn_adm_dis,'DateTimeAdmission.value')
+            format_date_without_timezone(jn_adm_dis,'DateTimeDischarge.value')
+            
         for index, row in jn_adm_dis.iterrows():
 
             jn_adm_dis['LengthOfStay.label'].iloc[index] ="Length of Stay"
@@ -53,9 +58,7 @@ def join_table():
                 DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip(),date_format)
                 delta_los = DateTimeDischarge -DateTimeAdmission
                 jn_adm_dis['LengthOfStay.value'].iloc[index] = delta_los.days
-                format_date_without_timezone(jn_adm_dis,'DateTimeAdmission.value')
-                format_date_without_timezone(jn_adm_dis,'DateTimeDischarge.value')
-
+                
             else:
                 jn_adm_dis['LengthOfStay.value'].iloc[index] = None
         
