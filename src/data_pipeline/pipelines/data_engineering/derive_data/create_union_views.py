@@ -335,9 +335,9 @@ def union_views():
                     combined_adm_df = pd.concat([new_smch_admissions],axis=0,ignore_index=True)
                     if not combined_adm_df.empty:   
                         catalog.save('create_derived_old_new_admissions_view',combined_adm_df) 
-                        query = insert_old_adm_query("DERIVED.OLD_NEW_ADMISSIONS_VIEW","derived.old_smch_admissions",old_new_matched_adm_col)
-                        logging.info("Adding old admissions")
-                        inject_sql(f'{query};;',"Adding old smch admissions")
+                        # query = insert_old_adm_query("DERIVED.OLD_NEW_ADMISSIONS_VIEW","derived.old_smch_admissions",old_new_matched_adm_col)
+                        # logging.info("Adding old admissions")
+                        # inject_sql(f'{query};;',"Adding old smch admissions")
                         logging.info("Added old admissions")
                          
             except Exception as e:
