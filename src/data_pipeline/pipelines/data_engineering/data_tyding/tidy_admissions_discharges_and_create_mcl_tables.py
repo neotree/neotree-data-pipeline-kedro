@@ -116,9 +116,10 @@ def tidy_tables():
         admissions_date_time_fields =[]
         if not adm_df.empty:
             adm_df.set_index(['uid'])
+            adm_df = format_date_without_timezone(adm_df,['started_at', 'completed_at','EndScriptDatetime.value','DateTimeAdmission.value'])
+            adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
               # ADD TIME SPENT TO ALL DFs
             if "started_at" in adm_df and 'completed_at' in adm_df :
-                admissions_date_time_fields.extend(['started_at', 'completed_at','EndScriptDatetime.value','DateTimeAdmission.value'])
                 adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).astype('timedelta64[m]')
             else:
                 adm_df['time_spent'] = None 
@@ -274,9 +275,7 @@ def tidy_tables():
             adm_df = create_columns(adm_df)
             adm_df= adm_df[(adm_df['uid'] != 'Unknown')]
             #Format Dates Admissions Tables
-            
-            adm_df = format_date_without_timezone(adm_df,admissions_date_time_fields)
-            adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
+        
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             #Save Derived Admissions To The DataBase Using Kedro
             
