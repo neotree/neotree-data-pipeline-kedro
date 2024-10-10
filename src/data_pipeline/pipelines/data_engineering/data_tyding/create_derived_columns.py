@@ -18,14 +18,9 @@ def create_columns(table: pd.DataFrame):
     # Create AdmissionSource = IF(ISBLANK(Admissions[AdmittedFrom]); "External Referral"; Admissions[AdmittedFrom])
      #Fix Lost Data From One Of The Published Versions
     try:
-            set_key_to_none(table,'AdmittedFrom.value')
-            set_key_to_none(table,'AdmittedFrom.label')
-            set_key_to_none(table,'ReferredFrom.label')
-            set_key_to_none(table,'ReferredFrom.value')
-            set_key_to_none(table,'ReferredFrom2.label') 
-            set_key_to_none(table,'ReferredFrom2.value')
-            set_key_to_none(table,'AgeCat.label')
-                  
+            table = set_key_to_none(table,['AdmittedFrom.value','AdmittedFrom.label','ReferredFrom.label'
+                                           ,'ReferredFrom.value','ReferredFrom2.label','ReferredFrom2.value','AgeCat.label'])
+            
             table['AdmittedFrom.value'].fillna("ER", inplace=True)
             table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
 
