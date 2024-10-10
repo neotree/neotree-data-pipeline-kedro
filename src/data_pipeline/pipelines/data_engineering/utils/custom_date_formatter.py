@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime as dt
 from .date_validator import is_date_formatable
 
-def format_date(df:pd.DataFrame,field_name):
+def format_date(df:pd.DataFrame,fields):
     """
     Return A formated Date.
 
@@ -10,13 +10,15 @@ def format_date(df:pd.DataFrame,field_name):
     :param field_name: field in dataframe
     """
     try: 
-        if field_name in df and df[field_name] is not None:
-            df[field_name] =df[field_name].map(lambda x: str(x)[:-4] if is_date_formatable(x) else None) 
-            df[field_name]=pd.to_datetime(df[field_name], errors='coerce')
+        for field_name in fields:
+            if field_name in df:
+                df[field_name] =df[field_name].map(lambda x: str(x)[:-4] if is_date_formatable(x) else None) 
+                df[field_name]=pd.to_datetime(df[field_name], errors='coerce')
+        return df
     except Exception as e:
         raise (e)
        
-def format_date_without_timezone(df,field_name):
+def format_date_without_timezone(df,fields):
     """
     Return A formated Date.
 
@@ -24,11 +26,13 @@ def format_date_without_timezone(df,field_name):
     :param field_name: field in dataframe
     """
     try: 
-        if field_name in df and df[field_name] is not None:
-            df[field_name] = df[field_name].map(lambda x: str(x)[:-4])
-            df[field_name] = pd.to_datetime(df[field_name],errors='coerce', format='%Y-%m-%dT%H:%M:%S')
-        else:
-            df[field_name]= None;
+        for field_name in fields:
+            if field_name in df:
+                df[field_name] = df[field_name].map(lambda x: str(x)[:-4] if is_date_formatable(x) else None)
+                df[field_name] = pd.to_datetime(df[field_name],errors='coerce', format='%Y-%m-%dT%H:%M:%S')
+            else:
+                df[field_name]= None;
+        return df
     except Exception as e:
         pass
 

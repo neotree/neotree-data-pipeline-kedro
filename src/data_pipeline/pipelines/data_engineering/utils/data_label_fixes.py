@@ -7,12 +7,14 @@ def format_column_as_numeric(df,fields):
         fld = f'{field}.value'
         if fld in df.columns:
             df[fld] = pd.to_numeric(df[fld], errors='coerce') 
+    return df
 
 def format_column_as_datetime(df,fields):
     for field in fields:
         fld = f'{field}.value'
         if fld in df.columns:
             df[fld] = pd.to_datetime(df[fld], errors='coerce') 
+    return df
             
 @DeprecationWarning
 def fix_neotree_oucome(value):

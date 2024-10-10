@@ -113,34 +113,19 @@ def tidy_tables():
         "... Creating normalized dataframes - one for admissions and one for discharges")
     try:
         adm_df = pd.json_normalize(adm_new_entries)
+        admissions_date_time_fields =[]
         if not adm_df.empty:
             adm_df.set_index(['uid'])
               # ADD TIME SPENT TO ALL DFs
             if "started_at" in adm_df and 'completed_at' in adm_df :
-                format_date_without_timezone(adm_df,'started_at') 
-                format_date_without_timezone(adm_df,'completed_at') 
+                admissions_date_time_fields.extend(['started_at', 'completed_at','EndScriptDatetime.value','DateTimeAdmission.value'])
                 adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).astype('timedelta64[m]')
             else:
-                adm_df['time_spent'] = None  
-            set_key_to_none(adm_df,'DateHIVtest.value')
-            set_key_to_none(adm_df,'DateHIVtest.label')
-            set_key_to_none(adm_df,'HIVtestResult.value')
-            set_key_to_none(adm_df,'HIVtestResult.label')
-            set_key_to_none(adm_df,'ANVDRLDate.value')
-            set_key_to_none(adm_df,'ANVDRLDate.label')
-            set_key_to_none(adm_df,'HAART.value')
-            set_key_to_none(adm_df,'HAART.label')
-            set_key_to_none(adm_df,'LengthHAART.value')
-            set_key_to_none(adm_df,'LengthHAART.label')
-            set_key_to_none(adm_df,'NVPgiven.value')
-            set_key_to_none(adm_df,'NVPgiven.label')
-            set_key_to_none(adm_df,'ROMlength.label')
-            set_key_to_none(adm_df,'ROMlength.value')
-            set_key_to_none(adm_df,'ROMLength.label')
-            set_key_to_none(adm_df,'ROMLength.value')
-            set_key_to_none(adm_df,'TempThermia.value')
-            set_key_to_none(adm_df,'AWGroup.value')
-        
+                adm_df['time_spent'] = None 
+            adm_df=  set_key_to_none(adm_df,['DateHIVtest.value','DateHIVtest.label','HIVtestResult.value','HIVtestResult.label',
+            'ANVDRLDate.value','ANVDRLDate.label','HAART.value','HAART.label','LengthHAART.value','LengthHAART.label',
+            'NVPgiven.value','NVPgiven.label','ROMlength.label','ROMlength.value','ROMLength.label','ROMLength.value',
+            'TempThermia.value','AWGroup.value'])
             
             # CREATE AGE CATEGORIES
             for position,admission in adm_df.iterrows():
@@ -289,10 +274,9 @@ def tidy_tables():
             adm_df = create_columns(adm_df)
             adm_df= adm_df[(adm_df['uid'] != 'Unknown')]
             #Format Dates Admissions Tables
-            format_date_without_timezone(adm_df,'DateTimeAdmission.value')
-            format_date_without_timezone(adm_df,'EndScriptDatetime.value')
-            format_date(adm_df,'DateHIVtest.value')
-            format_date(adm_df,'ANVDRLDate.value')
+            
+            adm_df = format_date_without_timezone(adm_df,admissions_date_time_fields)
+            adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             #Save Derived Admissions To The DataBase Using Kedro
             
@@ -304,7 +288,7 @@ def tidy_tables():
               'DurationLab','BloodSugarmg','AntenatalCare','BloodSugarmmol',
               'AdmissionWeight']
             
-            format_column_as_numeric(adm_df, numeric_fields)
+            adm_df = format_column_as_numeric(adm_df, numeric_fields)
     
     
             # for field in fields:
@@ -320,26 +304,19 @@ def tidy_tables():
         
         ##################################DISCHARGES SCRIPT#################################################### 
         dis_df = pd.json_normalize(dis_new_entries)
-        if not dis_df.empty:   
+        if not dis_df.empty:
+               
             dis_df.set_index(['uid'])
             if "started_at" in dis_df and 'completed_at' in dis_df :
-                format_date_without_timezone(dis_df,'started_at') 
-                format_date_without_timezone(dis_df,'completed_at') 
+                dis_df = format_date_without_timezone(dis_df,['started_at','completed_at'])
                 dis_df['time_spent'] = (dis_df['completed_at'] -dis_df['started_at']).astype('timedelta64[m]')
             else:
                 dis_df['time_spent'] = None
              #Format Dates Discharge Table
-            format_date(dis_df,'DateAdmissionDC.value')  
-            format_date(dis_df,'DateDischVitals.value')
-            format_date(dis_df,'DateDischWeight.value')
-            format_date(dis_df,'DateTimeDischarge.value')
-            format_date(dis_df,'EndScriptDatetime.value')
-            format_date(dis_df,'DateWeaned.value')
-            format_date(dis_df,'DateTimeDeath.value')
-            format_date(dis_df,'DateAdmission.value')
-            format_date(dis_df,'BirthDateDis.value')
-            format_date(dis_df,'DateHIVtest.value')
-            format_date(dis_df,'DateVDRLSameHIV.value')
+            dis_df =  format_date(dis_df,['DateAdmissionDC.value','DateDischVitals.value','DateDischWeight.value',
+                                          'DateTimeDischarge.value','EndScriptDatetime.value','DateWeaned.value',
+                                          'DateTimeDeath.value','DateAdmission.value','BirthDateDis.value','DateHIVtest.value'
+                                          ,'DateVDRLSameHIV.value'])
             
             for position,discharge in dis_df.iterrows():
                 if 'BirthWeight.value' in discharge and str(discharge['BirthWeight.value'])!='nan' and discharge['BirthWeight.value'] is not None:
@@ -378,25 +355,16 @@ def tidy_tables():
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
         if not mat_outcomes_df.empty:
             mat_outcomes_df.set_index(['uid'])
+            mat_outcomes_df=format_date_without_timezone(mat_outcomes_df,['started_at','completed_at','DateAdmission.value']) 
             if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
-                format_date_without_timezone(mat_outcomes_df,'started_at') 
-                format_date_without_timezone(mat_outcomes_df,'completed_at') 
+
                 mat_outcomes_df['time_spent'] = (mat_outcomes_df['completed_at'] - mat_outcomes_df['started_at']).astype('timedelta64[m]')
             else:
                 mat_outcomes_df['time_spent'] = None
-            
-            set_key_to_none(mat_outcomes_df,'TypeBirth.label')
-            set_key_to_none(mat_outcomes_df,'Presentation.label')
-            set_key_to_none(mat_outcomes_df,'BabyNursery.label')
-            set_key_to_none(mat_outcomes_df,'Reason.label')
-            set_key_to_none(mat_outcomes_df,'ReasonOther.label')
-            set_key_to_none(mat_outcomes_df,'CryBirth.label')
-            set_key_to_none(mat_outcomes_df,'Apgar1.value')
-            set_key_to_none(mat_outcomes_df,'Apgar5.value') 
-            set_key_to_none(mat_outcomes_df,'Apgar10.value')
-            set_key_to_none(mat_outcomes_df,'PregConditions.label')
-            set_key_to_none(mat_outcomes_df,'BirthDateDis.value') 
-            format_date_without_timezone(mat_outcomes_df,'DateAdmission.value')                
+            mat_outcomes_df =  set_key_to_none(mat_outcomes_df,['Presentation.label','BabyNursery.label','Reason.label',
+            'ReasonOther.label','CryBirth.label','Apgar1.value','Apgar5.value','Apgar10.value','PregConditions.label',
+            'BirthDateDis.value'])
+              
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
             mat_outcomes_df = create_columns(mat_outcomes_df)
             mat_outcomes_df= mat_outcomes_df[(mat_outcomes_df['uid'] != 'Unknown')]
@@ -407,18 +375,14 @@ def tidy_tables():
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
         if not vit_signs_df.empty:
             vit_signs_df.set_index(['uid'])
-
+            vit_signs_df = format_date_without_timezone(vit_signs_df,['started_at','completed_at',]) 
             if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
-                format_date_without_timezone(vit_signs_df,'started_at') 
-                format_date_without_timezone(vit_signs_df,'completed_at') 
+                   
                 vit_signs_df['time_spent'] = (vit_signs_df['completed_at']-vit_signs_df['started_at']).astype('timedelta64[m]')
             else:
                 vit_signs_df['time_spent'] = None
                  #Vital Signs Table
-            format_date(vit_signs_df,'D1Date.value')
-            format_date(vit_signs_df,'TimeTemp1.value')
-            format_date(vit_signs_df,'TimeTemp2.value')
-            format_date(vit_signs_df,'EndScriptDatetime.value')
+            vit_signs_df = format_date(vit_signs_df,['D1Date.value','TimeTemp1.value','TimeTemp2.value','EndScriptDatetime.value']) 
               #Save Derived Vital Signs To The DataBase Using Kedro 
             vit_signs_df= vit_signs_df[(vit_signs_df['uid'] != 'Unknown')]
             catalog.save('create_derived_vitalsigns',vit_signs_df)
@@ -434,9 +398,8 @@ def tidy_tables():
                                         pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S',utc=True,errors='coerce')).astype('timedelta64[h]')
             else:
                 neolab_df['BCReturnTime'] = None
+            neolab_df= format_date_without_timezone(neolab_df,['started_at','completed_at']) 
             if "started_at" in neolab_df and 'completed_at' in neolab_df :
-                format_date_without_timezone(neolab_df,'started_at') 
-                format_date_without_timezone(neolab_df,'completed_at') 
                 neolab_df['time_spent'] = (neolab_df['completed_at'] - neolab_df['started_at']).astype('timedelta64[m]')
             else:
                 neolab_df['time_spent'] = None
@@ -527,10 +490,8 @@ def tidy_tables():
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
-        
+            baseline_df = format_date_without_timezone(baseline_df,['started_at','completed_at']) 
             if "started_at" in baseline_df and 'completed_at' in baseline_df :
-                format_date_without_timezone(baseline_df,'started_at') 
-                format_date_without_timezone(baseline_df,'completed_at') 
                 baseline_df['time_spent'] = (baseline_df['completed_at'] -baseline_df['started_at']).astype('timedelta64[m]')
             else:
                 baseline_df['time_spent'] = None
@@ -572,23 +533,11 @@ def tidy_tables():
                 else:
                     baseline_df['LengthOfLife.value'].iloc[index] = None
                  # Baselines Tables
-            format_date(baseline_df,'DateTimeAdmission.value')
-            format_date(baseline_df,'DateTimeDischarge.value')
-            format_date(baseline_df,'DateTimeDeath.value')
-            set_key_to_none(baseline_df,'AWGroup.value')
-            set_key_to_none(baseline_df,'BWGroup.value') 
-            set_key_to_none(baseline_df,'AdmittedFrom.label') 
-            set_key_to_none(baseline_df,'AdmittedFrom.value') 
-            set_key_to_none(baseline_df,'ReferredFrom2.label') 
-            set_key_to_none(baseline_df,'ReferredFrom2.value') 
-            set_key_to_none(baseline_df,'ReferredFrom.label') 
-            set_key_to_none(baseline_df,'ReferredFrom.value') 
-            set_key_to_none(baseline_df,'TempThermia.label') 
-            set_key_to_none(baseline_df,'TempThermia.value')
-            set_key_to_none(baseline_df,'TempGroup.label') 
-            set_key_to_none(baseline_df,'TempGroup.value') 
-            set_key_to_none(baseline_df,'GestGroup.label') 
-            set_key_to_none(baseline_df,'GestGroup.value') 
+            baseline_df = format_date(baseline_df,['DateTimeAdmission.value','DateTimeDischarge.value','DateTimeDeath.value'])  
+            baseline_df= set_key_to_none(baseline_df,['AWGroup.value','BWGroup.value','AdmittedFrom.label'
+                                                      ,'AdmittedFrom.value','ReferredFrom2.label','ReferredFrom2.value',
+                                                      'ReferredFrom.label','ReferredFrom.value','TempThermia.label','TempThermia.value',
+                                                      'TempGroup.label','TempGroup.value','GestGroup.label','GestGroup.value'])
             ###############CREATE COLUMNS#################################
             baseline_df = create_columns(baseline_df)  
             if 'Gestation.value' in baseline_df:
@@ -609,7 +558,7 @@ def tidy_tables():
         ###################MATERNAL COMPLETENES CASE OF MALAWI###################   
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if not mat_completeness_df.empty:
-            format_date_without_timezone(mat_completeness_df,'DateAdmission.value')
+            mat_completeness_df= format_date_without_timezone(mat_completeness_df,['DateAdmission.value','DateTimeAdmission.value'])
             # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
             if not mat_outcomes_df.empty: 
                 previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value'],errors='coerce') >='2021-10-01']
