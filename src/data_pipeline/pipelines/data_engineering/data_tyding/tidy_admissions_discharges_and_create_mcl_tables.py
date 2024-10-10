@@ -140,11 +140,7 @@ def tidy_tables():
             set_key_to_none(adm_df,'ROMLength.value')
             set_key_to_none(adm_df,'TempThermia.value')
             set_key_to_none(adm_df,'AWGroup.value')
-            #Format Dates Admissions Tables
-            format_date_without_timezone(adm_df,'DateTimeAdmission.value')
-            format_date_without_timezone(adm_df,'EndScriptDatetime.value')
-            format_date(adm_df,'DateHIVtest.value')
-            format_date(adm_df,'ANVDRLDate.value')
+        
             
             # CREATE AGE CATEGORIES
             for position,admission in adm_df.iterrows():
@@ -292,6 +288,11 @@ def tidy_tables():
         # Make changes to admissions and baseline data to match fields in power bi  
             adm_df = create_columns(adm_df)
             adm_df= adm_df[(adm_df['uid'] != 'Unknown')]
+            #Format Dates Admissions Tables
+            format_date_without_timezone(adm_df,'DateTimeAdmission.value')
+            format_date_without_timezone(adm_df,'EndScriptDatetime.value')
+            format_date(adm_df,'DateHIVtest.value')
+            format_date(adm_df,'ANVDRLDate.value')
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
             #Save Derived Admissions To The DataBase Using Kedro
             
