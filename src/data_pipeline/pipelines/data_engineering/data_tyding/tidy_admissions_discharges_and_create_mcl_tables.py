@@ -367,6 +367,7 @@ def tidy_tables():
         #Save Derived Maternal Outcomes To The DataBase Using Kedro
             mat_outcomes_df = create_columns(mat_outcomes_df)
             mat_outcomes_df= mat_outcomes_df[(mat_outcomes_df['uid'] != 'Unknown')]
+            set_key_to_none(mat_outcomes_df,['TypeBirth.label','TypeBirth.value'])
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
