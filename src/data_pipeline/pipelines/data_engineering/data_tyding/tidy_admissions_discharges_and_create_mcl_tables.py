@@ -5,6 +5,7 @@ from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
+from data_pipeline.pipelines.data_engineering.utils.assorted_fixes import extract_years
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
@@ -288,6 +289,8 @@ def tidy_tables():
               'AdmissionWeight']
             
             adm_df = format_column_as_numeric(adm_df, numeric_fields)
+            if 'MatAgeYrs' in adm_df:
+                adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
     
     
             # for field in fields:
