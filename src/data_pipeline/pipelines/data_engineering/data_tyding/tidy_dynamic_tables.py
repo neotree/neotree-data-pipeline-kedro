@@ -33,8 +33,7 @@ def tidy_dynamic_tables():
                         script_df.set_index(['uid'])
                      # ADD TIME SPENT TO ALL DFs
                     if "started_at" in script_df and 'completed_at' in script_df :
-                        format_date_without_timezone(script_df,'started_at'); 
-                        format_date_without_timezone(script_df,'completed_at'); 
+                        script_df=format_date_without_timezone(script_df,['started_at','completed_at']); 
                         script_df['time_spent'] = (script_df['completed_at'] - script_df['started_at']).astype('timedelta64[m]')
                     # FORMAT DATE ADMISSION FROM TEXT DATE   
                     else:
@@ -46,7 +45,7 @@ def tidy_dynamic_tables():
                     datetime_types = ["datetime","datetime64", "datetime64[ns]", "datetimetz"]
                     date_columns = script_df.select_dtypes(include=datetime_types).columns
                     for date_column in date_columns:
-                        format_date_without_timezone(script_df,date_column);
+                        script_df= format_date_without_timezone(script_df,date_column);
                     # Now write the cleaned up admission and discharge tables back to the database
                     logging.info("... Writing the Generics to the database")
                     try:
