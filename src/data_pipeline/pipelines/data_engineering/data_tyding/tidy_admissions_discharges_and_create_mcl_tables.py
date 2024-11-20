@@ -276,8 +276,7 @@ def tidy_tables():
             adm_df = create_columns(adm_df)
             adm_df= adm_df[(adm_df['uid'] != 'Unknown')]
             #Format Dates Admissions Tables
-        
-            adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_")
+            adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_", regex=True)
             #Save Derived Admissions To The DataBase Using Kedro
             
             # fomarting columns
