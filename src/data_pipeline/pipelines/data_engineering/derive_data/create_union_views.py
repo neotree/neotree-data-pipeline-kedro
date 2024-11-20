@@ -189,10 +189,10 @@ def union_views():
                     old_smch_admissions['Temperature.value'] = pd.to_numeric(old_smch_admissions['Temperature.value'],downcast='integer', errors='coerce')
            
                 
-                format_date(old_smch_admissions,'DateTimeAdmission.value')
-                format_date(old_smch_admissions,'EndScriptDatetime.value')
-                format_date(old_smch_admissions,'DateHIVtest.value')
-                format_date(old_smch_admissions,'ANVDRLDate.value')
+                old_smch_admissions=format_date(old_smch_admissions,['DateTimeAdmission.value',
+                                                                    'EndScriptDatetime.value',
+                                                                      'DateHIVtest.value',
+                                                                      'ANVDRLDate.value'])
 
 
             if old_smch_discharges  is not None and not old_smch_discharges.empty:
@@ -204,15 +204,16 @@ def union_views():
                     key_change(old_smch_discharges,discharge,position,'GestBirth.value','Gestation.value')
                     key_change(old_smch_discharges,discharge,position,'PresComp.value','AdmReason.value')
                 #Format Dates Discharge Table
-                format_date(old_smch_discharges,'DateAdmissionDC.value')  
-                format_date(old_smch_discharges,'DateDischVitals.value')
-                format_date(old_smch_discharges,'DateDischWeight.value')
-                format_date(old_smch_discharges,'DateTimeDischarge.value')
-                format_date(old_smch_discharges,'EndScriptDatetime.value')
-                format_date(old_smch_discharges,'DateWeaned.value')
-                format_date(old_smch_discharges,'DateTimeDeath.value')
-                format_date(old_smch_discharges,'DateAdmission.value')
-                format_date(old_smch_discharges,'BirthDateDis.value')
+                old_smch_discharges = format_date(old_smch_discharges,['DateAdmissionDC.value',
+                                                                      'DateDischVitals.value'
+                                                                      ,'DateDischWeight.value',
+                                                                      'DateDischWeight.value',
+                                                                      'DateTimeDischarge.value',
+                                                                      'EndScriptDatetime.value',
+                                                                      'DateWeaned.value',
+                                                                      'DateTimeDeath.value',
+                                                                      'DateAdmission.value',
+                                                                       'BirthDateDis.value'])
 
             if old_matched_smch_data  is not None and not old_matched_smch_data.empty:
                 for position,matched_admission in old_matched_smch_data.iterrows():
@@ -301,20 +302,19 @@ def union_views():
                 if 'BirthWeight.value_discharge' in old_matched_smch_data:
                     old_matched_smch_data['BirthWeight.value_discharge'] = pd.to_numeric(old_matched_smch_data['BirthWeight.value_discharge'],downcast='integer', errors='coerce')
                     
-                format_date(old_matched_smch_data,'DateTimeAdmission.value')
-                format_date(old_matched_smch_data,'EndScriptDatetime.value')
-                format_date(old_matched_smch_data,'DateHIVtest.value')
-                format_date(old_matched_smch_data,'ANVDRLDate.value')
-                #Format Dates Discharge Table
-                format_date(old_matched_smch_data,'DateAdmissionDC.value')  
-                format_date(old_matched_smch_data,'DateDischVitals.value')
-                format_date(old_matched_smch_data,'DateDischWeight.value')
-                format_date(old_matched_smch_data,'DateTimeDischarge.value')
-                format_date(old_matched_smch_data,'EndScriptDatetime.value')
-                format_date(old_matched_smch_data,'DateWeaned.value')
-                format_date(old_matched_smch_data,'DateTimeDeath.value')
-                format_date(old_matched_smch_data,'DateAdmission.value')
-                format_date(old_matched_smch_data,'BirthDateDis.value')
+                old_matched_smch_data= format_date(old_matched_smch_data,['DateTimeAdmission.value',
+                                                                         'EndScriptDatetime.value',
+                                                                           'DateHIVtest.value',
+                                                                           'ANVDRLDate.value',
+                                                                           'DateAdmissionDC.value',
+                                                                           'DateDischVitals.value',
+                                                                           'DateDischWeight.value',
+                                                                           'DateTimeDischarge.value',
+                                                                           'EndScriptDatetime.value',
+                                                                           'DateWeaned.value',
+                                                                           'DateTimeDeath.value',
+                                                                           'DateAdmission.value',
+                                                                           'BirthDateDis.value'])
             # SAVE OLD NEW ADMISSIONS  
  
             # Assuming new_smch_admissions is a DataFrame

@@ -45,8 +45,7 @@ def join_table():
         #Length of Life and Length of Stay
         date_format = "%Y-%m-%d"
 
-        format_date_without_timezone(jn_adm_dis,'DateTimeAdmission.value')
-        format_date_without_timezone(jn_adm_dis,'DateTimeDischarge.value')
+        jn_adm_dis=format_date_without_timezone(jn_adm_dis,['DateTimeAdmission.value','DateTimeDischarge.value'])
 
         for index, row in jn_adm_dis.iterrows():
 

@@ -21,7 +21,7 @@ def deduplicate_data(data_import_output):
             
             regenerate_unique_key()
             
-            fix_data_errors()
+            # fix_data_errors()
             
             if('data_fix' in params and str(params['data_fix']).lower()=='true'):
                 logging.info("************FIXING ADM LABELS******************************")
