@@ -1,7 +1,8 @@
-from conf.base.catalog import catalog
+from conf.base.catalog import catalog,params
 import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
+
 
 # Import libraries
 import logging
@@ -31,8 +32,11 @@ def join_table():
     try:
         
         # join admissions and discharges using uid and facility
-        
-        jn_adm_dis = adm_df.merge(dis_df, how='left', on=['uid','facility'],suffixes=('','_discharge'))
+        jn_adm_dis = pd.DataFrame()
+        if ('country' in params and str(params['country']).lower()) =='zimbabwe':
+            jn_adm_dis = adm_df.merge(dis_df,how='inner',on=['uid', 'facility'],suffixes=('', '_discharge'))
+        else:
+            jn_adm_dis = adm_df.merge(dis_df, how='left', on=['uid','facility'],suffixes=('','_discharge'))
 
         if 'Gestation.value' in jn_adm_dis:
             jn_adm_dis['Gestation.value'] =  pd.to_numeric(jn_adm_dis['Gestation.value'],downcast='integer', errors='coerce')
