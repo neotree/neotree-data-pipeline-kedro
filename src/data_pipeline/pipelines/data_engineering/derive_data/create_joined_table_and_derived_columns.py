@@ -34,11 +34,6 @@ def join_table():
         
         jn_adm_dis = adm_df.merge(dis_df, how='left', on=['uid','facility'],suffixes=('','_discharge'))
 
-        # jn_adm_dis['LengthOfStay.value'] = None
-        # jn_adm_dis['LengthOfStay.label'] = None
-        # jn_adm_dis['LengthOfLife.value'] = None
-        # jn_adm_dis['LengthOfLife.label'] = None
-
         if 'Gestation.value' in jn_adm_dis:
             jn_adm_dis['Gestation.value'] =  pd.to_numeric(jn_adm_dis['Gestation.value'],downcast='integer', errors='coerce')
         
