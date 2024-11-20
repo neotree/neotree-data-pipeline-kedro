@@ -55,7 +55,7 @@ def join_table():
             else:
                 jn_adm_dis.loc[index,'LengthOfStay.value'] = None
         
-            jn_adm_dis['LengthOfLife.label'].iloc[index] ="Length of Life"
+            jn_adm_dis.loc[index,'LengthOfLife.label'] ="Length of Life"
             if 'DateTimeDeath.value' in row and is_date_formatable(str(row['DateTimeDeath.value']).strip()):
                
                 DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:10].strip(), date_format)

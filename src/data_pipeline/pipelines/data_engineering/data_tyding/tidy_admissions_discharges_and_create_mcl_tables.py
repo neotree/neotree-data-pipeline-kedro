@@ -514,26 +514,26 @@ def tidy_tables():
             date_format = "%Y-%m-%d"
             for index, row in baseline_df.iterrows():
 
-                baseline_df['LengthOfStay.label'].iloc[index] ="Length of Stay"
+                baseline_df.loc[index,'LengthOfStay.label'] ="Length of Stay"
                 if (is_date(str(row['DateTimeDischarge.value']))
                     and is_date(str(row['DateTimeAdmission.value']))):
                     DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:10].strip().replace('T',''),date_format)
                     DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip().replace('T',''),date_format)
                     delta_los = DateTimeDischarge-DateTimeAdmission
-                    baseline_df['LengthOfStay.value'].iloc[index] = delta_los.days
+                    baseline_df.loc[index,'LengthOfStay.value'] = delta_los.days
 
                 else:
-                    baseline_df['LengthOfStay.value'].iloc[index] = None
+                    baseline_df.loc[index,'LengthOfStay.value']= None
             
-                baseline_df['LengthOfLife.label'].iloc[index] ="Length of Life"
+                baseline_df.loc[index,'LengthOfLife.label'] ="Length of Life"
                 if 'DateTimeDeath.value' in row and (is_date(str(row['DateTimeDeath.value']))
                     and is_date(str(row['DateTimeAdmission.value']))): 
                     DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:10].strip().replace('T',''), date_format)
                     DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip().replace('T',''), date_format)
                     delta_lol = DateTimeDeath - DateTimeAdmission
-                    baseline_df['LengthOfLife.value'].iloc[index] = delta_lol.days
+                    baseline_df.loc[index,'LengthOfLife.value']= delta_lol.days
                 else:
-                    baseline_df['LengthOfLife.value'].iloc[index] = None
+                    baseline_df.loc[index,'LengthOfLife.value'] = None
                  # Baselines Tables
             baseline_df = format_date(baseline_df,['DateTimeAdmission.value','DateTimeDischarge.value','DateTimeDeath.value'])  
             baseline_df= set_key_to_none(baseline_df,['AWGroup.value','BWGroup.value','AdmittedFrom.label'
