@@ -42,8 +42,8 @@ def join_table():
 
         # Handle cases where discharge Date is null
         # Separate rows with non-null and null Dates in dis_df
-        dis_df_with_date = dis_df[dis_df['Date'].notna()]
-        dis_df_without_date = dis_df[dis_df['Date'].isna()]
+        dis_df_with_date = dis_df[dis_df['Date_only'].notna()]
+        dis_df_without_date = dis_df[dis_df['Date_only'].isna()]
 
         if ('country' in params and str(params['country']).lower()) =='zimbabwe':
             jn_adm_dis = adm_df.merge(dis_df,how='inner',on=['uid', 'facility'],suffixes=('', '_discharge'))
