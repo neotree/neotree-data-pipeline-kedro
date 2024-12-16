@@ -45,47 +45,45 @@ def join_table():
         dis_df_with_date = dis_df[dis_df['Date_only'].notna()]
         dis_df_without_date = dis_df[dis_df['Date_only'].isna()]
 
-        # if ('country' in params and str(params['country']).lower()) =='zimbabwe':
-        #     jn_adm_dis = adm_df.merge(dis_df,how='inner',on=['uid', 'facility'],suffixes=('', '_discharge'))
+        if ('country' in params and str(params['country']).lower()) =='zimbabwe':
+            # Merge for non-null Dates (exact match)
+            merged_with_date = adm_df.merge(
+            dis_df_with_date, 
+            how='inner', 
+            on=['uid', 'facility','Date_only'], 
+            suffixes=('', '_discharge')
+            )
+            merged_without_date = adm_df.merge(
+            dis_df_without_date, 
+            how='inner', 
+            on=['uid', 'facility'], 
+            suffixes=('', '_discharge')
+            )
+            # Combine the results
+            jn_adm_dis = pd.concat([merged_with_date, merged_without_date]).drop_duplicates()
 
-        #     # Merge for non-null Dates (exact match)
-        #     merged_with_date = adm_df.merge(
-        #     dis_df_with_date, 
-        #     how='inner', 
-        #     on=['uid', 'facility','Date_only'], 
-        #     suffixes=('', '_discharge')
-        #     )
-        #     merged_without_date = adm_df.merge(
-        #     dis_df_without_date, 
-        #     how='inner', 
-        #     on=['uid', 'facility'], 
-        #     suffixes=('', '_discharge')
-        #     )
-        #     # Combine the results
-        #     jn_adm_dis = pd.concat([merged_with_date, merged_without_date]).drop_duplicates()
+            # Drop helper columns if needed
+            jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
-        #     # Drop helper columns if needed
-        #     jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'])
+        else:
+            # Merge for non-null Dates (exact match)
+            merged_with_date = adm_df.merge(
+            dis_df_with_date, 
+            how='left', 
+            on=['uid', 'facility','Date_only'], 
+            suffixes=('', '_discharge')
+            )
+            merged_without_date = adm_df.merge(
+            dis_df_without_date, 
+            how='left', 
+            on=['uid', 'facility'], 
+            suffixes=('', '_discharge')
+            )
+            # Combine the results
+            jn_adm_dis = pd.concat([merged_with_date, merged_without_date]).drop_duplicates()
 
-        # else:
-        #     # Merge for non-null Dates (exact match)
-        #     merged_with_date = adm_df.merge(
-        #     dis_df_with_date, 
-        #     how='left', 
-        #     on=['uid', 'facility','Date_only'], 
-        #     suffixes=('', '_discharge')
-        #     )
-        #     merged_without_date = adm_df.merge(
-        #     dis_df_without_date, 
-        #     how='left', 
-        #     on=['uid', 'facility'], 
-        #     suffixes=('', '_discharge')
-        #     )
-        #     # Combine the results
-        #     jn_adm_dis = pd.concat([merged_with_date, merged_without_date]).drop_duplicates()
-
-        #     # Drop helper columns if needed
-        #     jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'])
+            # Drop helper columns if needed
+            jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
         if 'Gestation.value' in jn_adm_dis:
             jn_adm_dis['Gestation.value'] =  pd.to_numeric(jn_adm_dis['Gestation.value'],downcast='integer', errors='coerce')
