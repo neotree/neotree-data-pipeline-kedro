@@ -53,7 +53,7 @@ def join_table():
             suffixes=('', '_discharge')
             )
             # Drop helper columns if needed
-            jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'],inplace=True)
+            jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
         else:
             # Merge for non-null Dates (exact match)
@@ -64,7 +64,7 @@ def join_table():
             suffixes=('', '_discharge')
             )
             # Drop helper columns if needed
-            jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'],inplace=True)
+            jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
         if 'Gestation.value' in jn_adm_dis:
             jn_adm_dis['Gestation.value'] =  pd.to_numeric(jn_adm_dis['Gestation.value'],downcast='integer', errors='coerce')
