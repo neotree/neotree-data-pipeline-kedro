@@ -43,45 +43,26 @@ def join_table():
         # Handle cases where discharge Date is null
         # Separate rows with non-null and null Dates in dis_df
         dis_df_with_date = dis_df[dis_df['Date_only'].notna()]
-        dis_df_without_date = dis_df[dis_df['Date_only'].isna()]
 
         if ('country' in params and str(params['country']).lower()) =='zimbabwe':
             # Merge for non-null Dates (exact match)
-            merged_with_date = adm_df.merge(
+            jn_adm_dis = adm_df.merge(
             dis_df_with_date, 
             how='inner', 
             on=['uid', 'facility','Date_only'], 
             suffixes=('', '_discharge')
             )
-            merged_without_date = adm_df.merge(
-            dis_df_without_date, 
-            how='inner', 
-            on=['uid', 'facility'], 
-            suffixes=('', '_discharge')
-            )
-            # Combine the results
-            jn_adm_dis = pd.concat([merged_with_date, merged_without_date]).drop_duplicates()
-
             # Drop helper columns if needed
             jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
         else:
             # Merge for non-null Dates (exact match)
-            merged_with_date = adm_df.merge(
+            jn_adm_dis = adm_df.merge(
             dis_df_with_date, 
             how='left', 
             on=['uid', 'facility','Date_only'], 
             suffixes=('', '_discharge')
             )
-            merged_without_date = adm_df.merge(
-            dis_df_without_date, 
-            how='left', 
-            on=['uid', 'facility'], 
-            suffixes=('', '_discharge')
-            )
-            # Combine the results
-            jn_adm_dis = pd.concat([merged_with_date, merged_without_date]).drop_duplicates()
-
             # Drop helper columns if needed
             jn_adm_dis = jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
