@@ -118,11 +118,11 @@ if hospital_scripts:
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
                      script_case = case_object[0][script_name]  
-                  read_query = read_deduplicated_data_query(script_case,condition,dedup_destination)
+                  read_query = read_deduplicated_data_query(script_case,condition,dedup_destination,script_name)
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
                                  credentials=dict(con=con),
-                                 save_args = dict(schema='derived',if_exists='replace')
+                                 save_args = dict(schema='derived',if_exists='append',chunksize=1000)
                                  )
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
                   read_table = f'''read_{script_name}'''
@@ -149,8 +149,8 @@ read_old_smch_admissions = read_old_smch_admissions_query()
 read_old_smch_discharges = read_old_smch_discharges_query()
 read_old_smch_matched_data = read_old_smch_matched_view_query()
 read_new_smch_matched = read_new_smch_matched_query()
-derived_admissions = read_derived_data_query('admissions')
-derived_discharges = read_derived_data_query('discharges')
+derived_admissions = read_derived_data_query('admissions','joined_admissions_discharges')
+derived_discharges = read_derived_data_query('discharges','joined_admissions_discharges')
 
 #DATA CLEANUP QUERIES
 get_duplicate_maternal_data = get_duplicate_maternal_query()
@@ -217,7 +217,7 @@ old_catalog =  {
          "create_joined_admissions_discharges": SQLTableDataSet(
             table_name='joined_admissions_discharges',
             credentials=dict(con=con),
-            save_args = dict(schema='derived',if_exists='replace')
+            save_args = dict(schema='derived',if_exists='append')
          ),
 
          "create_derived_diagnoses": SQLTableDataSet(

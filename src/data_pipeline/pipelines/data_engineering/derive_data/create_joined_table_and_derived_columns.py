@@ -44,27 +44,27 @@ def join_table():
         # Separate rows with non-null and null Dates in dis_df
         dis_df_with_date = dis_df[dis_df['Date_only'].notna()]
 
-        if ('country' in params and str(params['country']).lower()) =='zimbabwe':
-            # Merge for non-null Dates (exact match)
-            jn_adm_dis = adm_df.merge(
-            dis_df_with_date, 
-            how='inner', 
-            on=['uid', 'facility','Date_only'], 
-            suffixes=('', '_discharge')
-            )
-            # Drop helper columns if needed
-            jn_adm_dis.drop(columns=['Date_only'],inplace=True)
+        # if ('country' in params and str(params['country']).lower()) =='zimbabwe':
+        # Merge for non-null Dates (exact match)
+        jn_adm_dis = adm_df.merge(
+        dis_df_with_date, 
+        how='inner', 
+        on=['uid', 'facility','Date_only'], 
+        suffixes=('', '_discharge')
+        )
+        # Drop helper columns if needed
+        jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
-        else:
-            # Merge for non-null Dates (exact match)
-            jn_adm_dis = adm_df.merge(
-            dis_df_with_date, 
-            how='left', 
-            on=['uid', 'facility','Date_only'], 
-            suffixes=('', '_discharge')
-            )
-            # Drop helper columns if needed
-            jn_adm_dis.drop(columns=['Date_only'],inplace=True)
+        # else:
+        #     # Merge for non-null Dates (exact match)
+        #     jn_adm_dis = adm_df.merge(
+        #     dis_df_with_date, 
+        #     how='left', 
+        #     on=['uid', 'facility','Date_only'], 
+        #     suffixes=('', '_discharge')
+        #     )
+        #     # Drop helper columns if needed
+        #     jn_adm_dis.drop(columns=['Date_only'],inplace=True)
 
         if 'Gestation.value' in jn_adm_dis:
             jn_adm_dis['Gestation.value'] =  pd.to_numeric(jn_adm_dis['Gestation.value'],downcast='integer', errors='coerce')
