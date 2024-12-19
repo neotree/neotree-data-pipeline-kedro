@@ -190,16 +190,16 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
 
     sql = f'''
             select 
-            uid,
-            ingested_at,
-            "data"->'appVersion' as "appVersion",
-            "data"->'scriptVersion' as "scriptVersion",
-            "data"->'started_at' as "started_at",
-            "data"->'completed_at' as "completed_at",
-            "data"->'entries' as "entries",
-            unique_key
+            cs.uid,
+            cs.ingested_at,
+            cs."data"->'appVersion' as "appVersion",
+            cs."data"->'scriptVersion' as "scriptVersion",
+            cs."data"->'started_at' as "started_at",
+            cs."data"->'completed_at' as "completed_at",
+            cs."data"->'entries' as "entries",
+            cs.unique_key
             {case_condition}
-            from {source_table} where scriptid {where_condition} and uid!='null' {condition};;
+            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' {condition};;
    
             '''
     return sql
