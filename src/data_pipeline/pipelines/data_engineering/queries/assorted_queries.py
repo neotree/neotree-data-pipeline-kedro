@@ -205,7 +205,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(destination_table) :
-    return   f''' and cs.uid NOT IN (SELECT ds.uid FROM derived.{destination_table} ds where cs.unique_key=cs.unique_key)'''
+    return   f''' and cs.uid NOT IN (SELECT ds.uid FROM derived.{destination_table} ds where cs.unique_key=ds.unique_key)'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
