@@ -216,7 +216,7 @@ def read_derived_data_query(source_table,destination_table=None):
 
     return f'''
                 select 
-                    cs
+                    *
                 from derived.{source_table} cs where cs.uid!='null' {condition};;
             '''
 
