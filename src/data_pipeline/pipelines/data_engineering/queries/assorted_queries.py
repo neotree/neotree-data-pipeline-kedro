@@ -101,7 +101,7 @@ def deduplicate_data_query(condition, destination_table):
                         month,
                         data
                         )'''
-            condition = script_condition+ f''' and NOT EXIST (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
+            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
             
         return f'''{operation}
             (
