@@ -101,7 +101,7 @@ def deduplicate_data_query(condition, destination_table):
                         data
                         )'''
             condition = condition+ f''' and uid IN (SELECT uid from public.clean_sessions ps WHERE 
-            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ts.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '''
+            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ps.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '''
             
         return f'''{operation}
             (
