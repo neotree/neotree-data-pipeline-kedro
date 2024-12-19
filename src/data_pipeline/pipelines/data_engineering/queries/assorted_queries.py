@@ -101,7 +101,7 @@ def deduplicate_data_query(condition, destination_table):
                         data
                         )'''
             condition = condition+ f''' and uid IN (SELECT ps.uid from public.clean_sessions ps WHERE 
-            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ps.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '''
+            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=tt.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '''
             
         return f'''{operation}
             (
@@ -206,7 +206,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
 
 def get_dynamic_condition(source_table,destination_table) :
     return   f''' and uid IN (SELECT ps.uid from {source_table} ps WHERE 
-            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ps.uid and ps.unique_key=tt.unique_key))'''
+            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=tt.uid and ps.unique_key=tt.unique_key))'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
