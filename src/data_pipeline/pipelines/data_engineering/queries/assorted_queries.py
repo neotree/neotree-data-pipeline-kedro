@@ -89,6 +89,7 @@ def deduplicate_data_query(condition, destination_table):
         exists= table_exists(schema,table)
         operation = f''' drop table if exists {destination_table} cascade;;
             create table {destination_table} as '''
+        script_condition=condition
         if(exists):
             operation= f''' INSERT INTO {destination_table} (
                         scriptid,
@@ -100,16 +101,16 @@ def deduplicate_data_query(condition, destination_table):
                         month,
                         data
                         )'''
-            condition = condition+ f''' and uid NOT IN (SELECT uid FROM {destination_table}) '''
+            condition = script_condition+ f''' and cs.uid NOT IN (SELECT ds.uid FROM {destination_table} ds) '''
             
         return f'''{operation}
             (
             with earliest_record as (
             select
-            scriptid,
-            uid, 
-            unique_key,
-            max(id) as id -- This takes the last upload 
+            cs.scriptid,
+            cs.uid, 
+            cs.unique_key,
+            max(cs.id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
@@ -135,7 +136,7 @@ def deduplicate_data_query(condition, destination_table):
         end as month,
             data
             from earliest_record join clean_sessions sessions
-            on earliest_record.id = sessions.id where sessions.scriptid {condition}
+            on earliest_record.id = sessions.id where sessions.scriptid {script_condition}
             );;
             '''
 
@@ -204,7 +205,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(destination_table) :
-    return   f''' and uid NOT IN (SELECT uid FROM {destination_table})'''
+    return   f''' and cs.uid NOT IN (SELECT ds.uid FROM {destination_table} ds)'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
@@ -215,8 +216,8 @@ def read_derived_data_query(source_table,destination_table=None):
 
     return f'''
                 select 
-                    *
-                from derived.{source_table} where uid!='null {condition};;
+                    cs
+                from derived.{source_table} cs where cs.uid!='null {condition};;
             '''
 
 
