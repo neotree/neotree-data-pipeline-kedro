@@ -100,8 +100,7 @@ def deduplicate_data_query(condition, destination_table):
                         month,
                         data
                         )'''
-            condition = condition+ f''' and cs.uid IN (SELECT ps.uid from public.clean_sessions ps WHERE 
-            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=tt.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '''
+            condition = condition+ f''' and uid NOT IN (SELECT uid FROM {destination_table}) '''
             
         return f'''{operation}
             (
@@ -115,7 +114,7 @@ def deduplicate_data_query(condition, destination_table):
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.clean_sessions cs
-            where scriptid {condition} -- only pull out records for the specified script
+            where cs.scriptid {condition} -- only pull out records for the specified script
             group by 1,2,3
             )
             select
@@ -154,7 +153,7 @@ def deduplicate_baseline_query(condition):
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
-            from public.clean_sessions cs
+            from public.clean_sessions
             where scriptid {condition} -- only pull out records for the specified script
             group by 1,2,3
             )
@@ -204,16 +203,15 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             '''
     return sql
 
-def get_dynamic_condition(source_table,destination_table) :
-    return   f''' and cs.uid IN (SELECT ps.uid from {source_table} ps WHERE 
-            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=tt.uid and ps.unique_key=tt.unique_key))'''
+def get_dynamic_condition(destination_table) :
+    return   f''' and uid NOT IN (SELECT uid FROM {destination_table})'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
     if destination_table:
         exists = table_exists('derived',destination_table)
         if(exists):
-            condition =get_dynamic_condition(source_table,destination_table)
+            condition =get_dynamic_condition(destination_table)
 
     return f'''
                 select 
