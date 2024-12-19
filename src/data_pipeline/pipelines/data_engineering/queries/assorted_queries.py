@@ -100,7 +100,7 @@ def deduplicate_data_query(condition, destination_table):
                         month,
                         data
                         )'''
-            condition = condition+ f''' and uid IN (SELECT ps.uid from public.clean_sessions ps WHERE 
+            condition = condition+ f''' and cs.uid IN (SELECT ps.uid from public.clean_sessions ps WHERE 
             NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=tt.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '''
             
         return f'''{operation}
@@ -114,7 +114,7 @@ def deduplicate_data_query(condition, destination_table):
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
-            from public.clean_sessions
+            from public.clean_sessions cs
             where scriptid {condition} -- only pull out records for the specified script
             group by 1,2,3
             )
@@ -154,7 +154,7 @@ def deduplicate_baseline_query(condition):
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
-            from public.clean_sessions
+            from public.clean_sessions cs
             where scriptid {condition} -- only pull out records for the specified script
             group by 1,2,3
             )
@@ -205,7 +205,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(source_table,destination_table) :
-    return   f''' and uid IN (SELECT ps.uid from {source_table} ps WHERE 
+    return   f''' and cs.uid IN (SELECT ps.uid from {source_table} ps WHERE 
             NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=tt.uid and ps.unique_key=tt.unique_key))'''
 
 def read_derived_data_query(source_table,destination_table=None):
