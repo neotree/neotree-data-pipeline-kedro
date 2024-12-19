@@ -87,10 +87,10 @@ def deduplicate_data_query(condition, destination_table):
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
         exists= table_exists(schema,table)
-        operation = f'drop table if exists {destination_table} cascade;;
-            create table {destination_table} as'
+        operation = f''' drop table if exists {destination_table} cascade;;
+            create table {destination_table} as '''
         if(exists):
-            operation= f' INSERT INTO {destination_table} (
+            operation= f''' INSERT INTO {destination_table} (
                         scriptid,
                         uid,
                         id,
@@ -99,9 +99,9 @@ def deduplicate_data_query(condition, destination_table):
                         year,
                         month,
                         data
-                        )'
-            condition = condition+ f' and uid IN (SELECT uid from public.clean_sessions ps WHERE 
-            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ts.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '
+                        )'''
+            condition = condition+ f''' and uid IN (SELECT uid from public.clean_sessions ps WHERE 
+            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ts.uid and ps.unique_key=tt.unique_key and ps.scriptid=tt.scriptid)) '''
             
         return f'''{operation}
             (
@@ -205,8 +205,8 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(source_table,destination_table) :
-    return   f' and uid IN (SELECT uid from {source_table} ps WHERE 
-            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ts.uid and ps.unique_key=tt.unique_key))'
+    return   f''' and uid IN (SELECT uid from {source_table} ps WHERE 
+            NOT EXISTS (SELECT 1 FROM {destination_table} tt WHERE ps.uid=ts.uid and ps.unique_key=tt.unique_key))'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
@@ -218,7 +218,7 @@ def read_derived_data_query(source_table,destination_table=None):
     return f'''
                 select 
                     *
-                from derived.{source_table} where uid!='null {condition}';;
+                from derived.{source_table} where uid!='null {condition};;
             '''
 
 
