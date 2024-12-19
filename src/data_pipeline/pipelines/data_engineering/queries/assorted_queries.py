@@ -185,7 +185,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     condition =''
     exists = table_exists('derived',destination_table)
     if exists:
-       condition= get_dynamic_condition(source_table,destination_table)
+       condition= get_dynamic_condition(destination_table)
 
     sql = f'''
             select 
