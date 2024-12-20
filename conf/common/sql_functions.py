@@ -92,9 +92,8 @@ def insert_old_adm_query(target_table, source_table, columns):
     return insert_select_statement
     
 def create_new_columns(table_name,schema,columns):
-    for column in columns:
-        col_type = str(column['type'])
-            # Map pandas data types to PostgreSQL types
+    for column,col_type in columns:
+       
         if col_type == "object":
             sql_type = "TEXT"
         elif "float" in col_type:
@@ -106,5 +105,5 @@ def create_new_columns(table_name,schema,columns):
         else:
             sql_type = "TEXT" 
 
-        alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "{column['name']}" {sql_type};;'
-        inject_sql(alter_query,f'ADD {column['name']} ON  "{schema}"."{table_name}"')
+        alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "{column}" {sql_type};;'
+        inject_sql(alter_query,f'ADD {column} ON  "{schema}"."{table_name}"')
