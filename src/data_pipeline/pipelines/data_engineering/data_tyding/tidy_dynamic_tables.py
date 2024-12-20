@@ -3,7 +3,7 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values
 from .explode_mcl_columns import explode_column
 from conf.base.catalog import catalog,new_scripts
-from conf.common.sql_functions import create_new_columns,get_table_columns
+from conf.common.sql_functions import create_new_columns,get_table_column_names
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 
@@ -56,7 +56,7 @@ def tidy_dynamic_tables():
                             script_df.columns = script_df.columns.str.replace(r"[()-]", "_",regex=True)
                             catalog_save_name = f'''create_derived_{script}'''
                             if table_exists('derived','maternity_completeness'):
-                                cols = pd.DataFrame(get_table_columns(f'{script}', 'derived'), columns=["column_name"])
+                                cols = pd.DataFrame(get_table_column_names(f'{script}', 'derived'), columns=["column_name"])
                                 new_columns = set(script_df.columns) - set(cols.columns) 
                       
                                 if new_columns:

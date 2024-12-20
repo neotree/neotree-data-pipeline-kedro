@@ -3,7 +3,7 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
-from conf.common.sql_functions import create_new_columns,get_table_columns
+from conf.common.sql_functions import create_new_columns,get_table_column_names
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
@@ -292,7 +292,7 @@ def tidy_tables():
                 adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
             #Check For Addition of New Columns
             if table_exists('derived','admissions'):
-                adm_cols = pd.DataFrame(get_table_columns('admissions', 'derived'), columns=["column_name"])
+                adm_cols = pd.DataFrame(get_table_column_names('admissions', 'derived'))
                 new_adm_columns = set(adm_df.columns) - set(adm_cols.columns) 
                       
                 if new_adm_columns:
@@ -353,7 +353,7 @@ def tidy_tables():
             dis_df= dis_df[(dis_df['uid'] != 'Unknown')]
             #Add New Columns
             if table_exists('derived','discharges'):
-                disc_cols = pd.DataFrame(get_table_columns('discharges', 'derived'), columns=["column_name"])
+                disc_cols = pd.DataFrame(get_table_column_names('discharges', 'derived'))
                 new_disc_columns = set(dis_df.columns) - set(disc_cols.columns) 
                       
                 if new_disc_columns:
@@ -402,7 +402,7 @@ def tidy_tables():
               #Save Derived Vital Signs To The DataBase Using Kedro 
             vit_signs_df= vit_signs_df[(vit_signs_df['uid'] != 'Unknown')]
             if table_exists('derived','vitalsigns'):
-                cols = pd.DataFrame(get_table_columns('vitalsigns', 'derived'), columns=["column_name"])
+                cols = pd.DataFrame(get_table_column_names('vitalsigns', 'derived'), columns=["column_name"])
                 new_columns = set(vit_signs_df.columns) - set(cols.columns) 
                       
                 if new_columns:
@@ -511,7 +511,7 @@ def tidy_tables():
             neolab_df= neolab_df[(neolab_df['uid'] != 'Unknown')] 
             ########SAVE DATA#####################################
             if table_exists('derived','neolab'):
-                cols = pd.DataFrame(get_table_columns('neolab', 'derived'), columns=["column_name"])
+                cols = pd.DataFrame(get_table_column_names('neolab', 'derived'), columns=["column_name"])
                 new_columns = set(neolab_df.columns) - set(cols.columns) 
                       
                 if new_columns:
@@ -579,7 +579,7 @@ def tidy_tables():
             #Save Derived Baseline To The DataBase Using Kedro
             baseline_df= baseline_df[(baseline_df['uid'] != 'Unknown')] 
             if table_exists('derived','baseline'):
-                cols = pd.DataFrame(get_table_columns('baseline', 'derived'), columns=["column_name"])
+                cols = pd.DataFrame(get_table_column_names('baseline', 'derived'), columns=["column_name"])
                 new_columns = set(baseline_df.columns) - set(cols.columns) 
                       
                 if new_columns:
@@ -611,7 +611,7 @@ def tidy_tables():
                 mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df],axis=0,ignore_index=True)
                 ##########SAVING DATA####################################
             if table_exists('derived','maternity_completeness'):
-                cols = pd.DataFrame(get_table_columns('maternity_completeness', 'derived'), columns=["column_name"])
+                cols = pd.DataFrame(get_table_column_names('maternity_completeness', 'derived'), columns=["column_name"])
                 new_columns = set(mat_completeness_df.columns) - set(cols.columns) 
                       
                 if new_columns:

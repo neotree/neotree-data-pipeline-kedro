@@ -79,6 +79,10 @@ def get_table_columns(table_name,table_schema):
     query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';
     return inject_sql_with_return(query);
 
+def get_table_column_names(table_name,table_schema):
+    query = f''' SELECT column_name FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';
+    return inject_sql_with_return(query);
+
 def insert_old_adm_query(target_table, source_table, columns):
     # Join the column names with commas
     columns_str = '","'.join(columns)
