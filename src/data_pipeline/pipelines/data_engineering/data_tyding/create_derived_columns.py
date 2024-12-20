@@ -20,15 +20,15 @@ def create_columns(table: pd.DataFrame):
     try:
             table = set_key_to_none(table,['AdmittedFrom.value','AdmittedFrom.label','ReferredFrom.label'
                                            ,'ReferredFrom.value','ReferredFrom2.label','ReferredFrom2.value','AgeCat.label'])
-            
-            table['AdmittedFrom.value'].fillna("ER", inplace=True)
-            table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
+            if 'AdmittedFrom.value' in table: 
+                  table['AdmittedFrom.value'].fillna("ER", inplace=True)
+                  table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
 
-            # float("nan") used to make sure nan's are set not a string "nan"
-            table['EXTERNALSOURCE.label'] = np.where(table['AdmittedFrom.label'].isnull(), table['AdmittedFrom.label'].mask(
+                  # float("nan") used to make sure nan's are set not a string "nan"
+                  table['EXTERNALSOURCE.label'] = np.where(table['AdmittedFrom.label'].isnull(), table['AdmittedFrom.label'].mask(
                   pd.isnull, (table['ReferredFrom.label'].mask(pd.isnull, table['ReferredFrom2.label']))),None)
-            table['EXTERNALSOURCE.value'] = np.where(table['AdmittedFrom.value'].isnull(), table['AdmittedFrom.value'].mask(
-                  pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), None)
+                  table['EXTERNALSOURCE.value'] = np.where(table['AdmittedFrom.value'].isnull(), table['AdmittedFrom.value'].mask(
+                        pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), None)
 
             # order of statements matters
                   
