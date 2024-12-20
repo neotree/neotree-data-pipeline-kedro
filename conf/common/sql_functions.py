@@ -90,11 +90,21 @@ def insert_old_adm_query(target_table, source_table, columns):
     )
     
     return insert_select_statement
+    
+def create_new_columns(table_name,schema,columns):
+    for column in columns:
+        col_type = str(column['type'])
+            # Map pandas data types to PostgreSQL types
+        if col_type == "object":
+            sql_type = "TEXT"
+        elif "float" in col_type:
+            sql_type = "DOUBLE PRECISION"
+        elif "int" in col_type:
+            sql_type = "INTEGER"
+        elif "datetime" in col_type or "date" in col_type:
+            sql_type = "TIMESTAMP"
+        else:
+            sql_type = "TEXT" 
 
-# def create_union_views(view_name,table1,table2,columns, where):
-#     query = f''' DROP VIEW  if exists derived.{view_name} cascade;
-#                  CREATE VIEW derived.{view_name} AS (
-#                   SELECT {columns} FROM derived.{table1} {where} union all
-#                   SELECT {columns} FROM derived.{table2}
-#                  );'''
-#     inject_sql(query,"union-views");
+        alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "{column['name']}" {sql_type};;'
+        inject_sql(alter_query,f'ADD {column['name']} ON  "{schema}"."{table_name}"')

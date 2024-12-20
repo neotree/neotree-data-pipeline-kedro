@@ -3,6 +3,8 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values
 from .explode_mcl_columns import explode_column
 from conf.base.catalog import catalog,new_scripts
+from conf.common.sql_functions import create_new_columns,get_table_columns
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 
 from conf.base.catalog import params
@@ -53,9 +55,19 @@ def tidy_dynamic_tables():
                             ##### REMOVE INVALID CHARACTERS FROM DATAFRAMES 
                             script_df.columns = script_df.columns.str.replace(r"[()-]", "_",regex=True)
                             catalog_save_name = f'''create_derived_{script}'''
+                            if table_exists('derived','maternity_completeness'):
+                                cols = pd.DataFrame(get_table_columns(f'{script}', 'derived'), columns=["column_name"])
+                                new_columns = set(script_df.columns) - set(cols.columns) 
+                      
+                                if new_columns:
+                                    column_pairs =  [(col, str(script_df[col].dtype)) for col in new_columns]
+                                    if column_pairs:
+                                        create_new_columns(f'{script}','derived',column_pairs)
+
                             catalog.save(catalog_save_name,script_df)
                             logging.info("... Creating MCL count tables for Generic Scripts")
-                            explode_column(script_df,script_mcl,script+'_')      
+                            explode_column(script_df,script_mcl,script+'_') 
+
                     except Exception as e:                            
                         logging.error("!!! An error occured writing admissions and discharge output back to the database: ")
                         logging.error(formatError(e))

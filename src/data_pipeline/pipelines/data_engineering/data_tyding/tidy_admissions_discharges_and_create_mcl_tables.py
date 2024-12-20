@@ -3,6 +3,8 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
+from conf.common.sql_functions import create_new_columns,get_table_columns
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.assorted_fixes import extract_years
@@ -14,9 +16,7 @@ from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_k
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, format_column_as_datetime
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
-import numpy as np
 
-from conf.base.catalog import params
 import datetime
 # Import libraries
 import pandas as pd
@@ -290,15 +290,16 @@ def tidy_tables():
             adm_df = format_column_as_numeric(adm_df, numeric_fields)
             if 'MatAgeYrs' in adm_df:
                 adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
-    
-    
-            # for field in fields:
-            #     fld=f'{field}.value'
-            #     if fld in adm_df.columns:
-            #         adm_df[fld] = pd.to_numeric(adm_df[fld], errors='coerce')
-            #     else:
-            #         logging.info(f'{fld} not found')
-            
+            #Check For Addition of New Columns
+            if table_exists('derived','admissions'):
+                adm_cols = pd.DataFrame(get_table_columns('admissions', 'derived'), columns=["column_name"])
+                new_adm_columns = set(adm_df.columns) - set(adm_cols.columns) 
+                      
+                if new_adm_columns:
+                    column_pairs =  [(col, str(adm_df[col].dtype)) for col in new_adm_columns]
+                    if column_pairs:
+                        create_new_columns('admissions','derived',column_pairs)
+
             catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")   
@@ -347,9 +348,19 @@ def tidy_tables():
                     pass
                 else:
                     key_change(dis_df,discharge,position,'PresComp.value','AdmReason.value')
-             #Save Derived Admissions To The DataBase Using Kedro
+             #Save Derived Discharges To The DataBase Using Kedro
             dis_df = create_columns(dis_df) 
             dis_df= dis_df[(dis_df['uid'] != 'Unknown')]
+            #Add New Columns
+            if table_exists('derived','discharges'):
+                disc_cols = pd.DataFrame(get_table_columns('discharges', 'derived'), columns=["column_name"])
+                new_disc_columns = set(dis_df.columns) - set(disc_cols.columns) 
+                      
+                if new_disc_columns:
+                    column_pairs =  [(col, str(dis_df[col].dtype)) for col in new_disc_columns]
+                    if column_pairs:
+                        create_new_columns('discharges','derived',column_pairs)
+
             catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
@@ -390,6 +401,15 @@ def tidy_tables():
             vit_signs_df = format_date(vit_signs_df,['D1Date.value','TimeTemp1.value','TimeTemp2.value','EndScriptDatetime.value']) 
               #Save Derived Vital Signs To The DataBase Using Kedro 
             vit_signs_df= vit_signs_df[(vit_signs_df['uid'] != 'Unknown')]
+            if table_exists('derived','vitalsigns'):
+                cols = pd.DataFrame(get_table_columns('vitalsigns', 'derived'), columns=["column_name"])
+                new_columns = set(vit_signs_df.columns) - set(cols.columns) 
+                      
+                if new_columns:
+                    column_pairs =  [(col, str(vit_signs_df[col].dtype)) for col in new_columns]
+                    if column_pairs:
+                        create_new_columns('vitalsigns','derived',column_pairs)
+
             catalog.save('create_derived_vitalsigns',vit_signs_df)
             logging.info("... Creating MCL count tables for Vital Signs DF")
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
@@ -490,6 +510,15 @@ def tidy_tables():
                     neolab_df.sort_values(by=['uid','episode']) 
             neolab_df= neolab_df[(neolab_df['uid'] != 'Unknown')] 
             ########SAVE DATA#####################################
+            if table_exists('derived','neolab'):
+                cols = pd.DataFrame(get_table_columns('neolab', 'derived'), columns=["column_name"])
+                new_columns = set(neolab_df.columns) - set(cols.columns) 
+                      
+                if new_columns:
+                    column_pairs =  [(col, str(neolab_df[col].dtype)) for col in new_columns]
+                    if column_pairs:
+                        create_new_columns('neolab','derived',column_pairs)
+
             catalog.save('create_derived_neolab',neolab_df)
             
         #########################BASELINE###############################################################    
@@ -549,6 +578,15 @@ def tidy_tables():
                 baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'], errors='coerce')      
             #Save Derived Baseline To The DataBase Using Kedro
             baseline_df= baseline_df[(baseline_df['uid'] != 'Unknown')] 
+            if table_exists('derived','baseline'):
+                cols = pd.DataFrame(get_table_columns('baseline', 'derived'), columns=["column_name"])
+                new_columns = set(baseline_df.columns) - set(cols.columns) 
+                      
+                if new_columns:
+                    column_pairs =  [(col, str(baseline_df[col].dtype)) for col in new_columns]
+                    if column_pairs:
+                        create_new_columns('baseline','derived',column_pairs)
+
             catalog.save('create_derived_baseline',baseline_df)
             logging.info("... Creating MCL count tables for Baseline DF")
             explode_column(baseline_df,baseline_mcl,"bsl_")
@@ -572,6 +610,15 @@ def tidy_tables():
                 latest_mat_outcomes_df = latest_mat_outcomes_df.reset_index(drop=True) 
                 mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df],axis=0,ignore_index=True)
                 ##########SAVING DATA####################################
+            if table_exists('derived','maternity_completeness'):
+                cols = pd.DataFrame(get_table_columns('maternity_completeness', 'derived'), columns=["column_name"])
+                new_columns = set(mat_completeness_df.columns) - set(cols.columns) 
+                      
+                if new_columns:
+                    column_pairs =  [(col, str(mat_completeness_df[col].dtype)) for col in new_columns]
+                    if column_pairs:
+                        create_new_columns('maternity_completeness','derived',column_pairs)
+
             catalog.save('create_derived_maternity_completeness',mat_completeness_df)
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
 
