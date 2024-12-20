@@ -5,6 +5,7 @@ from sqlalchemy import create_engine,text
 import sys
 from sqlalchemy.types import TEXT
 import pandas as pd
+from data_pipeline.pipelines.data_engineering.queries.column_exists_sql import column_exists
 
 params = config()
 #Postgres Connection String
@@ -97,17 +98,18 @@ def insert_old_adm_query(target_table, source_table, columns):
     
 def create_new_columns(table_name,schema,columns):
     for column,col_type in columns:
+        if not column_exists(schema,table_name,column):
        
-        if col_type == "object":
-            sql_type = "TEXT"
-        elif "float" in col_type:
-            sql_type = "DOUBLE PRECISION"
-        elif "int" in col_type:
-            sql_type = "INTEGER"
-        elif "datetime" in col_type or "date" in col_type:
-            sql_type = "TIMESTAMP"
-        else:
-            sql_type = "TEXT" 
-
-        alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "{column}" {sql_type};;'
-        inject_sql(alter_query,f'ADD {column} ON  "{schema}"."{table_name}"')
+            if col_type == "object":
+                sql_type = "TEXT"
+            elif "float" in col_type:
+                sql_type = "DOUBLE PRECISION"
+            elif "int" in col_type:
+                sql_type = "INTEGER"
+            elif "datetime" in col_type or "date" in col_type:
+                sql_type = "TIMESTAMP"
+            else:
+                sql_type = "TEXT" 
+            
+            alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "{column}" {sql_type};;'
+            inject_sql(alter_query,f'ADD {column} ON  "{schema}"."{table_name}"')
