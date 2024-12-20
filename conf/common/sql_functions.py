@@ -5,7 +5,6 @@ from sqlalchemy import create_engine,text
 import sys
 from sqlalchemy.types import TEXT
 import pandas as pd
-from data_pipeline.pipelines.data_engineering.queries.column_exists_sql import column_exists
 
 params = config()
 #Postgres Connection String
@@ -113,3 +112,19 @@ def create_new_columns(table_name,schema,columns):
             
             alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "{column}" {sql_type};;'
             inject_sql(alter_query,f'ADD {column} ON  "{schema}"."{table_name}"')
+
+
+def column_exists(schema, table_name,column_name):
+    query = f''' SELECT EXISTS (
+                SELECT column_name FROM information_schema.columns 
+                WHERE  table_schema = '{schema}'
+                AND    table_name   = '{table_name}'
+                AND column_name = '{column_name}'
+                );;'''
+    query_result = inject_sql_with_return(query)
+    if len(query_result) >0:
+        result = query_result[0]
+        if 'exists' in result.keys():
+            return result['exists']
+        else:
+            return False

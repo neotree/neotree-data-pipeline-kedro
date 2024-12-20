@@ -1,4 +1,4 @@
-from .column_exists_sql import column_exists
+from conf.common.sql_functions import column_exists
 def summary_baseline_query():
 
     ANSteroids = ''
