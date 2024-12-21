@@ -274,7 +274,6 @@ def tidy_tables():
                 
         # Make changes to admissions and baseline data to match fields in power bi  
             adm_df = create_columns(adm_df)
-            adm_df= adm_df[adm_df['uid'] != 'Unknown']
             #Format Dates Admissions Tables
             adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_", regex=True)
             #Save Derived Admissions To The DataBase Using Kedro

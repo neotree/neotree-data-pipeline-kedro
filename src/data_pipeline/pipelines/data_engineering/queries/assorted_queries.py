@@ -199,7 +199,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs."data"->'entries' as "entries",
             cs.unique_key
             {case_condition}
-            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' {condition};;
+            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.uid!='Unknown' {condition};;
    
             '''
     return sql
@@ -243,7 +243,7 @@ def read_diagnoses_query(admissions_case, adm_where):
                 "data"->'completed_at' as "completed_at",
                 "data"->'diagnoses' as "diagnoses" {admissions_case},
                 unique_key
-            from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';;
+            from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null' and uid!='Unknown';;
             '''
 
 
