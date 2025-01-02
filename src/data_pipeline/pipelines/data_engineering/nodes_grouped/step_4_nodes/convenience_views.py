@@ -11,7 +11,13 @@ from data_pipeline.pipelines.data_engineering.queries.create_convenience_views_s
 def create_convenience_views(join_tables_output):    
     try:
         #Test If Previous Node Has Completed Successfully
-        if join_tables_output is not None:
+        if env=='demo':
+            return dict(
+            status='Success',
+            message = "Skippable Task"
+            )
+        
+        elif join_tables_output is not None:
            
             sql_script = create_convinience_views_query()
             inject_sql(sql_script, "create-convenience-views")

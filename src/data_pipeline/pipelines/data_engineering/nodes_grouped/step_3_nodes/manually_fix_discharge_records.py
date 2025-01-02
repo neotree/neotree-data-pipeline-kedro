@@ -14,7 +14,7 @@ def manually_fix_discharges(tidy_data_output):
         if env=='demo':
             return dict(
             status='Success',
-            message = "Skip Manual Fix"
+            message = "Skippable Task"
             )
         
         elif tidy_data_output is not None:

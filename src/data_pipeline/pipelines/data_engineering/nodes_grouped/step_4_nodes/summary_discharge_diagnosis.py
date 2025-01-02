@@ -14,7 +14,7 @@ def create_summary_diagnosis(join_tables_output):
         if env=='demo':
             return dict(
             status='Success',
-            message = "Skipping Task"
+            message = "Skippable Task"
             )
         
         #Test If Previous Node Has Completed Successfully
