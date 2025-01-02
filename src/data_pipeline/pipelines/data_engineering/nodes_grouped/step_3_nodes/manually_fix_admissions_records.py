@@ -11,7 +11,13 @@ from conf.base.catalog import cron_log_file,cron_time,env
 def manually_fix_admissions(tidy_data_output):
     try:
         #Test If Previous Node Has Completed Successfully
-        if tidy_data_output is not None and env!='demo':
+        if env=='demo':
+            return dict(
+            status='Success',
+            message = "Skip Manual Fix"
+            )
+        
+        elif tidy_data_output is not None:
             sql_script = manually_fix_admissions_query()
             inject_sql(sql_script, "manually-fix-admissions")
             return dict(
