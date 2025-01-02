@@ -12,9 +12,9 @@ def manually_fix_admissions(tidy_data_output):
     try:
         #Test If Previous Node Has Completed Successfully
         if tidy_data_output is not None:
-            sql_script = manually_fix_admissions_query()
-            inject_sql(sql_script, "manually-fix-admissions")
-            #Add Return Value For Kedro Not To Throw Data Error
+            #NODE NOLONGER REQUIRED
+            # sql_script = manually_fix_admissions_query()
+            # inject_sql(sql_script, "manually-fix-admissions")
             return dict(
             status='Success',
             message = "Manual Fixing Of Admissions Complete"
