@@ -39,9 +39,11 @@ if env is not None:
             section = 'postgresql_stage'
         elif env == "dev":
             section = 'postgresql_dev'
+        elif env == "demo":
+            section = 'postgresql_demo'
 
         else:
-            log.error("{0} is not a valid arguement: Valid arguements are (dev or stage or prod)".format(env))
+            log.error("{0} is not a valid arguement: Valid arguements are (dev or stage or prod or demo)".format(env))
             sys.exit()
 
          # create a parser
