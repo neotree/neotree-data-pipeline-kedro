@@ -34,8 +34,8 @@ def join_table():
         # join admissions and discharges using uid and facility
         jn_adm_dis = pd.DataFrame()
 
-        adm_df['DateTimeAdmission.value'] =adm_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
-        dis_df['DateTimeAdmission.value'] =dis_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
+        adm_df['DEDUPLICATER'] =adm_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
+        dis_df['DEDUPLICATER'] =dis_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
     
         dis_df_with_date = dis_df[dis_df['DateTimeAdmission.value'].notna()]
 
@@ -44,7 +44,7 @@ def join_table():
         jn_adm_dis = adm_df.merge(
         dis_df_with_date, 
         how='inner', 
-        on=['uid', 'facility','DateTimeAdmission.value'], 
+        on=['uid', 'facility','DEDUPLICATER'], 
         suffixes=('', '_discharge')
         )
         # Drop helper columns if needed
