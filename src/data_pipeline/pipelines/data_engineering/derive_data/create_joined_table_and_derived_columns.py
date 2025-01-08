@@ -33,27 +33,22 @@ def join_table():
         
         # join admissions and discharges using uid and facility
         jn_adm_dis = pd.DataFrame()
-        # Convert Date columns to datetime format
-        adm_df['DateTimeAdmission.value'] = pd.to_datetime(adm_df['DateTimeAdmission.value'], errors='coerce')
-        dis_df['DateTimeAdmission.value'] = pd.to_datetime(dis_df['DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
-        #Extract the date part (ignoring time) for duplicate handling
-        adm_df['Date_only'] = adm_df['DateTimeAdmission.value'].dt.date
-        dis_df['Date_only'] = dis_df['DateTimeAdmission.value'].dt.date
 
-        # Handle cases where discharge Date is null
-        # Separate rows with non-null and null Dates in dis_df
-        dis_df_with_date = dis_df[dis_df['Date_only'].notna()]
+        adm_df['DateTimeAdmission.value'] =adm_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
+        dis_df['DateTimeAdmission.value'] =dis_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
+    
+        dis_df_with_date = dis_df[dis_df['DateTimeAdmission.value'].notna()]
 
         # if ('country' in params and str(params['country']).lower()) =='zimbabwe':
         # Merge for non-null Dates (exact match)
         jn_adm_dis = adm_df.merge(
         dis_df_with_date, 
         how='inner', 
-        on=['uid', 'facility','Date_only'], 
+        on=['uid', 'facility','DateTimeAdmission.value'], 
         suffixes=('', '_discharge')
         )
         # Drop helper columns if needed
-        jn_adm_dis.drop(columns=['Date_only'],inplace=True)
+        jn_adm_dis.drop(columns=['DateTimeAdmission.value'],inplace=True)
 
         # else:
         #     # Merge for non-null Dates (exact match)
