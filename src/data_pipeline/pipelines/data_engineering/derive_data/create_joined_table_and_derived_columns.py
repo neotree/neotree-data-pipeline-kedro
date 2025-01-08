@@ -83,7 +83,8 @@ def join_table():
                 jn_adm_dis.loc[index,'LengthOfStay.value'] = None
         
             jn_adm_dis.loc[index,'LengthOfLife.label'] ="Length of Life"
-            if 'DateTimeDeath.value' in row and is_date_formatable(str(row['DateTimeDeath.value']).strip()):
+            if ('DateTimeDeath.value' in row 
+                and is_date_formatable(str(row['DateTimeDeath.value']).strip()) and is_date(str(row['DateTimeAdmission.value']))):
                
                 DateTimeDeath = dt.strptime(str(str(row['DateTimeDeath.value']))[:10].strip(), date_format)
                 DateTimeAdmission = dt.strptime(str(row['DateTimeAdmission.value'])[:10].strip(), date_format)
