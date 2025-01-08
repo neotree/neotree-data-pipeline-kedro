@@ -2,6 +2,8 @@ from conf.base.catalog import catalog,params
 import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
+from conf.common.sql_functions import create_new_columns,get_table_column_names
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 
 
 # Import libraries
@@ -39,8 +41,6 @@ def join_table():
     
         dis_df_with_date = dis_df[dis_df['DateTimeAdmission.value'].notna()]
 
-        # if ('country' in params and str(params['country']).lower()) =='zimbabwe':
-        # Merge for non-null Dates (exact match)
         jn_adm_dis = adm_df.merge(
         dis_df_with_date, 
         how='inner', 
@@ -48,7 +48,14 @@ def join_table():
         suffixes=('', '_discharge')
         )
         # Drop helper columns if needed
-        jn_adm_dis.drop(columns=['DateTimeAdmission.value'],inplace=True)
+        if table_exists('derived','joined_admissions_discharges'):
+                adm_cols = pd.DataFrame(get_table_column_names('joined_admissions_discharges', 'derived'))
+                new_adm_columns = set(jn_adm_dis.columns) - set(adm_cols.columns) 
+                      
+                if new_adm_columns:
+                    column_pairs =  [(col, str(jn_adm_dis[col].dtype)) for col in new_adm_columns]
+                    if column_pairs:
+                        create_new_columns('joined_admissions_discharges','derived',column_pairs)
 
         # else:
         #     # Merge for non-null Dates (exact match)
