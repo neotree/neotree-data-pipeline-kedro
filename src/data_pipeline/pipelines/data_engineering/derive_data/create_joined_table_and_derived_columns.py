@@ -38,15 +38,33 @@ def join_table():
 
         adm_df['DEDUPLICATER'] =adm_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
         dis_df['DEDUPLICATER'] =dis_df['DateTimeAdmission.value'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
-    
-        dis_df_with_date = dis_df[dis_df['DateTimeAdmission.value'].notna()]
 
-        jn_adm_dis = adm_df.merge(
-        dis_df_with_date, 
+        duplicates_admissions = adm_df[adm_df.duplicated(subset=['uid', 'facility'], keep=False)]
+
+        unique_record_admissions = adm_df[~adm_df.index.isin(duplicates_admissions.index)]
+   
+        duplicates_discharges = dis_df[dis_df[['uid', 'facility']]
+                                .isin(unique_record_admissions[['facility', 'uid']]
+                                .to_dict(orient='list')).all(axis=1)]
+
+        unique_record_discharges =  dis_df[~dis_df.index.isin(duplicates_discharges.index)]
+
+
+        jn_adm_dis = unique_record_admissions.merge(
+        unique_record_discharges, 
+        how='inner', 
+        on=['uid', 'facility'], 
+        suffixes=('', '_discharge')
+        )
+        duplicate_adm_dis = duplicates_admissions.merge(
+        duplicates_discharges, 
         how='inner', 
         on=['uid', 'facility','DEDUPLICATER'], 
         suffixes=('', '_discharge')
         )
+
+        jn_adm_dis = pd.concat([jn_adm_dis, duplicate_adm_dis], ignore_index=True)
+
         # Drop helper columns if needed
         if table_exists('derived','joined_admissions_discharges'):
                 adm_cols = pd.DataFrame(get_table_column_names('joined_admissions_discharges', 'derived'))
