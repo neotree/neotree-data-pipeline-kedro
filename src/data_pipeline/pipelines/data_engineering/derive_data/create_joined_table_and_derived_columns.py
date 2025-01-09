@@ -46,7 +46,12 @@ def join_table():
         if 'unique_key' in jn_adm_dis:
             jn_adm_dis['DEDUPLICATER'] =jn_adm_dis['unique_key'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
             # FURTHER DEDUPLICATION
-            jn_adm_dis= jn_adm_dis.drop_duplicates(subset=['uid', 'facility','DEDUPLICATER'], keep='first')
+            grouped = jn_adm_dis.groupby(["uid", "facility", "DEDUPLICATER"])
+            duplicates = grouped.filter(lambda x: len(x) > 1)
+            # Identify the index of the first record in each group
+            to_drop = duplicates.groupby(["uid", "facility", "DEDUPLICATER"]).head(1).index
+            # Drop the identified records from the original DataFrame
+            jn_adm_dis = jn_adm_dis.drop(index=to_drop)
             
 
         # Drop helper columns if needed
