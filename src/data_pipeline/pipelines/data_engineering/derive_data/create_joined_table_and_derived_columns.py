@@ -65,11 +65,11 @@ def join_table():
 
             # FURTHER DEDUPLICATION ON UID,FACILITY,BIRTH-WEIGHT-DISCHARGE
             # THIS FIELD HELPS IN ISOLATING DIFFERENT ADMISSIONS MAPPED TO THE SAME DISCHARGE
-            if "BirthWeight.value" in jn_adm_dis:
-                grouped = jn_adm_dis.groupby(["uid", "facility", "BirthWeight.value"])
+            if "BirthWeight.value_discharge" in jn_adm_dis:
+                grouped = jn_adm_dis.groupby(["uid", "facility", "BirthWeight.value_discharge"])
                 duplicates = grouped.filter(lambda x: len(x) > 1)
                 # Identify the index of the first record in each group
-                to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value"]).head(1).index
+                to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value_discharge"]).head(1).index
                 # Drop the identified records from the original DataFrame
                 jn_adm_dis = jn_adm_dis.drop(index=to_drop)
 
