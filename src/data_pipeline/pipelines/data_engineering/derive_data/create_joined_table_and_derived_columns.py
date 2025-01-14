@@ -45,13 +45,34 @@ def join_table():
         )
         if 'unique_key' in jn_adm_dis:
             jn_adm_dis['DEDUPLICATER'] =jn_adm_dis['unique_key'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
-            # FURTHER DEDUPLICATION
+            # FURTHER DEDUPLICATION ON UNIQUE KEY
             grouped = jn_adm_dis.groupby(["uid", "facility", "DEDUPLICATER"])
             duplicates = grouped.filter(lambda x: len(x) > 1)
             # Identify the index of the first record in each group
             to_drop = duplicates.groupby(["uid", "facility", "DEDUPLICATER"]).head(1).index
             # Drop the identified records from the original DataFrame
             jn_adm_dis = jn_adm_dis.drop(index=to_drop)
+
+            # FURTHER DEDUPLICATION ON UID,FACILITY,OFC-DISCHARGE
+            # THIS FIELD HELPS IN ISOLATING DIFFERENT ADMISSIONS MAPPED TO THE SAME DISCHARGE
+            if "OFCDis.value" in jn_adm_dis:
+                grouped = jn_adm_dis.groupby(["uid", "facility", "OFCDis.value"])
+                duplicates = grouped.filter(lambda x: len(x) > 1)
+                # Identify the index of the first record in each group
+                to_drop = duplicates.groupby(["uid", "facility", "OFCDis.value"]).head(1).index
+                # Drop the identified records from the original DataFrame
+                jn_adm_dis = jn_adm_dis.drop(index=to_drop)
+
+            # FURTHER DEDUPLICATION ON UID,FACILITY,BIRTH-WEIGHT-DISCHARGE
+            # THIS FIELD HELPS IN ISOLATING DIFFERENT ADMISSIONS MAPPED TO THE SAME DISCHARGE
+            if "BirthWeight.value" in jn_adm_dis:
+                grouped = jn_adm_dis.groupby(["uid", "facility", "BirthWeight.value"])
+                duplicates = grouped.filter(lambda x: len(x) > 1)
+                # Identify the index of the first record in each group
+                to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value"]).head(1).index
+                # Drop the identified records from the original DataFrame
+                jn_adm_dis = jn_adm_dis.drop(index=to_drop)
+
             
 
         # Drop helper columns if needed
