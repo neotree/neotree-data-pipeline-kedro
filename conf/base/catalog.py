@@ -122,7 +122,7 @@ if hospital_scripts:
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
                                  credentials=dict(con=con),
-                                 save_args = dict(schema='derived',if_exists='append')
+                                 save_args = dict(schema='derived',if_exists='append',chunksize=1000)
                                  )
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
                   read_table = f'''read_{script_name}'''
