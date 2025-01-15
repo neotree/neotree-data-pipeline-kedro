@@ -3,6 +3,10 @@ import logging
 import json
 from psycopg2 import sql
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from  conf.common.config import config
+
+params = config()
+env = params['env']
 
 # TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 
@@ -185,7 +189,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     # logging.info(f'source_table={source_table}, where_condition={where_condition}, case_condition={case_condition}')
     condition =''
     exists = table_exists('derived',destination_table)
-    if exists:
+    if exists and env!='demo':
        condition= get_dynamic_condition(destination_table)
 
     sql = f'''
