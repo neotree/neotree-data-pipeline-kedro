@@ -306,12 +306,8 @@ def tidy_tables():
         
         ##################################DISCHARGES SCRIPT#################################################### 
         dis_df = pd.json_normalize(dis_new_entries)
-        if not dis_df.empty and not adm_df.empty:
-            uid_set=[]
-            if 'uid' in adm_df and 'uid' in dis_df:
-                uid_set = set(adm_df['uid'])
-            #ONLY TAKE DISCHARGES WITH CORRESPONDING ADMISSIONS
-                dis_df = dis_df[dis_df['uid'].isin(uid_set)].drop_duplicates(subset='uid')
+        if not dis_df.empty:
+    
             if "started_at" in dis_df and 'completed_at' in dis_df :
                 dis_df = format_date_without_timezone(dis_df,['started_at','completed_at'])
                 dis_df['time_spent'] = (dis_df['completed_at'] -dis_df['started_at']).astype('timedelta64[m]')

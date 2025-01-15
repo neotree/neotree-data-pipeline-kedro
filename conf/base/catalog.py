@@ -119,12 +119,10 @@ if hospital_scripts:
                   if case_object:
                      script_case = case_object[0][script_name]  
                   read_query = read_deduplicated_data_query(script_case,condition,dedup_destination,script_name)
-                  if(script_name=='discharges'):
-                     log.info("---MY SCRIPT QERY=="+read_query)
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
                                  credentials=dict(con=con),
-                                 save_args = dict(schema='derived',if_exists='append',chunksize=1000)
+                                 save_args = dict(schema='derived',if_exists='append')
                                  )
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
                   read_table = f'''read_{script_name}'''
