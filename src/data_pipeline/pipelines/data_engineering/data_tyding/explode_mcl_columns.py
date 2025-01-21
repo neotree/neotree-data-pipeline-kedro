@@ -6,7 +6,7 @@ from conf.common.sql_functions import create_exploded_table,append_data
 
 
 def explode_column(df, mcl,db):
-    created_tables = []
+
     for c in mcl:
         # loop to explode all mcl columns in list 
         
@@ -36,12 +36,8 @@ def explode_column(df, mcl,db):
                 mcl_column_exp.drop(column,axis='columns',inplace=True)
             mcl_column_exp.reindex(columns =mcl_column_exp.columns)
             #Check If Table Has Already been Created: To Be Used To Append 'Other' Values
-            if column_name in created_tables:
-               append_data(mcl_column_exp, column_name) 
-            else: 
-               create_exploded_table(mcl_column_exp, column_name)
-            #To Be Used To Track Already Created Tables So As To Avoid Trying To Recreate A Table Or Append Data To A Non Existing Table    
-            created_tables.append(column_name)
+            create_exploded_table(mcl_column_exp, column_name)   
+          
 
             
 
