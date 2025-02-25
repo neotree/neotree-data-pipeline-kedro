@@ -365,7 +365,8 @@ def tidy_tables():
         ##################################MATERNAL OUTCOMES########################################33
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
         if not mat_outcomes_df.empty:
-            mat_outcomes_df.set_index(['uid'])
+            logging.info("...##########MAT DF IS NOT EMPTY################")
+            mat_outcomes_df.set_index(['unique_key'])
             mat_outcomes_df=format_date_without_timezone(mat_outcomes_df,['started_at','completed_at','DateAdmission.value']) 
             if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
 
