@@ -381,6 +381,15 @@ def tidy_tables():
             mat_outcomes_df = create_columns(mat_outcomes_df)
             mat_outcomes_df= mat_outcomes_df[(mat_outcomes_df['uid'] != 'Unknown')]
             set_key_to_none(mat_outcomes_df,['TypeBirth.label','TypeBirth.value'])
+            if table_exists('derived','maternal_outcomes'):
+                cols = pd.DataFrame(get_table_column_names('maternal_outcomes', 'derived'), columns=["column_name"])
+                new_columns = set(neolab_df.columns) - set(cols.columns) 
+                      
+                if new_columns:
+                    column_pairs =  [(col, str(neolab_df[col].dtype)) for col in new_columns]
+                    if column_pairs:
+                        create_new_columns('maternal_outcomes','derived',column_pairs)
+
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
