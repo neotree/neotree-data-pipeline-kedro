@@ -27,7 +27,7 @@ def convert_false_numbers_to_text(df: pd.DataFrame,schema,table) -> pd.DataFrame
                 if column_exists(schema,table,column):
                     sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN {2} TYPE TEXT;;'''.format(schema,table,column)
 
-        if pd.api.types.is_string_dtype(column):
+        if pd.api.types.is_string_dtype(df[column]):
             if column_exists(schema,table,column):
                 type = get_table_column_type(table,schema,column) 
                 logging.info("###CHECKING TYPE#####{0}-{1}".format(type,column))
