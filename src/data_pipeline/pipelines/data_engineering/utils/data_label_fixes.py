@@ -19,9 +19,9 @@ def format_column_as_datetime(df,fields):
 
 def convert_false_numbers_to_text(df: pd.DataFrame) -> pd.DataFrame:
     for column in df.columns:
-        # Check if the column is of numeric type and contains any text value
-        if pd.api.types.is_numeric_dtype(df[column]) and df[column].apply(lambda x: isinstance(x, str)).any():
-            df[column] = df[column].astype(str)
+        if pd.api.types.is_numeric_dtype(df[column]):
+            if df[column].apply(lambda x: not isinstance(x, (int, float))).any():
+                  df[column] = df[column].astype(str)
     return df
             
 @DeprecationWarning
