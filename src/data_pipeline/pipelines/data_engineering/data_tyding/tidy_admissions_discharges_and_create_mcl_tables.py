@@ -301,7 +301,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(adm_df[col].dtype)) for col in new_adm_columns]
                     if column_pairs:
                         create_new_columns('admissions','derived',column_pairs)
-            adm_df=convert_false_numbers_to_text(adm_df);         
+            adm_df=convert_false_numbers_to_text(adm_df,'derived','admissions');         
             catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")   
@@ -358,7 +358,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(dis_df[col].dtype)) for col in new_disc_columns]
                     if column_pairs:
                         create_new_columns('discharges','derived',column_pairs)
-            dis_df=convert_false_numbers_to_text(dis_df); 
+            dis_df=convert_false_numbers_to_text(dis_df,'derived','discharges'); 
             catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
@@ -391,7 +391,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(mat_outcomes_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('maternal_outcomes','derived',column_pairs)
-            mat_outcomes_df=convert_false_numbers_to_text(mat_outcomes_df); 
+            mat_outcomes_df=convert_false_numbers_to_text(mat_outcomes_df,'derived','maternal_outcomes'); 
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
@@ -417,7 +417,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(vit_signs_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('vitalsigns','derived',column_pairs)
-            vit_signs_df= convert_false_numbers_to_text(vit_signs_df); 
+            vit_signs_df= convert_false_numbers_to_text(vit_signs_df,'derived','vitalsigns'); 
             catalog.save('create_derived_vitalsigns',vit_signs_df)
             logging.info("... Creating MCL count tables for Vital Signs DF")
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")

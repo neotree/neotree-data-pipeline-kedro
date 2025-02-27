@@ -1,6 +1,6 @@
 ## DISCHARGES DATA
-from ast import Return
 import pandas as pd 
+from conf.common.sql_functions import column_exists,inject_sql
 
 def format_column_as_numeric(df,fields):
     for field in fields:
@@ -17,11 +17,14 @@ def format_column_as_datetime(df,fields):
 
     return df
 
-def convert_false_numbers_to_text(df: pd.DataFrame) -> pd.DataFrame:
+def convert_false_numbers_to_text(df: pd.DataFrame,schema,table) -> pd.DataFrame:
     for column in df.columns:
         if pd.api.types.is_numeric_dtype(df[column]):
             if df[column].apply(lambda x: not isinstance(x, (int, float))).any():
-                  df[column] = df[column].astype(str)
+                df[column] = df[column].astype(str)
+                if column_exists(schema,table,column):
+                    sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN {2} TYPE TEXT;;'''.format(schema,table,column)
+                    inject_sql(sql_query,'''...UPDATING COLUMN {0} of TABLE {1}'''.format(column,table))
     return df
             
 @DeprecationWarning

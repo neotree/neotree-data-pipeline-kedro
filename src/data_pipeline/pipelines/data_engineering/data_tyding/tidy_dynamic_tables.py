@@ -64,7 +64,7 @@ def tidy_dynamic_tables():
                                     column_pairs =  [(col, str(script_df[col].dtype)) for col in new_columns]
                                     if column_pairs:
                                         create_new_columns(f'{script}','derived',column_pairs)
-                            script_df=convert_false_numbers_to_text(script_df); 
+                            script_df=convert_false_numbers_to_text(script_df,'derived',script); 
                             catalog.save(catalog_save_name,script_df)
                             logging.info("... Creating MCL count tables for Generic Scripts")
                             explode_column(script_df,script_mcl,script+'_') 
