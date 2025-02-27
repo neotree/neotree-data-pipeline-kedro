@@ -25,17 +25,17 @@ def convert_false_numbers_to_text(df: pd.DataFrame,schema,table) -> pd.DataFrame
             if df[column].apply(lambda x: not isinstance(x, (int, float))).any() :
                 df[column] = df[column].astype(str)
                 if column_exists(schema,table,column):
-                    sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN {2} TYPE TEXT;;'''.format(schema,table,column)
+                    sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN "{2}" TYPE TEXT;;'''.format(schema,table,column)
 
         if pd.api.types.is_string_dtype(df[column]):
             if column_exists(schema,table,column):
                 type = get_table_column_type(table,schema,column) 
                 logging.info("###CHECKING TYPE#####{0}-{1}".format(type,column))
                 if type!='TEXT':
-                    sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN {2} TYPE TEXT;;'''.format(schema,table,column) 
+                    sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN "{2}" TYPE TEXT;;'''.format(schema,table,column) 
 
         if sql_query is not None:               
-            inject_sql(sql_query,'''...UPDATING COLUMN {0} of TABLE {1}'''.format(column,table))              
+            inject_sql(sql_query,'''...UPDATING COLUMN '{0}' of TABLE '{1}' '''.format(column,table))              
     return df
             
 @DeprecationWarning

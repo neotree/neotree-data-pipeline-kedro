@@ -80,7 +80,7 @@ def get_table_columns(table_name,table_schema):
     return inject_sql_with_return(query);
 
 def get_table_column_type(table_name,table_schema,column):
-    query = f''' SELECT data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}' AND column_name={column} ;; ''';
+    query = f''' SELECT data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}' AND column_name='{column}' ;; ''';
     return inject_sql_with_return(query);
 
 def get_table_column_names(table_name,table_schema):
