@@ -13,7 +13,7 @@ from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_dif
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
-from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, format_column_as_datetime
+from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
 
@@ -288,6 +288,8 @@ def tidy_tables():
               'AdmissionWeight']
             
             adm_df = format_column_as_numeric(adm_df, numeric_fields)
+
+
             if 'MatAgeYrs' in adm_df:
                 adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
             #Check For Addition of New Columns
@@ -299,7 +301,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(adm_df[col].dtype)) for col in new_adm_columns]
                     if column_pairs:
                         create_new_columns('admissions','derived',column_pairs)
-
+            adm_df=convert_false_numbers_to_text(adm_df);         
             catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")   
@@ -356,7 +358,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(dis_df[col].dtype)) for col in new_disc_columns]
                     if column_pairs:
                         create_new_columns('discharges','derived',column_pairs)
-
+            dis_df=convert_false_numbers_to_text(dis_df); 
             catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
@@ -389,7 +391,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(mat_outcomes_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('maternal_outcomes','derived',column_pairs)
-
+            mat_outcomes_df=convert_false_numbers_to_text(mat_outcomes_df); 
             catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
@@ -415,7 +417,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(vit_signs_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('vitalsigns','derived',column_pairs)
-
+            vit_signs_df= convert_false_numbers_to_text(vit_signs_df); 
             catalog.save('create_derived_vitalsigns',vit_signs_df)
             logging.info("... Creating MCL count tables for Vital Signs DF")
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
