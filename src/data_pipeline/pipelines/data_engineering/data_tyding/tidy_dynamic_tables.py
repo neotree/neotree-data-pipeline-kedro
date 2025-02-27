@@ -6,6 +6,7 @@ from conf.base.catalog import catalog,new_scripts
 from conf.common.sql_functions import create_new_columns,get_table_column_names
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
+from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import convert_false_numbers_to_text
 
 from conf.base.catalog import params
 # Import libraries
@@ -63,7 +64,7 @@ def tidy_dynamic_tables():
                                     column_pairs =  [(col, str(script_df[col].dtype)) for col in new_columns]
                                     if column_pairs:
                                         create_new_columns(f'{script}','derived',column_pairs)
-
+                            script_df=convert_false_numbers_to_text(script_df); 
                             catalog.save(catalog_save_name,script_df)
                             logging.info("... Creating MCL count tables for Generic Scripts")
                             explode_column(script_df,script_mcl,script+'_') 
