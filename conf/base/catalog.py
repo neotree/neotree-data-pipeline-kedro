@@ -14,7 +14,8 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (g
                             read_old_smch_matched_view_query,read_new_smch_matched_query,get_duplicate_maternal_query,
                             get_discharges_tofix_query,get_maternal_data_tofix_query,get_admissions_data_tofix_query,
                             get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query,read_diagnoses_query,
-                            deduplicate_baseline_query,get_script_ids_query,read_data_with_no_unique_key)
+                            deduplicate_baseline_query,get_script_ids_query,read_data_with_no_unique_key,
+                            read_joined_admissions_without_discharges,read_dicharges_not_joined)
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -167,6 +168,8 @@ get_admissions_data_to_fix = get_admissions_data_tofix_query()
 get_baseline_data_to_fix = get_baseline_data_tofix_query()
 get_script_ids = get_script_ids_query()
 data_with_no_unique_keys = read_data_with_no_unique_key()
+admissions_without_discharges = read_joined_admissions_without_discharges()
+discharges_not_yet_joined = read_dicharges_not_joined()
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')-
 old_catalog =  {
@@ -273,7 +276,15 @@ old_catalog =  {
          "script_ids": SQLQueryDataSet(
             sql= get_script_ids,
             credentials=dict(con=con)
-         )
+         ),
+         "admissions_without_discharges":SQLQueryDataSet(
+            sql= admissions_without_discharges,
+            credentials=dict(con=con)
+         ),
+         "discharges_not_joined":SQLQueryDataSet(
+            sql= discharges_not_yet_joined,
+            credentials=dict(con=con)
+         ),
         }
 old_catalog.update(generic_catalog)   
 catalog = DataCatalog(

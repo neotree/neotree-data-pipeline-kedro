@@ -217,12 +217,19 @@ def read_derived_data_query(source_table,destination_table=None):
         exists = table_exists('derived',destination_table)
         if(exists):
             condition =get_dynamic_condition(destination_table)
-
+            
     return f'''
                 select 
                     *
                 from derived.{source_table} cs where cs.uid!='null' {condition};;
             '''
+
+def read_joined_admissions_without_discharges():   
+        return f'''
+            select   * from derived.admissions WHERE uid IN (SELECT uid from derived.joined_admissions_discharges where "NeoTreeOutcome.value" is null);;'''
+
+def read_dicharges_not_joined():
+        return f'''SELECT * from derived.discharges WHERE uid IN (SELECT uid from derived.joined_admissions_discharges where "NeoTreeOutcome.value" is null);;'''
 
 
 def read_data_with_no_unique_key():
