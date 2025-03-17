@@ -2,10 +2,11 @@ from conf.base.catalog import catalog,params
 import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
-from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_sql
+from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_sql,get_table_column_type
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from datetime import datetime, date
 from conf.common.format_error import formatError
+import re
 
 # Import libraries
 import logging
@@ -193,7 +194,12 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                                 # Exclude time component for date objects
                                 updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d')}'")
                         else:
-                            updates.append(f"{col} = {row[col]}")
+                            type = get_table_column_type('joined_admissions_discharges','derived',col)[0][0]
+                            date_pattern = r'^\d{4}-\d{2}-\d{2}'
+                            if re.match(date_pattern, row[col]) and type !='text':
+                                updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S')}'")
+                            else:
+                                updates.append(f"{col} = {row[col]}")
                 
                 # Join the updates with commas
                 query += ", ".join(updates)
