@@ -555,7 +555,7 @@ def tidy_tables():
             for index, row in baseline_df.iterrows():
 
                 baseline_df.loc[index,'LengthOfStay.label'] ="Length of Stay"
-                if (is_date(str(row['DateTimeDischarge.value']))
+                if ('DateTimeDischarge.value' in row and 'DateTimeAdmission.value' in row and is_date(str(row['DateTimeDischarge.value']))
                     and is_date(str(row['DateTimeAdmission.value']))):
                     DateTimeDischarge = dt.strptime(str(str(row['DateTimeDischarge.value']))[:10].strip().replace('T',''),date_format)
                     DateTimeAdmission = dt.strptime(str(str(row['DateTimeAdmission.value']))[:10].strip().replace('T',''),date_format)
