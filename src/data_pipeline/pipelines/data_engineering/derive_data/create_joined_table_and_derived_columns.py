@@ -201,9 +201,8 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
 
                                 if row[col] is None:
                                     updates.append(f"{col} = NULL")
-                                else:
-                                    if col=='DateTimeDischarge.value':
-                                        logging.info(f"---VALUE----{row[col]}--{type}")
+                                else:             
+                                    logging.info(f"---VALUE--{col}--{row[col]}--{type}")
                                     if('timestamp' in type.lower()):
                                         updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row[col], datetime) else 'NULL'}'")
                                     elif('date' in type.lower()):
@@ -216,7 +215,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 
                 # Add the WHERE clause to specify which records to update
                 query += f" WHERE uid = {row['uid']} AND facility = '{row['facility']}' AND unique_key = '{row['unique_key']}';;"
-                
+                logging.info(f'#####MY QUERY==={query}')
                 # Append the query to the list
                 update_queries.append(query)
 
