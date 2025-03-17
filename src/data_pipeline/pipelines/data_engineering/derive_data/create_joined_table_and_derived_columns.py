@@ -46,7 +46,7 @@ def join_table():
     logging.info("... Writing the output back to the database")
     try:
         #Create Table Using Kedro
-        if jn_adm_dis and not jn_adm_dis.empty:
+        if jn_adm_dis is not None and not jn_adm_dis.empty:
             catalog.save('create_joined_admissions_discharges',jn_adm_dis)
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
         discharge_exists = table_exists('derived','discharges')
@@ -57,9 +57,9 @@ def join_table():
             #Load Derived Discharges Not Yet Joined From Kedro Catalog
             dis_df_2 = catalog.load('discharges_not_joined')
 
-            if( adm_df_2 and dis_df_2):
+            if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
-                if jn_adm_dis_2 and not jn_adm_dis_2.empty:
+                if not jn_adm_dis_2.empty:
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',jn_adm_dis_2)
 
     except Exception as e:
