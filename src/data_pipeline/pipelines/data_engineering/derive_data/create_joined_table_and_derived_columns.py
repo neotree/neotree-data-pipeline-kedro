@@ -211,7 +211,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 
                 # Join the updates with commas
                 query += ", ".join(updates)
-                
+                logging(f'--MY UID-----{row['uid']}')
                 # Add the WHERE clause to specify which records to update
                 query += f" WHERE uid = {row['uid']} AND facility = '{row['facility']}' AND unique_key = '{row['unique_key']}';;"
         
