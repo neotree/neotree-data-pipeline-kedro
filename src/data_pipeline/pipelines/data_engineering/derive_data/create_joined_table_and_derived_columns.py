@@ -202,10 +202,12 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                                 if row[col] is None:
                                     updates.append(f"{col} = NULL")
                                 else:
-                                    if('timestamp' in type):
-                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S')}'")
-                                    elif('date' in type):
-                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d')}'")
+                                    if col=='DateTimeDischarge.value':
+                                        logging.info(f"---VALUE----{row[col]}--{type}")
+                                    if('timestamp' in type.lower()):
+                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row[col], datetime) else 'NULL'}'")
+                                    elif('date' in type.lower()):
+                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d') if isinstance(row[col], date) else 'NULL'}'")
                                     else:
                                         updates.append(f"{col} = {row[col]}")
                 
