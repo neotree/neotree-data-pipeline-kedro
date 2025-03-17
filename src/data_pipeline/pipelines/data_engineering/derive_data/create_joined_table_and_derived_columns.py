@@ -214,7 +214,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 
                 # Add the WHERE clause to specify which records to update
                 query += f" WHERE uid = {row['uid']} AND facility = '{row['facility']}' AND unique_key = '{row['unique_key']}';;"
-                logging.info(f'#####MY QUERY==={query}')
+        
                 # Append the query to the list
                 update_queries.append(query)
 
