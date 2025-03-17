@@ -74,6 +74,39 @@ def inject_sql_with_return(sql_script):
     except Exception as e:
         logging.error(e)
         raise e
+    
+def inject_bulk_sql(sql_script, batch_size=1000):
+    # Split the SQL script into individual commands
+    sql_commands = sql_script.split(';;')
+    
+    # Remove the last empty element
+    sql_commands = sql_commands[:-1]
+    conn = engine.connect()
+    # Use psycopg2 for bulk execution
+    cursor = conn.cursor()
+    
+    try:
+        # Execute commands in batches
+        for i in range(0, len(sql_commands), batch_size):
+            batch = sql_commands[i:i + batch_size]
+            for command in batch:
+                try:
+                    cursor.execute(command)
+                except Exception as e:
+                    logging.error(f"Error executing command: {command}")
+                    logging.error(e)
+                    conn.rollback()
+                    raise e
+            conn.commit()
+            logging.info("###########################DONE BULK PROCESSING################")
+    except Exception as e:
+        logging.error("Something went wrong with the SQL file")
+        logging.error(e)
+        conn.rollback()
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
 
 def get_table_columns(table_name,table_schema):
     query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';

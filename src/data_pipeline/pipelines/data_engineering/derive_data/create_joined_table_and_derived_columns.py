@@ -2,7 +2,7 @@ from conf.base.catalog import catalog,params
 import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
-from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_sql,get_table_column_type
+from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_bulk_sql,get_table_column_type
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from datetime import datetime, date
 from conf.common.format_error import formatError
@@ -219,7 +219,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 update_queries.append(query)
 
             for query in update_queries:
-                inject_sql(query,query)
+                inject_bulk_sql(query)
     except Exception as ex:
         logging.error(
             "!!! An error occured whilest JOINING DATA THAT WAS UNJOINED ")
