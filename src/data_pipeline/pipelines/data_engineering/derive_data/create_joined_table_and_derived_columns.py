@@ -188,10 +188,10 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                             # Format the date or datetime as a string in PostgreSQL-compatible format
                             if isinstance(row[col], datetime):
                                 # Include time component for datetime objects
-                                updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S')}'")
+                                updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row[col], datetime) else 'NULL'}'")
                             else:
                                 # Exclude time component for date objects
-                                updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d')}'")
+                                updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d') if isinstance(row[col], date) else 'NULL'}'")
                         else:
                             type = get_table_column_type('joined_admissions_discharges','derived',col)[0][0]
                             if type =='text':
