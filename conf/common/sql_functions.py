@@ -75,20 +75,16 @@ def inject_sql_with_return(sql_script):
         logging.error(e)
         raise e
     
-def inject_bulk_sql(sql_script, batch_size=1000):
-    # Split the SQL script into individual commands
-    sql_commands = sql_script.split(';;')
-    
-    # Remove the last empty element
-    sql_commands = sql_commands[:-1]
+def inject_bulk_sql(queries, batch_size=1000):
+
     conn = engine.connect()
     # Use psycopg2 for bulk execution
     cursor = conn.cursor()
     
     try:
         # Execute commands in batches
-        for i in range(0, len(sql_commands), batch_size):
-            batch = sql_commands[i:i + batch_size]
+        for i in range(0, len(queries), batch_size):
+            batch = queries[i:i + batch_size]
             for command in batch:
                 try:
                     cursor.execute(command)
