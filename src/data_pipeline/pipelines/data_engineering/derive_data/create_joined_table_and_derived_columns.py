@@ -196,7 +196,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                         else:
                             type = get_table_column_type('joined_admissions_discharges','derived',col)[0][0]
                             date_pattern = r'^\d{4}-\d{2}-\d{2}'
-                            if re.match(date_pattern, row[col]) and type !='text':
+                            if re.match(date_pattern, {row[col]}) and type !='text':
                                 updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S')}'")
                             else:
                                 updates.append(f"{col} = {row[col]}")
