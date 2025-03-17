@@ -171,56 +171,51 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
     try:
         if(table is not None and df is not None and not df.empty):
 
+            updates = []
+            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0] 
+                for col in df.columns if col not in ['uid', 'facility', 'unique_key']}
+            
+        
+            # Generate UPDATE queries for each row
             update_queries = []
-
-            # Iterate over each row in the DataFrame
-            for index, row in df.iterrows():
-                # Start building the UPDATE query
-                query = f'''UPDATE "{table}" SET '''
-                
-                # Add the fields to be updated (excluding the key fields)
+            for _, row in df.iterrows():
                 updates = []
                 for col in df.columns:
                     if col not in ['uid', 'facility', 'unique_key']:
-                        # Handle different data types appropriately
-
-                        if isinstance(row[col], (datetime, date)):
-                            # Format the date or datetime as a string in PostgreSQL-compatible format
-                            if isinstance(row[col], datetime):
-                                # Include time component for datetime objects
-                                updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row[col], datetime) and not pd.isna(row[col]) else 'NULL'}'")
-                            else:
-                                # Exclude time component for date objects
-                                updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d') if isinstance(row[col], date) and not pd.isna(row[col]) else 'NULL'}'")
-                        else:
-                            type = get_table_column_type('joined_admissions_discharges','derived',col)[0][0]
-                            if type =='text':
-                                updates.append(f"{col} = '{row[col]}'")
-                                
-                            else:
-
-                                if row[col] is None:
-                                    updates.append(f"{col} = NULL")
-                                else:             
-                                    if('timestamp' in type.lower()):
-                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S') if isinstance(row[col], datetime) and not pd.isna(row[col]) else 'NULL'}'")
-                                    elif('date' in type.lower()):
-                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d') if isinstance(row[col], date) and not pd.isna(row[col]) else 'NULL'}'")
-                                    else:
-                                        updates.append(f"{col} = {row[col]}")
+                        col_type = column_types[col]
+                        value = row[col]
+                        updates.append(format_value(col, value, col_type))
                 
-                # Join the updates with commas
-                query += ", ".join(updates)
-                logging.info(f'''--MY UID-----{row['uid']}''')
-                # Add the WHERE clause to specify which records to update
-                query += f" WHERE uid = {row['uid']} AND facility = '{row['facility']}' AND unique_key = '{row['unique_key']}';;"
-        
-                # Append the query to the list
-                update_queries.append(query)
+                # Join the updates into a single SET clause
+                set_clause = ', '.join(updates)
+                
+                # Add the WHERE condition
+                where_condition = f"WHERE uid = {row['uid']} AND facility = '{row['facility']}' AND unique_key = '{row['unique_key']}'"
+                
+                # Construct the full UPDATE query
+                update_query = f"UPDATE {table} SET {set_clause} {where_condition};"
+                update_queries.append(update_query)          
+                inject_bulk_sql(update_queries)
 
-            for query in update_queries:
-                inject_bulk_sql(query)
     except Exception as ex:
         logging.error(
             "!!! An error occured whilest JOINING DATA THAT WAS UNJOINED ")
         logging.error(formatError(ex))
+
+
+def format_value(col, value, col_type):
+    if pd.isna(value):
+        return f"{col} = NULL"
+    elif isinstance(value, (datetime, date)):
+        if isinstance(value, datetime):
+            return f"{col} = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+        else:
+            return f"{col} = '{value.strftime('%Y-%m-%d')}'"
+    elif col_type == 'text':
+        return f"{col} = '{value}'"
+    elif 'timestamp' in col_type.lower():
+        return f"{col} = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+    elif 'date' in col_type.lower():
+        return f"{col} = '{value.strftime('%Y-%m-%d')}'"
+    else:
+        return f"{col} = {value}"
