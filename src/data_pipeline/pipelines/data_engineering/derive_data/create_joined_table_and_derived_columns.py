@@ -193,9 +193,9 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 where_condition = f"WHERE uid = {row['uid']} AND facility = '{row['facility']}' AND unique_key = '{row['unique_key']}'"
                 
                 # Construct the full UPDATE query
-                update_query = f"UPDATE {table} SET {set_clause} {where_condition};"
-                update_queries.append(update_query)          
-                inject_bulk_sql(update_queries)
+                update_query = f"UPDATE {table} SET {set_clause} {where_condition};;"
+                update_queries.append(update_query)  
+            inject_bulk_sql(update_queries)
 
     except Exception as ex:
         logging.error(
