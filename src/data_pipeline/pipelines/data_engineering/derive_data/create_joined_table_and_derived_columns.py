@@ -183,9 +183,8 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 for col in df.columns:
                     if col not in ['uid', 'facility', 'unique_key']:
                         # Handle different data types appropriately
-                        if isinstance(row[col], str):
-                            updates.append(f"{col} = '{row[col]}'")
-                        elif isinstance(row[col], (datetime, date)):
+
+                        if isinstance(row[col], (datetime, date)):
                             # Format the date or datetime as a string in PostgreSQL-compatible format
                             if isinstance(row[col], datetime):
                                 # Include time component for datetime objects
@@ -195,11 +194,20 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                                 updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d')}'")
                         else:
                             type = get_table_column_type('joined_admissions_discharges','derived',col)[0][0]
-                            if type !='text':
+                            if type =='text':
+                                updates.append(f"{col} = '{row[col]}'")
+                                
+                            else:
+
                                 if row[col] is None:
                                     updates.append(f"{col} = NULL")
-                            else:
-                                updates.append(f"{col} = {row[col]}")
+                                else:
+                                    if('timestamp' in type):
+                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d %H:%M:%S')}'")
+                                    elif('date' in type):
+                                        updates.append(f"{col} = '{row[col].strftime('%Y-%m-%d')}'")
+                                    else:
+                                        updates.append(f"{col} = {row[col]}")
                 
                 # Join the updates with commas
                 query += ", ".join(updates)
