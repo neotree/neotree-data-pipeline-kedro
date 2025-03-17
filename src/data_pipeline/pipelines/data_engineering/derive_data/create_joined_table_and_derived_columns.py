@@ -71,7 +71,7 @@ def join_table():
 
 def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
         jn_adm_dis = pd.DataFrame()
-        if adm_df and dis_df:
+        if not adm_df.empty and not dis_df.empty:
             jn_adm_dis = adm_df.merge(
             dis_df, 
             how='left', 
@@ -168,7 +168,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
 
 def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
     try:
-        if(table is not None and df is not None):
+        if(table is not None and df is not None and not df.empty):
 
             update_queries = []
 
