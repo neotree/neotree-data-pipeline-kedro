@@ -251,7 +251,7 @@ def read_data_with_no_unique_key():
                 OR ("data"->'entries'->>'DateDischarge' IS NOT NULL)
                 OR ("data"->'entries'->>'DateDeath' IS NOT NULL)
                 OR ("data"->'entries'->>'DateBCT' IS NOT NULL)
-            );;'''
+            )'''
 
 # SPECIAL CASE
 

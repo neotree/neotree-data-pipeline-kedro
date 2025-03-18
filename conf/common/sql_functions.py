@@ -159,3 +159,7 @@ def column_exists(schema, table_name,column_name):
             return result['exists']
         else:
             return False
+        
+def run_query_and_return_df(query):
+    df = pd.read_sql_query(query, con)
+    return df
