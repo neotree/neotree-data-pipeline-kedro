@@ -234,11 +234,15 @@ def read_dicharges_not_joined():
 
 def read_data_with_no_unique_key():
     return f'''
-             select id,
-                "data"->'entries' as "entries", 
-                "data"->'appVersion' as "appVersion"
-                from public.clean_sessions 
-				where not cleaned and "unique_key" not like '%-%-%';;'''
+             SELECT 
+    id,
+    data->'entries' AS entries,
+    data->'appVersion' AS appVersion
+FROM 
+    public.clean_sessions
+WHERE 
+    NOT cleaned 
+    AND unique_key NOT LIKE '%-%-%';'''
 
 # SPECIAL CASE
 
