@@ -12,9 +12,10 @@ def regenerate_unique_key():
     try:
         #Read Data From The Kedro Catalog
         raw_data = catalog.load('no_unique_keys_data')
+        logging.info(f'----{type(raw_data)}')
         if isinstance(raw_data, dict):
             raw_data = list(raw_data.items())
-        logging.info(raw_data.head())
+        logging.info(f'--NOW--{type(raw_data)}')
         for index, row in raw_data.iterrows():
            
             id = row['id']
