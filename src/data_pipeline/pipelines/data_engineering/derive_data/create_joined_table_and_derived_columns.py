@@ -190,7 +190,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 set_clause = ', '.join(updates)
                 
                 # Add the WHERE condition
-                where_condition = f"WHERE uid = {row['uid']} AND facility = '{row['facility']}' AND unique_key = '{row['unique_key']}'"
+                where_condition = f"WHERE uid = '{row['uid']}' AND facility = '{row['facility']}' AND \"unique_key\" = '{row['unique_key']}'"
                 
                 # Construct the full UPDATE query
                 update_query = f"UPDATE {table} SET {set_clause} {where_condition};;"
