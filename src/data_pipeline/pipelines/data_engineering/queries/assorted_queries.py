@@ -237,20 +237,20 @@ def read_data_with_no_unique_key():
     return f'''
              SELECT 
              id,
-            "data"->'entries' AS "entries",
+             "data"->'entries' AS "entries",
             "data"->>'appVersion' AS "appVersion"
-            FROM public.clean_sessions
-            WHERE "unique_key" not like '20%-%-%'
-            and 
-            case
-                when  ("data"->'entries'->>'DateTimeAdmission' is not null
-                or    "data"->'entries'->>'DateAdmission' is not null
-                or    "data"->'entries'->>'DateTimeDischarge' is not null
-                or    "data"->'entries'->>'DateDischarge' is not null
-                or    "data"->'entries'->>'DateDeath' is not null
-                or   "data"->'entries'->>'DateTimeAdmission' is not null) then true
-                else FALSE	
-            end;;'''
+        FROM 
+            public.clean_sessions
+        WHERE 
+            "unique_key" NOT LIKE '20%-%-%'
+        AND 
+            (
+                ("data"->'entries'->>'DateTimeAdmission' IS NOT NULL)
+                OR ("data"->'entries'->>'DateAdmission' IS NOT NULL)
+                OR ("data"->'entries'->>'DateTimeDischarge' IS NOT NULL)
+                OR ("data"->'entries'->>'DateDischarge' IS NOT NULL)
+                OR ("data"->'entries'->>'DateDeath' IS NOT NULL)
+            );'''
 
 # SPECIAL CASE
 
