@@ -11,7 +11,7 @@ env = params['env']
 # TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 
 def escape_special_characters(input_string): 
-    return str(input_string).replace("\\","\\\\").replace("'","''")
+    return str(input_string).replace("\\","\\\\").replace("'","")
 
 def deduplicate_neolab_query(neolab_where):
     return f'''

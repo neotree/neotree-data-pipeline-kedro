@@ -4,6 +4,7 @@ from data_pipeline.pipelines.data_engineering.utils.date_validator import is_dat
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_bulk_sql,get_table_column_type
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import escape_special_characters
 from datetime import datetime, date
 from conf.common.format_error import formatError
 import re
@@ -213,7 +214,7 @@ def format_value(col, value, col_type):
         else:
             return f"{col} = '{value.strftime('%Y-%m-%d')}'"
     elif col_type == 'text':
-        return f"{col} = '{value}'"
+        return f"{col} = '{escape_special_characters(value)}'"
     elif 'timestamp' in col_type.lower():
         return f"{col} = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
     elif 'date' in col_type.lower():
