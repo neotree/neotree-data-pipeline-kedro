@@ -12,6 +12,8 @@ def regenerate_unique_key():
     try:
         #Read Data From The Kedro Catalog
         raw_data = catalog.load('no_unique_keys_data')
+        if isinstance(raw_data, dict):
+            raw_data = list(raw_data.items())
         logging.info(raw_data.head())
         for index, row in raw_data.iterrows():
            
