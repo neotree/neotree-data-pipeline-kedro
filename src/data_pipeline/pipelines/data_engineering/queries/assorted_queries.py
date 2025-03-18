@@ -233,7 +233,8 @@ def read_dicharges_not_joined():
 
 
 def read_data_with_no_unique_key():
-    return f'''
+
+    return '''
              SELECT 
              id,
             "data"->'entries' AS "entries",
