@@ -5,6 +5,7 @@ from sqlalchemy import create_engine,text
 import sys
 from sqlalchemy.types import TEXT
 import pandas as pd
+import psycopg2
 
 params = config()
 #Postgres Connection String
@@ -161,7 +162,14 @@ def column_exists(schema, table_name,column_name):
             return False
         
 def run_query_and_return_df(query):
-    logging.info(query)
-    df = pd.read_sql_query(query, con)
-    logging.info(df.head())
-    return df
+    try:
+        con_string = f'''postgresql://{params["user"]}:{params["password"]}@{params["host"]}:5432/{params["database"]}'''
+        conn = psycopg2.connect(con_string)
+        logging.info('***CONNECTION ESTABLISHED*******************')
+        df = pd.read_sql_query(query, conn)
+        logging.info(df.head())
+        return df
+    except Exception as ex:
+        logging.error(formatError(ex))
+    finally:
+        conn.close()
