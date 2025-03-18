@@ -207,17 +207,17 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
 
 def format_value(col, value, col_type):
     if pd.isna(value):
-        return f"{col} = NULL"
+        return f"\"{col}\" = NULL"
     elif isinstance(value, (datetime, date)):
         if isinstance(value, datetime):
-            return f"{col} = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+            return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
         else:
             return f"{col} = '{value.strftime('%Y-%m-%d')}'"
     elif col_type == 'text':
-        return f"{col} = '{escape_special_characters(value)}'"
+        return f"\"{col}\" = '{escape_special_characters(value)}'"
     elif 'timestamp' in col_type.lower():
-        return f"{col} = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+        return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
     elif 'date' in col_type.lower():
-        return f"{col} = '{value.strftime('%Y-%m-%d')}'"
+        return f"\"{col}\" = '{value.strftime('%Y-%m-%d')}'"
     else:
-        return f"{col} = {value}"
+        return f"\"{col}\"= {value}"
