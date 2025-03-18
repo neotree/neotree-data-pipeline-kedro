@@ -236,11 +236,11 @@ def read_data_with_no_unique_key():
     return f'''
              SELECT 
              id,
-            "data"->>'entries' AS "entries",
+            "data"->'entries' AS "entries",
             "data"->>'appVersion' AS "appVersion"
             FROM public.clean_sessions
             WHERE "unique_key" not like '%-%-%'
-            AND jsonb_typeof("data") IS NOT NULL;'''
+            AND "data"->>'entries' like '\\{%';'''
 
 # SPECIAL CASE
 
