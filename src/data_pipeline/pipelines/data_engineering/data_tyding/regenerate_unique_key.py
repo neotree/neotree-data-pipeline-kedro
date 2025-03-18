@@ -10,8 +10,9 @@ def regenerate_unique_key():
     
     try:
         #Read Data From The Kedro Catalog
-        raw_data = inject_sql_with_return(read_data_with_no_unique_key())
-       
+        raw_data = inject_sql_with_return(read_data_with_no_unique_key)
+        if isinstance(raw_data, dict):
+            raw_data = list(raw_data.items())
         for index, row in raw_data.iterrows():
            
             id = row['id']
@@ -43,4 +44,4 @@ def regenerate_unique_key():
                          
     except Exception as ex:
         logging.error("UNIQUE KEY GENERATION ERROR:-")
-        logging.error(formatError(ex))
+        logging.error(ex)
