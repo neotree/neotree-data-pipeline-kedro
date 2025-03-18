@@ -5,11 +5,15 @@ from sqlalchemy import create_engine,text
 import sys
 from sqlalchemy.types import TEXT
 import pandas as pd
-
+import psycopg2
 
 params = config()
 #Postgres Connection String
-con = f'''postgresql://{params["user"]}:{params["password"]}@{params["host"]}:5432/{params["database"]}'''
+con = 'postgresql+psycopg2://' + \
+params["user"] + ':' + params["password"] + '@' + \
+params["host"] + ':' + '5432' + '/' + params["database"]
+# engine = create_engine(con, executemany_mode='batch')
+con_string = f'''postgresql://{params["user"]}:{params["password"]}@{params["host"]}:5432/{params["database"]}'''
 
 engine = create_engine(
     con,
@@ -76,7 +80,7 @@ def inject_sql_with_return(sql_script):
 def inject_bulk_sql(queries, batch_size=1000):
     conn = engine.raw_connection()  # Get the raw DBAPI connection
     cursor = conn.cursor()  # Create a cursor from the raw connection
-    
+    logging.info("--CONNECTION ESTABLISHED.....")
     try:
         # Execute commands in batches
         for i in range(0, len(queries), batch_size):
@@ -160,11 +164,13 @@ def column_exists(schema, table_name,column_name):
         
 def run_query_and_return_df(query):
     try:
-        
+       
+        conn = psycopg2.connect(con_string)
         logging.info('***CONNECTION ESTABLISHED*******************')
-        df = pd.read_sql_query(query, engine)
+        df = pd.read_sql_query(query, conn)
         logging.info(df.head())
         return df
     except Exception as ex:
         logging.error(formatError(ex))
-  
+    finally:
+        conn.close()
