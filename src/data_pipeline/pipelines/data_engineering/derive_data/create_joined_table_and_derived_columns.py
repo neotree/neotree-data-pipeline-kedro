@@ -62,7 +62,7 @@ def join_table():
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
                 if not jn_adm_dis_2.empty:
-                    filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['Outcome.value'] != '')]
+                    filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
 
     except Exception as e:
