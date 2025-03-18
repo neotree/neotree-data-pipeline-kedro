@@ -76,10 +76,8 @@ def inject_sql_with_return(sql_script):
         raise e
     
 def inject_bulk_sql(queries, batch_size=1000):
-
-    conn = engine.connect()
-    # Use psycopg2 for bulk execution
-    cursor = conn.cursor()
+    conn = engine.raw_connection()  # Get the raw DBAPI connection
+    cursor = conn.cursor()  # Create a cursor from the raw connection
     
     try:
         # Execute commands in batches
@@ -91,18 +89,18 @@ def inject_bulk_sql(queries, batch_size=1000):
                 except Exception as e:
                     logging.error(f"Error executing command: {command}")
                     logging.error(e)
-                    conn.rollback()
+                    conn.rollback()  # Rollback the transaction on error
                     raise e
-            conn.commit()
-            logging.info("###########################DONE BULK PROCESSING################")
+            conn.commit()  # Commit the batch
+            logging.info("########################### DONE BULK PROCESSING ################")
     except Exception as e:
         logging.error("Something went wrong with the SQL file")
         logging.error(e)
-        conn.rollback()
+        conn.rollback()  # Rollback the transaction on error
         raise e
     finally:
-        cursor.close()
-        conn.close()
+        cursor.close()  # Close the cursor
+        conn.close()  #
 
 def get_table_columns(table_name,table_schema):
     query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';
