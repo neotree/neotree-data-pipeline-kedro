@@ -174,7 +174,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
         if(table is not None and df is not None and not df.empty):
 
             updates = []
-            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0]}
+            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0] for col in df.columns}
             
         
             # Generate UPDATE queries for each row
