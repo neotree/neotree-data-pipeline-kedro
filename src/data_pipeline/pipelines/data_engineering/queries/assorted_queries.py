@@ -238,9 +238,8 @@ def read_data_with_no_unique_key():
              id,
             data->'entries' AS "entries",
             data->'appVersion' AS "appVersion"
-            FROM 
-            public.clean_sessions
-            WHERE unique_key NOT LIKE '%-%-%';'''
+            FROM public.clean_sessions
+            WHERE unique_key not like '%-%-%';'''
 
 # SPECIAL CASE
 
