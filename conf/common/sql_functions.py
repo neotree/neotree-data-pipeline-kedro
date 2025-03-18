@@ -166,9 +166,7 @@ def run_query_and_return_df(query):
     try:
        
         conn = psycopg2.connect(con_string)
-        logging.info('***CONNECTION ESTABLISHED*******************')
         df = pd.read_sql_query(query, conn)
-        logging.info(df.head())
         return df
     except Exception as ex:
         logging.error(formatError(ex))
