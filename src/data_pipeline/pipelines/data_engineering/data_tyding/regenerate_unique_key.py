@@ -45,4 +45,4 @@ def regenerate_unique_key():
                          
     except Exception as ex:
         logging.error("UNIQUE KEY GENERATION ERROR:-")
-        logging.error(formatError(ex))
+        logging.error(ex)
