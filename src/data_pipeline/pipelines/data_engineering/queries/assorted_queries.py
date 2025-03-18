@@ -240,7 +240,7 @@ def read_data_with_no_unique_key():
             "data"->'entries' AS "entries",
             "data"->>'appVersion' AS "appVersion"
             FROM public.clean_sessions
-            WHERE "unique_key" not like '20%-%-%';'''
+            WHERE "unique_key" not like '20%-%-%';;'''
 
 # SPECIAL CASE
 
