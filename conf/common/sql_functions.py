@@ -161,6 +161,7 @@ def column_exists(schema, table_name,column_name):
             return False
         
 def run_query_and_return_df(query):
+    logging.info(query)
     df = pd.read_sql_query(query, con)
     logging.info(df.head())
     return df
