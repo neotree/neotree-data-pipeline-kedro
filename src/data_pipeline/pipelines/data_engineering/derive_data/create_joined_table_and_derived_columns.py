@@ -174,8 +174,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
         if(table is not None and df is not None and not df.empty):
 
             updates = []
-            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0] 
-                for col in df.columns if col not in ['uid', 'facility', 'unique_key']}
+            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0]}
             
         
             # Generate UPDATE queries for each row
@@ -183,10 +182,9 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
             for _, row in df.iterrows():
                 updates = []
                 for col in df.columns:
-                    if col not in ['uid', 'facility', 'unique_key']:
-                        col_type = column_types[col]
-                        value = row[col]
-                        updates.append(format_value(col, value, col_type))
+                    col_type = column_types[col]
+                    value = row[col]
+                    updates.append(format_value(col, value, col_type))
                 
                 # Join the updates into a single SET clause
                 set_clause = ', '.join(updates)
