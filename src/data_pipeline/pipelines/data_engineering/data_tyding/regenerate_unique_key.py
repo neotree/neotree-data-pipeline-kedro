@@ -1,5 +1,6 @@
-from conf.common.sql_functions import inject_sql,inject_sql_with_return
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import regenerate_unique_key_query,read_data_with_no_unique_key
+from conf.base.catalog import catalog
+from conf.common.sql_functions import inject_sql
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import regenerate_unique_key_query
 from conf.common.format_error import formatError
 import logging
 import pandas as pd
@@ -10,7 +11,7 @@ def regenerate_unique_key():
     
     try:
         #Read Data From The Kedro Catalog
-        raw_data = inject_sql_with_return(read_data_with_no_unique_key())
+        raw_data = catalog.load('no_unique_keys_data')
         if isinstance(raw_data, dict):
             raw_data = list(raw_data.items())
         for index, row in raw_data.iterrows():
