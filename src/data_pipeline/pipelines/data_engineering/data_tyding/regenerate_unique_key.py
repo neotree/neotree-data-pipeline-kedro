@@ -12,11 +12,12 @@ def regenerate_unique_key():
     try:
         #Read Data From The Kedro Catalog
         raw_data = catalog.load('no_unique_keys_data')
+        logging.info(raw_data.head())
         for index, row in raw_data.iterrows():
            
             id = row['id']
             values = []
-            possible_unique_keys = ['DateAdmission','DateTimeAdmission','DateTimeDeath','DateTimeDischarge','DateDischarge','DateDeath']
+            possible_unique_keys = ['DateAdmission','DateTimeAdmission','DateTimeDeath','DateTimeDischarge','DateDischarge','DateDeath','DateBCT']
             value = pd.DataFrame(row['entries'])
             for prefix in possible_unique_keys:
                 #Check If It Is Old Format Or New Format
