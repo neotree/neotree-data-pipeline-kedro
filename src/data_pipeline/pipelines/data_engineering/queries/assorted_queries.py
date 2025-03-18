@@ -240,9 +240,7 @@ def read_data_with_no_unique_key():
             data->'appVersion' AS appVersion
             FROM 
             public.clean_sessions
-            WHERE 
-            NOT cleaned 
-            AND unique_key NOT LIKE '%-%-%';'''
+            WHERE unique_key NOT LIKE '%-%-%';'''
 
 # SPECIAL CASE
 
