@@ -218,7 +218,7 @@ old_catalog =  {
             sql= read_old_smch_matched_data,
             credentials=dict(con=con)
          ),
-         "no_unique_keys_data":  SQLQueryDataSet(
+         "read_no_unique_keys_data":  SQLQueryDataSet(
             sql= data_with_no_unique_keys,
             credentials=dict(con=con)
          ),

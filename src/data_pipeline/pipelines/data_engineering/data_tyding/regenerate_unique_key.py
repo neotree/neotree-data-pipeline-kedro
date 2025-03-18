@@ -11,7 +11,7 @@ def regenerate_unique_key():
     
     try:
         #Read Data From The Kedro Catalog
-        raw_data = inject_sql_with_return(read_data_with_no_unique_key())
+        raw_data = catalog.load('read_no_unique_keys_data')
         if isinstance(raw_data, dict):
             raw_data = list(raw_data.items())
         for index, row in raw_data.iterrows():
