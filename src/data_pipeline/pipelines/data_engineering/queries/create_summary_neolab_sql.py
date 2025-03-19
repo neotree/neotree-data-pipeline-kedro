@@ -1,9 +1,10 @@
 
 #Query to create summary neolab table
 def summary_neolab_query():
-  prefix = f''' drop table if exists derived.summary_neolab cascade;;' \
-                 create table derived.summary_neolab as 
+  prefix = f''' drop table if exists derived.summary_neolab cascade;;
+                 create table derived.summary_neolab as    (
                 '''
+  suffix = ')'
   where = ''
   if ():
     prefix= f''' INSERT INTO derived.summary_neolab (
@@ -20,13 +21,13 @@ def summary_neolab_query():
     "NumberOfCulturesForEpisode", 
     "CombinedResult"
         )  '''
-    where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" = "derived"."neolab"."uid") '''
-
+    where = f''' AND  NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" = "uid") '''
+    suffix =''
 
   return   prefix+f'''
             
-            (
-            with latest_neolab as (
+         
+            (with latest_neolab as (
             select
             facility,
             uid,
@@ -34,7 +35,7 @@ def summary_neolab_query():
             max("DateBCR.value") as "DateBCR" -- This takes the last upload 
                     -- most recently uploaded
             from derived.neolab
-            where uid not like '0000%%' and uid not like '***%%'
+            where uid not like '0000%%' and uid not like '***%%' {where}
             group by 1,2,3
             )
             select
@@ -62,4 +63,4 @@ def summary_neolab_query():
                     derived.neolab."BCResult.value" END AS "CombinedResult"   
             from latest_neolab join derived.neolab
             on latest_neolab.uid=derived.neolab."uid" and latest_neolab."DateBCR" = derived.neolab."DateBCR.value" 
-            ) {where};;'''
+            {suffix} {where};;'''
