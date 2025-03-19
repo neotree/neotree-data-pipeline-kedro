@@ -6,6 +6,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 def summary_maternal_outcomes_query():
     prefix = f''' DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
                 CREATE TABLE derived.summary_maternal_outcomes AS   '''
+    where = ''
     #Defaulting to Malawi Case 
     if(table_exists("derived","summary_maternal_outcomes")):
         prefix= f'''INSERT INTO "derived"."summary_maternal_outcomes" (
@@ -14,6 +15,8 @@ def summary_maternal_outcomes_query():
     "Other Reason for CS","Did by Cry after birth?","Apgar at 1min","Apgar at 5min","Apgar at 10min","Conditions in Pregnancy",
     "BirthCount","GestationGroup","BirthWeightGroup","GestationGroupSort","BirthWeightGroupSort"
 )  '''
+        where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_maternal_outcomes  WHERE "NeoTreeID" = "derived"."maternal_outcomes"."uid") '''
+        
      
     gestation_case = f''' CASE
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unkown'
@@ -97,6 +100,6 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."BWTDis.value" >= 3500 AND derived.maternal_outcomes."BWTDis.value" < 4000 THEN 5
         WHEN derived.maternal_outcomes."BWTDis.value" >= 4000 THEN 6
         END AS "BirthWeightGroupSort"
-        FROM derived.maternal_outcomes;; '''
+        FROM derived.maternal_outcomes {where};; '''
            
     return sql

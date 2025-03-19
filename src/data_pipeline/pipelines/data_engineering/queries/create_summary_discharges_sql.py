@@ -3,6 +3,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 def summary_discharges_query():
   prefix = f''' DROP TABLE IF EXISTS derived.summary_discharges;;
                 CREATE TABLE derived.summary_discharges AS   '''
+  where = ''
   if(table_exists("derived","summary_discharges")):
     prefix=  f''' INSERT INTO derived.summary_discharges (
     "Facility Name","Neotree_ID","Started_at","Completed_at","Time Spent","DateAdmissionDC","DateTime of Discharge","Outcome",
@@ -16,6 +17,8 @@ def summary_discharges_query():
     "Other Cause of Death_","Other Cause of death","Contributory Cause of Death","Other Contributory cause of death","Modifable Factor1",
     "Modifable Factor2","Modifable Factor3","Covid Risk?","Discharge Surgical Conditions diagnosis","Covid Repeat Results","Covid Confirmation"
   )  '''
+    where=f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_discharges  WHERE "Neotree_ID" = "derived"."discharges"."uid") '''
+      
   
   return   prefix+f''' SELECT
                   "facility" AS "Facility Name",
@@ -70,4 +73,4 @@ def summary_discharges_query():
                   "DiscDiagSurgicalCond.label" AS "Discharge Surgical Conditions diagnosis",
                   "CovidRepResults.label" AS "Covid Repeat Results",
                   "CovidConfirmation.label" AS "Covid Confirmation"
-                FROM "derived"."discharges";; '''
+                FROM "derived"."discharges" {where};; '''

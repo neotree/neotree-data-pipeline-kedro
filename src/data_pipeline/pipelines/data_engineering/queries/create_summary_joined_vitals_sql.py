@@ -4,8 +4,9 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 def summary_joined_vitals_query():
     prefix = f''' DROP TABLE IF EXISTS derived.summary_joined_vitals;;
                 CREATE TABLE derived.summary_joined_vitals AS   '''
+    where =''
     if table_exists("derived","summary_joined_vitals"):
-        prefix= f'''INSERT INTO "derived"."summary_vitalsigns" (
+        prefix= f'''INSERT INTO "derived"."summary_joined_vitals" (
     "NeoTreeID", "facility", "LengthOfStayInDays", "NeonateSepsisStudy", "Day1Date", "Day1DayOfWeek", "Day1PublicHolidayH", 
     "Day1NoOfNursesDayShift", "Day1NoOfNursesNightShift", "Day1NoOfNursesContinousShift", "Day1NoOfNeonates", 
     "Day1NoOfSstudents", "Day1Location", "D1FrequencyOfMonitoring", "Day1_1stTimeofVitalSigns", "Day1Time1", "Day1_2ndTimeofVitalSigns", 
@@ -14,6 +15,7 @@ def summary_joined_vitals_query():
     "Day3_5thTimeofVitalSigns", "Day3Time5", "Day3Time6", "WasBabyHypothermic", "Temperature1", "TimeOfTemperature1", 
     "WasFollowUpTemperatureDone", "Temperature2", "TimeOfTemperature2"
 )  '''
+        where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_joined_vitals  WHERE "NeoTreeID" = "derived"."summary_day1_vitals"."NeoTreeID") '''
     
     return prefix+f'''
                     SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
@@ -43,7 +45,7 @@ def summary_joined_vitals_query():
                     "derived"."summary_day1_vitals"."Temperature2" AS "Temperature2",
                     "derived"."summary_day1_vitals"."Temperature2 Time" AS "Temperature2 Time",
                     "derived"."summary_day1_vitals"."Day" AS "Day"
-                    FROM "derived"."summary_day1_vitals"
+                    FROM "derived"."summary_day1_vitals {where}"
                     UNION ALL
                     SELECT "derived"."summary_day2_vitals"."Facility Name" AS "Facility Name",
                     "derived"."summary_day2_vitals"."NeoTreeID" AS "NeoTreeID",
@@ -72,7 +74,7 @@ def summary_joined_vitals_query():
                     "derived"."summary_day2_vitals"."Temperature2" AS "Temperature2",
                     "derived"."summary_day2_vitals"."Temperature2 Time" AS "Temperature2 Time",
                     "derived"."summary_day2_vitals"."Day" AS "Day"
-                    FROM "derived"."summary_day2_vitals"
+                    FROM "derived"."summary_day2_vitals {where}"
                     UNION ALL
                     SELECT "derived"."summary_day3_vitals"."Facility Name" AS "Facility Name",
                     "derived"."summary_day3_vitals"."NeoTreeID" AS "NeoTreeID",
@@ -101,5 +103,5 @@ def summary_joined_vitals_query():
                     "derived"."summary_day3_vitals"."Temperature2" AS "Temperature2",
                     "derived"."summary_day3_vitals"."Temperature2 Time" AS "Temperature2 Time",
                     "derived"."summary_day3_vitals"."Day" AS "Day"
-                FROM "derived"."summary_day3_vitals";;
+                FROM "derived"."summary_day3_vitals " {where};;
         '''

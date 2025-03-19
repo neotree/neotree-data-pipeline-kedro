@@ -4,6 +4,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 def summary_admissions_query():
   prefix = f'''  DROP TABLE IF EXISTS derived.summary_admissions;;
                 CREATE TABLE derived.summary_admissions AS  '''
+  where = ''
   if(table_exists('derived','summary_admissions')):
     prefix=f'''INSERT INTO "derived"."summary_admissions" (
     "Facility Name","NeoTree_ID","DateTime Admission","Re-admission?","Gender","Baby Cry Triage","Further Triage",
@@ -28,6 +29,7 @@ def summary_admissions_query():
     "Meconium Thick or Thin","Cardiovascular exam","Femorals","HypoSxYN","Chest Ausc","Respiratory Support","RISK for Covid?","External Source",
     "Mothers Symptoms","Mother Cellphone number","Mothers Diagnosis","Mother Oxygen saturations","is mother present?","Other Ethnicity",
     "Manual Heart Rate","MatComorbidities","MatComorbidities.value","DOBYN.value","Age Estimated","Age","Age Category","BirthWeight")   '''
+    where=f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_admissions  WHERE "Neotree_ID" = "derived"."amissions"."uid") '''
 
   return   prefix +f''' SELECT "facility" AS "Facility Name",
                     "uid" AS "NeoTree_ID",
@@ -192,4 +194,4 @@ def summary_admissions_query():
                     "AgeCategory"
                     ELSE "AgeCat.label" END AS "Age Category",
                     "BirthWeight.value" AS "BirthWeight"
-                FROM "derived"."admissions";; '''
+                FROM "derived"."admissions" {where} ;; '''
