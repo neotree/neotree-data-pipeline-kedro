@@ -21,7 +21,7 @@ def summary_neolab_query():
     "NumberOfCulturesForEpisode", 
     "CombinedResult"
         )  '''
-    where = f''' AND  NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" = "uid") '''
+    where = f''' AND  NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" = derived.neolab."uid") '''
     suffix =''
 
   return   prefix+f'''
