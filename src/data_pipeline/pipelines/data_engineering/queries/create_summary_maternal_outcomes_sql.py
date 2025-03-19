@@ -12,7 +12,7 @@ def summary_maternal_outcomes_query():
     "NeoTreeID","facility","Date of Admission","Birth Date","Gender","Type of Birth","Gestation","Neonate Outcome",
     "Birth Weight(g)","Maternal Outcome","Presentation","Mode of Delivery","Is baby in Nursery?","Reason for CS",
     "Other Reason for CS","Did by Cry after birth?","Apgar at 1min","Apgar at 5min","Apgar at 10min","Conditions in Pregnancy",
-    "BirthCount","gestation_case","BirthWeightGroup","GestationGroupSort","BirthWeightGroupSort"
+    "BirthCount","GestationGroup","BirthWeightGroup","GestationGroupSort","BirthWeightGroupSort"
 )  '''
      
     gestation_case = f''' CASE
