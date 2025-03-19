@@ -63,4 +63,4 @@ def summary_neolab_query():
                     derived.neolab."BCResult.value" END AS "CombinedResult"   
             from latest_neolab join derived.neolab
             on latest_neolab.uid=derived.neolab."uid" and latest_neolab."DateBCR" = derived.neolab."DateBCR.value" 
-            {suffix} {where};;'''
+            {suffix};;'''
