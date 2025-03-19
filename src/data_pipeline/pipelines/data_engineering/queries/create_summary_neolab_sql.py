@@ -1,4 +1,4 @@
-
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 #Query to create summary neolab table
 def summary_neolab_query():
   prefix = f''' drop table if exists derived.summary_neolab cascade;;
@@ -6,7 +6,7 @@ def summary_neolab_query():
                 '''
   suffix = ')'
   where = ''
-  if ():
+  if(table_exists("derived","summary_neolab")):
     prefix= f''' INSERT INTO derived.summary_neolab (
     "facility", 
     "uid", 
@@ -27,7 +27,7 @@ def summary_neolab_query():
   return   prefix+f'''
             
          
-            (with latest_neolab as (
+            with latest_neolab as (
             select
             facility,
             uid,
