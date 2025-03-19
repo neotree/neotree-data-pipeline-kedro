@@ -24,13 +24,20 @@ def create_summary_tables(manually_Fix_admissions_output,manually_fix_discharges
         
         elif manually_Fix_admissions_output is not None and manually_fix_discharges_output is not None:
             create_summary_vitalsigns()
+            logging.info("******DONE PROCESSING SUMMARY VITALS************")
             create_summary_joined_vitalsigns() 
+            logging.info("******DONE PROCESSING SUMMARY JOINED VITALS************")
             create_summary_maternal_outcomes()
+            logging.info("******DONE PROCESSING MATERNAL OUTCOMES VITALS************")
             create_summary_neolabs()
+            logging.info("******DONE PROCESSING NEOLABS************")
             if('country' in params and str(params['country']).lower() =='malawi' and env=='prod'):
                 create_maternal_completeness_summary() 
+                logging.info("******DONE PROCESSINGS MATERNAL COMPLETENESS************")
                 create_summary_admissions()
+                logging.info("******DONE PROCESSINGS SUMMARY ADMISSIONS************")
                 create_summary_discharges()
+                logging.info("******DONE PROCESSINGS SUMMARY DISCHARGES************")
 
             exploded_Diagnoses_exists = table_exists("derived","exploded_Diagnoses.label")
             diagnoses_exists = table_exists("derived","diagnoses")

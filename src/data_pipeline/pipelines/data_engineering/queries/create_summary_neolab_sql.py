@@ -1,8 +1,30 @@
 
 #Query to create summary neolab table
 def summary_neolab_query():
-  return   f''' drop table if exists derived.summary_neolab cascade;;
-            create table derived.summary_neolab as 
+  prefix = f''' drop table if exists derived.summary_neolab cascade;;' \
+                 create table derived.summary_neolab as 
+                '''
+  where = ''
+  if ():
+    prefix= f''' INSERT INTO derived.summary_neolab (
+    "facility", 
+    "uid", 
+    "episode", 
+    "DateBCR", 
+    "Org1_label", 
+    "Org1_value", 
+    "OtherOrg1_value", 
+    "BCResult", 
+    "Status", 
+    "DATEBCT", 
+    "NumberOfCulturesForEpisode", 
+    "CombinedResult"
+        )  '''
+    where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" = "derived"."neolab"."uid") '''
+
+
+  return   prefix+f'''
+            
             (
             with latest_neolab as (
             select
@@ -40,4 +62,4 @@ def summary_neolab_query():
                     derived.neolab."BCResult.value" END AS "CombinedResult"   
             from latest_neolab join derived.neolab
             on latest_neolab.uid=derived.neolab."uid" and latest_neolab."DateBCR" = derived.neolab."DateBCR.value" 
-            );;'''
+            ) {where};;'''
