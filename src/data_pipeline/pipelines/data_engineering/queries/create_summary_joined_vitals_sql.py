@@ -1,8 +1,21 @@
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+
 #Query to create summary day one vitals table
 def summary_joined_vitals_query():
-    return f'''
-                DROP TABLE IF EXISTS derived.summary_joined_vitals;;
-                    CREATE TABLE derived.summary_joined_vitals AS 
+    prefix = f''' DROP TABLE IF EXISTS derived.summary_joined_vitals;;
+                CREATE TABLE derived.summary_joined_vitals AS   '''
+    if table_exists("derived","summary_joined_vitals"):
+        prefix= f'''INSERT INTO "derived"."summary_vitalsigns" (
+    "NeoTreeID", "facility", "LengthOfStayInDays", "NeonateSepsisStudy", "Day1Date", "Day1DayOfWeek", "Day1PublicHolidayH", 
+    "Day1NoOfNursesDayShift", "Day1NoOfNursesNightShift", "Day1NoOfNursesContinousShift", "Day1NoOfNeonates", 
+    "Day1NoOfSstudents", "Day1Location", "D1FrequencyOfMonitoring", "Day1_1stTimeofVitalSigns", "Day1Time1", "Day1_2ndTimeofVitalSigns", 
+    "Day1Time2", "Day1_3rdTimeofVitalSigns", "Day1Time3", "Day1_4thTimeofVitalSigns", "Day1Time4", "Day1_5thTimeofVitalSigns", "Day1Time5", "Day3_1stTimeofVitalSigns", 
+    "Day3Time1", "Day3_2ndTimeofVitalSigns", "Day3Time2", "Day3_3rdTimeofVitalSigns", "Day3Time3", "Day3_4thTimeofVitalSigns", "Day3Time4", 
+    "Day3_5thTimeofVitalSigns", "Day3Time5", "Day3Time6", "WasBabyHypothermic", "Temperature1", "TimeOfTemperature1", 
+    "WasFollowUpTemperatureDone", "Temperature2", "TimeOfTemperature2"
+)  '''
+    
+    return prefix+f'''
                     SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
                     "derived"."summary_day1_vitals"."NeoTreeID" AS "NeoTreeID",
                     Date("derived"."summary_day1_vitals"."Date") AS "Date",

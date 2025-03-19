@@ -1,9 +1,23 @@
-
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 #Query to create summary_maternala_completeness table
 def summary_discharges_query():
-  return   f''' DROP TABLE IF EXISTS derived.summary_discharges;;
-                CREATE TABLE derived.summary_discharges AS 
-                SELECT
+  prefix = f''' DROP TABLE IF EXISTS derived.summary_discharges;;
+                CREATE TABLE derived.summary_discharges AS   '''
+  if(table_exists("derived","summary_discharges")):
+    prefix=  f''' INSERT INTO derived.summary_discharges (
+    "Facility Name","Neotree_ID","Started_at","Completed_at","Time Spent","DateAdmissionDC","DateTime of Discharge","Outcome",
+    "Apgar score at 1min DC","Apgar score at 5mins DC","Apgar score at 10mins DC","HIV test Result DC","NVP given?",
+    "Mode of Delivery DC","Date Discharge Vitals taken","Birth Weight (g) DC","Gestation DC","Discharge Heart Rate",
+    "Discharge Oxygen Saturations","Discharge Temperature","Discharge Respiratory Rate","Discharge Weight (g)","Date of Discharge Weight",
+    "Discharge Primary Diagnosis","Other discharge diagnosis","Thermoregulation during admission","Feeds during admission",
+    "Respiratory Support","Date Weaned off the support","Phototherapy given during admission?","Medications Given",
+    "Other medications given","Baby review clinic organized?","Baby review clinic","Other baby review clinic","Date of clinic review",
+    "Health Education given?","Other Problems","Other Problems (additional)","DateTime of Death","Cause of Death",
+    "Other Cause of Death_","Other Cause of death","Contributory Cause of Death","Other Contributory cause of death","Modifable Factor1",
+    "Modifable Factor2","Modifable Factor3","Covid Risk?","Discharge Surgical Conditions diagnosis","Covid Repeat Results","Covid Confirmation"
+  )  '''
+  
+  return   prefix+f''' SELECT
                   "facility" AS "Facility Name",
                   "uid" AS "Neotree_ID",
                   "started_at" AS "Started_at",

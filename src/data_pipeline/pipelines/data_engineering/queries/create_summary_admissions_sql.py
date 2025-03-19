@@ -1,9 +1,35 @@
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 
 #Query to create summary_maternala_completeness table
 def summary_admissions_query():
-  return   f''' DROP TABLE IF EXISTS derived.summary_admissions;;
-                CREATE TABLE derived.summary_admissions AS 
-                SELECT "facility" AS "Facility Name",
+  prefix = f'''  DROP TABLE IF EXISTS derived.summary_admissions;;
+                CREATE TABLE derived.summary_admissions AS  '''
+  if(table_exists('derived','summary_admissions')):
+    prefix=f'''INSERT INTO "derived"."summary_admissions" (
+    "Facility Name","NeoTree_ID","DateTime Admission","Re-admission?","Gender","Baby Cry Triage","Further Triage",
+    "Danger Signs1","Danger Signs2","Respiratory Rate","Saturation in Air","Heart Rate","Oxygen Saturation",
+    "Temperature","Temperature Group","TempThermia","Blood Sugar mmol","Blood Sugar mg","Admission Weight","Admission Weight Group",
+    "Birth Weight","Birth Weight Group","<28wks/1kg","Low Birth Weight?","Head Circumference (cm)","Admission Reason",
+    "Other admission reason","AgeB.label","AgeC.label","AgeA.label","Type of Birth","Gestation","Gestetation Group",
+    "Method of Gestation Extimation","Presentation","Mode of Delivery","Meconium Present?","Cry at Birth?","Baby Colour",
+    "Apgar score at 1 min","Apgar score at 5 mins","Apgar score at 10 mins","Palate","Head Shape","Dysmorphic",
+    "Spine","Activity","Signs of Respiratory Distress","Work of breathing","Stethoscope use?","Chest Auscultation","Murmur",
+    "Signs of Dehydration","Abdomen","Umbilicus","Genitalia","Anus2","Musculoskeletal problems","Skin tone","Breathing Problem",
+    "Vomiting","Feeding Review","Stools Infant","SRNeuroOther","GSCvsOM","InOrOut","Other Referred From","Referred From","Other Referral Facility",
+    "Place of Birth","Birth Facility","Same birth place?","Other Birth Facility","Mothers Disctrict","Mathors Age in years",
+    "Marital Status","Ethnicity", "Tribe", "Other Tribe", "Religion", "Other Religion", "HIV test?", "ANVDRL","Date of HIV test",
+    "When HIV test was done","HIV test Result","HAART","Length of HAART","NVP given?","ANVDRLDate","Date of VDRL Same as HIV Test Date?",
+    "ANVDRL Result","Conditions in Pregnancy","Antenatal Care","Mataternal Syphillis Treated?","IPT Taken","FeFo","TTV","Antenatal Steroids",
+    "Problems in Labor","Duration in Labor","ROM","ROM Length","Risk Factors for Sepsis","Resusitation","IM vit K given at birth?",
+    "TEO given at birth?","Chlorhexidine on umbilicus at birth?","Plan","Other Plan","RespSR","Diagnoses","Other Diagnoses",
+    "Diagnosis (Surgical Cond)","Admission Reason (Surgical Cond)","Admission Source","Meconium?","Passing Urine?","Passing urine? (infant)",
+    "Suck Reflex","Fontanelle","Tone","Level of Conciousness","Fits, Seizures or convulsions","Respiration","Thompson Score",
+    "Posture","Moro reflex","Grasp reflex","Reason for CS","Other Reason for CS","Length of Resusitation","Length of Resusitation (Known)",
+    "Meconium Thick or Thin","Cardiovascular exam","Femorals","HypoSxYN","Chest Ausc","Respiratory Support","RISK for Covid?","External Source",
+    "Mothers Symptoms","Mother Cellphone number","Mothers Diagnosis","Mother Oxygen saturations","is mother present?","Other Ethnicity",
+    "Manual Heart Rate","MatComorbidities","MatComorbidities.value","DOBYN.value","Age Estimated","Age","Age Category","BirthWeight")   '''
+
+  return   prefix +f''' SELECT "facility" AS "Facility Name",
                     "uid" AS "NeoTree_ID",
                     "DateTimeAdmission.value" AS "DateTime Admission",
                     "Readmission.label" AS "Re-admission?",

@@ -1,9 +1,19 @@
 import logging
 
 from conf.base.catalog import params
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 #Query to create summary_maternala_outcomes table
 def summary_maternal_outcomes_query():
+    prefix = f''' DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
+                CREATE TABLE derived.summary_maternal_outcomes AS   '''
     #Defaulting to Malawi Case 
+    if(table_exists("derived","summary_maternal_outcomes")):
+        prefix= f'''INSERT INTO "derived"."summary_maternal_outcomes" (
+    "NeoTreeID","facility","Date of Admission","Birth Date","Gender","Type of Birth","Gestation","Neonate Outcome",
+    "Birth Weight(g)","Maternal Outcome","Presentation","Mode of Delivery","Is baby in Nursery?","Reason for CS",
+    "Other Reason for CS","Did by Cry after birth?","Apgar at 1min","Apgar at 5min","Apgar at 10min","Conditions in Pregnancy",
+    "BirthCount","gestation_case","BirthWeightGroup","GestationGroupSort","BirthWeightGroupSort"
+)  '''
      
     gestation_case = f''' CASE
         WHEN derived.maternal_outcomes."Gestation.value" IS NULL THEN 'Unkown'
@@ -27,9 +37,7 @@ def summary_maternal_outcomes_query():
         '''
         
         
-    sql= f'''DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
-        CREATE TABLE derived.summary_maternal_outcomes AS 
-        SELECT derived.maternal_outcomes."uid" AS "NeoTreeID",
+    sql=prefix+ f''' SELECT derived.maternal_outcomes."uid" AS "NeoTreeID",
         derived.maternal_outcomes."facility" AS "facility",
         CASE
         WHEN derived.maternal_outcomes."DateAdmission.value" IS NULL THEN NULL
