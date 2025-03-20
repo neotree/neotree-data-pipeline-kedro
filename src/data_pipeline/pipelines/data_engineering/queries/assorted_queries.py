@@ -203,7 +203,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs."data"->'entries' as "entries",
             cs.unique_key
             {case_condition}
-            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.uid!='Unknown' {condition};;
+            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
    
             '''
     return sql
@@ -221,7 +221,7 @@ def read_derived_data_query(source_table,destination_table=None):
     return f'''
                 select 
                     *
-                from derived.{source_table} cs where cs.uid!='null' {condition};;
+                from derived.{source_table} cs where cs.unique_key is not null and cs.uid!='null' {condition};;
             '''
 
 def read_joined_admissions_without_discharges():   
