@@ -33,7 +33,7 @@ def deduplicate_neolab_query(neolab_where):
             max(id) as id
             from public.clean_sessions
             where scriptid {neolab_where} -- only pull out neloab data
-            group by 1,2,3,4,5,6
+            group by 1,2,3,4,5,6,7
             )
             select
             earliest_neolab.scriptid,
@@ -47,7 +47,7 @@ def deduplicate_neolab_query(neolab_where):
             sessions.unique_key,
             data
             from earliest_neolab join clean_sessions sessions
-            on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
+            on earliest_neolab.id = sessions.id where sessions.unique_key is not null and sessions.scriptid {neolab_where}
             );; '''
 
 
@@ -105,7 +105,7 @@ def deduplicate_data_query(condition, destination_table):
                         month,
                         data
                         )'''
-            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
+            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
             
         return f'''{operation}
             (
@@ -209,7 +209,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(destination_table) :
-    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
+    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
@@ -242,7 +242,7 @@ def read_data_with_no_unique_key():
         FROM 
             public.clean_sessions
         WHERE 
-            "unique_key" NOT LIKE '%-%-%'
+            ("unique_key" NOT LIKE '%-%-%' or unique_key is null)
         AND 
             (
                 ("data"->'entries'->>'DateTimeAdmission' IS NOT NULL)
