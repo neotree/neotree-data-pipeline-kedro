@@ -5,17 +5,6 @@ def summary_joined_vitals_query():
     prefix = f''' DROP TABLE IF EXISTS derived.summary_joined_vitals;;
                 CREATE TABLE derived.summary_joined_vitals AS   '''
     where =''
-    if table_exists("derived","summary_joined_vitals"):
-        prefix= f'''INSERT INTO "derived"."summary_joined_vitals" (
-    "NeoTreeID", "facility", "LengthOfStayInDays", "NeonateSepsisStudy", "Day1Date", "Day1DayOfWeek", "Day1PublicHolidayH", 
-    "Day1NoOfNursesDayShift", "Day1NoOfNursesNightShift", "Day1NoOfNursesContinousShift", "Day1NoOfNeonates", 
-    "Day1NoOfSstudents", "Day1Location", "D1FrequencyOfMonitoring", "Day1_1stTimeofVitalSigns", "Day1Time1", "Day1_2ndTimeofVitalSigns", 
-    "Day1Time2", "Day1_3rdTimeofVitalSigns", "Day1Time3", "Day1_4thTimeofVitalSigns", "Day1Time4", "Day1_5thTimeofVitalSigns", "Day1Time5", "Day3_1stTimeofVitalSigns", 
-    "Day3Time1", "Day3_2ndTimeofVitalSigns", "Day3Time2", "Day3_3rdTimeofVitalSigns", "Day3Time3", "Day3_4thTimeofVitalSigns", "Day3Time4", 
-    "Day3_5thTimeofVitalSigns", "Day3Time5", "Day3Time6", "WasBabyHypothermic", "Temperature1", "TimeOfTemperature1", 
-    "WasFollowUpTemperatureDone", "Temperature2", "TimeOfTemperature2"
-)  '''
-        where = f''' WHERE NOT EXISTS ( SELECT 1 FROM derived.summary_maternal_outcomes WHERE "NeoTreeID" IN (SELECT "uid" FROM derived.maternal_outcomes)) '''
     
     return prefix+f'''
                     SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
