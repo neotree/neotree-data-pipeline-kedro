@@ -1,6 +1,6 @@
 from conf.common.sql_functions import inject_sql
 def generate_update_query(facility, variable, to_update, values,table,where):
-    additional_where = f' and facility={facility}'
+    additional_where = f''' and facility='{facility}' '''
     if(facility=='PHC'):
         additional_where=''
     # Start building the update query
@@ -13,9 +13,9 @@ def generate_update_query(facility, variable, to_update, values,table,where):
     if query_parts:
         update_query = f"""
         UPDATE derived.{table}
-        SET {to_update} = CASE
+        SET "{to_update}" = CASE
             { ' '.join(query_parts) }
-            ELSE {to_update} -- Keep the existing value if no match
+            ELSE "{to_update}" -- Keep the existing value if no match
         END
         WHERE "{to_update}" ILIKE '{where}'  {additional_where};;
         """
