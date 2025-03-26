@@ -33,7 +33,7 @@ def deduplicate_neolab_query(neolab_where):
             max(id) as id
             from public.clean_sessions
             where scriptid {neolab_where} -- only pull out neloab data
-            group by 1,2,3,4,5,6,7
+            group by 1,2,3,4,5,6
             )
             select
             earliest_neolab.scriptid,
