@@ -12,16 +12,16 @@ def summary_neolab_query():
     "uid", 
     "episode", 
     "DateBCR", 
-    "Org1_label", 
-    "Org1_value", 
-    "OtherOrg1_value", 
+    "Org1.label", 
+    "Org1.value", 
+    "OtherOrg1.value", 
     "BCResult", 
     "Status", 
     "DATEBCT", 
     "NumberOfCulturesForEpisode", 
     "CombinedResult"
         )  '''
-    where = f''' AND  NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" = derived.neolab."uid") '''
+    where = f''' AND  NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" IN (select uid from derived.neolab)) '''
     suffix =''
 
   return   prefix+f'''
