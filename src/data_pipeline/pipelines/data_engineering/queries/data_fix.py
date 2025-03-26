@@ -87,7 +87,8 @@ def update_age_category():
         WHEN "Age.value"<=23 THEN 'Newborn (2 - 23 hrs old)'
         WHEN "Age.value"<=47 THEN 'Newborn (1 day - 1 day 23 hrs old)'
         WHEN "Age.value"<=71 THEN 'Infant (2 days - 2 days 23 hrs old)' 
-        ELSE 'Infant (> 3 days old)' END AS "AgeCategory" where "AgeCategory" is NULL;;
+        ELSE 'Infant (> 3 days old)' END 
+        where "AgeCategory" is NULL;;
         '''
         inject_sql(query,f"UPDATE AGE {script}")
 
@@ -100,7 +101,8 @@ def update_admission_weight():
         WHEN "AdmissionWeight.value" <4000 THEN '2500-4000g'
         WHEN "AdmissionWeight.value"<2500 THEN '1500-2500g'
         WHEN "AdmissionWeight.value"<1500 THEN '1000-1500g' 
-        ELSE '<1000g' END AS "AWGroup.value" where "AWGroup.value" is NULL;;
+        ELSE '<1000g' END
+        where "AWGroup.value" is NULL;;
         '''
         inject_sql(query,f"UPDATE AdmissionWeight {script}")
 

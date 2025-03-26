@@ -56,7 +56,7 @@ def tidy_dynamic_tables():
                             ##### REMOVE INVALID CHARACTERS FROM DATAFRAMES 
                             script_df.columns = script_df.columns.str.replace(r"[()-]", "_",regex=True)
                             catalog_save_name = f'''create_derived_{script}'''
-                            if table_exists('derived','maternity_completeness'):
+                            if table_exists('derived',{script}):
                                 cols = pd.DataFrame(get_table_column_names(f'{script}', 'derived'), columns=["column_name"])
                                 new_columns = set(script_df.columns) - set(cols.columns) 
                       
