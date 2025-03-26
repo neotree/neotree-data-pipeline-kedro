@@ -15,7 +15,7 @@ def summary_maternal_outcomes_query():
     "Other Reason for CS","Did by Cry after birth?","Apgar at 1min","Apgar at 5min","Apgar at 10min","Conditions in Pregnancy",
     "BirthCount","GestationGroup","BirthWeightGroup","GestationGroupSort","BirthWeightGroupSort"
 )  '''
-        where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_maternal_outcomes  WHERE "NeoTreeID" = "derived"."maternal_outcomes"."uid") '''
+        where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_maternal_outcomes  WHERE "NeoTreeID" = "derived.maternal_outcomes.uid") '''
         
      
     gestation_case = f''' CASE

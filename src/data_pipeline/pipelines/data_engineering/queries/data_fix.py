@@ -1,4 +1,6 @@
 from conf.common.sql_functions import inject_sql
+from conf.common.sql_functions import column_exists
+
 def generate_update_query(facility, variable, to_update, values,table,where):
     additional_where = f''' and facility='{facility}' '''
     if(facility=='PHC'):
@@ -29,7 +31,6 @@ def update_refferred_from():
     to_update = "ReferredFrom.label"
     table="admissions"
     where = "Name of%"
-
 
     for facility in facilities:
         if facility=='BHC' or facility=='KDH' :
@@ -69,7 +70,7 @@ def update_refferred_from():
                         Wim,Wimbe
                         O,Other'''
             transformed= transform_values(values)
-            if len(transformed)>0:
+            if len(transformed)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
                 query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
                 query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
                 if len(query1)>0:
@@ -130,11 +131,11 @@ def update_mode_delivery():
                 if facility=='PHC':
                     query3 = generate_update_query(facility,variable,to_update,transformed,"phc_admissions",where)
 
-                if len(query1)>0:
+                if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
                     inject_sql(query1,"UPDATE MODE DELIVERY FROM")
-                if len(query2)>0:
+                if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
                     inject_sql(query2,"UPDATE DELIVERY IN JOINED ADMISSIONS")
-                if len(query3)>0:
+                if len(query3)>0 and column_exists("derived","phc_admissions",to_update):
                     inject_sql(query3,"UPDATE PHC ADMISSIONS")
 
 
@@ -202,7 +203,7 @@ def update_signature():
                         WiCh,Winfred Chunda
                         OTH,Other\\/ Student
                         '''
-        else:
+        elif facility=='PHC':
             values=f'''ALMBA,ALICE MSOMPHA BANDA
                         CHBA,CHIMWEMWE BANDA
                         CHKA,CHIMWEMWE KAMONJOLA
@@ -258,11 +259,11 @@ def update_signature():
             if facility=='PHC':
                 query3 = generate_update_query(facility,variable,to_update,transformed,table,where)
 
-            if len(query1)>0:
+            if len(query1)>0 and column_exists("derived",table,to_update) :
                 inject_sql(query1,"UPDATE MODE DELIVERY FROM")
-            if len(query2)>0:
+            if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) :
                 inject_sql(query2,"UPDATE DELIVERY IN JOINED ADMISSIONS")
-            if len(query3)>0:
+            if len(query3)>0 and column_exists("derived","phc_admissions",to_update):
                 inject_sql(query3,"UPDATE PHC ADMISSIONS")       
 
 

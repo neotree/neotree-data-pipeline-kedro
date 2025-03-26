@@ -15,7 +15,7 @@ def summary_joined_vitals_query():
     "Day3_5thTimeofVitalSigns", "Day3Time5", "Day3Time6", "WasBabyHypothermic", "Temperature1", "TimeOfTemperature1", 
     "WasFollowUpTemperatureDone", "Temperature2", "TimeOfTemperature2"
 )  '''
-        where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_joined_vitals  WHERE "NeoTreeID" = "derived"."summary_day1_vitals"."NeoTreeID") '''
+        where = f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_joined_vitals  WHERE "NeoTreeID" = "derived.summary_day1_vitals.NeoTreeID") '''
     
     return prefix+f'''
                     SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
