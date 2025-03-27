@@ -29,7 +29,7 @@ def summary_admissions_query():
     "Meconium Thick or Thin","Cardiovascular exam","Femorals","HypoSxYN","Chest Ausc","Respiratory Support","RISK for Covid?","External Source",
     "Mothers Symptoms","Mother Cellphone number","Mothers Diagnosis","Mother Oxygen saturations","is mother present?","Other Ethnicity",
     "Manual Heart Rate","MatComorbidities","MatComorbidities.value","DOBYN.value","Age Estimated","Age","Age Category","BirthWeight")   '''
-    where=f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_admissions  WHERE "Neotree_ID" = "derived"."amissions"."uid") '''
+    where=f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_admissions  WHERE "NeoTree_ID" IN (select uid from derived.amissions))'''
 
   return   prefix +f''' SELECT "facility" AS "Facility Name",
                     "uid" AS "NeoTree_ID",

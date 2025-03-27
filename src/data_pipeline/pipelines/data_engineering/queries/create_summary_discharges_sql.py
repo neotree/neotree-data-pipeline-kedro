@@ -17,7 +17,7 @@ def summary_discharges_query():
     "Other Cause of Death_","Other Cause of death","Contributory Cause of Death","Other Contributory cause of death","Modifable Factor1",
     "Modifable Factor2","Modifable Factor3","Covid Risk?","Discharge Surgical Conditions diagnosis","Covid Repeat Results","Covid Confirmation"
   )  '''
-    where=f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_discharges  WHERE "Neotree_ID" = "derived"."discharges"."uid") '''
+    where=f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_discharges  WHERE "Neotree_ID" IN (select uid from derived.discharges)) '''
       
   
   return   prefix+f''' SELECT
