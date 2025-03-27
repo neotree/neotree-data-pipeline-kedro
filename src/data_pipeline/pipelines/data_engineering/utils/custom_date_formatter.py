@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime as dt
 from .date_validator import is_date_formatable
+import numpy as np
 
 def format_date(df:pd.DataFrame,fields):
     """
@@ -31,7 +32,7 @@ def format_date_without_timezone(df,fields):
                 df[field_name] = df[field_name].map(lambda x: str(x)[:-4] if is_date_formatable(x) else None)
                 df[field_name] = pd.to_datetime(df[field_name],errors='coerce', format='%Y-%m-%dT%H:%M:%S')
             else:
-                df[field_name]= None;
+                df[field_name]= np.nan ;
         return df
     except Exception as e:
         pass
