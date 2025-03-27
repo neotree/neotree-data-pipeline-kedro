@@ -4,7 +4,6 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 def summary_joined_vitals_query():
     prefix = f''' DROP TABLE IF EXISTS derived.summary_joined_vitals;;
                 CREATE TABLE derived.summary_joined_vitals AS   '''
-    where =''
     
     return prefix+f'''
                     SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
@@ -34,7 +33,7 @@ def summary_joined_vitals_query():
                     "derived"."summary_day1_vitals"."Temperature2" AS "Temperature2",
                     "derived"."summary_day1_vitals"."Temperature2 Time" AS "Temperature2 Time",
                     "derived"."summary_day1_vitals"."Day" AS "Day"
-                    FROM "derived"."summary_day1_vitals {where}"
+                    FROM "derived"."summary_day1_vitals"
                     UNION ALL
                     SELECT "derived"."summary_day2_vitals"."Facility Name" AS "Facility Name",
                     "derived"."summary_day2_vitals"."NeoTreeID" AS "NeoTreeID",
@@ -63,7 +62,7 @@ def summary_joined_vitals_query():
                     "derived"."summary_day2_vitals"."Temperature2" AS "Temperature2",
                     "derived"."summary_day2_vitals"."Temperature2 Time" AS "Temperature2 Time",
                     "derived"."summary_day2_vitals"."Day" AS "Day"
-                    FROM "derived"."summary_day2_vitals {where}"
+                    FROM "derived"."summary_day2_vitals"
                     UNION ALL
                     SELECT "derived"."summary_day3_vitals"."Facility Name" AS "Facility Name",
                     "derived"."summary_day3_vitals"."NeoTreeID" AS "NeoTreeID",
@@ -92,5 +91,5 @@ def summary_joined_vitals_query():
                     "derived"."summary_day3_vitals"."Temperature2" AS "Temperature2",
                     "derived"."summary_day3_vitals"."Temperature2 Time" AS "Temperature2 Time",
                     "derived"."summary_day3_vitals"."Day" AS "Day"
-                FROM "derived"."summary_day3_vitals " {where};;
+                FROM "derived"."summary_day3_vitals";;
         '''

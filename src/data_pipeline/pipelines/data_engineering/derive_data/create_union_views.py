@@ -5,7 +5,7 @@ import logging
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
-from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
 from conf.base.catalog import params
 from conf.common.format_error import formatError
 
@@ -361,7 +361,9 @@ def union_views():
                     new_smch_discharges.reset_index(drop=True,inplace=True)
                     old_smch_discharges.reset_index(drop=True,inplace=True) 
                     combined_dis_df = pd.concat([new_smch_discharges],axis=0,ignore_index=True)
-                    if not combined_dis_df.empty:   
+                    if not combined_dis_df.empty:  
+                        combined_dis_df = format_date_without_timezone(combined_dis_df,['DateTimeDischarge.value'])
+             
                         catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
                         
                         query = insert_old_adm_query("DERIVED.old_new_discharges_view","derived.old_smch_discharges",old_new_matched_dis_col)
