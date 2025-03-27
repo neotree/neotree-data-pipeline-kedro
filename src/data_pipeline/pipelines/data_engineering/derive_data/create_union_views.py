@@ -361,15 +361,16 @@ def union_views():
                     new_smch_discharges.reset_index(drop=True,inplace=True)
                     old_smch_discharges.reset_index(drop=True,inplace=True) 
                     combined_dis_df = pd.concat([new_smch_discharges],axis=0,ignore_index=True)
-                    if not combined_dis_df.empty:  
+                    if not combined_adm_df is None and not combined_dis_df.empty:  
                         combined_dis_df = format_date_without_timezone(combined_dis_df,['DateTimeDischarge.value'])
-                      
-                        catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
                         
-                        query = insert_old_adm_query("DERIVED.old_new_discharges_view","derived.old_smch_discharges",old_new_matched_dis_col)
-                        logging.info("Adding old discharges")
-                        inject_sql(f'{query};;',"Adding old smch discharges")
-                        logging.info("Added old discharges")
+                        if combined_adm_df is not None:
+                            catalog.save('create_derived_old_new_discharges_view',combined_dis_df)  
+                            
+                            query = insert_old_adm_query("DERIVED.old_new_discharges_view","derived.old_smch_discharges",old_new_matched_dis_col)
+                            logging.info("Adding old discharges")
+                            inject_sql(f'{query};;',"Adding old smch discharges")
+                            logging.info("Added old discharges")
             except Exception as e:
                 logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED DISCHARGES")
                 logging.error(formatError(e))
