@@ -54,7 +54,7 @@ def deduplicate_neolab_query(neolab_where):
 def deduplicate_data_query(condition, destination_table):
     if (destination_table == 'public.clean_sessions'):
         return ""
-
+    script_condition=condition
     if "maternity_completeness" in destination_table:
         # special case for malawi -> group on DateAdmission
         return f'''drop table if exists {destination_table} cascade;;
@@ -87,13 +87,68 @@ def deduplicate_data_query(condition, destination_table):
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
             '''
+    elif 'daily_review' in destination_table:
+        schema, table = destination_table.split('.')
+        exists = table_exists(schema, table)
+
+        if exists:
+            operation = f'''
+            INSERT INTO {destination_table} (
+                scriptid,
+                uid,
+                id,
+                ingested_at,
+                unique_key,
+                completed_date,
+                review_number,
+                data
+            )'''
+        else:
+            operation = f'''DROP TABLE IF EXISTS {destination_table} CASCADE;
+            CREATE TABLE {destination_table} AS'''
+
+        return f"""{operation}
+            WITH earliest_record AS (
+                SELECT
+                    cs.scriptid,
+                    cs.uid,
+                    cs.unique_key,
+                    CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                    MAX(cs.id) AS id
+                FROM public.clean_sessions cs
+                WHERE cs.scriptid {condition}
+                GROUP BY cs.scriptid, cs.uid, cs.unique_key, CAST(cs.data->>'completed_at' AS date)
+            ),
+            review_count AS (
+                SELECT
+                    scriptid,
+                    uid,
+                    COUNT(*) AS previous_reviews
+                FROM {destination_table}
+                GROUP BY scriptid, uid
+            )
+            SELECT
+                er.scriptid,
+                er.uid,
+                er.id,
+                s.ingested_at,
+                er.unique_key,
+                er.completed_date,
+                COALESCE(rc.previous_reviews, 0) + 1 AS review_number,
+                s.data
+            FROM earliest_record er
+            JOIN clean_sessions s ON er.id = s.id
+            LEFT JOIN review_count rc ON er.scriptid = rc.scriptid AND er.uid = rc.uid
+            WHERE s.scriptid {script_condition};;
+            """
+        
     else:
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
         exists= table_exists(schema,table)
         operation = f''' drop table if exists {destination_table} cascade;;
             create table {destination_table} as '''
-        script_condition=condition
+        
         if(exists):
             operation= f''' INSERT INTO {destination_table} (
                         scriptid,
@@ -188,11 +243,29 @@ def deduplicate_baseline_query(condition):
 def read_deduplicated_data_query(case_condition, where_condition, source_table,destination_table):
     # logging.info(f'source_table={source_table}, where_condition={where_condition}, case_condition={case_condition}')
     condition =''
+    sql=''
     exists = table_exists('derived',destination_table)
     if exists and env!='demo':
        condition= get_dynamic_condition(destination_table)
-
-    sql = f'''
+    
+    if(destination_table=='daily_review'):
+       sql=f'''
+         select 
+            cs.uid,
+            cs.ingested_at,
+            cs."data"->'appVersion' as "appVersion",
+            cs."data"->'scriptVersion' as "scriptVersion",
+            cs."data"->'started_at' as "started_at",
+            cs.completed_date as "completed_at",
+            cs.review_number,
+             cs."data"->'entries' - 'repeatables' AS "entries",
+            cs."data"->'entries'->'repeatables' as "repeatables",
+            cs.unique_key
+            {case_condition}
+            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
+       '''
+    else:
+        sql = f'''
             select 
             cs.uid,
             cs.ingested_at,
@@ -209,6 +282,9 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(destination_table) :
+    if(destination_table=='daily_review'):
+        return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.completed_date=ds.completed_date)'''
+    
     return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
 
 def read_derived_data_query(source_table,destination_table=None):
