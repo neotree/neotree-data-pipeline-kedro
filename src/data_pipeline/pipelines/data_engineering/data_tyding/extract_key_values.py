@@ -26,8 +26,8 @@ def get_key_values(data_raw):
                 #Remove any Other Characters that are non-numeric
                 app_version = int(''.join(d for d in app_version if d.isdigit()))
             if 'scriptVersion' in row:
-                script_version = row['scriptVersion']
-
+                new_entry['script_version'] = row['scriptVersion']
+                
             if 'facility' in row:
                 new_entry['facility'] = row['facility']
                 
@@ -56,7 +56,9 @@ def get_key_values(data_raw):
             
             if 'ingested_at' in row:
                 new_entry['ingested_at'] = row['ingested_at']
-                ingested_at = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
+                new_entry['ingested_at'] = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
+            if 'review_number' in row:
+                new_entry['review_number'] = row['review_number']
 
 
         # iterate through key, value and add to dict
@@ -133,3 +135,37 @@ def get_diagnoses_key_values(data_raw):
                      # for each row add all the keys & values to a list
                     data_new.append(new_entry)
     return data_new
+
+from typing import Dict, Any
+
+def format_repeatables_to_rows(data: Dict[str, Any]) -> Dict[str, list]:
+    result = {}
+    uid = data.get("uid")
+    hospital_id = data.get("hospital_id")
+    facility = data.get("facility")
+    review_number = data.get("review_number")
+    repeatables = data.get("repeatables", {})
+
+    for table_name, entries in repeatables.items():
+        result[table_name] = []
+        for entry in entries:
+            row = {
+                "uid": uid,
+                "hospital_id": hospital_id,
+                "form_id": entry.get("id"),
+                "facility":facility,
+                "created_at": entry.get("createdAt"),
+                "review_number": review_number
+            }
+
+            # Add the fields dynamically (flattening nested fields like examination, result)
+            for key, value in entry.items():
+                if key in ["id", "createdAt"]:
+                    continue
+                if isinstance(value, dict) and "value" in value:
+                    row[key] = value["value"]
+                else:
+                    row[key] = value
+
+            result[table_name].append(row)
+    return result

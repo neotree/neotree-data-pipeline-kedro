@@ -258,7 +258,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs."data"->'started_at' as "started_at",
             cs.completed_date as "completed_at",
             cs.review_number,
-             cs."data"->'entries' - 'repeatables' AS "entries",
+            cs."data"->'entries' - 'repeatables' AS "entries",
             cs."data"->'entries'->'repeatables' as "repeatables",
             cs.unique_key
             {case_condition}
