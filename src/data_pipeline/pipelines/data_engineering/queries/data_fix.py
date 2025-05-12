@@ -252,12 +252,13 @@ def update_signature():
                         OTH,Other
                         '''    
         transformed= transform_values(values)
-        if len(transformed)>0 and facility!='PHC':
+        if len(transformed)>0:
             query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
             query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
             query3=''
             if facility=='PHC':
-                query3 = generate_update_query(facility,variable,to_update,transformed,table,where)
+                table3='phc_admissions'
+                query3 = generate_update_query(facility,variable,to_update,transformed,table3,where)
 
             if len(query1)>0 and column_exists("derived",table,to_update) :
                 inject_sql(query1,"UPDATE MODE DELIVERY FROM")
@@ -280,3 +281,300 @@ def transform_values(input_string):
             result.append((key, value))
 
     return result
+
+def update_cause_death():
+    facilities = ['SMCH','CPH','BPH','PGH'] 
+    variable = "CauseDeath.value"
+    to_update = "CauseDeath.label"
+    table="discharges"
+    where = "Cause%"
+
+    for facility in facilities:
+        values=[]
+        if facility=='SMCH':
+            values=f'''An,Anaemia
+                        BBA,Born before arrival
+                        BI,Birth trauma
+                        Cong,Congenital Abnormality
+                        CHD,Consider Congenital Heart Disease
+                        Conv,Convulsions
+                        Dhyd,Dehydration
+                        DF,Difficulty feeding
+                        DUM,Dumped baby
+                        HIVLR,HIV low risk
+                        HIVHR,HIV high risk
+                        HIVU,HIV unknown
+                        HypogAs,Hypoglycaemia (NOT symptomatic)
+                        HypogSy,Hypoglycaemia (Symptomatic)
+                        RiHypog,Risk of hypoglycaemia
+                        BA,Hypoxic Ischaemic Encephalopathy
+                        GSch,Gastroschisis
+                        MJ,Physiological Jaundice
+                        LBW,Low Birth Weight (1500-2499g)
+                        VLBW,Very Low Birth Weight (1000-1499g)
+                        ExLBW,ExtremelyLow Birth Weight (<1000g)
+                        MA,Possible Meconium Aspiration
+                        MecEx,Meconium exposure (asymptomatic baby)
+                        MiHypo,Mild Hypothermia
+                        ModHypo,Moderate Hypothermia
+                        SHypo,Severe Hypothermia
+                        Hyperth,Hyperthermia
+                        SEPS,Neonatal Sepsis
+                        Risk,Risk factors for sepsis (asymptomatic baby)
+                        NB,Normal baby
+                        PN,Pneumonia / Bronchiolitis
+                        Prem,Premature (32-36 weeks)
+                        VPrem,Very Premature (28-31 weeks)
+                        ExPrem,Extremely Premature (<28 weeks)
+                        PremRD,Prematurity with RD 
+                        Safe,Safekeeping
+                        TTN,Transient Tachypnoea of Newborn (TTN)
+                        OTH,Other
+                        HBW,Macrosomia (>4000g)
+                        TermRD, Term with RD
+                        DJ,Pathological Jaundice
+                        sHIE,Suspected Hypoxic Ischaemic Encephalopathy
+                        PJaundice,Prolonged Jaundice
+                        CleftLip,Cleft lip
+                        CleftRD,Cleft lip and/or palate with RD
+                        CleftLipPalate,Cleft lip and/or palate
+                        Omph,Omphalocele
+                        Myelo,Myelomeningocele
+                        CDH,Congenital Dislocation of the hip (CDH)
+                        MiTalipes,Mild Talipes (club foot)
+                        MoTalipes,Moderate Talipes (club foot)
+                    '''
+        elif facility=='CPH' or facility=='BPH':
+             values=f'''ASP,Aspiration
+                        CA,Congenital Abnormality incompatible with life
+                        HIE,Hypoxic Ischaemic Encephalopathy
+                        Gastro,Gastroschisis
+                        NEC,Necrotising Enterocolitis
+                        EONS,Neonatal Sepsis - Early Onset
+                        LONS,Neonatal Sepsis - Late Onset
+                        MAS,Meconium aspiration syndrome
+                        PR,Prematurity
+                        PRRDS,Prematurity with RDS
+                        PN,Pneumonia
+                        OTH,Other
+
+                    '''
+        elif facility=='PGH':
+             values=f'''
+                An,Anaemia
+                BBA,Born before arrival
+                BI,Birth trauma
+                Cong,Congenital Abnormality
+                CHD,Consider Congenital Heart Disease
+                Conv,Convulsions
+                Dhyd,Dehydration
+                DF,Difficulty feeding
+                DUM,Abandoned baby
+                HIV, HIV exposed
+                HypogAs,Hypoglycaemia (NOT symptomatic)
+                HypogSy,Hypoglycaemia (Symptomatic)
+                RiHypog,Risk of hypoglycaemia
+                BA,Hypoxic Ischaemic Encephalopathy, Birth asphyxia
+                GSch,Gastroschisis
+                MJ,Physiological Jaundice
+                LBW,Low Birth Weight (1500-2499g)
+                VLBW,Very Low Birth Weight (1000-1499g)
+                ExLBW,ExtremelyLow Birth Weight (<1000g)
+                MA,Possible Meconium Aspiration
+                MecEx,Meconium exposure (asymptomatic baby)
+                MiHypo,Mild Hypothermia
+                ModHypo,Moderate Hypothermia
+                SHypo,Severe Hypothermia
+                Hyperth,Hyperthermia
+                SEPScul,Neonatal Sepsis (culture confirmed)
+                SEPSclin, Neonatal Sepsis (clinical diagnosis only)
+                Risk,Risk factors for sepsis (asymptomatic baby)
+                NB,Normal baby
+                PN,Pneumonia
+                Prem,Premature (32-36 weeks)
+                VPrem,Very Premature (28-31 weeks)
+                ExPrem,Extremely Premature (<28 weeks)
+                PremRD,Prematurity with Respiratory distress 
+                Safe,Safekeeping
+                TTN,Transient Tachypnoea of Newborn (TTN)
+                OTH,Other
+                HBW,Macrosomia (>4000g)
+                TermRD, Term with Respiratory distress
+                DJPh, Pathological jaundice (phototherapy range)
+                DJEx, Pathological jaundice (exchange transfusion required)
+                sHIE,Suspected Hypoxic Ischaemic Encephalopathy
+                PJaundice,Prolonged Jaundice
+                CleftLip,Cleft lip
+                CleftRD,Cleft lip and/or palate with RD
+                CleftLipPalate,Cleft lip and/or palate
+                Omph,Omphalocele
+                Myelo,Myelomeningocele
+                CDH,Congenital Dislocation of the hip (CDH)
+                MiTalipes,Mild Talipes (club foot)
+                MoTalipes,Moderate Talipes (club foot)
+            '''
+        transformed= transform_values(values)
+        if len(transformed)>0:
+            query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
+            query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
+            if len(query1)>0 and column_exists("derived",table,to_update) :
+                inject_sql(query1,"UPDATING CAUSE OF DEATH")
+            if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) :
+                inject_sql(query2,"UPDATING CAUSE OF DEATH IN JOINED ADMISSIONS")
+
+def update_disdiag():
+    facilities = ['SMCH','CPH','BPH','PGH'] 
+    variable = "DIAGDIS1.value"
+    to_update = "DIAGDIS1.label"
+    table="discharges"
+    where = "Primary%"
+
+    for facility in facilities:
+        values=[]
+        if facility=='SMCH':
+            values=f'''An,Anaemia
+                        BBA,Born before arrival
+                        BI,Birth trauma
+                        Cong,Congenital Abnormality
+                        CHD,Consider Congenital Heart Disease
+                        Conv,Convulsions
+                        Dhyd,Dehydration
+                        DF,Difficulty feeding
+                        DUM,Abandoned baby
+                        HIVLR,HIV low risk
+                        HIVHR,HIV high risk
+                        HIVU,HIV unknown
+                        HypogAs,Hypoglycaemia (NOT symptomatic)
+                        HypogSy,Hypoglycaemia (Symptomatic)
+                        RiHypog,Risk of hypoglycaemia
+                        BA,Hypoxic Ischaemic Encephalopathy
+                        GSch,Gastroschisis
+                        MJ,Physiological Jaundice
+                        LBW,Low Birth Weight (1500-2499g)
+                        VLBW,Very Low Birth Weight (1000-1499g)
+                        ExLBW,ExtremelyLow Birth Weight (<1000g)
+                        MA,Possible Meconium Aspiration
+                        MecEx,Meconium exposure (asymptomatic baby)
+                        MiHypo,Mild Hypothermia
+                        ModHypo,Moderate Hypothermia
+                        SHypo,Severe Hypothermia
+                        Hyperth,Hyperthermia
+                        SEPS,Neonatal Sepsis
+                        Risk,Risk factors for sepsis (asymptomatic baby)
+                        NB,Normal baby
+                        PN,Pneumonia / Bronchiolitis
+                        Prem,Premature (32-36 weeks)
+                        VPrem,Very Premature (28-31 weeks)
+                        ExPrem,Extremely Premature (<28 weeks)
+                        PremRD,Prematurity with RD 
+                        Safe,Safekeeping
+                        TTN,Transient Tachypnoea of Newborn (TTN)
+                        OTH,Other
+                        HBW,Macrosomia (>4000g)
+                        TermRD, Term with RD
+                        DJ,Pathological Jaundice
+                        sHIE,Suspected Hypoxic Ischaemic Encephalopathy
+                        PJaundice,Prolonged Jaundice
+                        CleftLip,Cleft lip
+                        CleftRD,Cleft lip and/or palate with RD
+                        CleftLipPalate,Cleft lip and/or palate
+                        Omph,Omphalocele
+                        Myelo,Myelomeningocele
+                        CDH,Congenital Dislocation of the hip (CDH)
+                        MiTalipes,Mild Talipes (club foot)
+                        MoTalipes,Moderate Talipes (club foot)
+                    '''
+        elif facility=='CPH' or facility=='BPH':
+             values=f'''AN,Anaemia
+                        HIE,Hypoxic Ischaemic Encephalopathy
+                        BI,Birth Injury
+                        BBA,Born before arrival
+                        BO,Bowel Obstruction
+                        CHD,Congenital Heart Disease
+                        DEHY,Dehydration
+                        FD,Feeding Difficulties
+                        G,Gastroschisis
+                        HIVXH,HIV Exposed High Risk
+                        HIVXL,HIV Exposed Low Risk
+                        JAUN,Jaundice
+                        LBW,Low Birth Weight
+                        MA,Meconium Aspiration
+                        Mac,Macrosomia
+                        MD,Musculoskeletal Abnormalities
+                        NEC,Necrotising Enterocolitis
+                        EONS,Neonatal Sepsis - Early Onset
+                        LONS,Neonatal Sepsis - Late Onset
+                        NB,Normal baby
+                        OM,Omphalocele
+                        OCA,Other congenital abnormality
+                        PR,Prematurity
+                        PRRDS,Prematurity with RDS
+                        PN,Pneumonia
+                        Ri,Risk of sepsis 
+                        Safe,Safekeeping
+                        Twin,Accompanying Twin
+                        TTN,Transient Tachypnoea Newborn
+                        OTH,Other
+                    '''
+        elif facility=='PGH':
+             values=f'''
+               An,Anaemia
+                BBA,Born before arrival
+                BI,Birth trauma
+                Cong,Congenital Abnormality
+                CHD,Consider Congenital Heart Disease
+                Conv,Convulsions
+                Dhyd,Dehydration
+                DF,Difficulty feeding
+                DUM,Abandoned baby
+                HIV, HIV exposed
+                HypogAs,Hypoglycaemia (NOT symptomatic)
+                HypogSy,Hypoglycaemia (Symptomatic)
+                RiHypog,Risk of hypoglycaemia
+                BA,Hypoxic Ischaemic Encephalopathy, Birth asphyxia
+                GSch,Gastroschisis
+                MJ,Physiological Jaundice
+                LBW,Low Birth Weight (1500-2499g)
+                VLBW,Very Low Birth Weight (1000-1499g)
+                ExLBW,Extremely Low Birth Weight (<1000g)
+                MA,Possible Meconium Aspiration
+                MecEx,Meconium exposure (asymptomatic baby)
+                MiHypo,Mild Hypothermia
+                ModHypo,Moderate Hypothermia
+                SHypo,Severe Hypothermia
+                Hyperth,Hyperthermia
+                SEPScul,Neonatal Sepsis (culture confirmed)
+                SEPSclin, Neonatal Sepsis (clinical diagnosis only)
+                Risk,Risk factors for sepsis (asymptomatic baby)
+                NB,Normal baby
+                PN,Pneumonia
+                Prem,Premature (32-36 weeks)
+                VPrem,Very Premature (28-31 weeks)
+                ExPrem,Extremely Premature (<28 weeks)
+                PremRD,Prematurity with Respiratory distress 
+                Safe,Safekeeping
+                TTN,Transient Tachypnoea of Newborn (TTN)
+                OTH,Other
+                HBW,Macrosomia (>4000g)
+                TermRD, Term with Respiratory distress
+                DJPh, Pathological jaundice (phototherapy range)
+                DJEx, Pathological jaundice (Exchange transfusion required)
+                sHIE,Suspected Hypoxic Ischaemic Encephalopathy
+                PJaundice,Prolonged Jaundice
+                CleftLip,Cleft lip
+                CleftRD,Cleft lip and/or palate with RD
+                CleftLipPalate,Cleft lip and/or palate
+                Omph,Omphalocele
+                Myelo,Myelomeningocele
+                CDH,Congenital Dislocation of the hip (CDH)
+                MiTalipes,Mild Talipes (club foot)
+                MoTalipes,Moderate Talipes (club foot)
+                 '''
+        transformed= transform_values(values)
+        if len(transformed)>0:
+            query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
+            query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
+            if len(query1)>0 and column_exists("derived",table,to_update) :
+                inject_sql(query1,"UPDATING CAUSE OF DEATH")
+            if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) :
+                inject_sql(query2,"UPDATING CAUSE OF DEATH IN JOINED ADMISSIONS")

@@ -4,7 +4,13 @@ sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.admissions_manually_fix_records_sql import manually_fix_admissions_query
-from data_pipeline.pipelines.data_engineering.queries.data_fix import update_age_category,update_admission_weight,update_mode_delivery,update_refferred_from,update_signature
+from data_pipeline.pipelines.data_engineering.queries.data_fix import (update_age_category
+                                                                       ,update_admission_weight
+                                                                       ,update_mode_delivery
+                                                                       ,update_refferred_from
+                                                                       ,update_signature
+                                                                       ,update_cause_death,
+                                                                       update_disdiag)
 from conf.base.catalog import cron_log_file,cron_time,env
 
 
@@ -26,7 +32,8 @@ def manually_fix_admissions(tidy_data_output):
             update_refferred_from()
             update_age_category()
             update_signature()
-
+            update_cause_death()
+            update_disdiag()
             return dict(
             status='Success',
             message = "Manual Fixing Of Admissions Complete"

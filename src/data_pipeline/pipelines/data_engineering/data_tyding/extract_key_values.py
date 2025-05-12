@@ -5,6 +5,7 @@ from .json_restructure import restructure, restructure_new_format, restructure_a
 from functools import  reduce
 import pandas as pd
 from datetime import datetime
+import re
 
 
 def get_key_values(data_raw):
@@ -138,6 +139,12 @@ def get_diagnoses_key_values(data_raw):
 
 from typing import Dict, Any
 
+from typing import Dict, Any
+import re
+
+def sanitize_key(key: str) -> str:
+    return re.sub(r'\W+', '_', key).strip('_')
+
 def format_repeatables_to_rows(data: Dict[str, Any]) -> Dict[str, list]:
     result = {}
     uid = data.get("uid")
@@ -153,19 +160,28 @@ def format_repeatables_to_rows(data: Dict[str, Any]) -> Dict[str, list]:
                 "uid": uid,
                 "hospital_id": hospital_id,
                 "form_id": entry.get("id"),
-                "facility":facility,
+                "facility": facility,
                 "created_at": entry.get("createdAt"),
                 "review_number": review_number
             }
 
-            # Add the fields dynamically (flattening nested fields like examination, result)
             for key, value in entry.items():
-                if key in ["id", "createdAt"]:
+                if key in ["id", "createdAt", "requiredComplete", "hasCollectionField"]:
                     continue
-                if isinstance(value, dict) and "value" in value:
-                    row[key] = value["value"]
+
+                if isinstance(value, dict):
+                    val = value.get("value")
+                    label = value.get("label")
+                    row[sanitize_key(key)] = val       
+                    label_key = sanitize_key(f"{key}_label")
+                    row[label_key] = label
                 else:
-                    row[key] = value
+                    row[sanitize_key(key)] = value
+                    label_key = sanitize_key(f"{key}_label")
+                    row[label_key] = value
 
             result[table_name].append(row)
     return result
+
+def sanitize_key(key: str) -> str:
+    return re.sub(r'\W+', '_', key).strip('_').lower()

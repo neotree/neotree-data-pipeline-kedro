@@ -206,11 +206,11 @@ def generate_upsert_queries_and_create_table(rows_by_table: Dict[str, list]):
         for row in rows:
             columns = row.keys()
             values = [f"'{row[column]}'" if row[column] is not None else 'NULL' for column in columns]
-            update_set = ", ".join([f'"{col}" = EXCLUDED."{col}"' for col in columns if col not in ["uid", "form_id", "created_at"]])
+            update_set = ", ".join([f'"{col}" = EXCLUDED."{col}"' for col in columns if col not in ["uid", "form_id", "created_at","facility","review_number"]])
             insert_query = sql.SQL("""
                 INSERT INTO {table} ({columns})
                 VALUES ({values})
-                ON CONFLICT (uid, form_id, created_at)
+                ON CONFLICT (uid, form_id, created_at,facility,review_number)
                 DO UPDATE SET {update_set};
             """).format(
                 table=sql.Identifier(table_name),
