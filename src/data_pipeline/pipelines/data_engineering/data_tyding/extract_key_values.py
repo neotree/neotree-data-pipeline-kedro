@@ -145,7 +145,7 @@ import re
 def sanitize_key(key: str) -> str:
     return re.sub(r'\W+', '_', key).strip('_')
 
-def format_repeatables_to_rows(data: Dict[str, Any]) -> Dict[str, list]:
+def format_repeatables_to_rows(data: Dict[str, Any],script) -> Dict[str, list]:
     result = {}
     uid = data.get("uid")
     hospital_id = data.get("hospital_id")
@@ -180,7 +180,7 @@ def format_repeatables_to_rows(data: Dict[str, Any]) -> Dict[str, list]:
                     label_key = sanitize_key(f"{key}_label")
                     row[label_key] = value
 
-            result[table_name].append(row)
+            result[script+"_"+table_name].append(row)
     return result
 
 def sanitize_key(key: str) -> str:
