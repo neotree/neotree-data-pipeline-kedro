@@ -134,7 +134,7 @@ def deduplicate_data_query(condition, destination_table):
             WHERE NOT EXISTS (
                 SELECT 1
                 FROM pg_catalog.pg_tables
-                WHERE schemaname = 'scratch' AND tablename = '{destination_table}'
+                WHERE schemaname = 'scratch' AND tablename = '{table}'
             )
             -- Prevent duplicates if table exists
             AND NOT EXISTS (
