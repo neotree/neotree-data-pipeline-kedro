@@ -10,7 +10,7 @@ import re
 
 def get_key_values(data_raw):
    
-    if data_new.empty:
+    if data_raw.empty:
         return [], set()
 
     mcl = []
