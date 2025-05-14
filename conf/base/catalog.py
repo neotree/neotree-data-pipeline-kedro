@@ -129,6 +129,7 @@ if hospital_scripts:
          for key in proc_script.keys():
             script_name = key
             dedup_destination = 'scratch.deduplicated_'+script_name
+            logging.info("--PROCED.."+dedup_destination)
             myIds = proc_script[key]
             if script_name not in old_scripts and script_name not in new_scripts:
                new_scripts.append(script_name)
