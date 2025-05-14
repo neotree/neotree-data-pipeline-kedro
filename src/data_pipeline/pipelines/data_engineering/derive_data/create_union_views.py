@@ -91,17 +91,17 @@ def union_views():
             new_smch_discharges =    pd.DataFrame()
             new_smch_matched_data =  pd.DataFrame()            
             if table_exists('derived','old_smch_admissions'):
-                old_smch_admissions =   catalog.load('read_old_smch_admissions')
+                old_smch_admissions =   catalog.load('read_old_smch_admissions')  or pd.DataFrame()
             if table_exists('derived','old_smch_discharges'):
-                old_smch_discharges =   catalog.load('read_old_smch_discharges')
+                old_smch_discharges =   catalog.load('read_old_smch_discharges')  or pd.DataFrame()
             if table_exists('derived','old_smch_matched_admissions_discharges'):
-                old_matched_smch_data = catalog.load('read_old_smch_matched_data')
+                old_matched_smch_data = catalog.load('read_old_smch_matched_data')  or pd.DataFrame()
             if table_exists('derived','admissions'):
-                new_smch_admissions =   catalog.load('read_new_smch_admissions')
+                new_smch_admissions =   catalog.load('read_new_smch_admissions')  or pd.DataFrame()
             if table_exists('derived','discharges'):
-                new_smch_discharges =   catalog.load('read_new_smch_discharges')
+                new_smch_discharges =   catalog.load('read_new_smch_discharges')  or pd.DataFrame()
             if table_exists('derived','joined_admissions_discharges'):
-                new_smch_matched_data = catalog.load('read_new_smch_matched')
+                new_smch_matched_data = catalog.load('read_new_smch_matched')  or pd.DataFrame()
 
             if old_smch_admissions  is not None and not old_smch_admissions.empty:
             

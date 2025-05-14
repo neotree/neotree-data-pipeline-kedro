@@ -23,11 +23,11 @@ def join_table():
     try:
     
         #Load Derived Admissions From Kedro Catalog
-        adm_df = catalog.load('read_derived_admissions')
+        adm_df = catalog.load('read_derived_admissions')  or pd.DataFrame()
       
  
         #Load Derived Discharges From Kedro Catalog
-        dis_df = catalog.load('read_derived_discharges')
+        dis_df = catalog.load('read_derived_discharges')  or pd.DataFrame()
     except Exception as e:
         logging.error("!!! An error occured fetching the data: ")
         raise e
@@ -55,9 +55,9 @@ def join_table():
         joined_exists = table_exists('derived','joined_admissions_discharges')
         if(discharge_exists and joined_exists):
             #Load Derived Admissions Withoud Discharges From Kedro Catalog
-            adm_df_2 = catalog.load('admissions_without_discharges')
+            adm_df_2 = catalog.load('admissions_without_discharges')  or pd.DataFrame()
             #Load Derived Discharges Not Yet Joined From Kedro Catalog
-            dis_df_2 = catalog.load('discharges_not_joined')
+            dis_df_2 = catalog.load('discharges_not_joined')  or pd.DataFrame()
 
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)

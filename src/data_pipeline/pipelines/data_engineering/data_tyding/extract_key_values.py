@@ -9,6 +9,10 @@ import re
 
 
 def get_key_values(data_raw):
+   
+    if not data_new:
+        return [], set()
+
     mcl = []
      
     # Will store the final list of uid, ingested_at & reformed key-value pairs
