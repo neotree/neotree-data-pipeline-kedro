@@ -251,7 +251,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                 ORDER BY cs.completed_date
                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
             ) as review_number,
-            cs."data"->'entries' as "entries"
+            cs."data"->'entries' - 'repeatables'::text AS "entries",
             cs."data"->'entries'->'repeatables' as "repeatables",
             cs.unique_key
             {case_condition}
