@@ -111,21 +111,20 @@ def deduplicate_data_query(condition, destination_table):
                 SELECT
                     cs.scriptid,
                     cs.uid,
-                    cs.unique_key,
                     CAST(cs.data->>'completed_at' AS date) AS completed_date,
                     MAX(cs.id) AS id
                 FROM public.clean_sessions cs
                 WHERE cs.scriptid {condition}
-                GROUP BY cs.scriptid, cs.uid, cs.unique_key, CAST(cs.data->>'completed_at' AS date)
+                GROUP BY 1,2,3
             )
             SELECT
                 er.scriptid,
                 er.uid,
                 er.id,
                 s.ingested_at,
-                er.unique_key,
                 er.completed_date,
                 s.data
+                s.unique_key,
             FROM earliest_record er
             JOIN clean_sessions s ON er.id = s.id
             WHERE s.scriptid {script_condition};;
@@ -239,21 +238,21 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     
     if(destination_table=='daily_review'):
        sql=f'''
-         select 
-              cs.uid,
-            cs.ingested_at,
-            cs."data"->'appVersion' as "appVersion",
-            cs."data"->'scriptVersion' as "scriptVersion",
-            cs."data"->'started_at' as "started_at",
-            cs.completed_date as "completed_at",
-            COUNT(*) OVER (
-                PARTITION BY cs.uid, cs.scriptid 
-                ORDER BY cs.completed_date
-                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-            ) as review_number,
-            cs."data"->'entries' as "entries",
-            cs."data"->'entries'->'repeatables' as "repeatables",
-            cs.unique_key
+        SELECT
+                cs.uid,
+                cs.ingested_at,
+                cs."data"->'appVersion' AS "appVersion",
+                cs."data"->'scriptVersion' AS "scriptVersion",
+                cs."data"->'started_at' AS "started_at",
+                cs.completed_date AS "completed_at",
+                COUNT(*) OVER (
+                    PARTITION BY cs.uid, cs.scriptid,cs.completed_date
+                    ORDER BY cs.completed_date
+                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+                ) AS review_number,
+                cs."data"->'entries' AS "entries",
+                cs."data"->'entries'->'repeatables' AS "repeatables",
+                cs.unique_key
             {case_condition}
             from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
           '''
