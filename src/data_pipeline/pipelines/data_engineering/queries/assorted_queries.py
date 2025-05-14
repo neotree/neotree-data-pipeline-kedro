@@ -109,39 +109,15 @@ def deduplicate_data_query(condition, destination_table):
 
         return f"""{operation}
             WITH earliest_record AS (
-            SELECT
-                cs.scriptid,
-                cs.uid,
-                cs.unique_key,
-                CAST(cs.data->>'completed_at' AS date) AS completed_date,
-                MAX(cs.id) AS id
-            FROM public.clean_sessions cs
-            WHERE cs.scriptid {condition}
-            GROUP BY cs.scriptid, cs.uid, cs.unique_key, CAST(cs.data->>'completed_at' AS date)
-             ),
-            review_count AS (
-            SELECT scriptid, uid, COUNT(*) AS previous_reviews
-            FROM {destination_table}
-            GROUP BY scriptid, uid
-
-            UNION ALL
-
-            SELECT 
-                er.scriptid, 
-                er.uid, 
-                0 AS previous_reviews
-            FROM earliest_record er
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM pg_catalog.pg_tables
-                WHERE schemaname = 'scratch' AND tablename = '{table}'
-            )
-            -- Prevent duplicates if table exists
-            AND NOT EXISTS (
-                SELECT 1 
-                FROM {destination_table} dt
-                WHERE dt.scriptid = er.scriptid AND dt.uid = er.uid
-            )
+                SELECT
+                    cs.scriptid,
+                    cs.uid,
+                    cs.unique_key,
+                    CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                    MAX(cs.id) AS id
+                FROM public.clean_sessions cs
+                WHERE cs.scriptid {condition}
+                GROUP BY cs.scriptid, cs.uid, cs.unique_key, CAST(cs.data->>'completed_at' AS date)
             )
             SELECT
                 er.scriptid,
@@ -150,11 +126,9 @@ def deduplicate_data_query(condition, destination_table):
                 s.ingested_at,
                 er.unique_key,
                 er.completed_date,
-                COALESCE(rc.previous_reviews, 0) + 1 AS review_number,
                 s.data
             FROM earliest_record er
             JOIN clean_sessions s ON er.id = s.id
-            LEFT JOIN review_count rc ON er.scriptid = rc.scriptid AND er.uid = rc.uid
             WHERE s.scriptid {script_condition};;
             """
         
@@ -267,19 +241,23 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     if(destination_table=='daily_review'):
        sql=f'''
          select 
-            cs.uid,
+              cs.uid,
             cs.ingested_at,
             cs."data"->'appVersion' as "appVersion",
             cs."data"->'scriptVersion' as "scriptVersion",
             cs."data"->'started_at' as "started_at",
             cs.completed_date as "completed_at",
-            cs.review_number,
+            COUNT(*) OVER (
+                PARTITION BY cs.uid, cs.scriptid 
+                ORDER BY cs.completed_date
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            ) as review_number,
             cs."data"->'entries' - 'repeatables' AS "entries",
             cs."data"->'entries'->'repeatables' as "repeatables",
             cs.unique_key
             {case_condition}
             from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
-       '''
+          '''
     else:
         sql = f'''
             select 
