@@ -41,7 +41,9 @@ def restructure(c, mcl):
 def restructure_new_format(k,v,mcl):
     try:
         #Check If Multi Value Column 
-        if len(v['values']['label']) > 1:
+        if k in ["repeatables"]:
+           pass
+        elif len(v['values']['label']) > 1:
             k = k
             v = v['values']
             mcl.append(k)
