@@ -109,17 +109,6 @@ def deduplicate_data_query(condition, destination_table):
 
         return f"""{operation}
             WITH earliest_record AS (
-                SELECT
-                    cs.scriptid,
-                    cs.uid,
-                    cs.unique_key,
-                    CAST(cs.data->>'completed_at' AS date) AS completed_date,
-                    MAX(cs.id) AS id
-                FROM public.clean_sessions cs
-                WHERE cs.scriptid {condition}
-                GROUP BY cs.scriptid, cs.uid, cs.unique_key, CAST(cs.data->>'completed_at' AS date)
-            ),
-            WITH earliest_record AS (
             SELECT
                 cs.scriptid,
                 cs.uid,
