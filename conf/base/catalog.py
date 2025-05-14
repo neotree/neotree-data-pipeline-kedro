@@ -59,35 +59,67 @@ if hospital_scripts:
       processed_scripts = []
       processed_case =[]
       processed_script_names =[] 
-      for hospital in hospital_scripts:
-            ids = hospital_scripts[hospital]
-            if 'country' in ids.keys() and 'country' in params.keys():
-               if str(ids['country']).lower() == str(params['country']):
-                  for script in ids.keys():            
-                     if script!='name' and script!='country':
-                        script_id = ids[script]
-                        if script not in processed_script_names: 
-                           processed_scripts.append({script:[script_id]})
-                           script_case = f''', CASE WHEN scriptid='{script_id}' then '{hospital}'  '''
-                           processed_case.append({script:script_case})
+      # for hospital in hospital_scripts:
+      #       ids = hospital_scripts[hospital]
+      #       if 'country' in ids.keys() and 'country' in params.keys():
+      #          if str(ids['country']).lower() == str(params['country']):
+      #             for script in ids.keys():            
+      #                if script!='name' and script!='country':
+      #                   script_id = ids[script]
+      #                   if script not in processed_script_names: 
+      #                      processed_scripts.append({script:[script_id]})
+      #                      script_case = f''', CASE WHEN scriptid='{script_id}' then '{hospital}'  '''
+      #                      processed_case.append({script:script_case})
                            
-                           processed_script_names.append(script)
-                        else:
-                           ### APPEND MORE IDS OF THE SAME SCRIPT NAME
-                           for dic in processed_scripts:
-                              for key in dic.keys():
-                                 if(key==script):
-                                    existing_list =  dic[key]
-                                    existing_list.append(script_id)
-                                    dic[key] = existing_list
-                                    break
-                           ##### ADD TO THE CASE CONDITION
-                           for case in processed_case:
-                              for key in case.keys():
-                                 if(key==script):
-                                    existing_case =  case[key]
-                                    existing_case = existing_case+ f''' WHEN scriptid ='{script_id}' THEN '{hospital}' '''
-                                    case[key] = existing_case
+      #                      processed_script_names.append(script)
+      #                   else:
+      #                      ### APPEND MORE IDS OF THE SAME SCRIPT NAME
+      #                      for dic in processed_scripts:
+      #                         for key in dic.keys():
+      #                            if(key==script):
+      #                               existing_list =  dic[key]
+      #                               existing_list.append(script_id)
+      #                               dic[key] = existing_list
+      #                               break
+      #                      ##### ADD TO THE CASE CONDITION
+      #                      for case in processed_case:
+      #                         for key in case.keys():
+      #                            if(key==script):
+      #                               existing_case =  case[key]
+      #                               existing_case = existing_case+ f''' WHEN scriptid ='{script_id}' THEN '{hospital}' '''
+      #                               case[key] = existing_case
+
+      for hospital in hospital_scripts:
+      
+         ids = hospital_scripts[hospital]
+         if 'country' in ids.keys() and 'country' in params.keys():
+            if str(ids['country']).lower() == str(params['country']).lower():
+                  for script in ids.keys():            
+                     if script != 'name' and script != 'country':
+                        script_ids = str(ids[script]).split(',')  # Handle multiple script IDs
+                        for script_id in script_ids:
+                              script_id = script_id.strip()
+                              if not script_id:
+                                 continue
+
+                              if script not in processed_script_names: 
+                                 processed_scripts.append({script: [script_id]})
+                                 script_case = f", CASE WHEN scriptid='{script_id}' THEN '{hospital}'"
+                                 processed_case.append({script: script_case})
+                                 processed_script_names.append(script)
+                              else:
+                                 # Append to existing script ID list
+                                 for dic in processed_scripts:
+                                    if script in dic:
+                                          dic[script].append(script_id)
+                                          break
+                                 # Add to CASE condition
+                                 for case in processed_case:
+                                    if script in case:
+                                          case[script] += f" WHEN scriptid='{script_id}' THEN '{hospital}'"
+                                          break
+  
+
                                     
       #########CLOSE CASE STATEMENTS
       for case in processed_case:
