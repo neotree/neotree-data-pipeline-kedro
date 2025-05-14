@@ -70,22 +70,21 @@ def tidy_tables():
     
     try:
         #Read Admisiions From The Kedro Catalog
-        adm_raw = catalog.load('read_admissions')  or pd.DataFrame()
+        adm_raw = catalog.load('read_admissions')
         #Read Discharges From The Kedro Catalog
-        dis_raw = catalog.load('read_discharges')  or pd.DataFrame()
+        dis_raw = catalog.load('read_discharges')  
         #Read Maternal OutComes from Kedro Catalog
-        mat_outcomes_raw = catalog.load('read_maternal_outcomes')  or pd.DataFrame()
+        mat_outcomes_raw = catalog.load('read_maternal_outcomes') 
         #Read Vital Signs from Kedro Catalog
-        vit_signs_raw = catalog.load('read_vitalsigns') or pd.DataFrame()
+        vit_signs_raw = catalog.load('read_vitalsigns') 
         #Read Neo Lab Data from Kedro Catalog
-        neolab_raw = catalog.load('read_neolab')  or pd.DataFrame()
+        neolab_raw = catalog.load('read_neolab')  
         #Read Baseline Data from Kedro Catalog
-        baseline_raw = catalog.load('read_baseline')  or pd.DataFrame()
+        baseline_raw = catalog.load('read_baseline') 
         #Read Diagnoses Data from Kedro Catalog
-        diagnoses_raw = catalog.load('read_diagnoses_data')  or pd.DataFrame()
+        diagnoses_raw = catalog.load('read_diagnoses_data')  
         #Read Maternity Completeness Data from Kedro Catalog
-        mat_completeness_raw = catalog.load('read_maternity_completeness') or pd.DataFrame()
-
+        mat_completeness_raw = catalog.load('read_maternity_completeness') 
 
     except Exception as e:
         logging.error("!!! An error occured fetching the data: ")
