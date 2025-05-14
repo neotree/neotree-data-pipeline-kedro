@@ -119,13 +119,40 @@ def deduplicate_data_query(condition, destination_table):
                 WHERE cs.scriptid {condition}
                 GROUP BY cs.scriptid, cs.uid, cs.unique_key, CAST(cs.data->>'completed_at' AS date)
             ),
+            WITH earliest_record AS (
+            SELECT
+                cs.scriptid,
+                cs.uid,
+                cs.unique_key,
+                CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                MAX(cs.id) AS id
+            FROM public.clean_sessions cs
+            WHERE cs.scriptid {condition}
+            GROUP BY cs.scriptid, cs.uid, cs.unique_key, CAST(cs.data->>'completed_at' AS date)
+             ),
             review_count AS (
-                SELECT
-                    scriptid,
-                    uid,
-                    COUNT(*) AS previous_reviews
-                FROM {destination_table}
-                GROUP BY scriptid, uid
+            SELECT scriptid, uid, COUNT(*) AS previous_reviews
+            FROM {destination_table}
+            GROUP BY scriptid, uid
+
+            UNION ALL
+
+            SELECT 
+                er.scriptid, 
+                er.uid, 
+                0 AS previous_reviews
+            FROM earliest_record er
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM pg_catalog.pg_tables
+                WHERE schemaname = 'public' AND tablename = '{destination_table}'
+            )
+            -- Prevent duplicates if table exists
+            AND NOT EXISTS (
+                SELECT 1 
+                FROM {destination_table} dt
+                WHERE dt.scriptid = er.scriptid AND dt.uid = er.uid
+            )
             )
             SELECT
                 er.scriptid,
