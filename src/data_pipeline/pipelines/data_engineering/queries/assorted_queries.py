@@ -125,7 +125,7 @@ def deduplicate_data_query(condition, destination_table):
                 er.completed_date,
                 s.data,
                 s.unique_key
-            FROM earliest_record
+            FROM earliest_record er
             JOIN clean_sessions s ON er.id = s.id
             WHERE s.scriptid {script_condition};;
             """
