@@ -55,7 +55,6 @@ def deduplicate_data_query(condition, destination_table):
     if (destination_table == 'public.clean_sessions'):
         return ""
     script_condition=condition
-    logging.info("--SID---"+destination_table)
     if "maternity_completeness" in destination_table:
         # special case for malawi -> group on DateAdmission
         return f'''drop table if exists {destination_table} cascade;;
