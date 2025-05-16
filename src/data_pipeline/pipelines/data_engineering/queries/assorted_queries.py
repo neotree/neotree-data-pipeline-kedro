@@ -55,7 +55,7 @@ def deduplicate_data_query(condition, destination_table):
     if (destination_table == 'public.clean_sessions'):
         return ""
     script_condition=condition
-    schema,table = destination_table.split('.')
+    logging.info("--SID---"+destination_table)
     if "maternity_completeness" in destination_table:
         # special case for malawi -> group on DateAdmission
         return f'''drop table if exists {destination_table} cascade;;
@@ -88,7 +88,7 @@ def deduplicate_data_query(condition, destination_table):
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
             '''
-    elif str(table).strip()=='daily_review' or table=='infections':
+    elif 'daily_review' in destination_table or 'infections' in destination_table:
         schema, table = destination_table.split('.')
         exists = table_exists(schema, table)
 
@@ -133,7 +133,7 @@ def deduplicate_data_query(condition, destination_table):
         
     else:
         # all other cases -> group on ingested_at
-      
+        schema,table = destination_table.split('.')
         exists= table_exists(schema,table)
         operation = f''' drop table if exists {destination_table} cascade;;
             create table {destination_table} as '''
