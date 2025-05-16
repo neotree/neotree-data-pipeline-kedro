@@ -98,7 +98,7 @@ def deduplicate_data_query(condition, destination_table):
                 uid,
                 id,
                 ingested_at,
-                completed_date,
+                completed_at,
                 data,
                 unique_key
             )'''
@@ -111,7 +111,7 @@ def deduplicate_data_query(condition, destination_table):
                 SELECT
                     cs.scriptid,
                     cs.uid,
-                    CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                    CAST(cs.data->>'completed_at' AS date) AS completed_at,
                     MAX(cs.id) AS id
                 FROM public.clean_sessions cs
                 WHERE cs.scriptid {condition}
@@ -122,7 +122,7 @@ def deduplicate_data_query(condition, destination_table):
                 er.uid,
                 er.id,
                 s.ingested_at,
-                er.completed_date,
+                er.completed_at,
                 s.data,
                 s.unique_key
             FROM earliest_record er
@@ -244,10 +244,10 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                 cs."data"->'appVersion' AS "appVersion",
                 cs."data"->'scriptVersion' AS "scriptVersion",
                 cs."data"->'started_at' AS "started_at",
-                cs.completed_date AS "completed_at",
+                cs.completed_at AS "completed_at",
                 COUNT(*) OVER (
-                    PARTITION BY cs.uid, cs.scriptid,cs.completed_date
-                    ORDER BY cs.completed_date
+                    PARTITION BY cs.uid, cs.scriptid,cs.completed_at
+                    ORDER BY cs.completed_at
                     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
                 ) AS review_number,
                 cs."data"->'entries' AS "entries",
@@ -275,7 +275,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
 
 def get_dynamic_condition(destination_table) :
     if(destination_table=='daily_review' or destination_table=='infections'):
-        return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.completed_date=ds.completed_date)'''
+        return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.completed_at=ds.completed_at)'''
     
     return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
 
