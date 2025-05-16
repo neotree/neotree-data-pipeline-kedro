@@ -123,7 +123,7 @@ def deduplicate_data_query(condition, destination_table):
                 er.id,
                 s.ingested_at,
                 er.completed_date,
-                s.data
+                s.data,
                 s.unique_key,
             FROM earliest_record er
             JOIN clean_sessions s ON er.id = s.id
