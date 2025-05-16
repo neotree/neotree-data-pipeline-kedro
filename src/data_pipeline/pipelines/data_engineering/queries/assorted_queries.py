@@ -98,9 +98,9 @@ def deduplicate_data_query(condition, destination_table):
                 uid,
                 id,
                 ingested_at,
-                unique_key,
                 completed_date,
-                data
+                data,
+                unique_key
             )'''
         else:
             operation = f'''DROP TABLE IF EXISTS {destination_table} CASCADE;
