@@ -118,15 +118,15 @@ def deduplicate_data_query(condition, destination_table):
                 GROUP BY 1,2,3
             )
             SELECT
-                er.scriptid,
-                er.uid,
-                er.id,
+                earliest_record.scriptid,
+                earliest_record.uid,
+                earliest_record.id,
                 s.ingested_at,
-                er.completed_date,
+                earliest_record.completed_date,
                 s.data,
                 s.unique_key,
-            FROM earliest_record er
-            JOIN clean_sessions s ON er.id = s.id
+            FROM earliest_record
+            JOIN clean_sessions s ON earliest_record.id = s.id
             WHERE s.scriptid {script_condition};;
             """
         
