@@ -94,8 +94,8 @@ if hospital_scripts:
          ids = hospital_scripts[hospital]
          if 'country' in ids.keys() and 'country' in params.keys():
             if str(ids['country']).lower() == str(params['country']).lower():
-                  for script in ids.keys():            
-                     if script != 'name' and script != 'country':
+                  for script in ids.keys():                
+                     if script != 'name' and script != 'country' and script!='allow_multiple':
                         script_ids = str(ids[script]).split(',')  # Handle multiple script IDs
                         for script_id in script_ids:
                               script_id = script_id.strip()
@@ -129,7 +129,6 @@ if hospital_scripts:
          for key in proc_script.keys():
             script_name = key
             dedup_destination = 'scratch.deduplicated_'+script_name
-            logging.info("--PROCED.."+dedup_destination)
             myIds = proc_script[key]
             if script_name not in old_scripts and script_name not in new_scripts:
                new_scripts.append(script_name)

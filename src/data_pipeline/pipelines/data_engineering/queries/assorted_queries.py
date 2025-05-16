@@ -87,7 +87,7 @@ def deduplicate_data_query(condition, destination_table):
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
             '''
-    elif 'daily_review' in destination_table:
+    elif ('daily_review' or 'infections') in destination_table:
         schema, table = destination_table.split('.')
         exists = table_exists(schema, table)
 
@@ -236,7 +236,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     if exists and env!='demo':
        condition= get_dynamic_condition(destination_table)
     
-    if(destination_table=='daily_review'):
+    if(destination_table=='daily_review' or destination_table=='infections'):
        sql=f'''
         SELECT
                 cs.uid,
@@ -274,7 +274,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(destination_table) :
-    if(destination_table=='daily_review'):
+    if(destination_table=='daily_review' or destination_table=='infections'):
         return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.completed_date=ds.completed_date)'''
     
     return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
