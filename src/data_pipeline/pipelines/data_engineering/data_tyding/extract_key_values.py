@@ -180,9 +180,9 @@ def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
             row = {
                 "uid": uid,
                 "hospital_id": hospital_id,
-                "form_id": entry.get("id") if isinstance(entry, dict) else None,
+                "form_id": entry.get("id"),
                 "facility": facility,
-                "created_at": entry.get("createdAt") if isinstance(entry, dict) else None,
+                "created_at": entry.get("createdAt"),
                 "review_number": review_number
             }
 
@@ -203,7 +203,6 @@ def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
             result[result_key].append(row)
 
     return result
-
 
 
 def sanitize_key(key: str) -> str:
