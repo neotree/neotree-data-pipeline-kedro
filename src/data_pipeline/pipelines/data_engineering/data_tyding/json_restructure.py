@@ -42,7 +42,7 @@ def restructure_new_format(k,v,mcl):
     try:
         #Check If Multi Value Column 
         if "repeatables" in k:
-           pass
+           return None,None,None
         elif len(v['values']['label']) > 1:
             k = k
             v = v['values']
