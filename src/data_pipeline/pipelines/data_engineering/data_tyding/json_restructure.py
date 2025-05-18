@@ -38,27 +38,33 @@ def restructure(c, mcl):
     return k, v, mcl
 
     #Restructure New Formated Data
-def restructure_new_format(k,v,mcl):
+def restructure_new_format(k, v, mcl=None):
     try:
-        #Check If Multi Value Column 
+        if mcl is None:
+            mcl = []
+
+        # Check If Multi Value Column 
         if "repeatables" in k:
-           return None,None,None
+            return None, None, mcl
+
         elif len(v['values']['label']) > 1:
-            k = k
-            v = v['values']
+            # Multi-label field; treat as multi-column
             mcl.append(k)
+            return k, v['values'], mcl
 
-        else :
-            if len(v['values']['label'])>0 and len(v['values']['value'])>0:
+        else:
+            if len(v['values']['label']) > 0 and len(v['values']['value']) > 0:
                 k = str(k).strip()
-                #  Unpack The Values Object To Get Single Values
-                v = {'label':v['values']['label'][0],'value':v['values']['value'][0]}
-                # #Add Other Values T MCL Columns For Exploding
-                if str(k).endswith('Oth') or k=="AdmReason":
-                    mcl.append(k) 
-        
+                v = {
+                    'label': v['values']['label'][0],
+                    'value': v['values']['value'][0]
+                }
+                # Add to MCL if it's an "Other" or "AdmReason" field
+                if str(k).endswith('Oth') or k == "AdmReason":
+                    mcl.append(k)
 
-        return k, v, mcl
+            return k, v, mcl
+
     except Exception as ex:
         logging.error(v)
         logging.error(formatError(ex))
