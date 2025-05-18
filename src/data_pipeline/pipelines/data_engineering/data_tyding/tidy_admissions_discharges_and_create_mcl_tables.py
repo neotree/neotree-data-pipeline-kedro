@@ -70,21 +70,21 @@ def tidy_tables():
     
     try:
         #Read Admisiions From The Kedro Catalog
-        adm_raw = catalog.load('read_admissions')
+        adm_raw = safe_load(catalog,'read_admissions')
         #Read Discharges From The Kedro Catalog
-        dis_raw = catalog.load('read_discharges')  
+        dis_raw = safe_load(catalog,'read_discharges')  
         #Read Maternal OutComes from Kedro Catalog
-        mat_outcomes_raw = catalog.load('read_maternal_outcomes') 
+        mat_outcomes_raw = safe_load(catalog,'read_maternal_outcomes') 
         #Read Vital Signs from Kedro Catalog
-        vit_signs_raw = catalog.load('read_vitalsigns') 
+        vit_signs_raw = safe_load(catalog,'read_vitalsigns') 
         #Read Neo Lab Data from Kedro Catalog
-        neolab_raw = catalog.load('read_neolab')  
+        neolab_raw = safe_load(catalog,'read_neolab')  
         #Read Baseline Data from Kedro Catalog
-        baseline_raw = catalog.load('read_baseline') 
+        baseline_raw = safe_load(catalog,'read_baseline') 
         #Read Diagnoses Data from Kedro Catalog
-        diagnoses_raw = catalog.load('read_diagnoses_data')  
+        diagnoses_raw = safe_load(catalog,'read_diagnoses_data')  
         #Read Maternity Completeness Data from Kedro Catalog
-        mat_completeness_raw = catalog.load('read_maternity_completeness') 
+        mat_completeness_raw = safe_load(catalog,'read_maternity_completeness') 
 
     except Exception as e:
         logging.error("!!! An error occured fetching the data: ")
@@ -635,4 +635,10 @@ def tidy_tables():
             "!!! An error occured writing dataframe output back to the database: ")
         logging.error(formatError(e))
 
-  
+
+def safe_load(catalog, dataset_name):
+    try:
+        return catalog.load(dataset_name)
+    except Exception as e:
+        logging.warning(f"Failed to load dataset '{dataset_name}': {formatError(e)}")
+        return pd.DataFrame()
