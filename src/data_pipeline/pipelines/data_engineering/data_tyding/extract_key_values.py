@@ -87,7 +87,9 @@ def get_key_values(data_raw):
                 if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                         new_entry['uid'] = v.value;
                 if k is not None:
-                    new_entry[k] = v
+                    if (k=='completed_at' and 'completed_at' not in new_entry) or k!='completed_at':
+                        new_entry[k] = v
+        
             data_new.append(new_entry)
             
         except Exception as ex:

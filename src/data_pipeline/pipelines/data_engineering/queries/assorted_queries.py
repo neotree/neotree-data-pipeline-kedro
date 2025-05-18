@@ -237,14 +237,14 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
        condition= get_dynamic_condition(destination_table)
     
     if(destination_table=='daily_review' or destination_table=='infections'):
-       sql=f'''
+        sql=f'''
         SELECT
                 cs.uid,
                 cs.ingested_at,
                 cs."data"->'appVersion' AS "appVersion",
                 cs."data"->'scriptVersion' AS "scriptVersion",
                 cs."data"->'started_at' AS "started_at",
-                cs.completed_at AS "completed_at",
+                cs.completed_at,
                 COUNT(*) OVER (
                     PARTITION BY cs.uid, cs.scriptid,cs.completed_at
                     ORDER BY cs.completed_at
@@ -256,6 +256,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             {case_condition}
             from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
           '''
+        logging.info("---SQL---"+sql)
     else:
         sql = f'''
             select 
