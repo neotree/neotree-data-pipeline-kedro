@@ -256,7 +256,6 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             {case_condition}
             from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
           '''
-        logging.info("---SQL---"+sql)
     else:
         sql = f'''
             select 
