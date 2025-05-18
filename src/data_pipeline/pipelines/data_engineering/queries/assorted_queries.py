@@ -236,26 +236,57 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     if exists and env!='demo':
        condition= get_dynamic_condition(destination_table)
     
-    if(destination_table=='daily_review' or destination_table=='infections'):
-        sql=f'''
-        SELECT
+    if destination_table == 'daily_review' or destination_table == 'infections':
+        sql = f'''
+        WITH distinct_sessions AS (
+            SELECT DISTINCT
                 cs.uid,
-                cs.ingested_at,
-                cs."data"->'appVersion' AS "appVersion",
-                cs."data"->'scriptVersion' AS "scriptVersion",
-                cs."data"->'started_at' AS "started_at",
-                cs.completed_at,
-                COUNT(*) OVER (
-                    PARTITION BY cs.uid, cs.scriptid,cs.completed_at
-                    ORDER BY cs.completed_at
-                    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
-                ) AS review_number,
-                cs."data"->'entries' AS "entries",
-                cs."data"->'entries'->'repeatables' AS "repeatables",
-                cs.unique_key
+                cs.scriptid,
+                cs.completed_at
+            FROM {source_table} cs
+            WHERE cs.scriptid {where_condition}
+            AND cs.uid IS NOT NULL
+            AND cs.uid != 'null'
+            AND cs.uid != 'Unknown'
+            AND cs.unique_key IS NOT NULL
+            {condition}
+        ),
+        numbered_sessions AS (
+            SELECT
+                uid,
+                scriptid,
+                completed_at,
+                ROW_NUMBER() OVER (
+                    PARTITION BY uid, scriptid
+                    ORDER BY completed_at
+                ) AS review_number
+            FROM distinct_sessions
+        )
+        SELECT
+            cs.uid,
+            cs.ingested_at,
+            cs."data"->'appVersion' AS "appVersion",
+            cs."data"->'scriptVersion' AS "scriptVersion",
+            cs."data"->'started_at' AS "started_at",
+            cs.completed_at,
+            ns.review_number,
+            cs."data"->'entries' AS "entries",
+            cs."data"->'entries'->'repeatables' AS "repeatables",
+            cs.unique_key
             {case_condition}
-            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
-          '''
+        FROM {source_table} cs
+        JOIN numbered_sessions ns
+        ON cs.uid = ns.uid
+        AND cs.scriptid = ns.scriptid
+        AND cs.completed_at = ns.completed_at
+        WHERE cs.scriptid {where_condition}
+        AND cs.uid IS NOT NULL
+        AND cs.uid != 'null'
+        AND cs.uid != 'Unknown'
+        AND cs.unique_key IS NOT NULL
+        {condition};
+        '''
+
     else:
         sql = f'''
             select 
