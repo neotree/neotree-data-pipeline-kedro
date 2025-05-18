@@ -272,7 +272,8 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             ns.review_number,
             cs."data"->'entries' AS "entries",
             cs."data"->'entries'->'repeatables' AS "repeatables",
-            cs.unique_key
+            cs.unique_key,
+            cs."data"->>'completed_at' as "completed_time"
             {case_condition}
         FROM {source_table} cs
         JOIN numbered_sessions ns
