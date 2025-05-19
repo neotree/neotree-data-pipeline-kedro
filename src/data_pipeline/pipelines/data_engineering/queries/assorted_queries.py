@@ -118,7 +118,7 @@ def deduplicate_data_query(condition, destination_table):
                     CAST(data->>'completed_at' AS date) AS completed_date,
                     data,
                     unique_key
-                FROM public.clean_sessions
+                FROM public.clean_sessions cs
                 WHERE scriptid {condition}
             ),
             deduplicated AS (
