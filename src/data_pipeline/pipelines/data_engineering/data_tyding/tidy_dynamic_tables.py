@@ -8,7 +8,7 @@ from conf.common.sql_functions import create_new_columns,get_table_column_names,
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import convert_false_numbers_to_text
-from data_engineering.data_tyding.tidy_admissions_discharges_and_create_mcl_tables import safe_load
+from data_pipeline.pipelines.data_engineering.data_tyding.tidy_admissions_discharges_and_create_mcl_tables import safe_load
 
 from conf.base.catalog import params
 # Import libraries
