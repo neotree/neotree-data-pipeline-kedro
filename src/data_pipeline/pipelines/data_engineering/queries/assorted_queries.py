@@ -107,29 +107,30 @@ def deduplicate_data_query(condition, destination_table):
             CREATE TABLE {destination_table} AS'''
 
         return f"""{operation}
-            WITH earliest_record AS (
+            WITH latest_per_day AS (
                 SELECT
-                    cs.scriptid,
-                    cs.uid,
-                    CAST(cs.data->>'completed_at' AS date) AS completed_at,
-                    MAX(cs.id) AS id
-                FROM public.clean_sessions cs
-                WHERE cs.scriptid {condition}
-                GROUP BY 1,2,3
+                    er.scriptid,
+                    er.uid,
+                    CAST(er.data->>'completed_at' AS date) AS completed_date,
+                    MAX(er.id) AS latest_id
+                FROM public.clean_sessions er
+                WHERE er.scriptid {condition}
+                GROUP BY er.scriptid, er.uid, CAST(er.data->>'completed_at' AS date)
             )
             SELECT
-                er.scriptid,
-                er.uid,
-                er.id,
+                s.scriptid,
+                s.uid,
+                s.id,
                 s.ingested_at,
-                er.completed_at,
+                CAST(data->>'completed_at' AS date) AS completed_at,
                 s.data,
                 s.unique_key
-            FROM earliest_record er
-            JOIN clean_sessions s ON er.id = s.id
-            WHERE s.scriptid {script_condition};;
-            """
-        
+            FROM latest_per_day lp
+            JOIN public.clean_sessions s
+                ON s.id = lp.latest_id
+            WHERE s.scriptid {script_condition};
+        """
+     
     else:
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
