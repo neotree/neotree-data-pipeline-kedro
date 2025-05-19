@@ -80,9 +80,11 @@ def tidy_dynamic_tables():
                         logging.error("!!! An error occured writing admissions and discharge output back to the database: ")
                         logging.error(formatError(e))
                     try:
-                        repeatables=format_repeatables_to_rows(script_df,script)
+                        repeatables=format_repeatables_to_rows(script_raw,script)
                         logging.info(list(script_df.columns))
-                        logging.info("--PROCESSED REPEATABLES--"+str(repeatables)+'-SCRIP--' +str(script))
+                        logging.info(list("-RAW--"+script_raw.columns))
+                        logging.info(list("-SCR--"+script))
+                        logging.info("--PROCESSED REPEATABLES--")
                         if repeatables is not None and len(repeatables)>0:
                             generate_upsert_queries_and_create_table(repeatables)
                     except Exception as e:

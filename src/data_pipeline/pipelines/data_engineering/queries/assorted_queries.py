@@ -316,7 +316,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     return sql
 
 def get_dynamic_condition(destination_table) :
-    if(destination_table=='daily_review' or destination_table=='infections'):
+    if('daily_review' in destination_table or 'infections' in destination_table):
         return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
     
     return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
