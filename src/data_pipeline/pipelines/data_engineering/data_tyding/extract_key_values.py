@@ -152,7 +152,7 @@ def sanitize_key(key: str) -> str:
 
 
 def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
-    logging.info("#############I AM TRYING 123################")
+    logging.info("#############I AM TRYING 123################"+str(data))
     result = {}
     uid = data.get("uid")
     hospital_id = data.get("hospital_id")
