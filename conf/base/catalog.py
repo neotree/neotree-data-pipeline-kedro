@@ -149,7 +149,7 @@ if hospital_scripts:
                      deduplication_query = deduplicate_data_query(condition+additional_where,dedup_destination)
                      logging.info("--DEDUP---"+dedup_destination)
                      if('infections' in dedup_destination):
-                         logging.info("--SQL-DED---"+dedup_destination)
+                         logging.info("--SQL-DED---"+deduplication_query)
                   generic_dedup_queries.append(deduplication_query)
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
