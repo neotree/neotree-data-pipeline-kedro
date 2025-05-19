@@ -81,6 +81,7 @@ def tidy_dynamic_tables():
                         logging.error(formatError(e))
                     try:
                         repeatables=format_repeatables_to_rows(script_df,script)
+                        logging.info(list(script_df.columns))
                         logging.info("--PROCESSED REPEATABLES--"+str(repeatables)+'-SCRIP--' +str(script))
                         if repeatables is not None and len(repeatables)>0:
                             generate_upsert_queries_and_create_table(repeatables)

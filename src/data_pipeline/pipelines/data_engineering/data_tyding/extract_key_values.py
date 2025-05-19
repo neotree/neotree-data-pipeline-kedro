@@ -150,59 +150,59 @@ def get_diagnoses_key_values(data_raw):
 def sanitize_key(key: str) -> str:
     return re.sub(r'\W+', '_', key).strip('_')
 
+def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
 
-def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
+    all_rows = []
 
-    logging.info("---DATA12------"+str(script))
-    if data is None:
-        return {}
-    
-    result = {}
-    uid = data.get("uid")
-    hospital_id = data.get("hospital_id")
-    facility = data.get("facility")
-    review_number = data.get("review_number")
-    repeatables = data.get("repeatables")
-    logging.info("---DATA345------"+str(repeatables))
     try:
-        if not isinstance(repeatables, dict) or len(repeatables)<=0:
-            return result  # avoid crashing if repeatables is not a dict
-        for table_name, entries in repeatables.items():
-            if not isinstance(entries, list):
-                continue  # skip if entries is not a list
+        for _, row in df.iterrows():
+            uid = row.get("uid")
+            hospital_id = row.get("hospital_id")
+            facility = row.get("facility")
+            review_number = row.get("review_number")
+            repeatables = row.get("repeatables")
 
-            result_key = script + "_" + table_name
-            result[result_key] = []
+            if not isinstance(repeatables, dict) or not repeatables:
+                continue
 
-            for entry in entries:
-                if not isinstance(entry, dict):
-                    continue  # skip if entry is not a dict
+            for table_name, entries in repeatables.items():
+                if not isinstance(entries, list):
+                    continue
 
-                row = {
-                    "uid": uid,
-                    "hospital_id": hospital_id,
-                    "form_id": entry.get("id"),
-                    "facility": facility,
-                    "created_at": entry.get("createdAt"),
-                    "review_number": review_number
-                }
-
-                for key, value in entry.items():
-                    if key in ["id", "createdAt", "requiredComplete", "hasCollectionField"]:
+                for entry in entries:
+                    if not isinstance(entry, dict):
                         continue
 
-                    sanitized_key = sanitize_key(key)
-                    label_key = sanitize_key(f"{key}_label")
+                    flat_row = {
+                        "uid": uid,
+                        "hospital_id": hospital_id,
+                        "form_id": entry.get("id"),
+                        "facility": facility,
+                        "created_at": entry.get("createdAt"),
+                        "review_number": review_number,
+                        "script_table": f"{script}_{table_name}"
+                    }
 
-                    if isinstance(value, dict):
-                        row[sanitized_key] = value.get("value")
-                        row[label_key] = value.get("label")
-                    else:
-                        row[sanitized_key] = value
-                        row[label_key] = value
+                    for key, value in entry.items():
+                        if key in ["id", "createdAt", "requiredComplete", "hasCollectionField"]:
+                            continue
 
-                result[result_key].append(row)
+                        sanitized_key = sanitize_key(key)
+                        label_key = sanitize_key(f"{key}_label")
 
-        return result
+                        if isinstance(value, dict):
+                            flat_row[sanitized_key] = value.get("value")
+                            flat_row[label_key] = value.get("label")
+                        else:
+                            flat_row[sanitized_key] = value
+                            flat_row[label_key] = value
+
+                    all_rows.append(flat_row)
+
+        return pd.DataFrame(all_rows)
+
     except Exception as ex:
-        formatError(ex)
+        logging.error(f"Error processing repeatables to rows: {ex}")
+        return pd.DataFrame()
