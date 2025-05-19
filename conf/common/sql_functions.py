@@ -180,6 +180,7 @@ def generate_upsert_queries_and_create_table(rows_by_table: Dict[str, list]):
     cur = conn.cursor() 
     queries = []
     try: 
+        logging.info("...REPEATS.."+str(rows_by_table))
         for table_name, rows in rows_by_table.items():
             # Step 1: Check if the table exists, create it if it doesn't
             cur.execute(f"SELECT to_regclass('public.{table_name}')")
