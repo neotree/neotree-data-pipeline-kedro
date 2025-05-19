@@ -152,13 +152,17 @@ def sanitize_key(key: str) -> str:
 
 
 def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
-    logging.info("#############I AM TRYING 123################"+str(data))
     result = {}
     uid = data.get("uid")
+    logging.info("#############2")
     hospital_id = data.get("hospital_id")
+    logging.info("#############3")
     facility = data.get("facility")
+    logging.info("#############4")
     review_number = data.get("review_number")
+    logging.info("#############5")
     repeatables = data.get("repeatables") or {}
+    logging.info("#############6")
     try:
         logging.info("#############I AM TRYING################")
         if not isinstance(repeatables, dict):
