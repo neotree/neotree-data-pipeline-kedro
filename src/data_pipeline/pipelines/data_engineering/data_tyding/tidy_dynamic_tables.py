@@ -79,7 +79,7 @@ def tidy_dynamic_tables():
                         logging.error("!!! An error occured writing admissions and discharge output back to the database: ")
                         logging.error(formatError(e))
                     try:
-                        repeatables = format_repeatables_to_rows(script_raw,script)
+                        repeatables=format_repeatables_to_rows(script_raw,script)
                         logging.info("--PROCESSED REPEATABLES--")
                         if repeatables is not None and len(repeatables)>0:
                             generate_upsert_queries_and_create_table(repeatables)

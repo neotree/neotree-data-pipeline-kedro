@@ -5,6 +5,7 @@ from .json_restructure import restructure, restructure_new_format, restructure_a
 from functools import  reduce
 import pandas as pd
 from datetime import datetime
+from typing import Dict, Any
 import re
 
 
@@ -146,19 +147,12 @@ def get_diagnoses_key_values(data_raw):
                     data_new.append(new_entry)
     return data_new
 
-from typing import Dict, Any
-
-from typing import Dict, Any
-import re
-
 def sanitize_key(key: str) -> str:
     return re.sub(r'\W+', '_', key).strip('_')
 
-from typing import Dict, Any
-
-from typing import Dict, Any
 
 def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
+    logging.info("#############I AM TRYING 123################")
     result = {}
     uid = data.get("uid")
     hospital_id = data.get("hospital_id")
@@ -209,7 +203,3 @@ def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
         return result
     except Exception as ex:
         formatError(ex)
-
-
-def sanitize_key(key: str) -> str:
-    return re.sub(r'\W+', '_', key).strip('_').lower()
