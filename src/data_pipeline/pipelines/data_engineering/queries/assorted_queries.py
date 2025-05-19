@@ -136,7 +136,7 @@ def deduplicate_data_query(condition, destination_table):
                 data,
                 unique_key
             FROM deduplicated
-            WHERE scriptid {script_condition};
+            WHERE scriptid {script_condition};;
         """
 
      
@@ -295,7 +295,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
         AND cs.uid != 'null'
         AND cs.uid != 'Unknown'
         AND cs.unique_key IS NOT NULL
-        {condition};
+        {condition};;
         '''
 
     else:
