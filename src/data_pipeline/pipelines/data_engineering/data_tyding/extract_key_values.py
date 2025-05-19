@@ -166,9 +166,10 @@ def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
     review_number = data.get("review_number")
     repeatables = data.get("repeatables") or {}
     try:
+        logging.info("#############I AM TRYING################")
         if not isinstance(repeatables, dict):
             return result  # avoid crashing if repeatables is not a dict
-
+        logging.info("#############PASSED ###################")
         for table_name, entries in repeatables.items():
             if not isinstance(entries, list):
                 continue  # skip if entries is not a list
