@@ -222,6 +222,7 @@ def generate_upsert_queries_and_create_table(rows_by_table: Dict[str, list]):
     
     # Execute all generated queries
     for query in queries:
+        logging.info("-REPEATABLES---"+query)
         cur.execute(query)
     
     conn.commit()
