@@ -152,7 +152,7 @@ def sanitize_key(key: str) -> str:
 
 
 def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
-    logging.info("---DATA------"+str(data))
+
     logging.info("---DATA12------"+str(script))
     if data is None:
         return {}
@@ -163,6 +163,7 @@ def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
     facility = data.get("facility")
     review_number = data.get("review_number")
     repeatables = data.get("repeatables")
+    logging.info("---DATA345------"+str(repeatables))
     try:
         if not isinstance(repeatables, dict) or len(repeatables)<=0:
             return result  # avoid crashing if repeatables is not a dict
