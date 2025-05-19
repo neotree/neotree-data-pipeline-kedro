@@ -152,7 +152,8 @@ def sanitize_key(key: str) -> str:
 
 
 def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
-    
+    logging.info("---DATA------"+str(data))
+    logging.info("---DATA12------"+str(script))
     if data is None:
         return {}
     
