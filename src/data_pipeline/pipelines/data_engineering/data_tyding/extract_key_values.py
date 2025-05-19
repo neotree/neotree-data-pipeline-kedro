@@ -161,7 +161,8 @@ def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
     logging.info("#############4")
     review_number = data.get("review_number")
     logging.info("#############5")
-    repeatables = data.get("repeatables") or {}
+    logging.info("#############DRR"+str(data))
+    repeatables = data.get("repeatables")
     logging.info("#############6")
     try:
         logging.info("#############I AM TRYING################")
