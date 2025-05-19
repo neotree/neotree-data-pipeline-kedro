@@ -165,47 +165,49 @@ def format_repeatables_to_rows(data: Dict[str, Any], script) -> Dict[str, list]:
     facility = data.get("facility")
     review_number = data.get("review_number")
     repeatables = data.get("repeatables") or {}
+    try:
+        if not isinstance(repeatables, dict):
+            return result  # avoid crashing if repeatables is not a dict
 
-    if not isinstance(repeatables, dict):
-        return result  # avoid crashing if repeatables is not a dict
+        for table_name, entries in repeatables.items():
+            if not isinstance(entries, list):
+                continue  # skip if entries is not a list
 
-    for table_name, entries in repeatables.items():
-        if not isinstance(entries, list):
-            continue  # skip if entries is not a list
+            result_key = script + "_" + table_name
+            result[result_key] = []
 
-        result_key = script + "_" + table_name
-        result[result_key] = []
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue  # skip if entry is not a dict
 
-        for entry in entries:
-            if not isinstance(entry, dict):
-                continue  # skip if entry is not a dict
+                row = {
+                    "uid": uid,
+                    "hospital_id": hospital_id,
+                    "form_id": entry.get("id"),
+                    "facility": facility,
+                    "created_at": entry.get("createdAt"),
+                    "review_number": review_number
+                }
 
-            row = {
-                "uid": uid,
-                "hospital_id": hospital_id,
-                "form_id": entry.get("id"),
-                "facility": facility,
-                "created_at": entry.get("createdAt"),
-                "review_number": review_number
-            }
+                for key, value in entry.items():
+                    if key in ["id", "createdAt", "requiredComplete", "hasCollectionField"]:
+                        continue
 
-            for key, value in entry.items():
-                if key in ["id", "createdAt", "requiredComplete", "hasCollectionField"]:
-                    continue
+                    sanitized_key = sanitize_key(key)
+                    label_key = sanitize_key(f"{key}_label")
 
-                sanitized_key = sanitize_key(key)
-                label_key = sanitize_key(f"{key}_label")
+                    if isinstance(value, dict):
+                        row[sanitized_key] = value.get("value")
+                        row[label_key] = value.get("label")
+                    else:
+                        row[sanitized_key] = value
+                        row[label_key] = value
 
-                if isinstance(value, dict):
-                    row[sanitized_key] = value.get("value")
-                    row[label_key] = value.get("label")
-                else:
-                    row[sanitized_key] = value
-                    row[label_key] = value
+                result[result_key].append(row)
 
-            result[result_key].append(row)
-
-    return result
+        return result
+    except Exception as ex:
+        formatError(ex)
 
 
 def sanitize_key(key: str) -> str:
