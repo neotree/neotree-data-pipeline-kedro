@@ -179,51 +179,53 @@ def generate_upsert_queries_and_create_table(rows_by_table: Dict[str, list]):
     conn = engine.raw_connection() 
     cur = conn.cursor() 
     queries = []
+    try: 
+        for table_name, rows in rows_by_table.items():
+            # Step 1: Check if the table exists, create it if it doesn't
+            cur.execute(f"SELECT to_regclass('public.{table_name}')")
+            result = cur.fetchone()
+            logging.info("-REPEATABLES-BEFOR---"+str(result))
+            if result[0] is None:
+                # Create table based on the keys from the first row
+                columns = rows[0].keys()
+                create_table_query = f"CREATE TABLE {table_name} ({', '.join([f'{col} TEXT' for col in columns])})"
+                cur.execute(create_table_query)
+                conn.commit()
 
-    for table_name, rows in rows_by_table.items():
-        # Step 1: Check if the table exists, create it if it doesn't
-        cur.execute(f"SELECT to_regclass('public.{table_name}')")
-        result = cur.fetchone()
+            # Step 2: Check if the columns exist, if not, add them
+            for row in rows:
+                for column, value in row.items():
+                    cur.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = %s AND column_name = %s", (table_name, column))
+                    if not cur.fetchone():
+                        # Add missing column to the table
+                        alter_column_query = f"ALTER TABLE {table_name} ADD COLUMN {column} TEXT DEFAULT NULL"
+                        cur.execute(alter_column_query)
+                        conn.commit()
 
-        if result[0] is None:
-            # Create table based on the keys from the first row
-            columns = rows[0].keys()
-            create_table_query = f"CREATE TABLE {table_name} ({', '.join([f'{col} TEXT' for col in columns])})"
-            cur.execute(create_table_query)
-            conn.commit()
-
-        # Step 2: Check if the columns exist, if not, add them
-        for row in rows:
-            for column, value in row.items():
-                cur.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = %s AND column_name = %s", (table_name, column))
-                if not cur.fetchone():
-                    # Add missing column to the table
-                    alter_column_query = f"ALTER TABLE {table_name} ADD COLUMN {column} TEXT DEFAULT NULL"
-                    cur.execute(alter_column_query)
-                    conn.commit()
-
-        # Step 3: Generate the UPSERT query for each row
-        for row in rows:
-            columns = row.keys()
-            values = [f"'{row[column]}'" if row[column] is not None else 'NULL' for column in columns]
-            update_set = ", ".join([f'"{col}" = EXCLUDED."{col}"' for col in columns if col not in ["uid", "form_id", "created_at","facility","review_number"]])
-            insert_query = sql.SQL("""
-                INSERT INTO {table} ({columns})
-                VALUES ({values})
-                ON CONFLICT (uid, form_id, created_at,facility,review_number)
-                DO UPDATE SET {update_set};
-            """).format(
-                table=sql.Identifier(table_name),
-                columns=sql.SQL(", ").join(map(sql.Identifier, columns)),
-                values=sql.SQL(", ").join(map(sql.SQL, values)),
-                update_set=sql.SQL(update_set)
-            )
-            queries.append(insert_query)
-    
-    # Execute all generated queries
-    for query in queries:
-        logging.info("-REPEATABLES---"+query)
-        cur.execute(query)
-    
-    conn.commit()
-    cur.close()
+            # Step 3: Generate the UPSERT query for each row
+            for row in rows:
+                columns = row.keys()
+                values = [f"'{row[column]}'" if row[column] is not None else 'NULL' for column in columns]
+                update_set = ", ".join([f'"{col}" = EXCLUDED."{col}"' for col in columns if col not in ["uid", "form_id", "created_at","facility","review_number"]])
+                insert_query = sql.SQL("""
+                    INSERT INTO {table} ({columns})
+                    VALUES ({values})
+                    ON CONFLICT (uid, form_id, created_at,facility,review_number)
+                    DO UPDATE SET {update_set};
+                """).format(
+                    table=sql.Identifier(table_name),
+                    columns=sql.SQL(", ").join(map(sql.Identifier, columns)),
+                    values=sql.SQL(", ").join(map(sql.SQL, values)),
+                    update_set=sql.SQL(update_set)
+                )
+                queries.append(insert_query)
+        
+        # Execute all generated queries
+        for query in queries:
+            logging.info("-REPEATABLES 12---"+query)
+            cur.execute(query)
+        
+        conn.commit()
+        cur.close()
+    except Exception as ex:
+        formatError(ex)
