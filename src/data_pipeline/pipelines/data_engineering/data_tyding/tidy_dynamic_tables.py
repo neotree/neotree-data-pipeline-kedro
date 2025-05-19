@@ -80,7 +80,7 @@ def tidy_dynamic_tables():
                         logging.error(formatError(e))
                     try:
                         repeatables=format_repeatables_to_rows(script_raw,script)
-                        logging.info("--PROCESSED REPEATABLES--")
+                        logging.info("--PROCESSED REPEATABLES--"+str(repeatables))
                         if repeatables is not None and len(repeatables)>0:
                             generate_upsert_queries_and_create_table(repeatables)
                     except Exception as e:
