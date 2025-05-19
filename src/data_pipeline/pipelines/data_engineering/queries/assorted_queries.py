@@ -102,7 +102,7 @@ def deduplicate_data_query(condition, destination_table):
                 data,
                 unique_key
             )''' 
-            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and cs.completed_date=ds.completed_at and cs.scriptid=ds.scriptid) '''
+            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
 
         else:
             operation = f'''DROP TABLE IF EXISTS {destination_table} CASCADE;
