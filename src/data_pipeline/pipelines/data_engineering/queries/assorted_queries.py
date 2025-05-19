@@ -360,15 +360,16 @@ def read_data_with_no_unique_key():
 def read_diagnoses_query(admissions_case, adm_where):
     return f'''
             select 
-                uid,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'diagnoses' as "diagnoses" {admissions_case},
+                cs.uid,
+                cs.ingested_at,
+                cs."data"->'appVersion' as "appVersion",
+                cs."data"->'scriptVersion' as "scriptVersion",
+                cs."data"->'started_at' as "started_at",
+                cs."data"->'completed_at' as "completed_at",
+                cs."data"->'diagnoses' as "diagnoses" {admissions_case},
                 unique_key
-            from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null' and uid!='Unknown';;
+            from scratch.deduplicated_admissions cs 
+            where cs.scriptid {adm_where} and cs.uid!='null' and cs.uid!='Unknown';;
             '''
 
 
