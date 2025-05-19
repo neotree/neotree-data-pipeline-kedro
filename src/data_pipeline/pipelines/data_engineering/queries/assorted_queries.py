@@ -101,35 +101,44 @@ def deduplicate_data_query(condition, destination_table):
                 completed_at,
                 data,
                 unique_key
-            )'''
+            )''' 
+            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and cs.completed_at=ds.completed_at and cs.scriptid=ds.scriptid) '''
+
         else:
             operation = f'''DROP TABLE IF EXISTS {destination_table} CASCADE;
             CREATE TABLE {destination_table} AS'''
 
         return f"""{operation}
-            WITH latest_per_day AS (
+            WITH filtered AS (
                 SELECT
-                    er.scriptid,
-                    er.uid,
-                    CAST(er.data->>'completed_at' AS date) AS completed_date,
-                    MAX(er.id) AS latest_id
-                FROM public.clean_sessions er
-                WHERE er.scriptid {condition}
-                GROUP BY er.scriptid, er.uid, CAST(er.data->>'completed_at' AS date)
+                    scriptid,
+                    uid,
+                    id,
+                    ingested_at,
+                    CAST(data->>'completed_at' AS date) AS completed_date,
+                    data,
+                    unique_key
+                FROM public.clean_sessions
+                WHERE scriptid {condition}
+            ),
+            deduplicated AS (
+                SELECT DISTINCT ON (scriptid, uid, completed_date)
+                    *
+                FROM filtered
+                ORDER BY scriptid, uid, completed_date, id DESC
             )
             SELECT
-                s.scriptid,
-                s.uid,
-                s.id,
-                s.ingested_at,
-                CAST(data->>'completed_at' AS date) AS completed_at,
-                s.data,
-                s.unique_key
-            FROM latest_per_day lp
-            JOIN public.clean_sessions s
-                ON s.id = lp.latest_id
-            WHERE s.scriptid {script_condition};
+                scriptid,
+                uid,
+                id,
+                ingested_at,
+                completed_date AS completed_at,
+                data,
+                unique_key
+            FROM deduplicated
+            WHERE scriptid {script_condition};
         """
+
      
     else:
         # all other cases -> group on ingested_at
