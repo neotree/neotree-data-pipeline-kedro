@@ -7,6 +7,7 @@ import pandas as pd
 from datetime import datetime
 from typing import Dict, Any
 import re
+from collections import defaultdict
 
 
 def get_key_values(data_raw):
@@ -147,14 +148,18 @@ def get_diagnoses_key_values(data_raw):
                     data_new.append(new_entry)
     return data_new
 
+
 def sanitize_key(key: str) -> str:
     return re.sub(r'\W+', '_', key).strip('_')
 
-def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
-    if df is None or df.empty:
-        return pd.DataFrame()
+def normalize_table_name(name: str) -> str:
+    return re.sub(r'\s+', '', name.strip().lower())
 
-    all_rows = []
+def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> dict[str, pd.DataFrame]:
+    if df is None or df.empty:
+        return {}
+
+    tables = defaultdict(list)
 
     try:
         for _, row in df.iterrows():
@@ -167,11 +172,17 @@ def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
                 continue
 
             for table_name, entries in repeatables.items():
-                if not isinstance(entries, list):
+                if not isinstance(entries, list) or not entries:
                     continue
+
+                normalized_table = normalize_table_name(table_name)
 
                 for entry in entries:
                     if not isinstance(entry, dict):
+                        continue
+
+                    # Filter out entries missing 'id' or 'createdAt'
+                    if not entry.get("id") or not entry.get("createdAt"):
                         continue
 
                     flat_row = {
@@ -180,7 +191,7 @@ def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
                         "facility": facility,
                         "created_at": entry.get("createdAt"),
                         "review_number": review_number,
-                        "script_table": f"{script}_{table_name}"
+                        "script_table": f"{script}_{normalized_table}"
                     }
 
                     for key, value in entry.items():
@@ -188,7 +199,7 @@ def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
                             continue
 
                         sanitized_key = sanitize_key(key)
-                        label_key = sanitize_key(f"{key}_label")
+                        label_key = f"{sanitized_key}_label"
 
                         if isinstance(value, dict):
                             flat_row[sanitized_key] = value.get("value")
@@ -197,10 +208,10 @@ def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
                             flat_row[sanitized_key] = value
                             flat_row[label_key] = value
 
-                    all_rows.append(flat_row)
+                    tables[normalized_table].append(flat_row)
 
-        return pd.DataFrame(all_rows)
+        return {table: pd.DataFrame(rows) for table, rows in tables.items()}
 
     except Exception as ex:
-        logging.error(f"Error processing repeatables to rows: {ex}")
-        return pd.DataFrame()
+        logging.error(f"Error processing repeatables to table dict: {ex}")
+        return {}
