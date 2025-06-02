@@ -159,7 +159,6 @@ def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
     try:
         for _, row in df.iterrows():
             uid = row.get("uid")
-            hospital_id = row.get("hospital_id")
             facility = row.get("facility")
             review_number = row.get("review_number")
             repeatables = row.get("repeatables")
@@ -177,7 +176,6 @@ def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> pd.DataFrame:
 
                     flat_row = {
                         "uid": uid,
-                        "hospital_id": hospital_id,
                         "form_id": entry.get("id"),
                         "facility": facility,
                         "created_at": entry.get("createdAt"),
