@@ -181,33 +181,47 @@ import logging
 from psycopg2 import sql
 
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
+    if df.empty:
+        return
+
     conn = engine.raw_connection()
     cur = conn.cursor()
 
     try:
-        if df.empty:
-            return
+        schema = 'derived'
 
         # Step 1: Check if the table exists
-        cur.execute("SELECT to_regclass(%s)", (f'derived.{table_name}',))
+        cur.execute(
+            sql.SQL("SELECT to_regclass(%s)"),
+            [f"{schema}.{table_name}"]
+        )
         result = cur.fetchone()
+
         if result[0] is None:
             # Create table with all current columns
             create_cols = ', '.join([f'"{col}" TEXT' for col in df.columns])
-            create_query = f'CREATE TABLE "derived.{table_name}" ({create_cols})'
+            create_query = sql.SQL("CREATE TABLE {}.{} ({})").format(
+                sql.Identifier(schema),
+                sql.Identifier(table_name),
+                sql.SQL(create_cols)
+            )
             cur.execute(create_query)
             conn.commit()
 
         # Step 2: Ensure all columns exist
         cur.execute("""
             SELECT column_name FROM information_schema.columns 
-            WHERE table_schema = 'derived' AND table_name = %s
-        """, (table_name,))
+            WHERE table_schema = %s AND table_name = %s
+        """, (schema, table_name))
         existing_cols = {row[0] for row in cur.fetchall()}
 
         for col in df.columns:
             if col not in existing_cols:
-                alter_query = f'ALTER TABLE "derived.{table_name}" ADD COLUMN "{col}" TEXT DEFAULT NULL'
+                alter_query = sql.SQL("ALTER TABLE {}.{} ADD COLUMN {} TEXT DEFAULT NULL").format(
+                    sql.Identifier(schema),
+                    sql.Identifier(table_name),
+                    sql.Identifier(col)
+                )
                 cur.execute(alter_query)
         conn.commit()
 
@@ -222,27 +236,28 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
             ]
 
             insert_query = sql.SQL("""
-                INSERT INTO derived.{table} ({columns})
-                VALUES ({values})
+                INSERT INTO {}.{} ({})
+                VALUES ({})
                 ON CONFLICT (uid, form_id, created_at, facility, review_number)
-                DO UPDATE SET {update_set}
+                DO UPDATE SET {}
             """).format(
-                table=sql.Identifier(table_name),
-                columns=sql.SQL(', ').join(map(sql.Identifier, columns)),
-                values=sql.SQL(', ').join(sql.Placeholder() * len(columns)),
-                update_set=sql.SQL(', ').join([
-                    sql.SQL(f'"{col}" = EXCLUDED."{col}"') for col in update_cols
+                sql.Identifier(schema),
+                sql.Identifier(table_name),
+                sql.SQL(', ').join(map(sql.Identifier, columns)),
+                sql.SQL(', ').join(sql.Placeholder() for _ in columns),
+                sql.SQL(', ').join([
+                    sql.SQL("{} = EXCLUDED.{}").format(sql.Identifier(col), sql.Identifier(col))
+                    for col in update_cols
                 ])
             )
 
-            logging.info(f"[UPSERT]: {insert_query.as_string(cur)}")
             cur.execute(insert_query, values)
 
         conn.commit()
         cur.close()
 
     except Exception as ex:
-        logging.error(f"Error upserting into '{table_name}': {ex}")
+        logging.error(f"Error upserting into '{schema}.{table_name}': {ex}")
         conn.rollback()
         cur.close()
         raise
