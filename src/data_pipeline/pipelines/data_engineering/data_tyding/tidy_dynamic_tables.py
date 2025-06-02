@@ -27,8 +27,8 @@ def tidy_dynamic_tables():
             catalog_query = f'''read_{script}'''
             
             script_raw = safe_load(catalog,catalog_query)
-            if script=='daily_review':
-                logging.info("... Creating normalized....."+str(catalog_query))
+            if 'daily_review' in script:
+                logging.info("...#######....."+str(catalog_query))
         
             try:
                 script_new_entries, script_mcl = get_key_values(script_raw)
@@ -84,8 +84,8 @@ def tidy_dynamic_tables():
                         repeatables=format_repeatables_to_rows(script_raw,script)
                         logging.info(list(script_df.columns))
                         if 'repeatables' in script_raw.columns:
-                            logging.info("-RAW--"+script_raw['repeatables'])
-                            logging.info("--PROCESSED REPEATABLES--"+script_df['repeatables'])
+                            logging.info('############--DED---#######')
+                            logging.info(script_raw['repeatables'])
                         if repeatables is not None and len(repeatables)>0:
                             generate_upsert_queries_and_create_table(repeatables)
                     except Exception as e:
