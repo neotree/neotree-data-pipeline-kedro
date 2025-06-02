@@ -185,10 +185,10 @@ def generate_upsert_queries_and_create_table(rows_by_table: Dict[str, list]):
             # Step 1: Check if the table exists, create it if it doesn't
             cur.execute(f"SELECT to_regclass('public.{table_name}')")
             result = cur.fetchone()
+            logging.info("-REPEATABLES-BEFOR---"+str(rows[0]))
+            logging.info("-REPEATABLES-KEYS---"+str(rows[0].keys()))
             if result[0] is None:
                 # Create table based on the keys from the first row
-                logging.info("-REPEATABLES-BEFOR---"+str(rows[0]))
-                logging.info("-REPEATABLES-KEYS---"+str(rows[0].keys()))
                 columns = rows[0].keys()
                 create_table_query = f"CREATE TABLE {table_name} ({', '.join([f'{col} TEXT' for col in columns])})"
                 cur.execute(create_table_query)

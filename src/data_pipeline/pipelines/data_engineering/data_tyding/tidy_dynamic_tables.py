@@ -82,10 +82,6 @@ def tidy_dynamic_tables():
                         logging.error(formatError(e))
                     try:
                         repeatables=format_repeatables_to_rows(script_raw,script)
-                        logging.info(list(script_df.columns))
-                        if 'repeatables' in script_raw.columns:
-                            logging.info('############--DED---#######')
-                            logging.info(script_raw['repeatables'])
                         if repeatables is not None and len(repeatables)>0:
                             generate_upsert_queries_and_create_table(repeatables)
                     except Exception as e:
