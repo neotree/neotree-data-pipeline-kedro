@@ -297,7 +297,6 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
         AND cs.unique_key IS NOT NULL
         {condition};;
         '''
-        logging.info("DR-SQL#####="+sql)
 
     else:
         sql = f'''

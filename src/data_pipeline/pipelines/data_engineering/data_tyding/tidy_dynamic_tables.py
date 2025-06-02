@@ -84,7 +84,7 @@ def tidy_dynamic_tables():
                         repeatables = format_repeatables_to_rows(script_raw, script)
                         for table_name, df in (repeatables or {}).items():
                             if not df.empty:
-                                generate_upsert_queries_and_create_table(df)
+                                generate_upsert_queries_and_create_table(table_name,df)
                     except Exception as e:
                         logging.error( "!!! An error whilest formatting repeatables ")   
                         logging.error(formatError(e))     
