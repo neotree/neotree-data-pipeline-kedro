@@ -189,25 +189,25 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
             return
 
         # Step 1: Check if the table exists
-        cur.execute("SELECT to_regclass(%s)", (f'public.{table_name}',))
+        cur.execute("SELECT to_regclass(%s)", (f'derived.{table_name}',))
         result = cur.fetchone()
         if result[0] is None:
             # Create table with all current columns
             create_cols = ', '.join([f'"{col}" TEXT' for col in df.columns])
-            create_query = f'CREATE TABLE "{table_name}" ({create_cols})'
+            create_query = f'CREATE TABLE "derived.{table_name}" ({create_cols})'
             cur.execute(create_query)
             conn.commit()
 
         # Step 2: Ensure all columns exist
         cur.execute("""
             SELECT column_name FROM information_schema.columns 
-            WHERE table_schema = 'public' AND table_name = %s
+            WHERE table_schema = 'derived' AND table_name = %s
         """, (table_name,))
         existing_cols = {row[0] for row in cur.fetchall()}
 
         for col in df.columns:
             if col not in existing_cols:
-                alter_query = f'ALTER TABLE "{table_name}" ADD COLUMN "{col}" TEXT DEFAULT NULL'
+                alter_query = f'ALTER TABLE "derived.{table_name}" ADD COLUMN "{col}" TEXT DEFAULT NULL'
                 cur.execute(alter_query)
         conn.commit()
 
@@ -222,7 +222,7 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
             ]
 
             insert_query = sql.SQL("""
-                INSERT INTO {table} ({columns})
+                INSERT INTO derived.{table} ({columns})
                 VALUES ({values})
                 ON CONFLICT (uid, form_id, created_at, facility, review_number)
                 DO UPDATE SET {update_set}

@@ -152,8 +152,8 @@ def get_diagnoses_key_values(data_raw):
 def sanitize_key(key: str) -> str:
     return re.sub(r'\W+', '_', key).strip('_')
 
-def normalize_table_name(name: str) -> str:
-    return re.sub(r'\s+', '', name.strip().lower())
+def normalize_table_name(script:str,name: str) -> str:
+    return re.sub(r'\s+', '', (script+'_'+name).strip().lower())
 
 def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> dict[str, pd.DataFrame]:
     if df is None or df.empty:
@@ -175,7 +175,7 @@ def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> dict[str, pd.Da
                 if not isinstance(entries, list) or not entries:
                     continue
 
-                normalized_table = normalize_table_name(table_name)
+                normalized_table = normalize_table_name(script,table_name)
 
                 for entry in entries:
                     if not isinstance(entry, dict):
