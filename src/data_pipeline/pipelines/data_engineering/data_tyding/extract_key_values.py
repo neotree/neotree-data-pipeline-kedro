@@ -155,7 +155,7 @@ def sanitize_key(key: str) -> str:
 def normalize_table_name(script:str,name: str) -> str:
     return re.sub(r'\s+', '', (script+'_'+name).strip().lower())
 
-def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> dict[str, pd.DataFrame]:
+def format_repeatables_to_rows(df: pd.DataFrame, script: str) -> Dict[str, pd.DataFrame]:
     if df is None or df.empty:
         return {}
 
