@@ -207,8 +207,22 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
             )
             cur.execute(create_query)
             conn.commit()
+            # Step 2: Add Unique Constraint on relevant columns
+            constraint_name = f"{table_name}_uid_form_created_facility_review_uq"
+            constraint_query = sql.SQL(
+                    """
+                    ALTER TABLE {schema}.{table}
+                    ADD CONSTRAINT {constraint}
+                    UNIQUE (uid, form_id, created_at, facility, review_number);
+                    """
+                ).format(
+                    schema=sql.Identifier(schema),
+                    table=sql.Identifier(table_name),
+                    constraint=sql.Identifier(constraint_name)
+                )
+            cur.execute(constraint_query)
 
-        # Step 2: Ensure all columns exist
+        # Step 3: Ensure all columns exist
         cur.execute("""
             SELECT column_name FROM information_schema.columns 
             WHERE table_schema = %s AND table_name = %s
@@ -225,7 +239,7 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
                 cur.execute(alter_query)
         conn.commit()
 
-        # Step 3: Generate and execute UPSERTs
+        # Step 4: Generate and execute UPSERTs
         for _, row in df.iterrows():
             columns = list(row.index)
             values = [row[col] if pd.notnull(row[col]) else None for col in columns]
