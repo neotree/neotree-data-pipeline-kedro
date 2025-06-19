@@ -196,7 +196,6 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
             [f"{schema}.{table_name}"]
         )
         result = cur.fetchone()
-        logging.info(f"#############FETCH RESULT",{table_name},{result[0]})
         if result[0] is None:
             # Create table with all current columns
             create_cols = ', '.join([f'"{col}" TEXT' for col in df.columns])
