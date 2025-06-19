@@ -35,8 +35,7 @@ def deduplicate_data(data_import_output):
                 # maternal_data_duplicates_cleanup()
             logging.info("************DONE DATA FIXES******************************")  
             ###DEDUPLICATE DYNAMICALLY
-            for index,dedup_query in enumerate(generic_dedup_queries): 
-                logging.info(f'''************DEDUPE******************************''',{dedup_query})  
+            for index,dedup_query in enumerate(generic_dedup_queries):  
                 current_dedup = f'''deduplicate-generic_{index}'''  
                 inject_sql(dedup_query, current_dedup)
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
