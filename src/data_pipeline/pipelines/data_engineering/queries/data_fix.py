@@ -591,13 +591,9 @@ def update_hive_result():
      where = "What%"
      for facility in facilities:
          if facility=='SMCH' or facility=='CPH' or facility=='BPH' or facility=='PGH':
-            values=f'''1,Spontaneous Vaginal Delivery (SVD)
-                       2,Vacuum extraction
-                       3,Forceps extraction
-                       4,Elective Ceasarian Section (ELCS)
-                       5,Emergency Ceasarian Section (EMCS)
-                       6,Breech extraction (vaginal)
-                       7,Induced Vaginal Delivery'''
+            values=f'''R,Positive
+                    NR,Negative
+                    U,Unknown'''
             
             transformed= transform_values(values)
             if len(transformed):
