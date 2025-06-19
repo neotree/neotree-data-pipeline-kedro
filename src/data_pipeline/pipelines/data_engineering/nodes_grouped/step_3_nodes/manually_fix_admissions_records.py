@@ -10,7 +10,10 @@ from data_pipeline.pipelines.data_engineering.queries.data_fix import (update_ag
                                                                        ,update_refferred_from
                                                                        ,update_signature
                                                                        ,update_cause_death,
-                                                                       update_disdiag)
+                                                                       update_disdiag, 
+                                                                       update_hive_result,
+                                                                       fix_amission_dates
+                                                                       )
 from conf.base.catalog import cron_log_file,cron_time,env
 
 
@@ -34,6 +37,8 @@ def manually_fix_admissions(tidy_data_output):
             update_signature()
             update_cause_death()
             update_disdiag()
+            update_hive_result()
+            fix_amission_dates()
             return dict(
             status='Success',
             message = "Manual Fixing Of Admissions Complete"
