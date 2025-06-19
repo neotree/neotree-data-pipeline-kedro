@@ -580,5 +580,8 @@ def insert_sessions_data():
 
 
 def regenerate_unique_key_query(id, unique_key):
-    return f''' UPDATE public.clean_sessions set unique_key='{unique_key}' where id={id};;
- '''
+    return f''' UPDATE public.clean_sessions set unique_key= COALESCE(
+                   to_timestamp({unique_key}, 'YYYY-MM-DD HH24:MI'),
+                   to_timestamp({unique_key}, 'DD Mon, YYYY HH24:MI')
+               ) where id={id};;
+          '''

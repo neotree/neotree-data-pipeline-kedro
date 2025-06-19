@@ -19,7 +19,7 @@ def deduplicate_data(data_import_output):
             inject_sql(insert_sessions_data(),"Sessions Data")
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********")
             
-            #regenerate_unique_key()
+            regenerate_unique_key()
             logging.info("************SKIP REGENERATION******************************")
             # fix_data_errors()
             
@@ -33,9 +33,10 @@ def deduplicate_data(data_import_output):
                 logging.info("************FIXING BL LABELS******************************")
                 data_labels_cleanup('baselines')
                 # maternal_data_duplicates_cleanup()
-                
+            logging.info("************DONE DATA FIXES******************************")  
             ###DEDUPLICATE DYNAMICALLY
             for index,dedup_query in enumerate(generic_dedup_queries): 
+                logging.info(f'''************DEDUPE******************************''',{dedup_query})  
                 current_dedup = f'''deduplicate-generic_{index}'''  
                 inject_sql(dedup_query, current_dedup)
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
