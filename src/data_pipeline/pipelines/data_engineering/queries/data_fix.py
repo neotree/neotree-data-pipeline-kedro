@@ -124,12 +124,15 @@ def update_mode_delivery():
                        7,Induced Vaginal Delivery'''
             
             transformed= transform_values(values)
-            if len(transformed) and facility!='PHC':
-                query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
-                query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
+            if len(transformed):
+                query1=''
+                query2=''
                 query3=''
                 if facility=='PHC':
                     query3 = generate_update_query(facility,variable,to_update,transformed,"phc_admissions",where)
+                else:
+                    query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
+                    query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where) 
 
                 if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
                     inject_sql(query1,"UPDATE MODE DELIVERY FROM")
@@ -261,7 +264,7 @@ def update_signature():
                 query3 = generate_update_query(facility,variable,to_update,transformed,table3,where)
 
             if len(query1)>0 and column_exists("derived",table,to_update) :
-                inject_sql(query1,"UPDATE MODE DELIVERY FROM")
+                inject_sql(query1,"UPDATE MODE DELIVERY IN ADMISSIONS")
             if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) :
                 inject_sql(query2,"UPDATE DELIVERY IN JOINED ADMISSIONS")
             if len(query3)>0 and column_exists("derived","phc_admissions",to_update):
@@ -578,3 +581,31 @@ def update_disdiag():
                 inject_sql(query1,"UPDATING CAUSE OF DEATH")
             if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) :
                 inject_sql(query2,"UPDATING CAUSE OF DEATH IN JOINED ADMISSIONS")
+
+
+def update_hive_result():
+     facilities = ['SMCH','BPH','CPH','PGH'] 
+     variable = "HIVtestResult.value"
+     to_update = "HIVtestResult.label"
+     table="admissions"
+     where = "What%"
+     for facility in facilities:
+         if facility=='SMCH' or facility=='CPH' or facility=='BPH' or facility=='PGH':
+            values=f'''1,Spontaneous Vaginal Delivery (SVD)
+                       2,Vacuum extraction
+                       3,Forceps extraction
+                       4,Elective Ceasarian Section (ELCS)
+                       5,Emergency Ceasarian Section (EMCS)
+                       6,Breech extraction (vaginal)
+                       7,Induced Vaginal Delivery'''
+            
+            transformed= transform_values(values)
+            if len(transformed):
+                query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
+                query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+                if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+                    inject_sql(query1,"UPDATE HIV TEST RESULT IN ADMISSIONS")
+                if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+                    inject_sql(query2,"UPDATE HIV TEST RESULT IN IN JOINED ADMISSIONS")
+              
