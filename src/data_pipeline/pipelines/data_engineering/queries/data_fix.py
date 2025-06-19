@@ -607,15 +607,17 @@ def update_hive_result():
               
 
 def fix_amission_dates():
-    query1 = f''' UPDATE derived.admissions set "DateTimeAdmission.value"=COALESCE(
-                   to_timestamp("DateTimeAdmission.label", 'YYYY-MM-DD HH24:MI'),
-                   to_timestamp("DateTimeAdmission.label", 'DD Mon, YYYY HH24:MI')
-               ) where "DateTimeAdmission.value" is null 
-               and "DateTimeAdmission.label"  ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$';; '''
-    query2 = f''' UPDATE derived.joined_admissions_discharges set "DateTimeAdmission.value"=COALESCE(
-                   to_timestamp("DateTimeAdmission.label", 'YYYY-MM-DD HH24:MI'),
-                   to_timestamp("DateTimeAdmission.label", 'DD Mon, YYYY HH24:MI')
-               ) where "DateTimeAdmission.value" is null 
-               and "DateTimeAdmission.label"  ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$';; '''
+    query1 = f'''UPDATE derived.admissions SET "DateTimeAdmission.value" =
+       to_char(
+         to_timestamp("DateTimeAdmission.label",
+                      'DD Mon, YYYY HH24:MI'),
+         'YYYY-MM-DD HH24:MI'
+       ) WHERE  "DateTimeAdmission.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$';;'''
+    query2 = f''' UPDATE derived.joined_admissions_discharges SET "DateTimeAdmission.value" =
+       to_char(
+         to_timestamp("DateTimeAdmission.label",
+                      'DD Mon, YYYY HH24:MI'),
+         'YYYY-MM-DD HH24:MI'
+       ) WHERE  "DateTimeAdmission.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$';; '''
     inject_sql(query1,"UPDATING DATE ADMISSIONS ON ADMISSIONS")
     inject_sql(query2,"UPDATING DATE ADMISSIONS ON JOINED ADMISSIONS DISCHARGES")
