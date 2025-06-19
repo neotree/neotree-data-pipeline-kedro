@@ -614,7 +614,7 @@ def fix_amission_dates():
          'YYYY-MM-DD HH24:MI'
        ) WHERE  "DateTimeAdmission.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$';;'''
     query2 = f''' UPDATE derived.joined_admissions_discharges SET "DateTimeAdmission.value" =
-       to_char(
+       to_timestamp(
          to_timestamp("DateTimeAdmission.label",
                       'DD Mon, YYYY HH24:MI'),
          'YYYY-MM-DD HH24:MI'
