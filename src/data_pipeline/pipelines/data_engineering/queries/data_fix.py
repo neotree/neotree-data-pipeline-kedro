@@ -607,6 +607,7 @@ def update_hive_result():
               
 
 def fix_amission_dates():
+    
     query1 = f'''UPDATE derived.admissions SET "DateTimeAdmission.value" =
        to_char(
          to_timestamp("DateTimeAdmission.label",
@@ -619,3 +620,25 @@ def fix_amission_dates():
                 WHERE "DateTimeAdmission.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$';; '''
     inject_sql(query1,"UPDATING DATE ADMISSIONS ON ADMISSIONS")
     inject_sql(query2,"UPDATING DATE ADMISSIONS ON JOINED ADMISSIONS DISCHARGES")
+
+def update_gender():
+     facilities = ['SMCH','BPH','CPH','PGH'] 
+     variable = "Gender.value"
+     to_update = "Gender.label"
+     table="admissions"
+     where = "What%"
+     for facility in facilities:
+         if facility=='SMCH' or facility=='CPH' or facility=='BPH' or facility=='PGH':
+            values=f'''M,Male
+                    F,Female
+                    NS,Not sure'''
+            
+            transformed= transform_values(values)
+            if len(transformed):
+                query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
+                query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+                if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+                    inject_sql(query1,"UPDATE GENDER IN ADMISSIONS")
+                if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+                    inject_sql(query2,"UPDATE GENDER IN IN JOINED ADMISSIONS")
