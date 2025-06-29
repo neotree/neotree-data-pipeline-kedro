@@ -620,18 +620,20 @@ def fix_broken_dates_query(table:str):
             if affected_dates:
                 rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
                 for row in rows:
-                    value = get_value_from_label(row[0])
-                    label = row[0]
+                    label = get_lable_from_value(row[0])
+                    value = row[0]
                     data_type = str(row[1])
                     query = ''
+                    logging.info(f"#MY TYPE#{data_type}")
                     if('text' in data_type):
                         query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
                         'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and ("{value}" is null
                         OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$');;'''
                     else:
-                        query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
-                        , 'DD Mon, YYYY HH24:MI') 
-                        WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
+                        if ('date' in data_type or 'timestamp' in data_type):
+                            query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
+                            , 'DD Mon, YYYY HH24:MI') 
+                            WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
 
                     if (len(query)>0):
                         inject_sql(query,f"UPDATING DATES FOR {table}")
@@ -660,12 +662,12 @@ def get_affected_date_columns(table: str):
     query = f'''SELECT column_name,data_type FROM  information_schema.columns WHERE 
     table_schema = 'derived' 
     AND table_name = '{table}'
-    AND (LOWER(column_name) LIKE '%date%' OR LOWER(column_name) LIKE '%day%')  AND LOWER(column_name) LIKE '%.label';;'''
+    AND (LOWER(column_name) LIKE '%date%' OR LOWER(column_name) LIKE '%day%')  AND LOWER(column_name) LIKE '%.value';;'''
     logging.info(query)
     return inject_sql_with_return(query)
 
-def get_value_from_label(label:str):
-    return label.replace('.label','.value')
+def get_lable_from_value(label:str):
+    return label.replace('.value','.label')
 
 def update_gender():
      facilities = ['SMCH','BPH','CPH','PGH'] 

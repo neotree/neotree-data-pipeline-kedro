@@ -583,6 +583,8 @@ def insert_sessions_data():
 def regenerate_unique_key_query(id, unique_key):
     pattern = r'^(0?[1-9]|[12][0-9]|3[01]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec), \d{4} (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$'
     isMatch = re.match(pattern,unique_key)
+    if(id==520859):
+        logging.info(f"###--###{isMatch}")
     formatted= unique_key
     if(isMatch):
          formatted = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
