@@ -4,6 +4,7 @@ import json
 from psycopg2 import sql
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from  conf.common.config import config
+from datetime import datetime
 
 params = config()
 env = params['env']
@@ -580,14 +581,10 @@ def insert_sessions_data():
 
 
 def regenerate_unique_key_query(id, unique_key):
+    isMatch = re.match('^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$')
+    if(isMatch):
+         unique_key = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
+
     return f''' UPDATE public.clean_sessions
-                SET  unique_key = CASE
-                WHEN '{unique_key}' ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$'
-                THEN to_char(
-                 to_timestamp('{unique_key}', 'DD Mon, YYYY HH24:MI'),
-                 'YYYY-MM-DD HH24:MI'
-               )
-                ELSE '{unique_key}'   
-                END
-                WHERE  id ={id} AND unique_key !~ '^\d{4}-\d{2}-\d{2}%';;
+                SET  unique_key = '{unique_key}' WHERE  id ={id} AND unique_key !~ '^\d{4}-\d{2}-\d{2}%';;
               '''
