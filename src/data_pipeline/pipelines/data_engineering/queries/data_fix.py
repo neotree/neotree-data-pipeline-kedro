@@ -1,5 +1,7 @@
+import logging
 from conf.common.sql_functions import inject_sql,column_exists,inject_sql_with_return
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from conf.common.format_error import formatError
 
 def generate_update_query(facility, variable, to_update, values,table,where):
     additional_where = f''' and facility='{facility}' '''
@@ -609,25 +611,29 @@ def update_hive_result():
 def fix_broken_dates_query(table:str):
     
     if (table_exists('derived',table_name=table)):
-        affected_dates = get_affected_date_columns(table)
-        if affected_dates:
-            rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
-            for row in rows:
-                value = get_value_from_label(row['column_name'])
-                label = row['column_name']
-                data_type = str(row['data_type'])
-                query = ''
-                if('text' in data_type):
-                    query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
-                    'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and ("{value}" is null
-                    OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$');;'''
-                else:
-                    query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
-                    , 'DD Mon, YYYY HH24:MI') 
-                    WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
+        try:
+            affected_dates = get_affected_date_columns(table)
+            if affected_dates:
+                rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
+                for row in rows:
+                    value = get_value_from_label(row['column_name'])
+                    label = row['column_name']
+                    data_type = str(row['data_type'])
+                    query = ''
+                    if('text' in data_type):
+                        query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
+                        'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and ("{value}" is null
+                        OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$');;'''
+                    else:
+                        query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
+                        , 'DD Mon, YYYY HH24:MI') 
+                        WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
 
-                if (len(query)>0):
-                    inject_sql(query,f"UPDATING DATES FOR {table}")
+                    if (len(query)>0):
+                        inject_sql(query,f"UPDATING DATES FOR {table}")
+        except Exception as ex:
+            logging.error("#### FAILED TO FIX YOUR DIRTY DATES #########")
+            logging.error(formatError(ex))
 
 def fix_broken_dates_combined():
     fix_broken_dates_query('admissions')
