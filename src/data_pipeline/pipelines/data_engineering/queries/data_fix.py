@@ -1,5 +1,5 @@
 import logging
-from conf.common.sql_functions import inject_sql,column_exists,inject_sql_with_return
+from conf.common.sql_functions import inject_sql,column_exists,inject_sql_with_return,get_table_column_type
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.common.format_error import formatError
 
@@ -624,19 +624,24 @@ def fix_broken_dates_query(table:str):
                     value = row[0]
                     data_type = str(row[1])
                     query = ''
-                    logging.info(f"#MY TYPE#{data_type}")
-                    if('text' in data_type):
-                        query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
-                        'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and ("{value}" is null
-                        OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$');;'''
-                    else:
-                        if ('date' in data_type or 'timestamp' in data_type):
-                            query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
-                            , 'DD Mon, YYYY HH24:MI') 
-                            WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
+                    label_exists = column_exists('derived',table,label)
+                   
+                    if label_exists:
+                        label_type = get_table_column_type(table,'derived',label)[0][0]
+                        if 'text' in label_type:
+                            if('text' in data_type):
+                                query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
+                                'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and ("{value}" is null
+                                OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$');;'''
+                            else:
+                                if ('date' in data_type or 'timestamp' in data_type):
+                                    query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
+                                    , 'DD Mon, YYYY HH24:MI') 
+                                    WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
 
-                    if (len(query)>0):
-                        inject_sql(query,f"UPDATING DATES FOR {table}")
+                            if (len(query)>0):
+                                inject_sql(query,f"UPDATING DATES FOR {table}")
+
         except Exception as ex:
             logging.error("#### FAILED TO FIX YOUR DIRTY DATES #########")
             logging.error(formatError(ex))
