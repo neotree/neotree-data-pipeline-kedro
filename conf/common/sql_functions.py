@@ -8,6 +8,9 @@ from sqlalchemy.types import TEXT
 import pandas as pd
 import psycopg2
 from psycopg2 import sql
+import pandas as pd
+import logging
+from psycopg2 import sql
 
 params = config()
 #Postgres Connection String
@@ -175,10 +178,6 @@ def run_query_and_return_df(query):
     finally:
         conn.close()
 
-from typing import Union
-import pandas as pd
-import logging
-from psycopg2 import sql
 
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
     if df.empty:

@@ -1,5 +1,5 @@
-from conf.common.sql_functions import inject_sql
-from conf.common.sql_functions import column_exists
+from conf.common.sql_functions import inject_sql,column_exists,inject_sql_with_return
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 
 def generate_update_query(facility, variable, to_update, values,table,where):
     additional_where = f''' and facility='{facility}' '''
@@ -606,25 +606,55 @@ def update_hive_result():
                     inject_sql(query2,"UPDATE HIV TEST RESULT IN IN JOINED ADMISSIONS")
               
 
-def fix_amission_dates():
+def fix_broken_dates_query(table:str):
     
-    query1 = f'''UPDATE derived.admissions SET "DateTimeAdmission.value" =to_char(to_timestamp("DateTimeAdmission.label",'DD Mon, YYYY HH24:MI'),
-         'YYYY-MM-DD HH24:MI') WHERE  "DateTimeAdmission.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "DateTimeAdmission.value" is null;;'''
-    query2 = f''' UPDATE derived.joined_admissions_discharges SET "DateTimeAdmission.value" = to_timestamp("DateTimeAdmission.label"
-    , 'DD Mon, YYYY HH24:MI') 
-                WHERE "DateTimeAdmission.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "DateTimeAdmission.value" is null;; '''
-    inject_sql(query1,"UPDATING DATE ADMISSIONS ON ADMISSIONS")
-    inject_sql(query2,"UPDATING DATE ADMISSIONS ON JOINED ADMISSIONS DISCHARGES")
+    if (table_exists('derived',table_name=table)):
+        affected_dates = get_affected_date_columns(table)
+        if( affected_dates is not None and len(affected_dates)>0):
+            for row in affected_dates:
+                value = get_value_from_label(row['column_name'])
+                label = row['column_name']
+                data_type = str(row['data_type'])
+                query = ''
+                if('text' in data_type):
+                    query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
+                    'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and ("{value}" is null
+                    OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$');;'''
+                else:
+                    query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
+                    , 'DD Mon, YYYY HH24:MI') 
+                    WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
 
-def fix_discharge_dates():
-    
-    query1 = f'''UPDATE derived.discharges SET "DateTimeDischarge.value" =to_char(to_timestamp("DateTimeDischarge.label",'DD Mon, YYYY HH24:MI'),
-         'YYYY-MM-DD HH24:MI') WHERE  "DateTimeDischarge.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "DateTimeDischarge.value" is null;;'''
-    query2 = f''' UPDATE derived.joined_admissions_discharges SET "DateTimeDischarge.value" = to_timestamp("DateTimeDischarge.label"
-    , 'DD Mon, YYYY HH24:MI') 
-                WHERE "DateTimeDischarge.label" ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "DateTimeDischarge.value" is null;; '''
-    inject_sql(query1,"UPDATING DATE DISCHARGE ")
-    inject_sql(query2,"UPDATING  DATE DISCHARGES ON JOINED ADMISSIONS DISCHARGES")
+                if (len(query)>0):
+                    inject_sql(query,f"UPDATING DATES FOR {table}")
+
+def fix_broken_dates_combined():
+    fix_broken_dates_query('admissions')
+    fix_broken_dates_query('discharges')
+    fix_broken_dates_query('joined_admissions_discharges')
+    fix_broken_dates_query('vital_signs')
+    fix_broken_dates_query('neolabs')
+    fix_broken_dates_query('maternal_outcomes')
+    fix_broken_dates_query('summary_maternal_outcomes')
+    fix_broken_dates_query('maternal_completeness')
+    fix_broken_dates_query('summary_maternal_completeness')
+    fix_broken_dates_query('daily_review')
+    fix_broken_dates_query('infections')
+    fix_broken_dates_query('phc_admissions')
+    fix_broken_dates_query('phc_discharges')
+
+
+
+def get_affected_date_columns(table: str):
+    query = f'''SELECT column_name,data_type FROM  information_schema.columns WHERE 
+    table_schema = 'derived' 
+    AND table_name = '{table}'
+    AND (LOWER(column_name) LIKE '%date%' OR LOWER(column_name) LIKE '%day%')  AND LOWER(column_name) AND '%.label';;'''
+
+    return inject_sql_with_return(query)
+
+def get_value_from_label(label:str):
+    return label.replace('.label','.value')
 
 def update_gender():
      facilities = ['SMCH','BPH','CPH','PGH'] 
@@ -639,7 +669,7 @@ def update_gender():
                     NS,Not sure'''
             
             transformed= transform_values(values)
-            if len(transformed):
+            if len(transformed)>0:
                 query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
                 query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where)
              

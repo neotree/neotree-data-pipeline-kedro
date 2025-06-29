@@ -12,9 +12,8 @@ from data_pipeline.pipelines.data_engineering.queries.data_fix import (update_ag
                                                                        ,update_cause_death,
                                                                        update_disdiag, 
                                                                        update_hive_result,
-                                                                       fix_amission_dates,
+                                                                       fix_broken_dates_combined,
                                                                        update_gender,
-                                                                       fix_discharge_dates
                                                                        )
 from conf.base.catalog import cron_log_file,cron_time,env
 
@@ -40,9 +39,9 @@ def manually_fix_admissions(tidy_data_output):
             update_cause_death()
             update_disdiag()
             update_hive_result()
-            # TO BE FIXED TO CHECK DATA TYPE FIRST THEN UPDATE
-            # fix_amission_dates()
-            # fix_discharge_dates()
+            logging.info("################### NOW FIXING BROKEN DATE;THIS MIGHT TAKE A WHILE!!#####")
+            fix_broken_dates_combined()
+            logging.info("################### DONE FIXING BROKEN DATE;THAT WAS QUICK HEY!!#####")
             update_gender()
             return dict(
             status='Success',
