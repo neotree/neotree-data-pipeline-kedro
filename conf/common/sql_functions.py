@@ -66,7 +66,6 @@ def inject_sql(sql_script, file_name):
         conn = engine.raw_connection()
         cur = conn.cursor()
         sql_commands = sql_script.split(';;')
-        logging.info("--CONNECTION ESTABLISHED.....IN INJECT RETURN")
         for command in sql_commands:
             
             try:
@@ -136,7 +135,6 @@ def inject_sql_with_return(sql_script):
        
         conn = engine.raw_connection()
         cur = conn.cursor()
-        logging.info("--CONNECTION ESTABLISHED.....IN INJECT WITH RETURN")
         if not sql_script.strip():  # skip empty commands
             return []
         # Execute the SQL script
@@ -150,7 +148,6 @@ def inject_sql_with_return(sql_script):
         
         # Option 2: Return as list of dictionaries (uncomment to use)
         # data = [dict(zip(columns, row)) for row in rows]
-        logging.info(f"--LENGTH---{data[0]}")
         conn.commit()
         return data
         
@@ -168,7 +165,6 @@ def inject_sql_with_return(sql_script):
 def inject_bulk_sql(queries, batch_size=1000):
     conn = engine.raw_connection()  # Get the raw DBAPI connection
     cursor = conn.cursor()  # Create a cursor from the raw connection
-    logging.info("--CONNECTION ESTABLISHED.....")
     try:
         # Execute commands in batches
         for i in range(0, len(queries), batch_size):
@@ -236,6 +232,7 @@ def create_new_columns(table_name,schema,columns):
 
 
 def column_exists(schema, table_name,column_name):
+
     query = f''' SELECT EXISTS (
                 SELECT column_name FROM information_schema.columns 
                 WHERE  table_schema = '{schema}'

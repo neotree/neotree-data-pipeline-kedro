@@ -115,6 +115,8 @@ def update_mode_delivery():
      to_update = "ModeDelivery.label"
      table="admissions"
      where = "Mode of%"
+     if not table_exists('derived',table_name=table):
+         return
      for facility in facilities:
          if facility=='KCH' or facility=='KDH' or facility=='BHC' or facility=='PHC':
             values=f'''1,Spontaneous Vaginal Delivery (SVD)
@@ -140,7 +142,7 @@ def update_mode_delivery():
                     inject_sql(query1,"UPDATE MODE DELIVERY FROM")
                 if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
                     inject_sql(query2,"UPDATE DELIVERY IN JOINED ADMISSIONS")
-                if len(query3)>0 and column_exists("derived","phc_admissions",to_update):
+                if len(query3)>0 and  table_exists('derived',table_name='phc_admissions') and column_exists("derived","phc_admissions",to_update):
                     inject_sql(query3,"UPDATE PHC ADMISSIONS")
 
 
@@ -150,6 +152,8 @@ def update_signature():
      to_update = "HCWSig.label"
      table="admissions"
      where = "Electronic%"
+     if not table_exists('derived',table_name=table):
+         return
      for facility in facilities:
         values=[]
         if facility=='KCH':
