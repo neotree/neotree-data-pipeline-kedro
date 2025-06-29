@@ -66,8 +66,9 @@ def inject_sql(sql_script, file_name):
         conn = engine.raw_connection()
         cur = conn.cursor()
         sql_commands = sql_script.split(';;')
-        
+        logging.info("--CONNECTION ESTABLISHED.....IN INJECT RETURN")
         for command in sql_commands:
+            logging.info(command)
             try:
                 logging.info(f"Processing {file_name}")
                 logging.debug(f"Executing: {command[:200]}...")  # Log first 200 chars
@@ -131,17 +132,12 @@ def inject_sql_with_return(sql_script):
     try:
         conn = engine.raw_connection()
         cur = conn.cursor()
-        
+        logging.info("--CONNECTION ESTABLISHED.....IN INJECT WITH RETURN")
         # Execute the SQL script
         cur.execute(sql_script)
         
         # Fetch all results
         rows = cur.fetchall()
-        
-        # Get column names if needed (for dict-like results)
-        columns = [desc[0] for desc in cur.description] if cur.description else []
-        
-        # Format results (choose one approach below)
         
         # Option 1: Return as list of tuples (default)
         data = list(rows)
