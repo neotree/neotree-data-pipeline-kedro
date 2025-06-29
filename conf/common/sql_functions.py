@@ -79,6 +79,7 @@ def inject_sql_with_return(sql_script):
         result.close()
         return data
     except Exception as e:
+        logging.error("#####I HAVE ERRORED####")
         logging.error(e)
         raise e
     

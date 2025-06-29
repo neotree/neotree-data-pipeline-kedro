@@ -657,7 +657,7 @@ def get_affected_date_columns(table: str):
     table_schema = 'derived' 
     AND table_name = '{table}'
     AND (LOWER(column_name) LIKE '%date%' OR LOWER(column_name) LIKE '%day%')  AND LOWER(column_name) LIKE '%.label';;'''
-
+    logging.info(query)
     return inject_sql_with_return(query)
 
 def get_value_from_label(label:str):
