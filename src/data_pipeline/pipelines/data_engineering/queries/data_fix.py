@@ -610,8 +610,9 @@ def fix_broken_dates_query(table:str):
     
     if (table_exists('derived',table_name=table)):
         affected_dates = get_affected_date_columns(table)
-        if( affected_dates is not None and len(affected_dates)>0):
-            for row in affected_dates:
+        if affected_dates:
+            rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
+            for row in rows:
                 value = get_value_from_label(row['column_name'])
                 label = row['column_name']
                 data_type = str(row['data_type'])
