@@ -73,19 +73,19 @@ def inject_sql(sql_script, file_name):
                     continue
 
                 logging.info(f"Processing {file_name}")
-                logging.debug(f"Executing: {command[:200]}...")  # Log first 200 chars
+                if 'DATES FOR admissions' in file_name:
+                    logging.info(f"Executing: {command}...")  # Log first 200 chars
                 
                 cur.execute(command)
+                logging.info(f"Committing Changes.....") 
+                conn.commit()
+                logging.info(f"Done Committing Changes.....") 
                 
             except Exception as e:
                 logging.error(f"Error executing command in {file_name}")
-                logging.error(f"Command: {command[:500]}")  # Log first 500 chars
                 logging.error(f"Error type: {type(e)}")
                 logging.error(f"Full error: {str(e)}")
-                conn.rollback()
                 raise
-
-        conn.commit()
         
     except Exception as e:
         logging.error(f"Transaction failed completely for {file_name}")
