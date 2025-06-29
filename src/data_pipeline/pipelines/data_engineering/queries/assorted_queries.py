@@ -581,7 +581,7 @@ def insert_sessions_data():
 
 
 def regenerate_unique_key_query(id, unique_key):
-    isMatch = re.match('^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$')
+    isMatch = re.match('^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$',unique_key)
     if(isMatch):
          unique_key = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
 
