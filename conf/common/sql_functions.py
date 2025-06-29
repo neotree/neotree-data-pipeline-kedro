@@ -74,12 +74,12 @@ def inject_sql_with_return(sql_script):
     data = []
     try:
         result =engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute(sql_script)
-        for row in result:
+        rows = [result] if isinstance(result, dict) else result
+        for row in rows:
             data.append(row)
         result.close()
         return data
     except Exception as e:
-        logging.error("#####I HAVE ERRORED####")
         logging.error(e)
         raise e
     

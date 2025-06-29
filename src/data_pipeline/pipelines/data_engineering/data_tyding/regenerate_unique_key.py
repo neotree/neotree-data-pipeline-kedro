@@ -40,6 +40,8 @@ def regenerate_unique_key():
                      
                 if len(values)>0:
                     query = regenerate_unique_key_query(id,values[0])
+                    if(id==520859):
+                        logging.info(query)
                     inject_sql(query,f'''UNIQUE-KEYS- {id}''')
                     break
                          
