@@ -12,7 +12,6 @@ def table_exists(schema, table_name):
     if len(query_result) >0:
         result = query_result[0];
         if result:
-            logging.info(f"###IN TRUTHFULNESS")
-            return True
+            return result
         else:
             return False

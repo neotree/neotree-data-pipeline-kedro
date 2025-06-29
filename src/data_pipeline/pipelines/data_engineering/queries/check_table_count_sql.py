@@ -9,8 +9,8 @@ def table_data_count(schema, table_name):
     query_result = inject_sql_with_return(query);
     if len(query_result) >0:
         result = query_result[0];
-        logging.info(f"--IN COUNTING ####--{result}")
-        if 'count' in result:
-            return result['count']
+        
+        if result:
+            return result
         else:
             return 0

@@ -616,9 +616,9 @@ def fix_broken_dates_query(table:str):
             if affected_dates:
                 rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
                 for row in rows:
-                    value = get_value_from_label(row['column_name'])
-                    label = row['column_name']
-                    data_type = str(row['data_type'])
+                    value = get_value_from_label(row[0])
+                    label = row[0]
+                    data_type = str(row[1])
                     query = ''
                     if('text' in data_type):
                         query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),

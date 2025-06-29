@@ -245,8 +245,8 @@ def column_exists(schema, table_name,column_name):
     query_result = inject_sql_with_return(query)
     if len(query_result) >0:
         result = query_result[0]
-        if 'exists' in result:
-            return result['exists']
+        if result:
+            return result
         else:
             return False
         

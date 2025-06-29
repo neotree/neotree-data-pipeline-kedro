@@ -29,13 +29,13 @@ def union_views():
             old_new_matched_adm_col = []
             
             for index, row in adm_cols.iterrows():
-                col_name = str(row['column_name']).strip()
-                data_type = row['data_type']
+                col_name = str(row[0]).strip()
+                data_type = row[1]
                 using = ''
                 for index2, row2 in old_adm_cols.iterrows():
-                    if col_name == row2['column_name']:
+                    if col_name == row2[0]:
                         try:
-                            if str(data_type) != str(row2['data_type']):
+                            if str(data_type) != str(row2[1]):
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f'''ALTER table derived.old_smch_admissions ALTER column "{col_name}" TYPE {data_type}  {using};;'''
                                 inject_sql(query,"OLD ADMISSIONS")
@@ -51,13 +51,13 @@ def union_views():
             old_new_matched_dis_col = []
             
             for index, row in disc_cols.iterrows():
-                col_name = str(row['column_name']).strip()
-                data_type = row['data_type']
+                col_name = str(row[0]).strip()
+                data_type = row[1]
                 using = ''
                 for index2, row2 in old_disc_cols.iterrows():
-                    if col_name == row2['column_name']: 
+                    if col_name == row2[0]: 
                         try:
-                            if str(data_type) != str(row2['data_type']):
+                            if str(data_type) != str(row2[1]):
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f''' ALTER table derived.old_smch_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"OLD DISCHARGES")
@@ -70,13 +70,13 @@ def union_views():
 
             # Match Data Types For Matched Data
             for index, row in matched_cols.iterrows():
-                col_name = str(row['column_name']).strip()
-                data_type = row['data_type']
+                col_name = str(row[0]).strip()
+                data_type = row[1]
                 using = ''
                 for index2, row2 in old_matched_cols .iterrows():
-                    if col_name == row2['column_name']:
+                    if col_name == row2[0]:
                         try:
-                            if str(data_type) != str(row2['data_type']):
+                            if str(data_type) != str(row2[1]):
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"Union Views")

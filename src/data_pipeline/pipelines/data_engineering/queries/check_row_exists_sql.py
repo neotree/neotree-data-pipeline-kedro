@@ -10,6 +10,6 @@ def row_exists(schema, table_name,field,value):
     if len(query_result) >0:
         result = query_result[0]
         if result:
-            return True
+            return result
         else:
             return False
