@@ -589,5 +589,5 @@ def regenerate_unique_key_query(id, unique_key):
                )
                 ELSE '{unique_key}'   
                 END
-                WHERE  id ={id};;
+                WHERE  id ={id} AND unique_key not like !~ '^\d{4}-\d{2}-\d{2}%';;
               '''

@@ -656,7 +656,7 @@ def get_affected_date_columns(table: str):
     query = f'''SELECT column_name,data_type FROM  information_schema.columns WHERE 
     table_schema = 'derived' 
     AND table_name = '{table}'
-    AND (LOWER(column_name) LIKE '%date%' OR LOWER(column_name) LIKE '%day%')  AND LOWER(column_name) AND '%.label';;'''
+    AND (LOWER(column_name) LIKE '%date%' OR LOWER(column_name) LIKE '%day%')  AND LOWER(column_name) LIKE '%.label';;'''
 
     return inject_sql_with_return(query)
 
