@@ -30,9 +30,11 @@ engine = create_engine(
 #Useful functions to inject sql queries
 #Inject SQL Procedures
 def inject_sql_procedure(sql_script, file_name):
+        conn = engine.raw_connection()
+        cur = conn.cursor()
         try:
-            engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute(sql_script)
-            engine.connect().commit()
+            cur.execute(sql_script)
+            conn.commit()
         except Exception as e:
             logging.error(e)
             logging.error('Something went wrong with the SQL file');
@@ -43,17 +45,20 @@ def inject_sql_procedure(sql_script, file_name):
 def inject_sql(sql_script, file_name):
     # ref: https://stackoverflow.com/questions/19472922/reading-external-sql-script-in-python/19473206
     sql_commands = sql_script.split(';;')
+    conn = engine.raw_connection()
+    cur = conn.cursor()
     for command in sql_commands[:-1]:
         try:
             logging.info(text(file_name))
-            engine.connect().execute(text(command))
-            engine.connect().commit()
+            cur.execute(text(command))
+    
         # last element in list is empty hence need for [:-1] slicing out the last element
         except Exception as e:
             logging.error('Something went wrong with the SQL file');
             logging.error(text(command))
             logging.error(e)
             raise e
+    conn.commit()
     #logging.info('... {0} has successfully run'.format(file_name))
 
 def create_table(df: pd.DataFrame, table_name):
@@ -73,10 +78,12 @@ def append_data(df: pd.DataFrame,table_name):
     df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False)
 
 def inject_sql_with_return(sql_script):
+    conn = engine.raw_connection()
+    cur = conn.cursor()
     data = []
     try:
-        result =engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute(sql_script)
-        engine.connect().commit()
+        result =cur.execute(sql_script)
+        conn.commit()
         rows = [result] if isinstance(result, dict) else result
         for row in rows:
             data.append(row)
