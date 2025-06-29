@@ -68,8 +68,11 @@ def inject_sql(sql_script, file_name):
         sql_commands = sql_script.split(';;')
         logging.info("--CONNECTION ESTABLISHED.....IN INJECT RETURN")
         for command in sql_commands:
-            logging.info(command)
+            
             try:
+                if not command.strip():  # skip empty commands
+                    continue
+
                 logging.info(f"Processing {file_name}")
                 logging.debug(f"Executing: {command[:200]}...")  # Log first 200 chars
                 
@@ -130,9 +133,12 @@ def inject_sql_with_return(sql_script):
     conn = None
     cur = None
     try:
+       
         conn = engine.raw_connection()
         cur = conn.cursor()
         logging.info("--CONNECTION ESTABLISHED.....IN INJECT WITH RETURN")
+        if not sql_script.strip():  # skip empty commands
+            return []
         # Execute the SQL script
         cur.execute(sql_script)
         
