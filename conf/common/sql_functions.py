@@ -38,7 +38,7 @@ def inject_sql_procedure(sql_script, file_name):
         except Exception as e:
             logging.error(e)
             logging.error('Something went wrong with the SQL file');
-            logging.error(text(sql_script))
+            logging.error(sql_script)
             sys.exit()
         logging.info('... {0} has successfully run'.format(file_name))
 
@@ -60,42 +60,32 @@ def inject_sql_procedure(sql_script, file_name):
 #     conn.commit()
 #     #logging.info('... {0} has successfully run'.format(file_name))
 def inject_sql(sql_script, file_name):
-    """
-    Execute multiple SQL commands separated by ';;'
-    
-    Args:
-        sql_script (str): SQL commands separated by ';;'
-        file_name (str): Name of the file being processed (for logging)
-    
-    Returns:
-        None
-    """
     conn = None
     cur = None
     try:
         conn = engine.raw_connection()
         cur = conn.cursor()
-        sql_commands = sql_script.split(';;')
+        sql_commands = [cmd.strip() for cmd in sql_script.split(';;') if cmd.strip()]
         
-        for command in sql_commands[:-1]:  # last element is empty
-            if not command.strip():  # skip empty commands
-                continue
-                
+        for command in sql_commands:
             try:
                 logging.info(f"Processing {file_name}")
-                logging.debug(f"Executing command: {command}")
-                cur.execute(text(command))
+                logging.debug(f"Executing: {command[:200]}...")  # Log first 200 chars
+                
+                cur.execute(command)
+                
             except Exception as e:
-                logging.error(f"Error in SQL file: {file_name}")
-                logging.error(f"Failed command: {command}")
-                logging.error(f"Error details: {str(e)}")
+                logging.error(f"Error executing command in {file_name}")
+                logging.error(f"Command: {command[:500]}")  # Log first 500 chars
+                logging.error(f"Error type: {type(e)}")
+                logging.error(f"Full error: {str(e)}")
                 conn.rollback()
-                raise  # Re-raise the exception after logging
+                raise
 
         conn.commit()
         
     except Exception as e:
-        logging.error(f"Transaction failed for {file_name}")
+        logging.error(f"Transaction failed completely for {file_name}")
         raise
     finally:
         if cur:
