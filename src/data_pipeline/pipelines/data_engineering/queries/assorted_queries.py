@@ -589,5 +589,5 @@ def regenerate_unique_key_query(id, unique_key):
     if(isMatch):
          formatted = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
 
-    return f''' UPDATE public.clean_sessions SET  unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ r'^\\d{4}-\\d{2}-\\d{2}%';;
+    return f''' UPDATE public.clean_sessions SET  unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\\d{4}-\\d{2}-\\d{2}%';;
               '''
