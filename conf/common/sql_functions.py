@@ -79,12 +79,14 @@ def inject_sql_with_return(sql_script):
     data = []
     try:
         result =cursor.execute(sql_script)
-        rows = [result] if isinstance(result, dict) else result
-        logging.error(str(rows))
-        for row in rows:
-            data.append(row)
         connection.commit()
-        return data
+        logging.info("######MY QUERY =====================")
+        logging.info(sql_script)
+        if result is not None:
+            rows = [result] if isinstance(result, dict) else result
+            for row in rows:
+                data.append(row)
+            return data
     except Exception as e:
         connection.rollback()
         logging.error(e)
