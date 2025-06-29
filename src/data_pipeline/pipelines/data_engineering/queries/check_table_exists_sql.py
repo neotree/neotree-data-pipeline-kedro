@@ -11,9 +11,8 @@ def table_exists(schema, table_name):
     query_result = inject_sql_with_return(query);
     if len(query_result) >0:
         result = query_result[0];
-        logging.info(f"###IN EXISTS {result}")
-        if 'exists' in result:
+        if result:
             logging.info(f"###IN TRUTHFULNESS")
-            return result['exists']
+            return True
         else:
             return False

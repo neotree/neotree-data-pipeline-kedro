@@ -150,7 +150,7 @@ def inject_sql_with_return(sql_script):
         
         # Option 2: Return as list of dictionaries (uncomment to use)
         # data = [dict(zip(columns, row)) for row in rows]
-        logging.info(f"--LENGTH---{len(data)}")
+        logging.info(f"--LENGTH---{data[0]}")
         conn.commit()
         return data
         
