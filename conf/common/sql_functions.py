@@ -65,7 +65,7 @@ def inject_sql(sql_script, file_name):
     try:
         conn = engine.raw_connection()
         cur = conn.cursor()
-        sql_commands = [cmd.strip() for cmd in sql_script.split(';;') if cmd.strip()]
+        sql_commands = sql_script.split(';;')
         
         for command in sql_commands:
             try:
@@ -148,7 +148,7 @@ def inject_sql_with_return(sql_script):
         
         # Option 2: Return as list of dictionaries (uncomment to use)
         # data = [dict(zip(columns, row)) for row in rows]
-        
+        logging.info(f"--LENGTH---{len(data)}")
         conn.commit()
         return data
         
