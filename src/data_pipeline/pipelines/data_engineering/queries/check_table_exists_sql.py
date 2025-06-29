@@ -12,6 +12,6 @@ def table_exists(schema, table_name):
     if len(query_result) >0:
         result = query_result[0];
         if result:
-            return result
+            return result[0]
         else:
             return False

@@ -11,6 +11,6 @@ def table_data_count(schema, table_name):
         result = query_result[0];
         
         if result:
-            return result
+            return result[0]
         else:
             return 0

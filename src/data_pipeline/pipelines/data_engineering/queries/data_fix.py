@@ -142,7 +142,6 @@ def update_mode_delivery():
                     inject_sql(query1,"UPDATE MODE DELIVERY FROM")
                 if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
                     inject_sql(query2,"UPDATE DELIVERY IN JOINED ADMISSIONS")
-                logging.info(f"######TESR###{table_exists('derived',table_name='phc_admissions')}")
                 if len(query3)>0 and  table_exists('derived',table_name='phc_admissions') and column_exists("derived","phc_admissions",to_update):
                     inject_sql(query3,"UPDATE PHC ADMISSIONS")
 
