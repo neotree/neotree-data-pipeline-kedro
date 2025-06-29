@@ -42,24 +42,66 @@ def inject_sql_procedure(sql_script, file_name):
             sys.exit()
         logging.info('... {0} has successfully run'.format(file_name))
 
-def inject_sql(sql_script, file_name):
-    # ref: https://stackoverflow.com/questions/19472922/reading-external-sql-script-in-python/19473206
-    sql_commands = sql_script.split(';;')
-    conn = engine.raw_connection()
-    cur = conn.cursor()
-    for command in sql_commands[:-1]:
-        try:
-            logging.info(text(file_name))
-            cur.execute(text(command))
+# def inject_sql(sql_script, file_name):
+#     sql_commands = sql_script.split(';;')
+#     conn = engine.raw_connection()
+#     cur = conn.cursor()
+#     for command in sql_commands[:-1]:
+#         try:
+#             logging.info(text(file_name))
+#             cur.execute(text(command))
     
-        # last element in list is empty hence need for [:-1] slicing out the last element
-        except Exception as e:
-            logging.error('Something went wrong with the SQL file');
-            logging.error(text(command))
-            logging.error(e)
-            raise e
-    conn.commit()
-    #logging.info('... {0} has successfully run'.format(file_name))
+#         # last element in list is empty hence need for [:-1] slicing out the last element
+#         except Exception as e:
+#             logging.error('Something went wrong with the SQL file');
+#             logging.error(text(command))
+#             logging.error(e)
+#             raise e
+#     conn.commit()
+#     #logging.info('... {0} has successfully run'.format(file_name))
+def inject_sql(sql_script, file_name):
+    """
+    Execute multiple SQL commands separated by ';;'
+    
+    Args:
+        sql_script (str): SQL commands separated by ';;'
+        file_name (str): Name of the file being processed (for logging)
+    
+    Returns:
+        None
+    """
+    conn = None
+    cur = None
+    try:
+        conn = engine.raw_connection()
+        cur = conn.cursor()
+        sql_commands = sql_script.split(';;')
+        
+        for command in sql_commands[:-1]:  # last element is empty
+            if not command.strip():  # skip empty commands
+                continue
+                
+            try:
+                logging.info(f"Processing {file_name}")
+                logging.debug(f"Executing command: {command}")
+                cur.execute(text(command))
+            except Exception as e:
+                logging.error(f"Error in SQL file: {file_name}")
+                logging.error(f"Failed command: {command}")
+                logging.error(f"Error details: {str(e)}")
+                conn.rollback()
+                raise  # Re-raise the exception after logging
+
+        conn.commit()
+        
+    except Exception as e:
+        logging.error(f"Transaction failed for {file_name}")
+        raise
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
 def create_table(df: pd.DataFrame, table_name):
     # create tables in derived schema
@@ -77,21 +119,59 @@ def append_data(df: pd.DataFrame,table_name):
     #Add Data To An Existing Table
     df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False)
 
+# def inject_sql_with_return(sql_script):
+#     conn = engine.raw_connection()
+#     cur = conn.cursor()
+#     data = []
+#     try:
+#         result =cur.execute(sql_script)
+#         conn.commit()
+#         rows = [result] if isinstance(result, dict) else result
+#         for row in rows:
+#             data.append(row)
+#         result.close()
+#         return data
+#     except Exception as e:
+#         logging.error(e)
+#         raise e
+    
 def inject_sql_with_return(sql_script):
-    conn = engine.raw_connection()
-    cur = conn.cursor()
-    data = []
+    conn = None
+    cur = None
     try:
-        result =cur.execute(sql_script)
+        conn = engine.raw_connection()
+        cur = conn.cursor()
+        
+        # Execute the SQL script
+        cur.execute(sql_script)
+        
+        # Fetch all results
+        rows = cur.fetchall()
+        
+        # Get column names if needed (for dict-like results)
+        columns = [desc[0] for desc in cur.description] if cur.description else []
+        
+        # Format results (choose one approach below)
+        
+        # Option 1: Return as list of tuples (default)
+        data = list(rows)
+        
+        # Option 2: Return as list of dictionaries (uncomment to use)
+        # data = [dict(zip(columns, row)) for row in rows]
+        
         conn.commit()
-        rows = [result] if isinstance(result, dict) else result
-        for row in rows:
-            data.append(row)
-        result.close()
         return data
+        
     except Exception as e:
-        logging.error(e)
-        raise e
+        if conn:
+            conn.rollback()
+        logging.error(f"Error executing SQL: {e}")
+        raise
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
     
 def inject_bulk_sql(queries, batch_size=1000):
     conn = engine.raw_connection()  # Get the raw DBAPI connection
