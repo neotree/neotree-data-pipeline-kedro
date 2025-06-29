@@ -581,10 +581,12 @@ def insert_sessions_data():
 
 
 def regenerate_unique_key_query(id, unique_key):
-    isMatch = re.match('^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$',unique_key)
+    pattern = r'^(0?[1-9]|[12][0-9]|3[01]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec), \d{4} (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$'
+    isMatch = re.match(pattern,unique_key)
+    formatted= unique_key
     if(isMatch):
-         unique_key = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
+         formatted = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
 
     return f''' UPDATE public.clean_sessions
-                SET  unique_key = '{unique_key}' WHERE  id ={id} AND unique_key !~ '^\d{4}-\d{2}-\d{2}%';;
+                SET  unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\d{4}-\d{2}-\d{2}%';;
               '''
