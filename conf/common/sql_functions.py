@@ -27,16 +27,13 @@ engine = create_engine(
     pool_timeout=30,    # Maximum number of seconds to wait for a connection to become available
     pool_recycle=1800   # Number of seconds a connection can persist before being recycled
 )
-connection = engine.raw_connection()  # Get the raw DBAPI connection
-cursor = connection.cursor()  
 #Useful functions to inject sql queries
 #Inject SQL Procedures
 def inject_sql_procedure(sql_script, file_name):
         try:
-            cursor.execute(sql_script)
-            connection.commit()
+            engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute(sql_script)
+            engine.connect().commit()
         except Exception as e:
-            connection.rollback()
             logging.error(e)
             logging.error('Something went wrong with the SQL file');
             logging.error(text(sql_script))
@@ -49,10 +46,10 @@ def inject_sql(sql_script, file_name):
     for command in sql_commands[:-1]:
         try:
             logging.info(text(file_name))
-            cursor.execute(text(command))
-            connection.commit()
+            engine.connect().execute(text(command))
+            engine.connect().commit()
+        # last element in list is empty hence need for [:-1] slicing out the last element
         except Exception as e:
-            connection.rollback()
             logging.error('Something went wrong with the SQL file');
             logging.error(text(command))
             logging.error(e)
@@ -78,22 +75,20 @@ def append_data(df: pd.DataFrame,table_name):
 def inject_sql_with_return(sql_script):
     data = []
     try:
-        result =cursor.execute(sql_script)
-        connection.commit()
-        logging.info("######MY QUERY =====================")
-        logging.info(sql_script)
-        if result is not None:
-            rows = [result] if isinstance(result, dict) else result
-            for row in rows:
-                data.append(row)
-            return data
+        result =engine.connect().execution_options(isolation_level="AUTOCOMMIT").execute(sql_script)
+        engine.connect().commit()
+        rows = [result] if isinstance(result, dict) else result
+        for row in rows:
+            data.append(row)
+        result.close()
+        return data
     except Exception as e:
-        connection.rollback()
         logging.error(e)
         raise e
     
 def inject_bulk_sql(queries, batch_size=1000):
- # Create a cursor from the raw connection
+    conn = engine.raw_connection()  # Get the raw DBAPI connection
+    cursor = conn.cursor()  # Create a cursor from the raw connection
     logging.info("--CONNECTION ESTABLISHED.....")
     try:
         # Execute commands in batches
@@ -105,16 +100,18 @@ def inject_bulk_sql(queries, batch_size=1000):
                 except Exception as e:
                     logging.error(f"Error executing command: {command}")
                     logging.error(e)
-                    connection.rollback()  # Rollback the transaction on error
+                    conn.rollback()  # Rollback the transaction on error
                     raise e
-            connection.commit()  # Commit the batch
+            conn.commit()  # Commit the batch
             logging.info("########################### DONE BULK PROCESSING ################")
     except Exception as e:
         logging.error("Something went wrong with the SQL file")
         logging.error(e)
-        connection.rollback()  # Rollback the transaction on error
+        conn.rollback()  # Rollback the transaction on error
         raise e
-   
+    finally:
+        cursor.close()  # Close the cursor
+        conn.close()  #
 
 def get_table_columns(table_name,table_schema):
     query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';
