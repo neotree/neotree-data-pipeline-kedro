@@ -72,10 +72,7 @@ def inject_sql(sql_script, file_name):
                 if not command.strip():  # skip empty commands
                     continue
 
-                logging.info(f"Processing {file_name}")
-                if 'DATES FOR admissions' in file_name:
-                    logging.info(f"Executing: {command}...")  # Log first 200 chars
-                
+                logging.info(f"Processing {file_name}")   
                 cur.execute(command)
                 logging.info(f"Committing Changes.....") 
                 conn.commit()
