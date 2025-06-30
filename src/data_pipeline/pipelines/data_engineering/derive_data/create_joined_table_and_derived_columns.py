@@ -220,8 +220,8 @@ def format_value(col, value, col_type):
     elif col_type == 'text':
         return f"\"{col}\" = '{escape_special_characters(value)}'"
     elif 'timestamp' in col_type.lower():
-        return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
+        return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d %H:%M:%S')}'"
     elif 'date' in col_type.lower():
-        return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d')}'"
+        return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d')}'"
     else:
         return f"\"{col}\"= {value}"
