@@ -13,7 +13,7 @@ def format_date(df:pd.DataFrame,fields):
     try: 
         for field_name in fields:
             if field_name in df:
-                df[field_name] =df[field_name].map(lambda x: str(x).rstrip('.')[:-4] if is_date_formatable(x) else str(x).rstrip('.')) 
+                df[field_name] =df[field_name].map(lambda x: str(x)[:-4] if is_date_formatable(x) else str(x).rstrip('.')) 
                 df[field_name] = df[field_name].apply(lambda x: x if pd.notna(x) else None)
         return df
     except Exception as e:
@@ -29,7 +29,7 @@ def format_date_without_timezone(df,fields):
     try: 
         for field_name in fields:
             if field_name in df:
-                df[field_name] = df[field_name].map(lambda x: str(x).rstrip('.')[:-4] if is_date_formatable(x) else str(x).rstrip('.'))
+                df[field_name] = df[field_name].map(lambda x: str(x)[:-4] if is_date_formatable(x) else str(x))
                 df[field_name] = pd.to_datetime(df[field_name], errors='coerce', format='%Y-%m-%dT%H:%M:%S')
                 df[field_name] = df[field_name].apply(lambda x: x if pd.notna(x) else None)
             else:
