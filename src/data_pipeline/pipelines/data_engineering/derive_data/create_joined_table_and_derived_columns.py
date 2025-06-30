@@ -49,10 +49,11 @@ def join_table():
     try:
         #Create Table Using Kedro
         if jn_adm_dis is not None and not jn_adm_dis.empty:   
-            for col in jn_adm_dis.select_dtypes(include=["datetime64[ns]"]):
-                jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
-                
+            # Best practice - specific to timestamp columns
+            timestamp_cols = jn_adm_dis.select_dtypes(include=['datetime64']).columns
+            jn_adm_dis[timestamp_cols] = jn_adm_dis[timestamp_cols].where(jn_adm_dis[timestamp_cols].notna(), None)
             catalog.save('create_joined_admissions_discharges',jn_adm_dis)
+            
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
         discharge_exists = table_exists('derived','discharges')
         joined_exists = table_exists('derived','joined_admissions_discharges')
