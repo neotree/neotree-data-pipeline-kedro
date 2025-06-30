@@ -228,48 +228,48 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
     
 def format_value(col, value, col_type):
     if pd.isna(value) or str(value) == 'NaT':
-        return f"\"{col}\" IS NULL"
+        return f"\"{col}\" = NULL"
     
     col_type_lower = col_type.lower()
     
     if 'timestamp' in col_type_lower:
         try:
             if isinstance(value, (datetime, pd.Timestamp)):
-                return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+                return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
             elif isinstance(value, str):
                 # First try to parse as datetime
                 try:
                     dt = pd.to_datetime(value, errors='raise')
-                    return f"\"{col}\" = '{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
+                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
                 except:
                     # If parsing fails, try cleaning the string
-                    clean_value = value.strip().rstrip('.').replace('T', ' ')
+                    clean_value = value.strip().replace('.','').replace('T', ' ')
                     # Validate it looks like a timestamp
                     if re.match(r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}', clean_value):
                         return f"\"{col}\" = '{clean_value}'"
-                    return f"\"{col}\" IS NULL"
+                    return f"\"{col}\" = NULL"
             else:
-                return f"\"{col}\" IS NULL"
+                return f"\"{col}\" = NULL"
         except:
-            return f"\"{col}\" IS NULL"
+            return f"\"{col}\" = NULL"
             
     elif 'date' in col_type_lower:
         try:
             if isinstance(value, (date, pd.Timestamp)):
-                return f"\"{col}\" = '{value.strftime('%Y-%m-%d')}'"
+                return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d')}'"
             elif isinstance(value, str):
                 try:
                     dt = pd.to_datetime(value, errors='raise')
-                    return f"\"{col}\" = '{dt.strftime('%Y-%m-%d')}'"
+                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d')}'"
                 except:
                     clean_value = value.split('T')[0].strip()
                     if re.match(r'^\d{4}-\d{2}-\d{2}$', clean_value):
                         return f"\"{col}\" = '{clean_value}'"
-                    return f"\"{col}\" IS NULL"
+                    return f"\"{col}\" = NULL"
             else:
-                return f"\"{col}\" IS NULL"
+                return f"\"{col}\" = NULL"
         except:
-            return f"\"{col}\" IS NULL"
+            return f"\"{col}\" = NULL"
             
     elif col_type == 'text':
         return f"\"{col}\" = '{escape_special_characters(str(value))}'"
