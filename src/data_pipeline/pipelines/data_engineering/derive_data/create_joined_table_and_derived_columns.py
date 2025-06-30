@@ -166,9 +166,8 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                 else:
                     jn_adm_dis.loc[index, 'LengthOfLife.value'] = None
             if not jn_adm_dis.empty:
-                for col in jn_adm_dis.columns:
-                    if jn_adm_dis[col].dtype.kind in ['M', 'O', 'f', 'i']:  # datetime, object, float, int
-                        jn_adm_dis[col] = jn_adm_dis[col].apply(lambda x: x if pd.notna(x) else None)
+                for col in jn_adm_dis.select_dtypes(include=["datetime64[ns]"]):
+                    jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
 
         return jn_adm_dis
 
