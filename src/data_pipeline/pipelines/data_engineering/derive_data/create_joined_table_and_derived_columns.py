@@ -48,7 +48,10 @@ def join_table():
     logging.info("... Writing the output back to the database")
     try:
         #Create Table Using Kedro
-        if jn_adm_dis is not None and not jn_adm_dis.empty:
+        if jn_adm_dis is not None and not jn_adm_dis.empty:   
+            for col in jn_adm_dis.select_dtypes(include=["datetime64[ns]"]):
+                jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
+                
             catalog.save('create_joined_admissions_discharges',jn_adm_dis)
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
         discharge_exists = table_exists('derived','discharges')
@@ -165,9 +168,6 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                     jn_adm_dis.loc[index,'LengthOfLife.value'] = delta_lol.days;
                 else:
                     jn_adm_dis.loc[index, 'LengthOfLife.value'] = None
-            if not jn_adm_dis.empty:
-                for col in jn_adm_dis.select_dtypes(include=["datetime64[ns]"]):
-                    jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
 
         return jn_adm_dis
 
