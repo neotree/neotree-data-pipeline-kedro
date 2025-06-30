@@ -206,22 +206,52 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
         logging.error(formatError(ex))
 
 
+# def format_value(col, value, col_type):
+#     if pd.isna(value):
+#         return f"\"{col}\" = NULL"
+#     elif ('timestamp' in col_type.lower() or 'date' in col_type.lower()):
+#         if isinstance(value, datetime):
+#             return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+#         elif isinstance(value,date):
+#             return f"{col} = '{value.strftime('%Y-%m-%d')}'"
+#         else:
+#             return f"\"{col}\" = NULL"
+        
+#     elif col_type == 'text':
+#         return f"\"{col}\" = '{escape_special_characters(value)}'"
+#     elif 'timestamp' in col_type.lower():
+#         return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d %H:%M:%S')}'"
+#     elif 'date' in col_type.lower():
+#         return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d')}'"
+#     else:
+#         return f"\"{col}\"= {value}"
+    
 def format_value(col, value, col_type):
-    if pd.isna(value):
+    if pd.isna(value) or value == 'NaT':
         return f"\"{col}\" = NULL"
-    elif ('timestamp' in col_type.lower() or 'date' in col_type.lower()):
-        if isinstance(value, datetime):
+    
+    col_type_lower = col_type.lower()  
+    if 'timestamp' in col_type_lower:
+        if isinstance(value, (datetime, pd.Timestamp)):
             return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
-        elif isinstance(value,date):
-            return f"{col} = '{value.strftime('%Y-%m-%d')}'"
+        elif isinstance(value, str):
+            # Clean string timestamps (remove trailing dots, handle ISO format)
+            clean_value = value.rstrip('.').replace('T', ' ')
+            return f"\"{col}\" = '{clean_value}'"
         else:
             return f"\"{col}\" = NULL"
-        
+            
+    elif 'date' in col_type_lower:
+        if isinstance(value, (date, pd.Timestamp)):
+            return f"\"{col}\" = '{value.strftime('%Y-%m-%d')}'"
+        elif isinstance(value, str):
+            # Clean string dates
+            clean_value = value.split('T')[0]  # Handle ISO format dates
+            return f"\"{col}\" = '{clean_value}'"
+        else:
+            return f"\"{col}\" = NULL"
+            
     elif col_type == 'text':
         return f"\"{col}\" = '{escape_special_characters(value)}'"
-    elif 'timestamp' in col_type.lower():
-        return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d %H:%M:%S')}'"
-    elif 'date' in col_type.lower():
-        return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d')}'"
     else:
-        return f"\"{col}\"= {value}"
+        return f"\"{col}\" = {value}"
