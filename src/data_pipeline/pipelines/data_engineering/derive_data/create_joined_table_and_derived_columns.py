@@ -165,7 +165,11 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                     jn_adm_dis.loc[index,'LengthOfLife.value'] = delta_lol.days;
                 else:
                     jn_adm_dis.loc[index, 'LengthOfLife.value'] = None
-            jn_adm_dis = jn_adm_dis.applymap(lambda x: x if pd.notna(x) else None)
+            if jn_adm_dis:
+                for col in jn_adm_dis.columns:
+                    if jn_adm_dis[col].dtype.kind in ['M', 'O', 'f', 'i']:  # datetime, object, float, int
+                        jn_adm_dis[col] = jn_adm_dis[col].apply(lambda x: x if pd.notna(x) else None)
+
         return jn_adm_dis
 
 
