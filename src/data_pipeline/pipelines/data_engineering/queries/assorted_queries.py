@@ -320,7 +320,7 @@ def get_dynamic_condition(destination_table) :
     if('daily_review' in destination_table or 'infections' in destination_table):
         return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
     
-    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
+    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  ds.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
@@ -581,12 +581,12 @@ def insert_sessions_data():
 
 
 def regenerate_unique_key_query(id, unique_key):
-    pattern = r'^(0?[1-9]|[12][0-9]|3[01]) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec), \d{4} (0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$'
-    isMatch = re.match(pattern,unique_key)
-    logging.info(f"###--###{isMatch} DATA={unique_key}")
+    
     formatted= unique_key
-    if(isMatch):
-         formatted = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
+    try: 
+        formatted = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
+    except:
+       formatted= unique_key 
 
     return f''' UPDATE public.clean_sessions SET  unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\\d{4}-\\d{2}-\\d{2}%';;
               '''
