@@ -54,8 +54,8 @@ def join_table():
             jn_adm_dis[timestamp_cols] = jn_adm_dis[timestamp_cols].where(jn_adm_dis[timestamp_cols].notna(), None)
             for col in timestamp_cols:
                 jn_adm_dis[col] = jn_adm_dis[col].astype(str).str.replace(r'\.$', '', regex=True)
-                jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], errors='coerce')
-                
+                jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
+
             catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
