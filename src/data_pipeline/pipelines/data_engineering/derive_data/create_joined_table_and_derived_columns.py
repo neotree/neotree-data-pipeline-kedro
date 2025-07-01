@@ -2,7 +2,12 @@ from conf.base.catalog import catalog,params
 import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
-from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_bulk_sql,get_table_column_type,append_data
+from conf.common.sql_functions import (create_new_columns
+                                       ,get_table_column_names
+                                       ,inject_bulk_sql
+                                       ,get_table_column_type
+                                       ,append_data,
+                                       get_date_column_names)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import escape_special_characters
 from datetime import datetime, date
@@ -48,8 +53,23 @@ def join_table():
     logging.info("... Writing the output back to the database")
     try:
         #Create Table Using Kedro
-        if jn_adm_dis is not None and not jn_adm_dis.empty:   
-           append_data(jn_adm_dis,"joined_admissions_discharges")
+        if jn_adm_dis is not None and not jn_adm_dis.empty:
+            if table_exists('derived','joined_admissions_discharges'):
+                    adm_cols = pd.DataFrame(get_table_column_names('joined_admissions_discharges', 'derived'))
+                    new_adm_columns = set(jn_adm_dis.columns) - set(adm_cols.columns) 
+                        
+                    if new_adm_columns:
+                        column_pairs =  [(col, str(jn_adm_dis[col].dtype)) for col in new_adm_columns]
+                        if column_pairs:
+                            create_new_columns('joined_admissions_discharges','derived',column_pairs)  
+
+            date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))
+            if not date_column_types.empty:
+                for col in date_column_types.columns:
+                    logging.info("#############{col}")
+                    jn_adm_dis=pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
+
+            append_data(jn_adm_dis,"joined_admissions_discharges")
            #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET

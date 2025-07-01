@@ -107,7 +107,6 @@ def create_exploded_table(df: pd.DataFrame, table_name):
 
 def append_data(df: pd.DataFrame,table_name):
     #Add Data To An Existing Table
-    df= safely_parse_datetimes(df)
     df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False)
 
 # def inject_sql_with_return(sql_script):
@@ -125,16 +124,6 @@ def append_data(df: pd.DataFrame,table_name):
 #     except Exception as e:
 #         logging.error(e)
 #         raise e
-
-def safely_parse_datetimes(df):
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            converted = pd.to_datetime(df[col].astype(str).str.rstrip('.'), errors='coerce')
-            # If at least 90% of non-null values were successfully parsed, accept it
-            non_null_ratio = converted.notna().mean()
-            if non_null_ratio > 0.9:  # threshold can be adjusted
-                df[col] = converted
-    return df
 
 def inject_sql_with_return(sql_script):
     conn = None
@@ -206,6 +195,10 @@ def get_table_column_type(table_name,table_schema,column):
 
 def get_table_column_names(table_name,table_schema):
     query = f''' SELECT column_name FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';
+    return inject_sql_with_return(query);
+
+def get_date_column_names(table_name,table_schema):
+    query = f''' SELECT column_name FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name} and  (data_type like '%timestamp%' or data_type like '%date%') ;; ''';
     return inject_sql_with_return(query);
 
 def insert_old_adm_query(target_table, source_table, columns):
