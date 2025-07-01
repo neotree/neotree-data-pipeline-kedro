@@ -255,12 +255,10 @@ def format_value(col, value, col_type):
     if 'timestamp' in col_type_lower:
         try:
             if isinstance(value, (datetime, pd.Timestamp)):
-                logging.info(f"###COL={col}###V={value}")
                 return f"\"{col}\" = '{str(value)[:19].replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
             elif isinstance(value, str):
                 # First try to parse as datetime
                 try:
-                    logging.info(f"###COL2={col}###V2={value}")
                     dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
                     return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
                 except:
