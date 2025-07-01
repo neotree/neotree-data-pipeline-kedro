@@ -2,7 +2,7 @@ from conf.base.catalog import catalog,params
 import pandas as pd
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
-from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_bulk_sql,get_table_column_type
+from conf.common.sql_functions import create_new_columns,get_table_column_names,inject_bulk_sql,get_table_column_type,append_data
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import escape_special_characters
 from datetime import datetime, date
@@ -49,15 +49,8 @@ def join_table():
     try:
         #Create Table Using Kedro
         if jn_adm_dis is not None and not jn_adm_dis.empty:   
-            # Best practice - specific to timestamp columns
-            timestamp_cols = jn_adm_dis.select_dtypes(include=['datetime64', 'datetimetz']).columns
-            logging.info(f"GGGGGGG---{timestamp_cols}")
-            for col in timestamp_cols:
-                jn_adm_dis[col] = jn_adm_dis[col].astype(str).str.replace(r'\.$', '', regex=True)
-                jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col],utc=True,errors='coerce', format='%Y-%m-%dT%H:%M:%S')
-                jn_adm_dis[timestamp_cols] = jn_adm_dis[timestamp_cols].where(jn_adm_dis[timestamp_cols].notna(), None)
-                
-            catalog.save('create_joined_admissions_discharges',jn_adm_dis)
+           append_data(jn_adm_dis,"joined_admissions_discharges")
+           #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
         discharge_exists = table_exists('derived','discharges')
