@@ -50,7 +50,8 @@ def join_table():
         #Create Table Using Kedro
         if jn_adm_dis is not None and not jn_adm_dis.empty:   
             # Best practice - specific to timestamp columns
-            timestamp_cols = jn_adm_dis.select_dtypes(include=['datetime64']).columns
+            timestamp_cols = jn_adm_dis.select_dtypes(include=['datetime64', 'datetimetz']).columns
+            logging.info(f"GGGGGGG---{timestamp_cols}")
             for col in timestamp_cols:
                 jn_adm_dis[col] = jn_adm_dis[col].astype(str).str.replace(r'\.$', '', regex=True)
                 jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col],utc=True,errors='coerce', format='%Y-%m-%dT%H:%M:%S')
