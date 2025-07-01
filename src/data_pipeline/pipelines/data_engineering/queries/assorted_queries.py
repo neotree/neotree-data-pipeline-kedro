@@ -389,7 +389,6 @@ def read_new_smch_admissions_query():
             *,
             CASE 
                 WHEN "DateTimeAdmission.value" IS NULL 
-                    OR "DateTimeAdmission.value"::TEXT IN ('NaT', 'NaN', 'nan')
                     OR "DateTimeAdmission.value"::TEXT NOT LIKE '%-%-%'
                 THEN NULL
                 ELSE TO_DATE(SUBSTRING("DateTimeAdmission.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD') 
@@ -409,14 +408,12 @@ def read_new_smch_discharges_query():
     *,
     CASE 
         WHEN "DateTimeDischarge.value" IS NULL 
-        OR "DateTimeDischarge.value"::TEXT IN ('NaT', 'NaN', 'nan') 
         OR "DateTimeDischarge.value"::TEXT NOT LIKE '%-%-%'
         THEN NULL
         ELSE TO_DATE(SUBSTRING("DateTimeDischarge.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD') 
     END AS "DateTimeDischarge.value",
     CASE 
         WHEN "DateTimeDeath.value" IS NULL 
-        OR "DateTimeDeath.value"::TEXT IN ('NaT', 'NaN', 'nan')
         OR "DateTimeDeath.value"::TEXT NOT LIKE '%-%-%' 
         THEN NULL
         ELSE TO_DATE(SUBSTRING("DateTimeDeath.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD')
