@@ -107,6 +107,7 @@ def create_exploded_table(df: pd.DataFrame, table_name):
 
 def append_data(df: pd.DataFrame,table_name):
     #Add Data To An Existing Table
+    df= safely_parse_datetimes(df)
     df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False)
 
 # def inject_sql_with_return(sql_script):
@@ -124,7 +125,17 @@ def append_data(df: pd.DataFrame,table_name):
 #     except Exception as e:
 #         logging.error(e)
 #         raise e
-    
+
+def safely_parse_datetimes(df):
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            converted = pd.to_datetime(df[col].astype(str).str.rstrip('.'), errors='coerce')
+            # If at least 90% of non-null values were successfully parsed, accept it
+            non_null_ratio = converted.notna().mean()
+            if non_null_ratio > 0.9:  # threshold can be adjusted
+                df[col] = converted
+    return df
+
 def inject_sql_with_return(sql_script):
     conn = None
     cur = None
