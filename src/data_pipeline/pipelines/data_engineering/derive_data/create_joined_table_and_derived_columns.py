@@ -66,7 +66,7 @@ def join_table():
             date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))
             if not date_column_types.empty:
                 for col in date_column_types.columns:
-                    logging.info("#############{col}")
+                    logging.info(f"#############{col}")
                     jn_adm_dis=pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
 
             append_data(jn_adm_dis,"joined_admissions_discharges")
