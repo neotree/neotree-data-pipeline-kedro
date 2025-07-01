@@ -264,12 +264,11 @@ def format_value(col, value, col_type):
                     dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
                     return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
                 except:
-                    # If parsing fails, try cleaning the string
-                    logging.info(f"###COL3={col}###V3={value}")
+        
                     clean_value = value.strip().replace('.','').replace('T', ' ')
                     # Validate it looks like a timestamp
                     if re.match(r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}', clean_value):
-                        return f"\"{col}\" = '{clean_value}'"
+                        return f"\"{col}\" = '{str(clean_value)[:19]}'"
                     return f"\"{col}\" = NULL"
             else:
                 return f"\"{col}\" = NULL"

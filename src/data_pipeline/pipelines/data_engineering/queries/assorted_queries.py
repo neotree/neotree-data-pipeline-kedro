@@ -388,7 +388,9 @@ def read_new_smch_admissions_query():
             select 
                 *,
                 CASE WHEN ("DateTimeAdmission.value"::TEXT ='NaT'
-                OR "DateTimeAdmission.value"::TEXT NOT LIKE '%-%-%')
+                OR "DateTimeAdmission.value"::TEXT='NaN'
+                OR "DateTimeAdmission.value"::TEXT='nan'
+                )
                 THEN NULL
                 ELSE
                 TO_DATE("DateTimeAdmission.value"::TEXT,'YYYY-MM-DD')
@@ -402,12 +404,16 @@ def read_new_smch_discharges_query():
             select 
                 *,
 		  CASE WHEN ("DateTimeDischarge.value"::TEXT ='NaT' 
-          OR "DateTimeDischarge.value"::TEXT NOT LIKE '%-%-%')
+          OR "DateTimeDischarge.value"::TEXT ='NaN'
+          OR "DateTimeDischarge.value"::TEXT ='nan'
+          )
 		  THEN NULL
 		  ELSE  TO_DATE("DateTimeDischarge.value"::TEXT,'YYYY-MM-DD') 
 		  END AS "DateTimeDischarge.value",
 		  CASE WHEN ("DateTimeDeath.value"::TEXT = 'NaT' 
-          OR "DateTimeDeath.value"::TEXT NOT LIKE '%-%-%')
+          OR "DateTimeDeath.value"::TEXT = 'nan'
+          OR "DateTimeDeath.value"::TEXT = 'NaN'
+          )
 		  THEN NULL
 		  ELSE TO_DATE("DateTimeDeath.value"::TEXT,'YYYY-MM-DD')
 		  END AS "DateTimeDischarge.value"
