@@ -63,7 +63,7 @@ def join_table():
                         if column_pairs:
                             create_new_columns('joined_admissions_discharges','derived',column_pairs)  
 
-            date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))
+            date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))[0]
             if not date_column_types.empty:
                 for col in date_column_types.columns:
                     logging.info(f"#############{col}")
