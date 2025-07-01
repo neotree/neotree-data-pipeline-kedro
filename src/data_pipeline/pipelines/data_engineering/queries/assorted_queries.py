@@ -391,7 +391,7 @@ def read_new_smch_admissions_query():
                 WHEN "DateTimeAdmission.value" IS NULL 
                     OR "DateTimeAdmission.value"::TEXT NOT LIKE '%-%-%'
                 THEN NULL
-                ELSE TO_DATE(SUBSTRING("DateTimeAdmission.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD') 
+                ELSE TO_DATE("DateTimeAdmission.value"::TEXT, 'YYYY-MM-DD') 
             END AS "DateTimeAdmission.value"
         FROM derived.admissions 
         WHERE
@@ -410,13 +410,13 @@ def read_new_smch_discharges_query():
         WHEN "DateTimeDischarge.value" IS NULL 
         OR "DateTimeDischarge.value"::TEXT NOT LIKE '%-%-%'
         THEN NULL
-        ELSE TO_DATE(SUBSTRING("DateTimeDischarge.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD') 
+        ELSE TO_DATE("DateTimeDischarge.value"::TEXT, 'YYYY-MM-DD') 
     END AS "DateTimeDischarge.value",
     CASE 
         WHEN "DateTimeDeath.value" IS NULL 
         OR "DateTimeDeath.value"::TEXT NOT LIKE '%-%-%' 
         THEN NULL
-        ELSE TO_DATE(SUBSTRING("DateTimeDeath.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD')
+        ELSE TO_DATE("DateTimeDeath.value"::TEXT, 'YYYY-MM-DD')
     END AS "DateTimeDeath.value"
     FROM derived.discharges 
   WHERE
