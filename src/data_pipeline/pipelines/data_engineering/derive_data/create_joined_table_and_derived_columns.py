@@ -66,8 +66,9 @@ def join_table():
             date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))[0]
             if not date_column_types.empty:
                 for col in date_column_types:
-                    logging.info(f"#############{col}")
-                    jn_adm_dis=pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
+                    if col in jn_adm_dis.columns:
+                        jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
+                        jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
 
             append_data(jn_adm_dis,"joined_admissions_discharges")
            #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
