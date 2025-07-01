@@ -259,7 +259,7 @@ def format_value(col, value, col_type):
             elif isinstance(value, str):
                 # First try to parse as datetime
                 try:
-                    dt = pd.to_datetime(value, errors='raise')
+                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
                     return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
                 except:
                     # If parsing fails, try cleaning the string
@@ -279,7 +279,7 @@ def format_value(col, value, col_type):
                 return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d')}'"
             elif isinstance(value, str):
                 try:
-                    dt = pd.to_datetime(value, errors='raise')
+                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%d').tz_localize(None)
                     return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d')}'"
                 except:
                     clean_value = value.split('T')[0].strip()

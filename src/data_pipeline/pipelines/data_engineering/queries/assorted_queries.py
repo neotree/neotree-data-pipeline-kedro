@@ -385,32 +385,47 @@ def read_diagnoses_query(admissions_case, adm_where):
 
 def read_new_smch_admissions_query():
     return '''
-            select 
-                *,
-                CASE WHEN "DateTimeAdmission.value"::TEXT ='NaT'
+          SELECT 
+            *,
+            CASE 
+                WHEN "DateTimeAdmission.value" IS NULL 
+                    OR "DateTimeAdmission.value"::TEXT IN ('NaT', 'NaN', 'nan')
+                    OR "DateTimeAdmission.value"::TEXT NOT LIKE '%-%-%'
                 THEN NULL
-                ELSE
-                TO_DATE("DateTimeAdmission.value"::TEXT,'YYYY-MM-DD')
-                END AS "DateTimeAdmission.value"
-                from derived.admissions where
-            "DateTimeAdmission.value">='2021-02-01' AND facility = 'SMCH';;'''
+                ELSE TO_DATE(SUBSTRING("DateTimeAdmission.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD') 
+            END AS "DateTimeAdmission.value"
+        FROM derived.admissions 
+        WHERE
+            (
+                "DateTimeAdmission.value" >= '2021-02-01' 
+                OR "DateTimeAdmission.value" IS NULL
+            )
+            AND facility = 'SMCH';;'''
 
 
 def read_new_smch_discharges_query():
     return '''
-            select 
-                *,
-		  CASE WHEN "DateTimeDischarge.value"::TEXT ='NaT' 
-		  THEN NULL
-		  ELSE  TO_DATE("DateTimeDischarge.value"::TEXT,'YYYY-MM-DD') 
-		  END AS "DateTimeDischarge.value",
-		  CASE WHEN "DateTimeDeath.value"::TEXT = 'NaT' 
-		  THEN NULL
-		  ELSE TO_DATE("DateTimeDeath.value"::TEXT,'YYYY-MM-DD')
-		  END AS "DateTimeDischarge.value"
-            from derived.discharges where
-			("DateTimeDischarge.value">='2021-02-01')
-			or ("DateTimeDeath.value">='2021-02-01') AND facility = 'SMCH' ;;
+    SELECT 
+    *,
+    CASE 
+        WHEN "DateTimeDischarge.value" IS NULL 
+        OR "DateTimeDischarge.value"::TEXT IN ('NaT', 'NaN', 'nan') 
+        OR "DateTimeDischarge.value"::TEXT NOT LIKE '%-%-%'
+        THEN NULL
+        ELSE TO_DATE(SUBSTRING("DateTimeDischarge.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD') 
+    END AS "DateTimeDischarge.value",
+    CASE 
+        WHEN "DateTimeDeath.value" IS NULL 
+        OR "DateTimeDeath.value"::TEXT IN ('NaT', 'NaN', 'nan')
+        OR "DateTimeDeath.value"::TEXT NOT LIKE '%-%-%' 
+        THEN NULL
+        ELSE TO_DATE(SUBSTRING("DateTimeDeath.value"::TEXT FROM 1 FOR 10), 'YYYY-MM-DD')
+    END AS "DateTimeDeath.value"
+    FROM derived.discharges 
+  WHERE
+    ("DateTimeDischarge.value" >= '2021-02-01' OR "DateTimeDischarge.value" IS NULL)
+    OR ("DateTimeDeath.value" >= '2021-02-01' OR "DateTimeDeath.value" IS NULL)
+    AND facility = 'SMCH' ;;
             '''
 
 
