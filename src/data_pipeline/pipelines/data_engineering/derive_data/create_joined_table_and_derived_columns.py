@@ -51,11 +51,11 @@ def join_table():
         if jn_adm_dis is not None and not jn_adm_dis.empty:   
             # Best practice - specific to timestamp columns
             timestamp_cols = jn_adm_dis.select_dtypes(include=['datetime64']).columns
-            jn_adm_dis[timestamp_cols] = jn_adm_dis[timestamp_cols].where(jn_adm_dis[timestamp_cols].notna(), None)
             for col in timestamp_cols:
                 jn_adm_dis[col] = jn_adm_dis[col].astype(str).str.replace(r'\.$', '', regex=True)
-                jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
-
+                jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col],utc=True,errors='coerce', format='%Y-%m-%dT%H:%M:%S')
+                jn_adm_dis[timestamp_cols] = jn_adm_dis[timestamp_cols].where(jn_adm_dis[timestamp_cols].notna(), None)
+                
             catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
