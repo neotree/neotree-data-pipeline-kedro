@@ -620,8 +620,10 @@ def fix_broken_dates_query(table:str):
             if affected_dates:
                 rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
                 for row in rows:
-                    label = get_lable_from_value(row[0])
-                    value = row[0]
+                    label = get_lable_from_value(row[0][0])
+                    value = row[0][0]
+                    if("DateTimeAdmission" in label):
+                        logging.info(f"PROCESSING {label}")
                     data_type = str(row[1])
                     query = ''
                     label_exists = column_exists('derived',table,label)
