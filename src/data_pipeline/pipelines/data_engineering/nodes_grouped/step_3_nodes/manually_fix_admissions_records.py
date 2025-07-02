@@ -14,6 +14,7 @@ from data_pipeline.pipelines.data_engineering.queries.data_fix import (update_ag
                                                                        update_hive_result,
                                                                        fix_broken_dates_combined,
                                                                        update_gender,
+                                                                       deduplicate_combined
                                                                        )
 from conf.base.catalog import cron_log_file,cron_time,env
 
@@ -29,8 +30,9 @@ def manually_fix_admissions(tidy_data_output):
             )
         
         elif tidy_data_output is not None:
-            sql_script = manually_fix_admissions_query()
-            inject_sql(sql_script, "manually-fix-admissions")
+            # sql_script = manually_fix_admissions_query()
+            # inject_sql(sql_script, "manually-fix-admissions")
+            deduplicate_combined()
             update_mode_delivery()
             update_admission_weight()
             update_refferred_from()

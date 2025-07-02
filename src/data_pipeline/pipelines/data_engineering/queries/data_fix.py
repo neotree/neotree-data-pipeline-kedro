@@ -1,5 +1,5 @@
 import logging
-from conf.common.sql_functions import inject_sql,column_exists,inject_sql_with_return,get_table_column_type
+from conf.common.sql_functions import inject_sql,column_exists,inject_sql_with_return,get_table_column_type,inject_sql_procedure
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.common.format_error import formatError
 
@@ -695,3 +695,45 @@ def update_gender():
                     inject_sql(query1,"UPDATE GENDER IN ADMISSIONS")
                 if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
                     inject_sql(query2,"UPDATE GENDER IN IN JOINED ADMISSIONS")
+
+def deduplicate_combined():
+    tables = ['admissions','discharges'
+              ,'joined_admissions_discharges','vital_signs'
+              ,'neolabs','maternal_outcomes',
+              'summary_maternal_outcomes','maternal_completeness',
+              'daily_review','infections','phc_discharges']
+    
+    for table in tables:
+        if (table_exists('derived',table)):
+            deduplicate_derived_tables(table)
+    logging.info("#######DONE DEDUPLICATING DERIVED TABLES################")
+
+def deduplicate_derived_tables(table: str):
+    query = f'''DO $$
+    DECLARE
+        rows_deleted INTEGER := 0;
+    BEGIN
+        LOOP
+            WITH ranked_duplicates AS (
+                SELECT ctid,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY unique_key, uid
+                        ORDER BY ctid
+                    ) AS rn
+                FROM derived.{table} where unique_key is not null
+            ),
+            to_delete AS (
+                SELECT ctid
+                FROM ranked_duplicates
+                WHERE rn > 1
+                LIMIT 1000
+            )
+            DELETE FROM derived.{table}
+            WHERE ctid IN (SELECT ctid FROM to_delete);
+
+            GET DIAGNOSTICS rows_deleted = ROW_COUNT;
+
+            EXIT WHEN rows_deleted = 0;
+        END LOOP;
+    END $$;'''
+    inject_sql_procedure(query,f"DEDUPLICATE DERIVED {table}")
