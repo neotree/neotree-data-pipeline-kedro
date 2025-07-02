@@ -73,7 +73,7 @@ def inject_sql(sql_script, file_name):
                     continue
                 cur.execute(command)
                 conn.commit()
-                
+                logging.info(f"--COMMITTED QUERY =={command}")
             except Exception as e:
                 logging.error(f"Error executing command in {file_name}")
                 logging.error(f"Error type: {type(e)}")
