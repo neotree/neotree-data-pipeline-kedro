@@ -80,6 +80,7 @@ def union_views():
                                 using = f'''USING "{col_name}"::{data_type}'''
                                 query = f''' ALTER table derived.old_smch_matched_admissions_discharges ALTER column "{col_name}" TYPE {data_type} {using};;'''
                                 inject_sql(query,"Union Views")
+                                logging.info("DONE ALTERING:: TABLE STRUCTURE")
                         except Exception as ex:
                             query = f'''ALTER table derived.old_smch_matched_admissions_discharges DROP column "{col_name}";; '''
                             inject_sql(query,f'''DROPPING MATCHED COLL {col_name} ''')

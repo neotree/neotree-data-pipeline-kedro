@@ -621,12 +621,9 @@ def fix_broken_dates_query(table:str):
                 rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
                 logging.info(f".......{rows}")
                 for row in rows:
-                    logging.info(f"PROCESSING RESTQQ {row[0]}")
                     label = get_lable_from_value(row[0])
                     value = row[0]
-                    if("DateTimeAdmission" in label):
-                        logging.info(f"PROCESSING {label}")
-                        logging.info(f"PROCESSING RESTQQ {row[1]}")
+                
                     data_type = str(row[1])
                     query = ''
                     label_exists = column_exists('derived',table,label)
@@ -636,13 +633,13 @@ def fix_broken_dates_query(table:str):
                         if 'text' in label_type:
                             if('text' in data_type):
                                 query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
-                                'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and ("{value}" is null
-                                OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}, [0-9]{4} [0-9]{2}:[0-9]{2}$');;'''
+                                'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}.*' and ("{value}" is null
+                                OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}.*');;'''
                             else:
                                 if ('date' in data_type or 'timestamp' in data_type):
                                     query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
                                     , 'DD Mon, YYYY HH24:MI') 
-                                    WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}, [0-9]{4} [0-9]{2}:[0-9]{2}$' and "{value}" is null;; '''
+                                    WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}.*' and "{value}" is null;; '''
 
                             if (len(query)>0):            
                                 inject_sql(query,f"UPDATING DATES FOR {table}")
