@@ -701,7 +701,10 @@ def deduplicate_combined():
               ,'joined_admissions_discharges','vital_signs'
               ,'neolabs','maternal_outcomes',
               'summary_maternal_outcomes','maternal_completeness',
-              'daily_review','infections','phc_discharges']
+              'daily_review','infections','phc_discharges'
+              ,'old_new_admissions_view',
+              'old_new_discharges_view'
+              ,'old_new_matched_view','baseline']
     
     for table in tables:
         if (table_exists('derived',table)):
