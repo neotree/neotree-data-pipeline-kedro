@@ -115,6 +115,7 @@ def tidy_tables():
         adm_df = pd.json_normalize(adm_new_entries)
         admissions_date_time_fields =[]
         if not adm_df.empty:
+            logging.info(f"##########ADMIN DATAFRAME SIZE={len(adm_df)}")
             adm_df.set_index(['uid'])
             adm_df = format_date_without_timezone(adm_df,['started_at', 'completed_at','EndScriptDatetime.value','DateTimeAdmission.value'])
             adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
@@ -308,7 +309,7 @@ def tidy_tables():
         ##################################DISCHARGES SCRIPT#################################################### 
         dis_df = pd.json_normalize(dis_new_entries)
         if not dis_df.empty:
-    
+            logging.info(f"##########DISC DATAFRAME SIZE={len(dis_df)}")
             if "started_at" in dis_df and 'completed_at' in dis_df :
                 dis_df = format_date_without_timezone(dis_df,['started_at','completed_at'])
                 dis_df['time_spent'] = (dis_df['completed_at'] -dis_df['started_at']).astype('timedelta64[m]')

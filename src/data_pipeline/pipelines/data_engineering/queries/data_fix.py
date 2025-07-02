@@ -704,7 +704,8 @@ def deduplicate_combined():
               'daily_review','infections','phc_discharges'
               ,'old_new_admissions_view',
               'old_new_discharges_view'
-              ,'old_new_matched_view','baseline']
+              ,'old_new_matched_view'
+              ,'baseline','maternal_completeness','phc_admissions','phc_discharges']
     
     for table in tables:
         if (table_exists('derived',table)):
@@ -713,30 +714,38 @@ def deduplicate_combined():
 
 def deduplicate_derived_tables(table: str):
     query = f'''DO $$
-    DECLARE
-        rows_deleted INTEGER := 0;
-    BEGIN
-        LOOP
-            WITH ranked_duplicates AS (
-                SELECT ctid,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY unique_key, uid
-                        ORDER BY ctid
-                    ) AS rn
-                FROM derived.{table} where unique_key is not null
-            ),
-            to_delete AS (
-                SELECT ctid
-                FROM ranked_duplicates
-                WHERE rn > 1
-                LIMIT 1000
-            )
-            DELETE FROM derived.{table}
-            WHERE ctid IN (SELECT ctid FROM to_delete);
+        DECLARE
+            rows_deleted INTEGER := 1;
+            total_deleted INTEGER := 0;
+            batch_size INTEGER := 10000;
+        BEGIN
+            WHILE rows_deleted > 0 LOOP
+                WITH ranked_duplicates AS (
+                    SELECT ctid,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY unique_key, uid
+                            ORDER BY ctid
+                        ) AS rn
+                    FROM derived.{table} 
+                    WHERE unique_key IS NOT NULL
+                ),
+                to_delete AS (
+                    SELECT ctid
+                    FROM ranked_duplicates
+                    WHERE rn > 1
+                    LIMIT batch_size
+                )
+                DELETE FROM derived.{table} 
+                WHERE ctid IN (SELECT ctid FROM to_delete);
 
-            GET DIAGNOSTICS rows_deleted = ROW_COUNT;
-
-            EXIT WHEN rows_deleted = 0;
-        END LOOP;
-    END $$;'''
+                GET DIAGNOSTICS rows_deleted = ROW_COUNT;
+                total_deleted := total_deleted + rows_deleted;
+                
+                RAISE NOTICE 'Deleted % rows in this batch, % total', rows_deleted, total_deleted;
+                
+                -- Small delay to reduce lock contention
+                PERFORM pg_sleep(0.1);
+            END LOOP;
+        END $$;;'''
     inject_sql_procedure(query,f"DEDUPLICATE DERIVED {table}")
+

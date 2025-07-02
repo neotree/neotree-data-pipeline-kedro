@@ -69,7 +69,7 @@ def join_table():
                     if col in jn_adm_dis.columns:
                         jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
                         jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
-
+            logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
             append_data(jn_adm_dis,"joined_admissions_discharges")
            #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
@@ -81,9 +81,10 @@ def join_table():
             adm_df_2 = catalog.load('admissions_without_discharges')  
             #Load Derived Discharges Not Yet Joined From Kedro Catalog
             dis_df_2 = catalog.load('discharges_not_joined') 
-
+          
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
+                logging.info(f"##########JDS APPENDING DATAFRAME SIZE={len(jn_adm_dis_2)}")
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
