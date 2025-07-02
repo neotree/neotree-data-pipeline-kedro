@@ -73,6 +73,8 @@ def inject_sql(sql_script, file_name):
                     continue
                 cur.execute(command)
                 conn.commit()
+                if "admissions" in command:
+                    logging.info(f"#####ADMM###{command}")
             except Exception as e:
                 logging.error(f"Error executing command in {file_name}")
                 logging.error(f"Error type: {type(e)}")

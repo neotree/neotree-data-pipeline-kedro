@@ -619,7 +619,6 @@ def fix_broken_dates_query(table:str):
             affected_dates = get_affected_date_columns(table)
             if affected_dates:
                 rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
-                logging.info(f".......{rows}")
                 for row in rows:
                     label = get_lable_from_value(row[0])
                     value = row[0]
