@@ -50,5 +50,5 @@ def regenerate_unique_key():
 
 def fix_regenerated_unique_keys():
     query= f'''UPDATE public.clean_sessions SET unique_key =to_char(to_timestamp(unique_key,'DD Mon, YYYY HH24:MI'),
-                        'YYYY-MM-DD HH24:MI') WHERE  unique_key ~ '^[0-9]{1,2} [A-Za-z]{3}, [0-9]{4} [0-9]{2}:[0-9]{2}$';;'''
+                        'YYYY-MM-DD HH24:MI') WHERE  unique_key ~ '^[0-9]{{1,2}} [A-Za-z]{{3}}, [0-9]{{4}} [0-9]{{2}}:[0-9]{{2}}$';;'''
     inject_sql(query,f"UPDATING UNIQUE KEYS ")

@@ -632,13 +632,13 @@ def fix_broken_dates_query(table:str):
                         if 'text' in label_type:
                             if('text' in data_type):
                                 query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
-                                'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}.*' and ("{value}" is null
-                                OR "{value}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}.*');;'''
+                                'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*' and ("{value}" is null
+                                OR "{value}" ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*');;'''
                             else:
                                 if ('date' in data_type or 'timestamp' in data_type):
                                     query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
                                     , 'DD Mon, YYYY HH24:MI') 
-                                    WHERE "{label}" ~ '^[0-9]{1,2} [A-Za-z]{3,10}.*' and "{value}" is null;; '''
+                                    WHERE "{label}" ~ '^[0-9]{{1,2}} [A-Za-z]]{{3,10}}.*' and "{value}" is null;; '''
 
                             if (len(query)>0):            
                                 inject_sql(query,f"UPDATING DATES FOR {table}")
