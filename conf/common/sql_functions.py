@@ -415,7 +415,7 @@ def generate_postgres_insert(df, schema,table_name):
                 row_values.append(f"'{escape_special_characters(json_val)}'")
 
             elif (is_date_prefix(str(val))):
-                row_values.append(f"'{val}'".replace('.',''))
+                row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)) or ():
                 row_values.append(f"'{val}'")
             elif isinstance(val, str):
@@ -429,6 +429,21 @@ def generate_postgres_insert(df, schema,table_name):
     # Compose the full INSERT statement
     insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
     inject_sql(insert_query,f"INSERTING INTO {table_name}")
+
+def clean_datetime_string(s:str):
+    try:
+        dt = pd.to_datetime(s, errors='coerce')
+        if pd.isna(dt):
+            return s  # or return None
+
+        # If time component is zero or missing
+        if dt.time() == pd.Timestamp.min.time():
+            return dt.strftime('%Y-%m-%d')
+
+        return dt.strftime('%Y-%m-%d %H:%M')
+
+    except Exception:
+        return s
 
 def is_effectively_na(val):
     try:
