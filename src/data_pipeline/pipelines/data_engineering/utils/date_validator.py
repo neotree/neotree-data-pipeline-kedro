@@ -17,16 +17,15 @@ def is_date(value):
 
 def is_date_formatable(value):
     """
-    Return whether the string can formated into a date
-
+    Return whether the string can be formatted into a date
+    
     :param value: str, string to check for date
     """
-    if value is None:
-        return False;
-    else:
-        try:
-            parse(value)
-            return True
-        except (ValueError, TypeError, OverflowError):
-            return False
+    if pd.isna(value) or value is None or str(value).strip().lower() in ('none', 'null', ''):
+        return False
+    try:
+        parse(str(value))
+        return True
+    except (ValueError, TypeError, OverflowError):
+        return False
         

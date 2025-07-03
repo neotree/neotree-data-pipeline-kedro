@@ -534,8 +534,8 @@ def tidy_tables():
             baseline_df = format_date_without_timezone(baseline_df, ['started_at', 'completed_at']) 
             if "started_at" in baseline_df.columns and 'completed_at' in baseline_df.columns:
                 # Ensure both columns are datetime type
-                baseline_df['started_at'] = pd.to_datetime(baseline_df['started_at'])
-                baseline_df['completed_at'] = pd.to_datetime(baseline_df['completed_at'])
+                baseline_df['started_at'] = pd.to_datetime(baseline_df['started_at']).tz_localize(None)
+                baseline_df['completed_at'] = pd.to_datetime(baseline_df['completed_at']).tz_localize(None)
                 baseline_df['time_spent'] = (baseline_df['completed_at'] - baseline_df['started_at']).dt.total_seconds() / 60
                 
             else:
