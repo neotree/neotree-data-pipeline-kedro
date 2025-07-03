@@ -407,7 +407,7 @@ def generate_postgres_insert(df, table_name):
             if pd.isna(val):
                 row_values.append("NULL")
             elif isinstance(val, str):
-                row_values.append(f"'") 
+                row_values.append(f'{escape_special_characters(str(val))}') 
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
                 row_values.append(f"'{val}'")
             else:
@@ -488,7 +488,7 @@ def generate_create_insert_sql(df,schema, table_name):
             pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
             create_cols.append(f'"{col}" {pg_type}')
 
-        create_stmt = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n  {",\n  ".join(create_cols)}\n);;'
+        create_stmt = f'CREATE TABLE IF NOT EXISTS "{schema}.{table_name}" ({",".join(create_cols)});;'
         inject_sql(create_stmt)
         
     generate_postgres_insert(df, table_name)
