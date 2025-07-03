@@ -408,7 +408,7 @@ def generate_postgres_insert(df, table_name):
         for val in row:
             if pd.isna(val) or str(val) == 'NaT':
                 row_values.append("NULL")
-            elif (is_date_prefix(val)):
+            elif (is_date_prefix(str(val))):
                 row_values.append(f"'{val}'")
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)) or ():
                 row_values.append(f"'{val}'")
