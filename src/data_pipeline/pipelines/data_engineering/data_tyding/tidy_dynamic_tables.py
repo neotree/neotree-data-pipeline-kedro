@@ -1,5 +1,7 @@
 # Import created modules (need to be stored in the same directory as notebook)
-
+import pandas as pd
+from datetime import datetime as dt
+import logging
 from conf.common.format_error import formatError
 from .extract_key_values import get_key_values,format_repeatables_to_rows
 from .explode_mcl_columns import explode_column
@@ -11,9 +13,7 @@ from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import conv
 
 from conf.base.catalog import params
 # Import libraries
-import pandas as pd
-from datetime import datetime as dt
-import logging
+
 
 
 def tidy_dynamic_tables():

@@ -1,12 +1,13 @@
 import pandas as pd
+import logging
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_eronous_label
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql
 from data_pipeline.pipelines.data_engineering.utils.data_label_fix_new import fix_data_label,fix_data_value,fix_multiple_data_label,bulk_fix_data_labels 
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from datetime import datetime
-import logging
-import json
+
+
 
 
 def fix_data_errors():

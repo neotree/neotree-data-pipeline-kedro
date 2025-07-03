@@ -1,12 +1,12 @@
 # This module extracts the key-value pairs within a raw json file.
 import logging
+import re
+import pandas as pd
 from conf.common.format_error import formatError
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import  reduce
-import pandas as pd
 from datetime import datetime
 from typing import Dict, Any
-import re
 from collections import defaultdict
 
 

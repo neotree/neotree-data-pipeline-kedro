@@ -1,3 +1,6 @@
+import pandas as pd
+from datetime import datetime as dt
+import logging
 # Import created modules (need to be stored in the same directory as notebook)
 from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
@@ -17,11 +20,7 @@ from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import form
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
 
-import datetime
-# Import libraries
-import pandas as pd
-from datetime import datetime as dt
-import logging
+
 
 def tidy_tables():
 

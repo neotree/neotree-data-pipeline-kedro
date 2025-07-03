@@ -1,7 +1,8 @@
 import logging
 import pandas as pd
-from conf.common.format_error import formatError
 import sys
+from conf.common.format_error import formatError
+
 
 def neolab_cleanup(df: pd.DataFrame,position):
     
