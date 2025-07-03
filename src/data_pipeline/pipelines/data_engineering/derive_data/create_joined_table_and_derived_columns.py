@@ -7,7 +7,8 @@ from conf.common.sql_functions import (create_new_columns
                                        ,inject_bulk_sql
                                        ,get_table_column_type
                                        ,
-                                       get_date_column_names)
+                                       get_date_column_names,
+                                       append_data)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import escape_special_characters
 from datetime import datetime, date
@@ -70,8 +71,8 @@ def join_table():
                 jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match('^\d+$', na=False)]
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
-            # append_data(jn_adm_dis,"joined_admissions_discharges")
-            catalog.save('create_joined_admissions_discharges',jn_adm_dis)
+            append_data(jn_adm_dis,"joined_admissions_discharges")
+            #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
         discharge_exists = table_exists('derived','discharges')
