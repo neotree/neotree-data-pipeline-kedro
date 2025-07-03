@@ -1,6 +1,7 @@
 import logging
 from typing import Dict
 from conf.common.format_error import formatError
+from datetime import datetime, date
 from .config import config
 from sqlalchemy import create_engine,text
 import sys
@@ -9,6 +10,7 @@ import pandas as pd
 import numpy as np
 import logging
 from psycopg2 import sql,connect
+import re
 
 params = config()
 #Postgres Connection String
@@ -358,3 +360,152 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
         conn.rollback()
         cur.close()
         raise
+
+def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
+    try:
+        if(table is not None and df is not None and not df.empty):
+
+            updates = []
+            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0] for col in df.columns}
+            
+        
+            # Generate UPDATE queries for each row
+            update_queries = []
+            for _, row in df.iterrows():
+                updates = []
+                for col in df.columns:
+                    col_type = column_types[col]
+                    value = row[col]
+                    updates.append(format_value(col, value, col_type))
+                
+                # Join the updates into a single SET clause
+                set_clause = ', '.join(updates)
+                
+                # Add the WHERE condition
+                where_condition = f"WHERE uid = '{row['uid']}' AND facility = '{row['facility']}' AND \"unique_key\" = '{row['unique_key']}'"
+                
+                # Construct the full UPDATE query
+                update_query = f"UPDATE {table} SET {set_clause} {where_condition};;"
+                update_queries.append(update_query)  
+            inject_bulk_sql(update_queries)
+
+    except Exception as ex:
+        logging.error(
+            "!!! An error occured whilest JOINING DATA THAT WAS UNJOINED ")
+        logging.error(formatError(ex))
+
+
+def generate_postgres_insert(df, table_name):
+    # Escape column names and join them
+    columns = ', '.join(f'"{col}"' for col in df.columns)
+
+    # Generate values part
+    values_list = []
+    for _, row in df.iterrows():
+        row_values = []
+        for val in row:
+            if pd.isna(val):
+                row_values.append("NULL")
+            elif isinstance(val, str):
+                row_values.append(f"'") 
+            elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
+                row_values.append(f"'{val}'")
+            else:
+                row_values.append(str(val))
+        values_list.append(f"({', '.join(row_values)})")
+
+    values = ',\n'.join(values_list)
+
+    # Compose the full INSERT statement
+    insert_query = f'INSERT INTO "{table_name}" ({columns}) VALUES\n{values};;'
+    inject_sql(insert_query)
+
+def format_value(col, value, col_type):
+    if pd.isna(value) or str(value) == 'NaT':
+        return f"\"{col}\" = NULL"
+    
+    col_type_lower = col_type.lower()
+    
+    if 'timestamp' in col_type_lower:
+        try:
+            if isinstance(value, (datetime, pd.Timestamp)):
+                return f"\"{col}\" = '{str(value)[:19].replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
+            elif isinstance(value, str):
+                # First try to parse as datetime
+                try:
+                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
+                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
+                except:
+        
+                    clean_value = value.strip().replace('.','').replace('T', ' ')
+                    # Validate it looks like a timestamp
+                    if re.match(r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}', clean_value):
+                        return f"\"{col}\" = '{str(clean_value)[:19]}'"
+                    return f"\"{col}\" = NULL"
+            else:
+                return f"\"{col}\" = NULL"
+        except:
+            return f"\"{col}\" = NULL"
+            
+    elif 'date' in col_type_lower:
+        try:
+            if isinstance(value, (date, pd.Timestamp)):
+                return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d')}'"
+            elif isinstance(value, str):
+                try:
+                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%d').tz_localize(None)
+                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d')}'"
+                except:
+                    clean_value = value.split('T')[0].strip()
+                    if re.match(r'^\d{4}-\d{2}-\d{2}$', clean_value):
+                        return f"\"{col}\" = '{clean_value}'"
+                    return f"\"{col}\" = NULL"
+            else:
+                return f"\"{col}\" = NULL"
+        except:
+            return f"\"{col}\" = NULL"
+            
+    elif col_type == 'text':
+        return f"\"{col}\" = '{escape_special_characters(str(value))}'"
+    else:
+        return f"\"{col}\" = {value}"
+    
+def generate_create_insert_sql(df,schema, table_name):
+    # Infer PostgreSQL types
+    if (table_exists(schema,table_name)):
+        dtype_map = {
+            'int64': 'INTEGER',
+            'float64': 'DOUBLE PRECISION',
+            'bool': 'BOOLEAN',
+            'object': 'TEXT',
+            'datetime64[ns]': 'TIMESTAMP',
+            'timedelta[ns]': 'INTERVAL'
+        }
+
+        create_cols = []
+        for col in df.columns:
+            dtype = str(df[col].dtype)
+            pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
+            create_cols.append(f'"{col}" {pg_type}')
+
+        create_stmt = f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n  {",\n  ".join(create_cols)}\n);;'
+        inject_sql(create_stmt)
+        
+    generate_postgres_insert(df, table_name)
+
+def escape_special_characters(input_string): 
+    return str(input_string).replace("\\","\\\\").replace("'","")
+
+def table_exists(schema, table_name):
+    query = f''' SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE  table_schema = '{schema}'
+                AND    table_name   = '{table_name}'
+                );'''
+    query_result = inject_sql_with_return(query);
+    if len(query_result) >0:
+        result = query_result[0];
+        if result:
+            return result[0]
+        else:
+            return False

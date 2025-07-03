@@ -40,15 +40,21 @@ def tidy_dynamic_tables():
                      # ADD TIME SPENT TO ALL DFs
                     if "started_at" in script_df and 'completed_at' in script_df :
                         if('completed_time' in script_df):
-                            script_df=format_date_without_timezone(script_df,['started_at','completed_time']); 
-                            script_df['started_at'] = pd.to_datetime(script_df['started_at']).tz_localize(None)
-                            script_df['completed_time'] = pd.to_datetime(script_df['completed_time']).tz_localize(None)
-                            script_df['time_spent'] = (script_df['completed_time'] - script_df['started_at']).dt.total_seconds() / 60
+                            try:
+                                script_df=format_date_without_timezone(script_df,['started_at','completed_time']); 
+                                script_df['started_at'] = pd.to_datetime(script_df['started_at']).tz_localize(None)
+                                script_df['completed_time'] = pd.to_datetime(script_df['completed_time']).tz_localize(None)
+                                script_df['time_spent'] = (script_df['completed_time'] - script_df['started_at']).dt.total_seconds() / 60
+                            except:
+                                pass
                         else:
-                            script_df=format_date_without_timezone(script_df,['started_at','completed_at']); 
-                            script_df['started_at'] = pd.to_datetime(script_df['started_at']).tz_localize(None)
-                            script_df['completed_at'] = pd.to_datetime(script_df['completed_at']).tz_localize(None)
-                            script_df['time_spent'] = (script_df['completed_at'] - script_df['started_at']).dt.total_seconds() / 60
+                            try:
+                                script_df=format_date_without_timezone(script_df,['started_at','completed_at']); 
+                                script_df['started_at'] = pd.to_datetime(script_df['started_at']).tz_localize(None)
+                                script_df['completed_at'] = pd.to_datetime(script_df['completed_at']).tz_localize(None)
+                                script_df['time_spent'] = (script_df['completed_at'] - script_df['started_at']).dt.total_seconds() / 60
+                            except:
+                                pass
                     # FORMAT DATE ADMISSION FROM TEXT DATE   
                     else:
                         script_df['time_spent'] = None

@@ -117,9 +117,12 @@ def tidy_tables():
             adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
               # ADD TIME SPENT TO ALL DFs
             if "started_at" in adm_df and 'completed_at' in adm_df :
-                adm_df['started_at'] = pd.to_datetime(adm_df['started_at']).tz_localize(None)
-                adm_df['completed_at'] = pd.to_datetime(adm_df['completed_at']).tz_localize(None)
-                adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).dt.total_seconds() / 60
+                try:
+                    adm_df['started_at'] = pd.to_datetime(adm_df['started_at']).tz_localize(None)
+                    adm_df['completed_at'] = pd.to_datetime(adm_df['completed_at']).tz_localize(None)
+                    adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).dt.total_seconds() / 60
+                except:
+                    pass
             else:
                 adm_df['time_spent'] = None 
             adm_df=  set_key_to_none(adm_df,['DateHIVtest.value','DateHIVtest.label','HIVtestResult.value','HIVtestResult.label',
@@ -309,13 +312,13 @@ def tidy_tables():
         if not dis_df.empty:
             logging.info(f"##########DISC DATAFRAME SIZE={len(dis_df)}")
             if "started_at" in dis_df and 'completed_at' in dis_df :
-                dis_df = format_date_without_timezone(dis_df,['started_at','completed_at'])
-                if (not pd.api.types.is_datetime64_any_dtype(dis_df['started_at']) or not pd.api.types.is_datetime64_any_dtype(dis_df['completed_at'])):
-                    dis_df['time_spent'] = None
-                else:
+                try:
+                    dis_df = format_date_without_timezone(dis_df,['started_at','completed_at'])
                     dis_df['started_at'] = pd.to_datetime(dis_df['started_at']).tz_localize(None)
                     dis_df['completed_at'] = pd.to_datetime(dis_df['completed_at']).tz_localize(None)
                     dis_df['time_spent'] = (dis_df['completed_at'] - dis_df['started_at']).dt.total_seconds() / 60
+                except:
+                    pass
             else:
                 dis_df['time_spent'] = None
              #Format Dates Discharge Table
@@ -374,10 +377,12 @@ def tidy_tables():
             mat_outcomes_df.set_index(['unique_key'])
             mat_outcomes_df=format_date_without_timezone(mat_outcomes_df,['started_at','completed_at','DateAdmission.value']) 
             if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
-
-                mat_outcomes_df['started_at'] = pd.to_datetime(mat_outcomes_df['started_at']).tz_localize(None)
-                mat_outcomes_df['completed_at'] = pd.to_datetime(mat_outcomes_df['completed_at']).tz_localize(None)
-                mat_outcomes_df['time_spent'] = (mat_outcomes_df['completed_at'] - mat_outcomes_df['started_at']).dt.total_seconds() / 60
+                try:
+                    mat_outcomes_df['started_at'] = pd.to_datetime(mat_outcomes_df['started_at'], errors='coerce', utc=True).tz_localize(None)
+                    mat_outcomes_df['completed_at'] = pd.to_datetime(mat_outcomes_df['completed_at'], errors='coerce', utc=True).tz_localize(None)
+                    mat_outcomes_df['time_spent'] = (mat_outcomes_df['completed_at'] - mat_outcomes_df['started_at']).dt.total_seconds() / 60
+                except:
+                    pass
             else:
                 mat_outcomes_df['time_spent'] = None
             mat_outcomes_df =  set_key_to_none(mat_outcomes_df,['Presentation.label','BabyNursery.label','Reason.label',
@@ -406,10 +411,12 @@ def tidy_tables():
             vit_signs_df.set_index(['uid'])
             vit_signs_df = format_date_without_timezone(vit_signs_df,['started_at','completed_at',]) 
             if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
-                   
-                vit_signs_df['started_at'] = pd.to_datetime(vit_signs_df['started_at']).tz_localize(None)
-                vit_signs_df['completed_at'] = pd.to_datetime(vit_signs_df['completed_at']).tz_localize(None)
-                vit_signs_df['time_spent'] = (vit_signs_df['completed_at'] - vit_signs_df['started_at']).dt.total_seconds() / 60
+                try:  
+                    vit_signs_df['started_at'] = pd.to_datetime(vit_signs_df['started_at']).tz_localize(None)
+                    vit_signs_df['completed_at'] = pd.to_datetime(vit_signs_df['completed_at']).tz_localize(None)
+                    vit_signs_df['time_spent'] = (vit_signs_df['completed_at'] - vit_signs_df['started_at']).dt.total_seconds() / 60
+                except:
+                    pass
             else:
                 vit_signs_df['time_spent'] = None
                  #Vital Signs Table

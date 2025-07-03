@@ -4,16 +4,12 @@ from data_pipeline.pipelines.data_engineering.utils.date_validator import is_dat
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 from conf.common.sql_functions import (create_new_columns
                                        ,get_table_column_names
-                                       ,inject_bulk_sql
-                                       ,get_table_column_type
-                                       ,
-                                       get_date_column_names,
-                                       append_data)
+                                       ,generateAndRunUpdateQuery
+                                       ,generate_create_insert_sql,
+                                       get_date_column_names)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import escape_special_characters
-from datetime import datetime, date
-from conf.common.format_error import formatError
-import re
+
+
 
 # Import libraries
 import logging
@@ -71,7 +67,8 @@ def join_table():
                 jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match('^\d+$', na=False)]
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
-            append_data(jn_adm_dis,"joined_admissions_discharges")
+            generate_create_insert_sql(jn_adm_dis,"derived","joined_admissions_discharges")
+            #ppend_data(jn_adm_dis,"joined_admissions_discharges")
             #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
@@ -195,38 +192,6 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
         return jn_adm_dis
 
 
-def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
-    try:
-        if(table is not None and df is not None and not df.empty):
-
-            updates = []
-            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0] for col in df.columns}
-            
-        
-            # Generate UPDATE queries for each row
-            update_queries = []
-            for _, row in df.iterrows():
-                updates = []
-                for col in df.columns:
-                    col_type = column_types[col]
-                    value = row[col]
-                    updates.append(format_value(col, value, col_type))
-                
-                # Join the updates into a single SET clause
-                set_clause = ', '.join(updates)
-                
-                # Add the WHERE condition
-                where_condition = f"WHERE uid = '{row['uid']}' AND facility = '{row['facility']}' AND \"unique_key\" = '{row['unique_key']}'"
-                
-                # Construct the full UPDATE query
-                update_query = f"UPDATE {table} SET {set_clause} {where_condition};;"
-                update_queries.append(update_query)  
-            inject_bulk_sql(update_queries)
-
-    except Exception as ex:
-        logging.error(
-            "!!! An error occured whilest JOINING DATA THAT WAS UNJOINED ")
-        logging.error(formatError(ex))
 
 
 # def format_value(col, value, col_type):
@@ -249,52 +214,3 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
 #     else:
 #         return f"\"{col}\"= {value}"
     
-def format_value(col, value, col_type):
-    if pd.isna(value) or str(value) == 'NaT':
-        return f"\"{col}\" = NULL"
-    
-    col_type_lower = col_type.lower()
-    
-    if 'timestamp' in col_type_lower:
-        try:
-            if isinstance(value, (datetime, pd.Timestamp)):
-                return f"\"{col}\" = '{str(value)[:19].replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
-            elif isinstance(value, str):
-                # First try to parse as datetime
-                try:
-                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
-                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
-                except:
-        
-                    clean_value = value.strip().replace('.','').replace('T', ' ')
-                    # Validate it looks like a timestamp
-                    if re.match(r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}', clean_value):
-                        return f"\"{col}\" = '{str(clean_value)[:19]}'"
-                    return f"\"{col}\" = NULL"
-            else:
-                return f"\"{col}\" = NULL"
-        except:
-            return f"\"{col}\" = NULL"
-            
-    elif 'date' in col_type_lower:
-        try:
-            if isinstance(value, (date, pd.Timestamp)):
-                return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d')}'"
-            elif isinstance(value, str):
-                try:
-                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%d').tz_localize(None)
-                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d')}'"
-                except:
-                    clean_value = value.split('T')[0].strip()
-                    if re.match(r'^\d{4}-\d{2}-\d{2}$', clean_value):
-                        return f"\"{col}\" = '{clean_value}'"
-                    return f"\"{col}\" = NULL"
-            else:
-                return f"\"{col}\" = NULL"
-        except:
-            return f"\"{col}\" = NULL"
-            
-    elif col_type == 'text':
-        return f"\"{col}\" = '{escape_special_characters(str(value))}'"
-    else:
-        return f"\"{col}\" = {value}"
