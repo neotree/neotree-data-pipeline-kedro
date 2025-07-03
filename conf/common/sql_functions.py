@@ -394,6 +394,8 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
             "!!! An error occured whilest JOINING DATA THAT WAS UNJOINED ")
         logging.error(formatError(ex))
 
+def is_date_prefix(s):
+    return bool(re.match(r'^\d{4}-\d{2}-\d{2}.*', s))
 
 def generate_postgres_insert(df, table_name):
     # Escape column names and join them
@@ -404,12 +406,14 @@ def generate_postgres_insert(df, table_name):
     for _, row in df.iterrows():
         row_values = []
         for val in row:
-            if pd.isna(val):
+            if pd.isna(val) or str(val) == 'NaT':
                 row_values.append("NULL")
+            elif (is_date_prefix(val)):
+                row_values.append(f"'{val}'")
+            elif isinstance(val, (pd.Timestamp, pd.Timedelta)) or ():
+                row_values.append(f"'{val}'")
             elif isinstance(val, str):
                 row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
-            elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
-                row_values.append(f"'{val}'")
             else:
                 row_values.append(str(val))
         values_list.append(f"({', '.join(row_values)})")
