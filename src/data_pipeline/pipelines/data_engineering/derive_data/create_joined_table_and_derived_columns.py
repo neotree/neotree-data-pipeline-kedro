@@ -70,6 +70,7 @@ def join_table():
                     if col in jn_adm_dis.columns:
                         jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
                         jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
+                        jn_adm_dis[col] = jn_adm_dis[col].astype(object).where(jn_adm_dis[col].notna(), None)
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
             append_data(jn_adm_dis,"joined_admissions_discharges")

@@ -6,11 +6,9 @@ from sqlalchemy import create_engine,text
 import sys
 from sqlalchemy.types import TEXT
 import pandas as pd
-import psycopg2
-from psycopg2 import sql
-import pandas as pd
+import numpy as np
 import logging
-from psycopg2 import sql
+from psycopg2 import sql,connect
 
 params = config()
 #Postgres Connection String
@@ -102,7 +100,18 @@ def create_exploded_table(df: pd.DataFrame, table_name):
 
 def append_data(df: pd.DataFrame,table_name):
     #Add Data To An Existing Table
-    df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False)
+    batch_size = 1000
+    for i in range(0, len(df), batch_size):
+        batch = df.iloc[i:i+batch_size]
+        
+        # Convert to values you can inspect
+        values = batch.replace({pd.NA: None, np.nan: None}).to_dict('records')
+        print(f"Batch {i} sample:", values[0])
+        
+        # Insert the batch
+        batch.to_sql(table_name, con=engine, schema='derived',
+                if_exists='append', index=False)
+        inject_sql(batch,f"APPENDING {table_name} {batch_size}")
 
 # def inject_sql_with_return(sql_script):
 #     conn = engine.raw_connection()
@@ -246,7 +255,7 @@ def column_exists(schema, table_name,column_name):
 def run_query_and_return_df(query):
     try:
        
-        conn = psycopg2.connect(con_string)
+        conn = connect(con_string)
         df = pd.read_sql_query(query, conn)
         return df
     except Exception as ex:
