@@ -476,7 +476,6 @@ def format_value(col, value, col_type):
     
 def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
-    logging.info(f"ECISTS######{table_exists(schema,table_name)}")
     if (table_exists(schema,table_name)):
         dtype_map = {
             'int64': 'INTEGER',

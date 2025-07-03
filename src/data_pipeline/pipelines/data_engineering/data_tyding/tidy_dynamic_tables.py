@@ -77,7 +77,7 @@ def tidy_dynamic_tables():
                       
                                 if new_columns:
                                     column_pairs =  [(col, str(script_df[col].dtype)) for col in new_columns]
-                                    if column_pairs:
+                                    if len(column_pairs)>0:
                                         create_new_columns(f'{script}','derived',column_pairs)
                             script_df=convert_false_numbers_to_text(script_df,'derived',script); 
                             generate_create_insert_sql(script_df,'derived',script)
