@@ -73,8 +73,8 @@ def join_table():
                         jn_adm_dis[col] = jn_adm_dis[col].astype(object).where(jn_adm_dis[col].notna(), None)
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
-            append_data(jn_adm_dis,"joined_admissions_discharges")
-           #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
+            # append_data(jn_adm_dis,"joined_admissions_discharges")
+            catalog.save('create_joined_admissions_discharges',jn_adm_dis)
 
         #MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
         discharge_exists = table_exists('derived','discharges')
