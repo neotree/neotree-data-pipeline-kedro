@@ -476,26 +476,29 @@ def format_value(col, value, col_type):
     
 def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
-    if not table_exists(schema,table_name):
-        dtype_map = {
-            'int64': 'INTEGER',
-            'float64': 'DOUBLE PRECISION',
-            'bool': 'BOOLEAN',
-            'object': 'TEXT',
-            'datetime64[ns]': 'TIMESTAMP',
-            'timedelta[ns]': 'INTERVAL'
-        }
+    try:
+        if not table_exists(schema,table_name):
+            dtype_map = {
+                'int64': 'INTEGER',
+                'float64': 'DOUBLE PRECISION',
+                'bool': 'BOOLEAN',
+                'object': 'TEXT',
+                'datetime64[ns]': 'TIMESTAMP',
+                'timedelta[ns]': 'INTERVAL'
+            }
 
-        create_cols = []
-        for col in df.columns:
-            dtype = str(df[col].dtype)
-            pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
-            create_cols.append(f'"{col}" {pg_type}')
+            create_cols = []
+            for col in df.columns:
+                dtype = str(df[col].dtype)
+                pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
+                create_cols.append(f'"{col}" {pg_type}')
 
-        create_stmt = f'CREATE TABLE IF NOT EXISTS "{schema}.{table_name}" ({",".join(create_cols)});;'
-        inject_sql(create_stmt,f"CREATING {table_name}")
-        
-    generate_postgres_insert(df,schema,table_name)
+            create_stmt = f'CREATE TABLE IF NOT EXISTS "{schema}.{table_name}" ({",".join(create_cols)});;'
+            inject_sql(create_stmt,f"CREATING {table_name}")
+            
+        generate_postgres_insert(df,schema,table_name)
+    except Exception as ex:
+       logging.info(f"FAILED TO INSERT {formatError(ex)}")
 
 def escape_special_characters(input_string): 
     return str(input_string).replace("\\","\\\\").replace("'","")
