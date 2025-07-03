@@ -310,9 +310,12 @@ def tidy_tables():
             logging.info(f"##########DISC DATAFRAME SIZE={len(dis_df)}")
             if "started_at" in dis_df and 'completed_at' in dis_df :
                 dis_df = format_date_without_timezone(dis_df,['started_at','completed_at'])
-                dis_df['started_at'] = pd.to_datetime(dis_df['started_at']).tz_localize(None)
-                dis_df['completed_at'] = pd.to_datetime(dis_df['completed_at']).tz_localize(None)
-                dis_df['time_spent'] = (dis_df['completed_at'] - dis_df['started_at']).dt.total_seconds() / 60
+                if (not pd.api.types.is_datetime64_any_dtype(dis_df['started_at']) or not pd.api.types.is_datetime64_any_dtype(dis_df['completed_at'])):
+                    dis_df['time_spent'] = None
+                else:
+                    dis_df['started_at'] = pd.to_datetime(dis_df['started_at']).tz_localize(None)
+                    dis_df['completed_at'] = pd.to_datetime(dis_df['completed_at']).tz_localize(None)
+                    dis_df['time_spent'] = (dis_df['completed_at'] - dis_df['started_at']).dt.total_seconds() / 60
             else:
                 dis_df['time_spent'] = None
              #Format Dates Discharge Table
