@@ -697,10 +697,10 @@ def update_gender():
                     inject_sql(query2,"UPDATE GENDER IN IN JOINED ADMISSIONS")
 
 def deduplicate_combined():
-    tables = ['admissions','discharges'
+    tables = ['admissions','discharges',
               ,'joined_admissions_discharges','vital_signs'
               ,'neolabs','maternal_outcomes',
-              'summary_maternal_outcomes','maternal_completeness',
+              ,'maternal_completeness',
               'daily_review','infections','phc_discharges'
               ,'old_new_admissions_view',
               'old_new_discharges_view'
