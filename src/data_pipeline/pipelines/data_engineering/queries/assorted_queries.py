@@ -167,7 +167,7 @@ def deduplicate_data_query(condition, destination_table):
             select
             cs.scriptid,
             cs.uid, 
-            LEFT(cs.unique_key,10),
+            LEFT(cs.unique_key,10) as unique_key,
             max(cs.id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
@@ -320,7 +320,7 @@ def get_dynamic_condition(destination_table) :
     if('daily_review' in destination_table or 'infections' in destination_table):
         return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
     
-    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  ds.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key)'''
+    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  ds.unique_key is not null and cs.uid=ds.uid and LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10))'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
