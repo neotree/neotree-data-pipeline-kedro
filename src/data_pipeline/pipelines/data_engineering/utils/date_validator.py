@@ -1,3 +1,4 @@
+import pandas as pd
 from dateutil.parser import parse
 
 def is_date(value):
