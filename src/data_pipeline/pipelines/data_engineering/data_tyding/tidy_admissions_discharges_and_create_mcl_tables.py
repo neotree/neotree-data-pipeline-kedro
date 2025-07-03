@@ -530,9 +530,13 @@ def tidy_tables():
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
-            baseline_df = format_date_without_timezone(baseline_df,['started_at','completed_at']) 
-            if "started_at" in baseline_df and 'completed_at' in baseline_df :
-                baseline_df['time_spent'] = (baseline_df['completed_at'] -baseline_df['started_at']).astype('timedelta64[m]')
+            baseline_df = format_date_without_timezone(baseline_df, ['started_at', 'completed_at']) 
+            if "started_at" in baseline_df.columns and 'completed_at' in baseline_df.columns:
+                # Ensure both columns are datetime type
+                baseline_df['started_at'] = pd.to_datetime(baseline_df['started_at'])
+                baseline_df['completed_at'] = pd.to_datetime(baseline_df['completed_at'])
+                baseline_df['time_spent'] = (baseline_df['completed_at'] - baseline_df['started_at']).dt.total_seconds() / 60
+                
             else:
                 baseline_df['time_spent'] = None
             baseline_df['LengthOfStay.value'] = None
