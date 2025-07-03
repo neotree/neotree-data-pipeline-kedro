@@ -418,7 +418,7 @@ def generate_postgres_insert(df, table_name):
 
     # Compose the full INSERT statement
     insert_query = f'INSERT INTO "{table_name}" ({columns}) VALUES\n{values};;'
-    inject_sql(insert_query)
+    inject_sql(insert_query,f"INSERTING INTO {table_name}")
 
 def format_value(col, value, col_type):
     if pd.isna(value) or str(value) == 'NaT':
@@ -489,7 +489,7 @@ def generate_create_insert_sql(df,schema, table_name):
             create_cols.append(f'"{col}" {pg_type}')
 
         create_stmt = f'CREATE TABLE IF NOT EXISTS "{schema}.{table_name}" ({",".join(create_cols)});;'
-        inject_sql(create_stmt)
+        inject_sql(create_stmt,f"CREATING {table_name}")
         
     generate_postgres_insert(df, table_name)
 

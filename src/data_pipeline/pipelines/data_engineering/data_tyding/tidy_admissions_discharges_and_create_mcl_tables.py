@@ -447,9 +447,12 @@ def tidy_tables():
                 neolab_df['BCReturnTime'] = None
             neolab_df= format_date_without_timezone(neolab_df,['started_at','completed_at']) 
             if "started_at" in neolab_df and 'completed_at' in neolab_df :
-                neolab_df['started_at'] = pd.to_datetime(neolab_df['started_at']).tz_localize(None)
-                neolab_df['completed_at'] = pd.to_datetime(neolab_df['completed_at']).tz_localize(None)
-                neolab_df['time_spent'] = (neolab_df['completed_at'] - neolab_df['started_at']).dt.total_seconds() / 60
+                try:
+                    neolab_df['started_at'] = pd.to_datetime(neolab_df['started_at']).tz_localize(None)
+                    neolab_df['completed_at'] = pd.to_datetime(neolab_df['completed_at']).tz_localize(None)
+                    neolab_df['time_spent'] = (neolab_df['completed_at'] - neolab_df['started_at']).dt.total_seconds() / 60
+                except:
+                    pass
             else:
                 neolab_df['time_spent'] = None
             ###################CREATING EPISODES###################################   
