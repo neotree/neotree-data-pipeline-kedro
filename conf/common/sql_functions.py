@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import Dict
 from conf.common.format_error import formatError
 from datetime import datetime, date
@@ -406,8 +407,13 @@ def generate_postgres_insert(df, schema,table_name):
     for _, row in df.iterrows():
         row_values = []
         for val in row:
-            if is_effectively_na(val) or  str(val) == 'NaT'or  str(val) == 'None':
+            if is_effectively_na(val) or  str(val) in {'NaT', 'None', 'nan'}:
                 row_values.append("NULL")
+
+            elif isinstance(val, (list, dict)):
+                json_val = json.dumps(val)
+                row_values.append(f"'{escape_special_characters(json_val)}'")
+
             elif (is_date_prefix(str(val))):
                 row_values.append(f"'{val}'")
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)) or ():
@@ -431,7 +437,7 @@ def is_effectively_na(val):
         return pd.isna(val) 
     
 def format_value(col, value, col_type):
-    if is_effectively_na(value) or str(value) == 'NaT':
+    if is_effectively_na(value) or str(value) in {'NaT', 'None', 'nan'}:
         return f"\"{col}\" = NULL"
     
     col_type_lower = col_type.lower()
