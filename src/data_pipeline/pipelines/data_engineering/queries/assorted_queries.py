@@ -314,8 +314,6 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
    
             '''
-    if destination_table =='admissions':
-        logging.info(f"MY TABLE##{sql}")
     return sql
 
 def get_dynamic_condition(destination_table) :
@@ -350,15 +348,21 @@ def read_data_with_no_unique_key():
     return f'''
            SELECT 
              id,
-             "data"->'completed_at' AS "completed_at",
+             "data"->'entries' AS "entries",
             "data"->>'appVersion' AS "appVersion"
         FROM 
             public.clean_sessions
         WHERE 
             ("unique_key" NOT LIKE '%-%-%' or unique_key is null)
         AND 
-        ingested_at>'2025-07-02 17:13'
-     '''
+            (
+                ("data"->'entries'->>'DateTimeAdmission' IS NOT NULL)
+                OR ("data"->'entries'->>'DateAdmission' IS NOT NULL)
+                OR ("data"->'entries'->>'DateTimeDischarge' IS NOT NULL)
+                OR ("data"->'entries'->>'DateDischarge' IS NOT NULL)
+                OR ("data"->'entries'->>'DateDeath' IS NOT NULL)
+                OR ("data"->'entries'->>'DateBCT' IS NOT NULL)
+            )'''
 
 # SPECIAL CASE
 
