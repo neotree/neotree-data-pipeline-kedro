@@ -311,7 +311,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs."data"->'entries' as "entries",
             cs.unique_key
             {case_condition}
-            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='Unkown' and cs.uid is not null and cs.unique_key is not null and {condition};;
+            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='Unkown' and cs.uid is not null and cs.unique_key is not null {condition};;
    
             '''
         if(destination_table=='discharges'):
