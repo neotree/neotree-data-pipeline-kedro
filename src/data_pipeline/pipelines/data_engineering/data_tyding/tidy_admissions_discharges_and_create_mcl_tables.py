@@ -552,13 +552,16 @@ def tidy_tables():
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
             date_column_types = pd.DataFrame(get_date_column_names('baseline', 'derived'))
-            baseline_df = format_date_without_timezone(baseline_df, ['started_at', 'completed_at']) 
+            baseline_df = format_date_without_timezone(baseline_df, date_column_types) 
             if "started_at" in baseline_df.columns and 'completed_at' in baseline_df.columns:
                 # Ensure both columns are datetime type
-                baseline_df['started_at'] = pd.to_datetime(baseline_df['started_at']).tz_localize(None)
-                baseline_df['completed_at'] = pd.to_datetime(baseline_df['completed_at']).tz_localize(None)
-                baseline_df['time_spent'] = (baseline_df['completed_at'] - baseline_df['started_at']).dt.total_seconds() / 60
-                
+                try:
+                    baseline_df['started_at'] = pd.to_datetime(baseline_df['started_at']).tz_localize(None)
+                    baseline_df['completed_at'] = pd.to_datetime(baseline_df['completed_at']).tz_localize(None)
+                    baseline_df['time_spent'] = (baseline_df['completed_at'] - baseline_df['started_at']).dt.total_seconds() / 60
+                except:
+                    pass
+
             else:
                 baseline_df['time_spent'] = None
             baseline_df['LengthOfStay.value'] = None
