@@ -66,7 +66,8 @@ def join_table():
             date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))
             if not date_column_types.empty:
                 jn_adm_dis = format_date_without_timezone(jn_adm_dis,date_column_types)
-                jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match('^\d+$')]
+                jn_adm_dis.columns = jn_adm_dis.columns.astype(str) 
+                jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match('^\d+$', na=False)]
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
             # append_data(jn_adm_dis,"joined_admissions_discharges")
@@ -83,7 +84,8 @@ def join_table():
           
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
-                jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match('^\d+$')]
+                jn_adm_dis_2.columns = jn_adm_dis.columns.astype(str) 
+                jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match('^\d+$', na=False)]
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
