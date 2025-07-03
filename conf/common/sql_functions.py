@@ -494,7 +494,7 @@ def generate_create_insert_sql(df,schema, table_name):
     generate_postgres_insert(df, table_name)
 
 def escape_special_characters(input_string): 
-    return str(input_string).replace("\\","\\\\").replace("'","")
+    return str(input_string).replace("\\","\\\\").replace("'","").replace('-','--')
 
 def table_exists(schema, table_name):
     query = f''' SELECT EXISTS (
