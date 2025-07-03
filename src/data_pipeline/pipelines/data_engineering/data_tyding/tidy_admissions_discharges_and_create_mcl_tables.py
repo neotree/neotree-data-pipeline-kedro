@@ -114,7 +114,6 @@ def tidy_tables():
     try:
         adm_df = pd.json_normalize(adm_new_entries)
         if not adm_df.empty:
-            logging.info(f"##########ADMIN DATAFRAME SIZE={len(adm_df)}")
             adm_df.set_index(['uid'])
             adm_df = format_date_without_timezone(adm_df,['started_at', 'completed_at','EndScriptDatetime.value','DateTimeAdmission.value'])
             adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])

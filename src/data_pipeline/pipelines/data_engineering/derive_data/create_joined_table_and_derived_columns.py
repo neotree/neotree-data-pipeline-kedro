@@ -63,12 +63,14 @@ def join_table():
                         if column_pairs:
                             create_new_columns('joined_admissions_discharges','derived',column_pairs)  
 
-            date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))[0]
+            date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))
+            logging.info(f"##AFFECTED COLS:::{date_column_types}")
             if not date_column_types.empty:
                 for col in date_column_types:
                     if col in jn_adm_dis.columns:
                         jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
                         jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
+
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
             append_data(jn_adm_dis,"joined_admissions_discharges")
            #catalog.save('create_joined_admissions_discharges',jn_adm_dis)
