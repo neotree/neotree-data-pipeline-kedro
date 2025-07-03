@@ -117,7 +117,9 @@ def tidy_tables():
             adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
               # ADD TIME SPENT TO ALL DFs
             if "started_at" in adm_df and 'completed_at' in adm_df :
-                adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).astype('timedelta64[m]')
+                adm_df['started_at'] = pd.to_datetime(adm_df['started_at']).tz_localize(None)
+                adm_df['completed_at'] = pd.to_datetime(adm_df['completed_at']).tz_localize(None)
+                adm_df['time_spent'] = (adm_df['completed_at'] - adm_df['started_at']).dt.total_seconds() / 60
             else:
                 adm_df['time_spent'] = None 
             adm_df=  set_key_to_none(adm_df,['DateHIVtest.value','DateHIVtest.label','HIVtestResult.value','HIVtestResult.label',
@@ -308,7 +310,9 @@ def tidy_tables():
             logging.info(f"##########DISC DATAFRAME SIZE={len(dis_df)}")
             if "started_at" in dis_df and 'completed_at' in dis_df :
                 dis_df = format_date_without_timezone(dis_df,['started_at','completed_at'])
-                dis_df['time_spent'] = (dis_df['completed_at'] -dis_df['started_at']).astype('timedelta64[m]')
+                dis_df['started_at'] = pd.to_datetime(dis_df['started_at']).tz_localize(None)
+                dis_df['completed_at'] = pd.to_datetime(dis_df['completed_at']).tz_localize(None)
+                dis_df['time_spent'] = (dis_df['completed_at'] - dis_df['started_at']).dt.total_seconds() / 60
             else:
                 dis_df['time_spent'] = None
              #Format Dates Discharge Table
@@ -368,7 +372,9 @@ def tidy_tables():
             mat_outcomes_df=format_date_without_timezone(mat_outcomes_df,['started_at','completed_at','DateAdmission.value']) 
             if "started_at" in mat_outcomes_df and 'completed_at' in mat_outcomes_df :
 
-                mat_outcomes_df['time_spent'] = (mat_outcomes_df['completed_at'] - mat_outcomes_df['started_at']).astype('timedelta64[m]')
+                mat_outcomes_df['started_at'] = pd.to_datetime(mat_outcomes_df['started_at']).tz_localize(None)
+                mat_outcomes_df['completed_at'] = pd.to_datetime(mat_outcomes_df['completed_at']).tz_localize(None)
+                mat_outcomes_df['time_spent'] = (mat_outcomes_df['completed_at'] - mat_outcomes_df['started_at']).dt.total_seconds() / 60
             else:
                 mat_outcomes_df['time_spent'] = None
             mat_outcomes_df =  set_key_to_none(mat_outcomes_df,['Presentation.label','BabyNursery.label','Reason.label',
@@ -398,7 +404,9 @@ def tidy_tables():
             vit_signs_df = format_date_without_timezone(vit_signs_df,['started_at','completed_at',]) 
             if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
                    
-                vit_signs_df['time_spent'] = (vit_signs_df['completed_at']-vit_signs_df['started_at']).astype('timedelta64[m]')
+                vit_signs_df['started_at'] = pd.to_datetime(vit_signs_df['started_at']).tz_localize(None)
+                vit_signs_df['completed_at'] = pd.to_datetime(vit_signs_df['completed_at']).tz_localize(None)
+                vit_signs_df['time_spent'] = (vit_signs_df['completed_at'] - vit_signs_df['started_at']).dt.total_seconds() / 60
             else:
                 vit_signs_df['time_spent'] = None
                  #Vital Signs Table
@@ -429,7 +437,9 @@ def tidy_tables():
                 neolab_df['BCReturnTime'] = None
             neolab_df= format_date_without_timezone(neolab_df,['started_at','completed_at']) 
             if "started_at" in neolab_df and 'completed_at' in neolab_df :
-                neolab_df['time_spent'] = (neolab_df['completed_at'] - neolab_df['started_at']).astype('timedelta64[m]')
+                neolab_df['started_at'] = pd.to_datetime(neolab_df['started_at']).tz_localize(None)
+                neolab_df['completed_at'] = pd.to_datetime(neolab_df['completed_at']).tz_localize(None)
+                neolab_df['time_spent'] = (neolab_df['completed_at'] - neolab_df['started_at']).dt.total_seconds() / 60
             else:
                 neolab_df['time_spent'] = None
             ###################CREATING EPISODES###################################   
