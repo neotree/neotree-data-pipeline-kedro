@@ -167,13 +167,13 @@ def deduplicate_data_query(condition, destination_table):
             select
             cs.scriptid,
             cs.uid, 
-            cs.unique_key,
+            LEFT(cs.unique_key,10),
             max(cs.id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
             from public.clean_sessions cs
-            where cs.scriptid {condition} -- only pull out records for the specified script
+            where cs.scriptid {condition} and cs.unique_key is not null-- only pull out records for the specified script
             group by 1,2,3
             )
             select
