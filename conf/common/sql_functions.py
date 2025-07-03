@@ -407,7 +407,7 @@ def generate_postgres_insert(df, schema,table_name):
     for _, row in df.iterrows():
         row_values = []
         for val in row:
-            if is_effectively_na(val) or  str(val) in {'NaT', 'None', 'nan'}:
+            if is_effectively_na(val) or  str(val) in {'NaT', 'None', 'nan',''}:
                 row_values.append("NULL")
 
             elif isinstance(val, (list, dict)):
@@ -415,6 +415,7 @@ def generate_postgres_insert(df, schema,table_name):
                 row_values.append(f"'{escape_special_characters(json_val)}'")
 
             elif (is_date_prefix(str(val))):
+                logging.info(f"########----'{clean_datetime_string(val)}'.replace('.','')")
                 row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)) or ():
                 row_values.append(f"'{val}'")
