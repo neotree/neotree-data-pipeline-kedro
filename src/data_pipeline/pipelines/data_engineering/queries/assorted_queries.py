@@ -348,21 +348,15 @@ def read_data_with_no_unique_key():
     return f'''
            SELECT 
              id,
-             "data"->'entries' AS "entries",
+             "data"->'completed_at' AS "completed_at",
             "data"->>'appVersion' AS "appVersion"
         FROM 
             public.clean_sessions
         WHERE 
             ("unique_key" NOT LIKE '%-%-%' or unique_key is null)
         AND 
-            (
-                ("data"->'entries'->>'DateTimeAdmission' IS NOT NULL)
-                OR ("data"->'entries'->>'DateAdmission' IS NOT NULL)
-                OR ("data"->'entries'->>'DateTimeDischarge' IS NOT NULL)
-                OR ("data"->'entries'->>'DateDischarge' IS NOT NULL)
-                OR ("data"->'entries'->>'DateDeath' IS NOT NULL)
-                OR ("data"->'entries'->>'DateBCT' IS NOT NULL)
-            )'''
+        ingested_at>'2025-07-02 17:13'
+     '''
 
 # SPECIAL CASE
 
@@ -586,7 +580,9 @@ def insert_sessions_data():
         WHERE NOT EXISTS (
         SELECT 1
         FROM {clean_sessions} cs
-        WHERE cs.id = s.id);;'''
+        WHERE cs.id = s.id)
+        and s.uid is not null and s.unique_key is not null
+        ;;'''
 
 
 def regenerate_unique_key_query(id, unique_key):

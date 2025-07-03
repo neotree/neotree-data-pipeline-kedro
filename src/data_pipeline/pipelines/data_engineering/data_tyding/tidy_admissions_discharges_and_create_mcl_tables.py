@@ -113,7 +113,6 @@ def tidy_tables():
         "... Creating normalized dataframes - one for admissions and one for discharges")
     try:
         adm_df = pd.json_normalize(adm_new_entries)
-        admissions_date_time_fields =[]
         if not adm_df.empty:
             logging.info(f"##########ADMIN DATAFRAME SIZE={len(adm_df)}")
             adm_df.set_index(['uid'])

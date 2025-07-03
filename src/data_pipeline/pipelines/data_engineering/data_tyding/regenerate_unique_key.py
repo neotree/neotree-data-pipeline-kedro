@@ -17,31 +17,9 @@ def regenerate_unique_key():
         for index, row in raw_data.iterrows():
            
             id = row['id']
-            values = []
-            possible_unique_keys = ['DateAdmission','DateTimeAdmission','DateTimeDeath','DateTimeDischarge','DateDischarge','DateDeath','DateBCT']
-            value = pd.DataFrame(row['entries'])
-            for prefix in possible_unique_keys:
-                #Check If It Is Old Format Or New Format
-                if('key' in value):
-                    matching_rows = value[value["key"].str.startswith(prefix)]
-                    item=None
-                    if not matching_rows.empty:
-                        item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] is not None), None)
-                        
-                    if item:
-                        values.append(item)         
-                    # NEW FORMAT
-                else:  
-                    matching_data = [col for col in value.columns if col.startswith(prefix)  
-                             and value[col]['values']['value'][0] is not None]
-                    
-                    if matching_data:
-                        values.append(value[matching_data[0]]['values']['value'][0])
-                     
-                if len(values)>0:
-                    query = regenerate_unique_key_query(id,values[0])
-                    inject_sql(query,f'''UNIQUE-KEYS- {id}''')
-                    break
+            unique_key = row['completed_at']
+            query = regenerate_unique_key_query(id,unique_key)
+            inject_sql(query,f'''UNIQUE-KEYS- {id}''')
         #FIX UNIQUE KEYS WITH WRONG DATE FORMATS        
         fix_regenerated_unique_keys()
     except Exception as ex:
