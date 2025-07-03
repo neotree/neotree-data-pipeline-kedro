@@ -24,7 +24,9 @@ def is_date_formatable(value):
     if value is None:
         return False;
     else:
-        valid_dashed_date = str(value).count('-') >=2 and len(str(value))>10
-        valid_slashed_date = str(value).count('/') >=2 and len(str(value))>10
-        return valid_dashed_date or valid_slashed_date;
+        try:
+            parse(value)
+            return True
+        except (ValueError, TypeError, OverflowError):
+            return False
         
