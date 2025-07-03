@@ -366,7 +366,7 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('discharges','derived',column_pairs)
             dis_df=convert_false_numbers_to_text(dis_df,'derived','discharges'); 
-            generate_create_insert_sql(adm_df,'derived','discharges')  
+            generate_create_insert_sql(dis_df,'derived','discharges')  
             #catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
