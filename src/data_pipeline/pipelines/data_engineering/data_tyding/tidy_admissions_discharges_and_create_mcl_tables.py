@@ -3,7 +3,7 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
-from conf.common.sql_functions import create_new_columns,get_table_column_names
+from conf.common.sql_functions import create_new_columns, get_date_column_names,get_table_column_names
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
