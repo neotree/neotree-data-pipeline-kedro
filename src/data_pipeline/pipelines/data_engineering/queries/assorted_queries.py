@@ -353,7 +353,7 @@ def read_data_with_no_unique_key():
         FROM 
             public.clean_sessions
         WHERE 
-            ("unique_key" NOT LIKE '%-%-%' or unique_key is null)
+            (cleaned is false and ("unique_key" NOT LIKE '%-%-%' or unique_key is null))
         AND 
             (
                 ("data"->'entries'->>'DateTimeAdmission' IS NOT NULL)
@@ -599,5 +599,5 @@ def regenerate_unique_key_query(id, unique_key):
     except:
        formatted= unique_key 
 
-    return f''' UPDATE public.clean_sessions SET  unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}.*';;
+    return f''' UPDATE public.clean_sessions SET cleaned=true, unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}.*';;
               '''
