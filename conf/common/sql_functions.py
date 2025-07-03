@@ -506,10 +506,11 @@ def table_exists(schema, table_name):
                 WHERE  table_schema = '{schema}'
                 AND    table_name   = '{table_name}'
                 );'''
-    query_result = inject_sql_with_return(query);
-    if len(query_result) >0:
-        result = query_result[0];
-        if result:
-            return result[0]
-        else:
-            return False
+    query_result = inject_sql_with_return(query)
+
+    if query_result and len(query_result) > 0:
+        result = query_result[0]
+        if isinstance(result, (tuple, list, np.ndarray)):
+            return bool(result[0])
+        return bool(result)
+    return False

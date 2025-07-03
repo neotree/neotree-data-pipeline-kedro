@@ -300,7 +300,7 @@ def tidy_tables():
                       
                 if new_adm_columns:
                     column_pairs =  [(col, str(adm_df[col].dtype)) for col in new_adm_columns]
-                    if column_pairs:
+                    if len(column_pairs)>0:
                         create_new_columns('admissions','derived',column_pairs)
             adm_df=convert_false_numbers_to_text(adm_df,'derived','admissions'); 
             generate_create_insert_sql(adm_df,'derived','admissions')        
