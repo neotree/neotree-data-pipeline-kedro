@@ -6,7 +6,7 @@ from conf.common.sql_functions import (create_new_columns
                                        ,get_table_column_names
                                        ,inject_bulk_sql
                                        ,get_table_column_type
-                                       ,append_data,
+                                       ,
                                        get_date_column_names)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import escape_special_characters
@@ -64,13 +64,8 @@ def join_table():
                             create_new_columns('joined_admissions_discharges','derived',column_pairs)  
 
             date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))
-            logging.info(f"##AFFECTED COLS:::{date_column_types}")
             if not date_column_types.empty:
-                for col in date_column_types:
-                    if col in jn_adm_dis.columns:
-                        jn_adm_dis[col] = pd.to_datetime(jn_adm_dis[col], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
-                        jn_adm_dis[col] = jn_adm_dis[col].where(jn_adm_dis[col].notna(), None)
-                        jn_adm_dis[col] = jn_adm_dis[col].astype(object).where(jn_adm_dis[col].notna(), None)
+                jn_adm_dis = format_date_without_timezone(jn_adm_dis,date_column_types)
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
             # append_data(jn_adm_dis,"joined_admissions_discharges")

@@ -8,7 +8,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.assorted_fixes import extract_years
-from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone
+from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone,format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
 from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
@@ -530,6 +530,7 @@ def tidy_tables():
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
+            date_column_types = pd.DataFrame(get_date_column_names('baseline', 'derived'))
             baseline_df = format_date_without_timezone(baseline_df, ['started_at', 'completed_at']) 
             if "started_at" in baseline_df.columns and 'completed_at' in baseline_df.columns:
                 # Ensure both columns are datetime type
