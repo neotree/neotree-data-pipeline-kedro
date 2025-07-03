@@ -104,4 +104,4 @@ def safe_load(catalog, dataset_name):
         return catalog.load(dataset_name)
     except Exception as e:
         logging.warning(f"Failed to load dataset '{dataset_name}': {formatError(e)}")
-        return pd.DataFrame()
+        return None

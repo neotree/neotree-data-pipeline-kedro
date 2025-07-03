@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd # type: ignore
 from datetime import datetime as dt
 import logging
 # Import created modules (need to be stored in the same directory as notebook)
@@ -13,7 +13,6 @@ from data_pipeline.pipelines.data_engineering.utils.date_validator import is_dat
 from data_pipeline.pipelines.data_engineering.utils.assorted_fixes import extract_years
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone,format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
-from data_pipeline.pipelines.data_engineering.queries.update_uid import update_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text

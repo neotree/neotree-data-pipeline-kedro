@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd # type: ignore
 import logging
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import update_eronous_label
 from conf.base.catalog import catalog

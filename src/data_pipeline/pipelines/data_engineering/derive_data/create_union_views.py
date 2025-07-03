@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd # type: ignore
 import json
 from conf.common.sql_functions import inject_sql,get_table_columns,insert_old_adm_query
 import logging

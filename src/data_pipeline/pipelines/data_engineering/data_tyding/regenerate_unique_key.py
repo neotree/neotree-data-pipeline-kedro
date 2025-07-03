@@ -1,5 +1,5 @@
 import logging
-import pandas as pd
+import pandas as pd # type: ignore
 from conf.base.catalog import catalog
 from conf.common.sql_functions import inject_sql,run_query_and_return_df
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import regenerate_unique_key_query,read_data_with_no_unique_key

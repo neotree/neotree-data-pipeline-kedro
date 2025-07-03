@@ -1,7 +1,7 @@
 # This module extracts the key-value pairs within a raw json file.
 import logging
 import re
-import pandas as pd
+import pandas as pd # type: ignore
 from conf.common.format_error import formatError
 from .json_restructure import restructure, restructure_new_format, restructure_array
 from functools import  reduce

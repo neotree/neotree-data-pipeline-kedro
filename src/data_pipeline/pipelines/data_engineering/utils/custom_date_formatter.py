@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as pd # type: ignore
 from datetime import datetime as dt
 from .date_validator import is_date_formatable
 import numpy as np

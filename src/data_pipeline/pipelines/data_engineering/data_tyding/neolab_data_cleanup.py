@@ -1,5 +1,5 @@
 import logging
-import pandas as pd
+import pandas as pd # type: ignore
 import sys
 from conf.common.format_error import formatError
 
