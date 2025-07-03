@@ -1,4 +1,4 @@
-import pandas as pd # type: ignore
+import pandas as pd 
 from datetime import datetime as dt
 import logging
 # Import created modules (need to be stored in the same directory as notebook)
@@ -6,7 +6,7 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
-from conf.common.sql_functions import create_new_columns, get_date_column_names,get_table_column_names
+from conf.common.sql_functions import create_new_columns, get_date_column_names,get_table_column_names,generate_create_insert_sql
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
@@ -302,8 +302,9 @@ def tidy_tables():
                     column_pairs =  [(col, str(adm_df[col].dtype)) for col in new_adm_columns]
                     if column_pairs:
                         create_new_columns('admissions','derived',column_pairs)
-            adm_df=convert_false_numbers_to_text(adm_df,'derived','admissions');         
-            catalog.save('create_derived_admissions',adm_df)
+            adm_df=convert_false_numbers_to_text(adm_df,'derived','admissions'); 
+            generate_create_insert_sql(adm_df,'derived','admissions')        
+            #catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")   
         
@@ -365,7 +366,8 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('discharges','derived',column_pairs)
             dis_df=convert_false_numbers_to_text(dis_df,'derived','discharges'); 
-            catalog.save('create_derived_discharges',dis_df)
+            generate_create_insert_sql(adm_df,'derived','discharges')  
+            #catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
             
@@ -402,7 +404,8 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('maternal_outcomes','derived',column_pairs)
             mat_outcomes_df=convert_false_numbers_to_text(mat_outcomes_df,'derived','maternal_outcomes'); 
-            catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
+            generate_create_insert_sql(mat_outcomes_df,'derived','maternal_outcomes')  
+            #catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
         
@@ -432,7 +435,8 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('vitalsigns','derived',column_pairs)
             vit_signs_df= convert_false_numbers_to_text(vit_signs_df,'derived','vitalsigns'); 
-            catalog.save('create_derived_vitalsigns',vit_signs_df)
+            generate_create_insert_sql(vit_signs_df,'derived','vitalsigns') 
+            #catalog.save('create_derived_vitalsigns',vit_signs_df)
             logging.info("... Creating MCL count tables for Vital Signs DF")
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
     ##################### NEOLAB ###################################################################################    
@@ -545,8 +549,8 @@ def tidy_tables():
                     column_pairs =  [(col, str(neolab_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('neolab','derived',column_pairs)
-
-            catalog.save('create_derived_neolab',neolab_df)
+            generate_create_insert_sql(neolab_df,'derived','neolab') 
+            #catalog.save('create_derived_neolab',neolab_df)
             
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
@@ -621,8 +625,9 @@ def tidy_tables():
                     column_pairs =  [(col, str(baseline_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('baseline','derived',column_pairs)
-
-            catalog.save('create_derived_baseline',baseline_df)
+           
+            generate_create_insert_sql(baseline_df,'derived','baseline') 
+            #catalog.save('create_derived_baseline',baseline_df)
             logging.info("... Creating MCL count tables for Baseline DF")
             explode_column(baseline_df,baseline_mcl,"bsl_")
         
@@ -653,8 +658,8 @@ def tidy_tables():
                     column_pairs =  [(col, str(mat_completeness_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('maternity_completeness','derived',column_pairs)
-
-            catalog.save('create_derived_maternity_completeness',mat_completeness_df)
+            generate_create_insert_sql(mat_completeness_df,'derived','maternity_completeness') 
+            #catalog.save('create_derived_maternity_completeness',mat_completeness_df)
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
 
 

@@ -397,7 +397,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
 def is_date_prefix(s):
     return bool(re.match(r'^\d{4}-\d{2}-\d{2}.*', s))
 
-def generate_postgres_insert(df, table_name):
+def generate_postgres_insert(df, schema,table_name):
     # Escape column names and join them
     columns = ', '.join(f'"{col}"' for col in df.columns)
 
@@ -421,7 +421,7 @@ def generate_postgres_insert(df, table_name):
     values = ',\n'.join(values_list)
 
     # Compose the full INSERT statement
-    insert_query = f'INSERT INTO "{table_name}" ({columns}) VALUES\n{values};;'
+    insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
     inject_sql(insert_query,f"INSERTING INTO {table_name}")
 
 def format_value(col, value, col_type):
@@ -495,7 +495,7 @@ def generate_create_insert_sql(df,schema, table_name):
         create_stmt = f'CREATE TABLE IF NOT EXISTS "{schema}.{table_name}" ({",".join(create_cols)});;'
         inject_sql(create_stmt,f"CREATING {table_name}")
         
-    generate_postgres_insert(df, table_name)
+    generate_postgres_insert(df,schema,table_name)
 
 def escape_special_characters(input_string): 
     return str(input_string).replace("\\","\\\\").replace("'","")
