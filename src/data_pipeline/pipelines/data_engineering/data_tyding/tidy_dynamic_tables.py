@@ -27,9 +27,7 @@ def tidy_dynamic_tables():
             catalog_query = f'''read_{script}'''
             
             script_raw = safe_load(catalog,catalog_query)
-            if 'daily_review' in script:
-                logging.info("...#######....."+str(catalog_query))
-        
+            
             try:
                 script_new_entries, script_mcl = get_key_values(script_raw)
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
