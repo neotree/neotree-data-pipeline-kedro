@@ -406,7 +406,7 @@ def generate_postgres_insert(df, schema,table_name):
     for _, row in df.iterrows():
         row_values = []
         for val in row:
-            if pd.isna(val) or str(val) == 'NaT':
+            if is_effectively_na(val) or  str(val) == 'NaT'or  str(val) == 'None':
                 row_values.append("NULL")
             elif (is_date_prefix(str(val))):
                 row_values.append(f"'{val}'")
@@ -424,8 +424,14 @@ def generate_postgres_insert(df, schema,table_name):
     insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
     inject_sql(insert_query,f"INSERTING INTO {table_name}")
 
+def is_effectively_na(val):
+    try:
+        return pd.isna(val).any() 
+    except AttributeError:
+        return pd.isna(val) 
+    
 def format_value(col, value, col_type):
-    if pd.isna(value) or str(value) == 'NaT':
+    if is_effectively_na(value) or str(value) == 'NaT':
         return f"\"{col}\" = NULL"
     
     col_type_lower = col_type.lower()
