@@ -415,7 +415,7 @@ def generate_postgres_insert(df, schema,table_name):
                 row_values.append(f"'{escape_special_characters(json_val)}'")
 
             elif (is_date_prefix(str(val))):
-                row_values.append(f"'{val}'")
+                row_values.append(f"'{val}'".replace('.',''))
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)) or ():
                 row_values.append(f"'{val}'")
             elif isinstance(val, str):
