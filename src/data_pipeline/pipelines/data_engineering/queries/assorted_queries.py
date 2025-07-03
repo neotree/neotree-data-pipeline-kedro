@@ -311,7 +311,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs."data"->'entries' as "entries",
             cs.unique_key
             {case_condition}
-            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='null' and cs.unique_key is not null and cs.uid!='Unknown' {condition};;
+            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='Unkown' and cs.uid is not null cs.unique_key is not null and {condition};;
    
             '''
     return sql
@@ -320,7 +320,7 @@ def get_dynamic_condition(destination_table) :
     if('daily_review' in destination_table or 'infections' in destination_table):
         return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
     
-    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  cs.uid is not null and ds.unique_key is not null and cs.uid=ds.uid and LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10))'''
+    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid)'''
 
 def read_derived_data_query(source_table,destination_table=None):
     condition =''
