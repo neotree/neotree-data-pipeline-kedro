@@ -403,26 +403,44 @@ def read_new_smch_admissions_query():
 
 def read_new_smch_discharges_query():
     return f'''
-            select 
-                *,
-		  CASE WHEN ("DateTimeDischarge.value"::TEXT ='NaT' 
-          OR "DateTimeDischarge.value"::TEXT ='NaN'
-          OR "DateTimeDischarge.value"::TEXT ='nan'
-          )
-		  THEN NULL
-		  ELSE  TO_DATE("DateTimeDischarge.value"::TEXT,'YYYY-MM-DD') 
-		  END AS "DateTimeDischarge.value",
-		  CASE WHEN ("DateTimeDeath.value"::TEXT = 'NaT' 
-          OR "DateTimeDeath.value"::TEXT = 'nan'
-          OR "DateTimeDeath.value"::TEXT = 'NaN'
-          )
-		  THEN NULL
-		  ELSE TO_DATE("DateTimeDeath.value"::TEXT,'YYYY-MM-DD')
-		  END AS "DateTimeDischarge.value"
-            from derived.discharges where
-			("DateTimeDischarge.value">='2021-02-01')
-			or ("DateTimeDeath.value">='2021-02-01') AND facility = 'SMCH' ;;
-            '''
+            SELECT 
+    *,
+    CASE 
+        WHEN "DateTimeDischarge.value"::TEXT IN ('NaT', 'NaN', 'nan') OR 
+             "DateTimeDischarge.value"::TEXT IS NULL OR
+             "DateTimeDischarge.value"::TEXT = '' OR
+             NOT ("DateTimeDischarge.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$') OR
+             ("DateTimeDischarge.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$' AND 
+              ("DateTimeDischarge.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31') = FALSE)
+        THEN NULL
+        ELSE TO_DATE("DateTimeDischarge.value"::TEXT, 'YYYY-MM-DD') 
+    END AS "DateTimeDischarge.value",
+    
+    CASE 
+        WHEN "DateTimeDeath.value"::TEXT IN ('NaT', 'NaN', 'nan') OR 
+             "DateTimeDeath.value"::TEXT IS NULL OR
+             "DateTimeDeath.value"::TEXT = '' OR
+             NOT ("DateTimeDeath.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$') OR
+             ("DateTimeDeath.value"::TEXT ~ '^\d{4}-\d{2}-\d{2}$' AND 
+              ("DateTimeDeath.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31') = FALSE)
+        THEN NULL
+        ELSE TO_DATE("DateTimeDeath.value"::TEXT, 'YYYY-MM-DD')
+    END AS "DateTimeDeath.value"
+FROM derived.discharges 
+WHERE facility = 'SMCH' 
+AND (
+    (
+        "DateTimeDischarge.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$' AND 
+        "DateTimeDischarge.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31' AND
+        "DateTimeDischarge.value"::DATE >= '2021-02-01'
+    )
+    OR 
+    (
+        "DateTimeDeath.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$' AND 
+        "DateTimeDeath.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31' AND
+        "DateTimeDeath.value"::DATE >= '2021-02-01'
+    )
+);; '''
 
 
 def read_old_smch_admissions_query():
