@@ -27,14 +27,14 @@ def regenerate_unique_key():
                     item=None
                     if not matching_rows.empty:
                         item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] is not None), None)
-                        
+                        logging.info(f"###ITEM#######{item}")
                     if item:
                         values.append(item)         
                     # NEW FORMAT
                 else:  
                     matching_data = [col for col in value.columns if col.startswith(prefix)  
                              and value[col]['values']['value'][0] is not None]
-                    
+                    logging.info(f"###ITEM NEW NEW#######{matching_data}")
                     if matching_data:
                         values.append(value[matching_data[0]]['values']['value'][0])
                      
