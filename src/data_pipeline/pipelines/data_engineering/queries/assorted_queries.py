@@ -409,8 +409,8 @@ def read_new_smch_discharges_query():
         WHEN "DateTimeDischarge.value"::TEXT IN ('NaT', 'NaN', 'nan') OR 
              "DateTimeDischarge.value"::TEXT IS NULL OR
              "DateTimeDischarge.value"::TEXT = '' OR
-             NOT ("DateTimeDischarge.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$') OR
-             ("DateTimeDischarge.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$' AND 
+             NOT ("DateTimeDischarge.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$') OR
+             ("DateTimeDischarge.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$' AND 
               ("DateTimeDischarge.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31') = FALSE)
         THEN NULL
         ELSE TO_DATE("DateTimeDischarge.value"::TEXT, 'YYYY-MM-DD') 
@@ -420,8 +420,8 @@ def read_new_smch_discharges_query():
         WHEN "DateTimeDeath.value"::TEXT IN ('NaT', 'NaN', 'nan') OR 
              "DateTimeDeath.value"::TEXT IS NULL OR
              "DateTimeDeath.value"::TEXT = '' OR
-             NOT ("DateTimeDeath.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$') OR
-             ("DateTimeDeath.value"::TEXT ~ '^\d{4}-\d{2}-\d{2}$' AND 
+             NOT ("DateTimeDeath.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$') OR
+             ("DateTimeDeath.value"::TEXT ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND 
               ("DateTimeDeath.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31') = FALSE)
         THEN NULL
         ELSE TO_DATE("DateTimeDeath.value"::TEXT, 'YYYY-MM-DD')
@@ -430,13 +430,13 @@ FROM derived.discharges
 WHERE facility = 'SMCH' 
 AND (
     (
-        "DateTimeDischarge.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$' AND 
+        "DateTimeDischarge.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$' AND 
         "DateTimeDischarge.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31' AND
         "DateTimeDischarge.value"::DATE >= '2021-02-01'
     )
     OR 
     (
-        "DateTimeDeath.value"::TEXT ~ '^\d{{4}}-\d{{2}}-\d{{2}}$' AND 
+        "DateTimeDeath.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$' AND 
         "DateTimeDeath.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31' AND
         "DateTimeDeath.value"::DATE >= '2021-02-01'
     )
