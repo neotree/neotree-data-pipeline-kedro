@@ -115,7 +115,13 @@ def summary_admissions_query():
                     "ReligionOther.label" AS "Other Religion",
                     "MatHIVtest.label" AS "HIV test?",
                     "ANVDRL.label" AS "ANVDRL",
-                    "DateHIVtest.value" AS "Date of HIV test",
+                    CASE
+                    WHEN "DateHIVtest.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                    to_timestamp("DateHIVtest.value", 'DD Mon,YYYY')
+                    WHEN "DateHIVtest.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                    to_timestamp("DateHIVtest.value", 'YYYY Mon,DD')
+                    ELSE NULL
+                    END AS "Date of HIV test",
                     "TestThisPreg.label" AS "When HIV test was done",
                     "HIVtestResult.label" AS "HIV test Result",
                     "HAART.label" AS "HAART",

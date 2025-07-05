@@ -72,7 +72,6 @@ def inject_sql(sql_script, file_name):
             try:
                 if not command.strip():  # skip empty commands
                     continue
-                logging.info(f"WORKING ON ##############{file_name}")
                 cur.execute(command)
                 conn.commit()
             except Exception as e:

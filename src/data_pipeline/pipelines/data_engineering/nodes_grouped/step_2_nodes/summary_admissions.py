@@ -17,7 +17,7 @@ def create_summary_admissions():
 
         if (admissions_count > 0):
             summary_admissions_script = summary_admissions_query()
-
+            
             # Run  Summary Admissions Query
             inject_sql(summary_admissions_script, "create-summary-admissions")
         else:
