@@ -193,7 +193,11 @@ def summary_admissions_query():
                     "MatSymptoms.label" AS "Mothers Symptoms",
                     "MothCell.value" AS "Mother Cellphone number",
                     "MothersDiagnosis.label" AS "Mothers Diagnosis",
-                    "MotherSatsO2.value" AS "Mother Oxygen saturations",
+                    CASE
+                    WHEN "MotherSatsO2.value" ~ '^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$'
+                    THEN CAST("MotherSatsO2.value" AS DOUBLE PRECISION)
+                    ELSE NULL
+                    END AS "Mother Oxygen saturations",
                     "MotherPresent.label" AS "is mother present?",
                     "EthnicityOther.label" AS "Other Ethnicity",
                     "ManualHR.label" AS "Manual Heart Rate",
