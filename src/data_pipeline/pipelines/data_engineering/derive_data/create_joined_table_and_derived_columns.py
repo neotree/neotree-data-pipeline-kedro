@@ -82,7 +82,7 @@ def join_table():
           
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
-                jn_adm_dis_2.columns = jn_adm_dis.columns.astype(str) 
+                jn_adm_dis_2.columns = jn_adm_dis_2.columns.astype(str) 
                 jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match('^\d+$', na=False)]
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
