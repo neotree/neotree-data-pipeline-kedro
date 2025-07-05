@@ -127,7 +127,13 @@ def summary_admissions_query():
                     "HAART.label" AS "HAART",
                     "LengthHAART.label" AS "Length of HAART",
                     "NVPgiven.label" AS "NVP given?",
-                    "ANVDRLDate.value" AS "ANVDRLDate",
+                     CASE
+                    WHEN "ANVDRLDate.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                    to_timestamp("ANVDRLDate.value", 'DD Mon,YYYY')
+                    WHEN "ANVDRLDate.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                    to_timestamp("ANVDRLDate.value", 'YYYY Mon,DD')
+                    ELSE NULL
+                    END AS "ANVDRLDate",
                     "DateVDRLSameHIV.value" AS "Date of VDRL Same as HIV Test Date?",
                     "ANVDRLResult.label" AS "ANVDRL Result",
                     "PregConditions.label" AS "Conditions in Pregnancy",
