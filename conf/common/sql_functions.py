@@ -441,7 +441,7 @@ def clean_datetime_string(s:str):
         if dt.time() == pd.Timestamp.min.time():
             return dt.strftime('%Y-%m-%d')
 
-        return dt.strftime('%Y-%m-%d %H:%M')
+        return dt.strftime('%Y-%m-%d %H:%M:%S')
 
     except Exception:
         return s

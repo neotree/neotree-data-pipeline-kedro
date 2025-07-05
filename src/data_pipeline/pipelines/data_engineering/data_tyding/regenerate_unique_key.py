@@ -27,7 +27,6 @@ def regenerate_unique_key():
                     item=None
                     if not matching_rows.empty:
                         item = next((item["value"] for item in value[value["key"].str.startswith(prefix)]["values"].iloc[0] if item["value"] is not None), None)
-                        logging.info(f"###ITEM#######{item} {id}")
                     if item:
                         values.append(item)         
                     # NEW FORMAT

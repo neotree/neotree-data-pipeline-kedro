@@ -723,7 +723,7 @@ def deduplicate_derived_tables(table: str):
                 WITH ranked_duplicates AS (
                     SELECT ctid,
                         ROW_NUMBER() OVER (
-                            PARTITION BY unique_key, uid
+                            PARTITION BY LEFT(unique_key,10), uid
                             ORDER BY ctid
                         ) AS rn
                     FROM derived.{table} 
