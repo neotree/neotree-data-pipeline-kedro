@@ -6,8 +6,9 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
-from conf.common.sql_functions import create_new_columns, get_date_column_names,get_table_column_names,generate_create_insert_sql
+from conf.common.sql_functions import create_new_columns, get_date_column_names,get_table_column_names,generate_create_insert_sql,generate_upsert_queries_and_create_table
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from .extract_key_values import get_key_values,format_repeatables_to_rows
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.assorted_fixes import extract_years
@@ -306,7 +307,16 @@ def tidy_tables():
             generate_create_insert_sql(adm_df,'derived','admissions')        
             #catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
-            explode_column(adm_df, adm_mcl,"")   
+            explode_column(adm_df, adm_mcl,"")  
+            ###########################REPEATABLES############################################################
+            try:
+                repeatables = format_repeatables_to_rows(adm_raw, "admissions")
+                for table_name, df in (repeatables or {}).items():
+                    if not df.empty:
+                        generate_upsert_queries_and_create_table(table_name,df)
+            except Exception as e:
+                logging.error( "!!! An error whilest formatting admissions repeatables ")   
+                logging.error(formatError(e))    
         
         ##################################DISCHARGES SCRIPT#################################################### 
         dis_df = pd.json_normalize(dis_new_entries)
@@ -370,6 +380,16 @@ def tidy_tables():
             #catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
+
+            ###########################REPEATABLES############################################################
+            try:
+                repeatables = format_repeatables_to_rows(dis_raw, "discharges")
+                for table_name, df in (repeatables or {}).items():
+                    if not df.empty:
+                        generate_upsert_queries_and_create_table(table_name,df)
+            except Exception as e:
+                logging.error( "!!! An error whilest formatting discharges repeatables ")   
+                logging.error(formatError(e)) 
             
             
         ##################################MATERNAL OUTCOMES########################################33
@@ -408,6 +428,15 @@ def tidy_tables():
             #catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
+
+            try:
+                repeatables = format_repeatables_to_rows(mat_outcomes_raw, "maternal_outcomes")
+                for table_name, df in (repeatables or {}).items():
+                    if not df.empty:
+                        generate_upsert_queries_and_create_table(table_name,df)
+            except Exception as e:
+                logging.error( "!!! An error whilest formatting maternal outcomes repeatables ")   
+                logging.error(formatError(e)) 
         
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
         if not vit_signs_df.empty:
@@ -550,6 +579,15 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('neolab','derived',column_pairs)
             generate_create_insert_sql(neolab_df,'derived','neolab') 
+
+            try:
+                repeatables = format_repeatables_to_rows(neolab_raw, "neolab")
+                for table_name, df in (repeatables or {}).items():
+                    if not df.empty:
+                        generate_upsert_queries_and_create_table(table_name,df)
+            except Exception as e:
+                logging.error( "!!! An error whilest formatting neolab repeatables ")   
+                logging.error(formatError(e)) 
             #catalog.save('create_derived_neolab',neolab_df)
             
         #########################BASELINE###############################################################    
