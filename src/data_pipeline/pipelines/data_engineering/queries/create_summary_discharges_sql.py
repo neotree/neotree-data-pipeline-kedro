@@ -23,14 +23,20 @@ def summary_discharges_query():
   return   prefix+f''' SELECT
                   "facility" AS "Facility Name",
                   "uid" AS "Neotree_ID",
-                    CASE
-                    WHEN "started_at" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                    to_timestamp("started_at", 'DD Mon,YYYY')
-                    WHEN "started_at" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                    to_timestamp("started_at", 'YYYY Mon,DD')
-                    ELSE NULL
-                    END AS "Started_at",
-                  "completed_at" AS "Completed_at",
+                   CASE
+                        WHEN "started_at" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("started_at" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "started_at" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("started_at" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        ELSE NULL
+                  END AS "Started_at",
+                   CASE
+                        WHEN "completed_at" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("completed_at" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "completed_at" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("completed_at" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        ELSE NULL
+                  END AS "Completed_at",
                   "time_spent" AS "Time Spent",
                   "DateAdmissionDC.value" AS "DateAdmissionDC",
                   "DateTimeDischarge.value" AS "DateTime of Discharge",
