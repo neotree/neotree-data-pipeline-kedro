@@ -3,56 +3,61 @@ import logging
 import requests
 import os
 from conf.common.config import config
+import os
+import json
+from collections import OrderedDict
+from pathlib import Path
+
+
+def download_file(url: str, filename: str) -> bool:
+    """Download a file from URL and save it locally."""
+    
+    try:
+        response = requests.get(url, stream=True, timeout=10)
+        response.raise_for_status()
+        
+        # Ensure directory exists
+        Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(filename, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:  # filter out keep-alive chunks
+                    f.write(chunk)
+        return True
+    
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Download failed: {type(e).__name__} - {e}")
+        return False
+
+
+def convert_json_to_dict(filename):
+    with open(filename, 'r') as file:
+        return json.load(file)
 
 def get_script(script_type):
-     
     filename = f'conf/local/scripts/{script_type}.json'
-     
+    
     if os.path.exists(filename): 
-        return convert_json_to_dict(filename)
+        script_data = convert_json_to_dict(filename)
+        # Process the data to extract unique fields with data types
+        fields_dict = OrderedDict()
+        
+        for screen in script_data.get('screens', []):
+            for field in screen.get('fields', []):
+                if 'dataType' in field and 'key' in field:
+                    # Use the key as the dictionary key to avoid duplicates
+                    fields_dict[field['key']] = {
+                        'key': field['key'],
+                        'dataType': field['dataType']
+                    }
+        
+        # Convert the ordered dictionary values to a list
+        return list(fields_dict.values())
     else:
         params = config() 
         webeditor = params['webeditor'] 
-        url = f'{webeditor}/script-labels?scriptId={script_type}'
+        url = f'{webeditor}/scripts/{script_type}/metadata'
          
         download_file(url, filename)
-
-    return None
-
-def convert_json_to_dict(filename):
-        try:
-            with open(filename, 'r') as file:
-                data = json.load(file)
-            
-            converted_data = {}
-            
-            for item in data:
-                key = item["key"]
-                del item["key"]
-                converted_data[key] = item
-            
-            return converted_data
-        except FileNotFoundError:
-            print(f">>>>>>>>>>> File '{filename}' not found.")
-            return None
-        except Exception:
-            logging.info(f'error in {filename}')
-            return None
-
-def download_file(url, filename):
-    try:
-        # Send a GET request to the URL
-        response = requests.get(url, stream=True)
-        response.raise_for_status()  # Check for HTTP errors
-
-        # Open the file in binary-write mode and write the content
-        with open(filename, 'wb') as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-
-        print(f"File downloaded successfully and saved to {filename}")
-
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-    except Exception as err:
-        print(f"An error occurred: {err}")  
+        # After downloading, process it the same way
+        return get_script(script_type)

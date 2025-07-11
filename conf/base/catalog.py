@@ -59,36 +59,7 @@ if hospital_scripts:
       processed_scripts = []
       processed_case =[]
       processed_script_names =[] 
-      # for hospital in hospital_scripts:
-      #       ids = hospital_scripts[hospital]
-      #       if 'country' in ids.keys() and 'country' in params.keys():
-      #          if str(ids['country']).lower() == str(params['country']):
-      #             for script in ids.keys():            
-      #                if script!='name' and script!='country':
-      #                   script_id = ids[script]
-      #                   if script not in processed_script_names: 
-      #                      processed_scripts.append({script:[script_id]})
-      #                      script_case = f''', CASE WHEN scriptid='{script_id}' then '{hospital}'  '''
-      #                      processed_case.append({script:script_case})
-                           
-      #                      processed_script_names.append(script)
-      #                   else:
-      #                      ### APPEND MORE IDS OF THE SAME SCRIPT NAME
-      #                      for dic in processed_scripts:
-      #                         for key in dic.keys():
-      #                            if(key==script):
-      #                               existing_list =  dic[key]
-      #                               existing_list.append(script_id)
-      #                               dic[key] = existing_list
-      #                               break
-      #                      ##### ADD TO THE CASE CONDITION
-      #                      for case in processed_case:
-      #                         for key in case.keys():
-      #                            if(key==script):
-      #                               existing_case =  case[key]
-      #                               existing_case = existing_case+ f''' WHEN scriptid ='{script_id}' THEN '{hospital}' '''
-      #                               case[key] = existing_case
-
+   
       for hospital in hospital_scripts:
       
          ids = hospital_scripts[hospital]
@@ -198,7 +169,6 @@ get_discharges_tofix = get_discharges_tofix_query()
 get_maternal_outcome_to_fix = get_maternal_data_tofix_query()
 get_admissions_data_to_fix = get_admissions_data_tofix_query()
 get_baseline_data_to_fix = get_baseline_data_tofix_query()
-get_script_ids = get_script_ids_query()
 data_with_no_unique_keys = read_data_with_no_unique_key()
 admissions_without_discharges = read_joined_admissions_without_discharges()
 discharges_not_yet_joined = read_dicharges_not_joined()
@@ -303,10 +273,6 @@ old_catalog =  {
          ),
          "baselines_to_fix": SQLQueryDataSet(
             sql= get_baseline_data_to_fix,
-            credentials=dict(con=con)
-         ),
-         "script_ids": SQLQueryDataSet(
-            sql= get_script_ids,
             credentials=dict(con=con)
          ),
          "admissions_without_discharges":SQLQueryDataSet(
