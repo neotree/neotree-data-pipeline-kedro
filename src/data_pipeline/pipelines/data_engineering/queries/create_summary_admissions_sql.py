@@ -33,7 +33,13 @@ def summary_admissions_query():
 
   return   prefix +f''' SELECT "facility" AS "Facility Name",
                     "uid" AS "NeoTree_ID",
-                    "DateTimeAdmission.value" AS "DateTime Admission",
+                     CASE
+                    WHEN "DateTimeAdmission.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                    to_timestamp("DateTimeAdmission.value", 'DD Mon,YYYY')
+                    WHEN "DateTimeAdmission.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                    to_timestamp("DateTimeAdmission.value", 'YYYY Mon,DD')
+                    ELSE NULL
+                    END AS "DateTime Admission",
                     "Readmission.label" AS "Re-admission?",
                     "Gender.label" AS "Gender",
                     "BabyCryTriage.label" AS "Baby Cry Triage",
