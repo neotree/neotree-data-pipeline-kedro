@@ -23,7 +23,13 @@ def summary_discharges_query():
   return   prefix+f''' SELECT
                   "facility" AS "Facility Name",
                   "uid" AS "Neotree_ID",
-                  "started_at" AS "Started_at",
+                    CASE
+                    WHEN "started_at" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                    to_timestamp("started_at", 'DD Mon,YYYY')
+                    WHEN "started_at" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                    to_timestamp("started_at", 'YYYY Mon,DD')
+                    ELSE NULL
+                    END AS "Started_at",
                   "completed_at" AS "Completed_at",
                   "time_spent" AS "Time Spent",
                   "DateAdmissionDC.value" AS "DateAdmissionDC",
