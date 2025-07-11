@@ -630,19 +630,17 @@ def fix_broken_dates_query(table:str):
                    
                     if label_exists:
                         label_type = get_table_column_type(table,'derived',label)[0][0]
-                        if('discharges' in table):
-                            logging.info(f"#####,{label_type},-{label}")
-
+                        
                         if 'text' in label_type:
                             if('text' in data_type):
                                 query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
-                                'YYYY-MM-DD HH24:MI') WHERE  "{label}" ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*' and ("{value}" is null
-                                OR "{value}" ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*');;'''
+                                'YYYY-MM-DD HH24:MI:00') WHERE  "{label}"::text ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*' and ("{value}" is null
+                                OR "{value}"::text ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*');;'''
                             else:
                                 if ('date' in data_type or 'timestamp' in data_type):
                                     query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
-                                    , 'DD Mon, YYYY HH24:MI') 
-                                    WHERE "{label}" ~ '^[0-9]{{1,2}} [A-Za-z]]{{3,10}}.*' and "{value}" is null;; '''
+                                    , 'DD Mon, YYYY HH24:MI:00') 
+                                    WHERE "{label}"::text ~ '^[0-9]{{1,2}} [A-Za-z]]{{3,10}}.*' and "{value}" is null;; '''
 
                             if('discharges' in table):
                                 logging.info(f"###QUERY##,{query}")
