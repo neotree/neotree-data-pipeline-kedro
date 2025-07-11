@@ -617,7 +617,6 @@ def fix_broken_dates_query(table:str):
     if (table_exists('derived',table_name=table)):
         try:
             affected_dates = get_affected_date_columns(table)
-            logging.info(f"-AFFECTED DATES-{affected_dates}")
             if affected_dates:
                 rows = [affected_dates] if isinstance(affected_dates, dict) else affected_dates
                 for row in rows:
@@ -640,10 +639,8 @@ def fix_broken_dates_query(table:str):
                                 if ('date' in data_type or 'timestamp' in data_type):
                                     query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
                                     , 'DD Mon, YYYY HH24:MI:00') 
-                                    WHERE "{label}"::text ~ '^[0-9]{{1,2}} [A-Za-z]]{{3,10}}.*' and "{value}" is null;; '''
-
-                            if('discharges' in table):
-                                logging.info(f"###QUERY##,{query}")
+                                    WHERE "{label}"::text ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*' and "{value}" is null;; '''
+                                    
                             if (len(query)>0):            
                                 inject_sql(query,f"UPDATING DATES FOR {table}")
                         
