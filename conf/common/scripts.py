@@ -1,12 +1,13 @@
+import pandas as pd
 import json
 import logging 
 import requests
 import os
 from conf.common.config import config
-import os
 import json
 from collections import OrderedDict
 from pathlib import Path
+from typing import Optional, OrderedDict as OrderedDictType,Dict
 
 
 def download_file(url: str, filename: str) -> bool:
@@ -30,34 +31,158 @@ def download_file(url: str, filename: str) -> bool:
         return False
 
 
-def convert_json_to_dict(filename):
-    with open(filename, 'r') as file:
-        return json.load(file)
+def load_processed_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
+    filename = f'conf/local/scripts/{script_type}.json'
+    if os.path.exists(filename):
+        with open(filename, 'r') as file:
+            items = json.load(file)
+            return OrderedDict(items)
+    return None
 
-def get_script(script_type):
+def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType[str, Dict[str, str]]:
+    filename = f'conf/local/scripts/{script_type}.json'
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    
+    # Process the data
+    fields_dict = OrderedDict()
+    for screen in raw_data.get('screens', []):
+        for field in screen.get('fields', []):
+            if 'dataType' in field and 'key' in field:
+                fields_dict[field['key']] = {
+                    'key': field['key'],
+                    'dataType': field['dataType']
+                }
+    with open(filename, 'w') as file:
+        json.dump(list(fields_dict.items()), file)
+    
+    return fields_dict
+
+def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
+    """Download script and return processed data."""
+    params = config()
+    url = f"{params['webeditor']}/scripts/{script_type}/metadata"
     filename = f'conf/local/scripts/{script_type}.json'
     
-    if os.path.exists(filename): 
-        script_data = convert_json_to_dict(filename)
-        # Process the data to extract unique fields with data types
-        fields_dict = OrderedDict()
+    # Download directly to the file
+    download_file(url, filename)
+    
+    # Now process the downloaded file
+    with open(filename, 'r') as file:
+        raw_data = json.load(file)
+    
+    return process_and_save_script(script_type, raw_data)
+
+def get_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
+
+    processed_data = load_processed_script(script_type)
+    if processed_data is not None:
+        return processed_data
+  
+    return download_script(script_type)
+
+def merge_script_data(
+    existing_data: Optional[OrderedDictType[str, Dict[str, str]]], 
+    new_data: OrderedDictType[str, Dict[str, str]]
+) -> OrderedDictType[str, Dict[str, str]]:
+    """
+    Merge script data with priority to existing data.
+    
+    Args:
+        existing_data: Output from previous merge (None if first run)
+        new_data: Output from get_script() (contains fresh data)
         
-        for screen in script_data.get('screens', []):
-            for field in screen.get('fields', []):
-                if 'dataType' in field and 'key' in field:
-                    # Use the key as the dictionary key to avoid duplicates
-                    fields_dict[field['key']] = {
-                        'key': field['key'],
-                        'dataType': field['dataType']
-                    }
+    Returns:
+        Merged OrderedDict with existing data taking precedence
+    """
+    if existing_data is None:
+        return new_data
+    
+    # Create merged result (existing_data has priority)
+    merged = OrderedDict(existing_data)
+    for key, value in new_data.items():
+        if key not in merged:
+            merged[key] = value
+    
+    return merged
+
+def merge_two_script_outputs(
+    output1: OrderedDictType[str, Dict[str, str]],
+    output2: OrderedDictType[str, Dict[str, str]]
+) -> OrderedDictType[str, Dict[str, str]]:
+    """
+    Merge two merge_script_data outputs into one.
+    Priority is given to output1's values when keys conflict.
+    
+    Args:
+        output1: First merged script data (has priority)
+        output2: Second merged script data
         
-        # Convert the ordered dictionary values to a list
-        return list(fields_dict.values())
-    else:
-        params = config() 
-        webeditor = params['webeditor'] 
-        url = f'{webeditor}/scripts/{script_type}/metadata'
-         
-        download_file(url, filename)
-        # After downloading, process it the same way
-        return get_script(script_type)
+    Returns:
+        Combined OrderedDict with output1's values taking precedence
+    """
+    merged = OrderedDict(output1)
+    for key, value in output2.items():
+        if key not in merged:
+            merged[key] = value
+    return merged
+
+
+def process_dataframe_with_types(
+    df: pd.DataFrame, 
+    merged_data: Dict[str, Dict[str, str]]
+) -> pd.DataFrame:
+    """
+    Process dataframe columns with special handling for .value/.label columns,
+    while preserving original columns exactly as they are (just lowercasing names).
+    
+    Args:
+        df: Input dataframe with potential .value/.label columns
+        merged_data: Dictionary with type information {key: {'dataType': type}}
+        
+    Returns:
+        Processed dataframe with formatted columns and values
+    """
+    processed_df = df.copy()
+    columns_to_process = {}
+    columns_to_drop = set()
+    
+    # Only process columns containing dots (.)
+    for col in processed_df.columns:
+        if '.' in col:
+            base_key, suffix = col.split('.', 1)
+            if base_key in merged_data:
+                data_type = merged_data[base_key].get('dataType', '').lower()
+                
+                if suffix == 'value':
+                    new_key = base_key.lower()
+                    if data_type in ['dropdown', 'single_select_option', 'multi_select_option', 'period']:
+                        columns_to_process[new_key] = processed_df[col].astype(str)
+                    elif data_type == 'boolean':
+                        bool_map = {'y': True, 'yes': True, 'true': True, True: True,
+                                  'n': False, 'no': False, 'false': False, False: False}
+                        columns_to_process[new_key] = (
+                            processed_df[col].astype(str).str.lower().map(bool_map).fillna(False)
+                        )
+                    elif data_type in ['number', 'integer', 'float']:
+                        columns_to_process[new_key] = pd.to_numeric(processed_df[col], errors='coerce')
+                    elif data_type in ['datetime', 'timestamp', 'date']:
+                        columns_to_process[new_key] = pd.to_datetime(processed_df[col], errors='coerce')
+                    else:
+                        columns_to_process[new_key] = processed_df[col].astype(str)
+                    columns_to_drop.add(col)
+                    
+                elif suffix == 'label':
+                    if data_type in ['dropdown', 'single_select_option', 'multi_select_option']:
+                        new_key = f"{base_key.lower()}_label"
+                        columns_to_process[new_key] = processed_df[col]
+                    columns_to_drop.add(col)
+    
+    # For regular columns (no dots), keep exactly as they are (just lowercase names)
+    for col in processed_df.columns:
+        if '.' not in col and col not in columns_to_drop:
+            columns_to_process[col.lower()] = processed_df[col]
+    
+    # Create new dataframe with processed columns
+    result_df = pd.DataFrame(columns_to_process)
+    
+    return result_df

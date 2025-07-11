@@ -24,32 +24,32 @@ def summary_discharges_query():
                   "facility" AS "Facility Name",
                   "uid" AS "Neotree_ID",
                    CASE
-                        WHEN "started_at" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                        to_timestamp("started_at" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
-                        WHEN "started_at" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("started_at" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        WHEN "started_at"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("started_at"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "started_at"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("started_at"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "Started_at",
                    CASE
-                        WHEN "completed_at" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                        to_timestamp("completed_at" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
-                        WHEN "completed_at" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("completed_at" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        WHEN "completed_at"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("completed_at"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "completed_at"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("completed_at"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "Completed_at",
                   "time_spent" AS "Time Spent",
                   CASE
-                        WHEN "DateAdmissionDC.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                        to_timestamp("DateAdmissionDC.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
-                        WHEN "DateAdmissionDC.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("DateAdmissionDC.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        WHEN "DateAdmissionDC.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateAdmissionDC.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateAdmissionDC.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateAdmissionDC.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "DateAdmissionDC",
                    CASE
-                        WHEN "DateTimeDischarge.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                        to_timestamp("DateTimeDischarge.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
-                        WHEN "DateTimeDischarge.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("DateTimeDischarge.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        WHEN "DateTimeDischarge.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateTimeDischarge.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateTimeDischarge.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateTimeDischarge.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "DateTime of Discharge",
                   "NeoTreeOutcome.label" AS "Outcome",
@@ -60,10 +60,10 @@ def summary_discharges_query():
                   "NVPgiven.value" AS "NVP given?",
                   "ModeDeliveryDC.label" AS "Mode of Delivery DC",
                    CASE
-                        WHEN "DateDischVitals.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                        to_timestamp("DateDischVitals.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
-                        WHEN "DateDischVitals.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("DateDischVitals.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        WHEN "DateDischVitals.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateDischVitals.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateDischVitals.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateDischVitals.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "Date Discharge Vitals taken",
                   "BWDC.value" AS "Birth Weight (g) DC",
@@ -74,10 +74,10 @@ def summary_discharges_query():
                   "DischRR.value" AS "Discharge Respiratory Rate",
                   "DischWeight.value" AS "Discharge Weight (g)",
                      CASE
-                        WHEN "DateDischWeight.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                        to_timestamp("DateDischWeight.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
-                        WHEN "DateDischWeight.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("DateDischWeight.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        WHEN "DateDischWeight.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateDischWeight.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateDischWeight.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateDischWeight.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "Date of Discharge Weight",
                   "DIAGDIS1.label" AS "Discharge Primary Diagnosis",
@@ -86,10 +86,10 @@ def summary_discharges_query():
                   "FeedsAdm.label" AS "Feeds during admission",
                   "RESPSUP.label" AS "Respiratory Support",
                   CASE
-                        WHEN "DateWeaned.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
-                        to_timestamp("DateWeaned.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
-                        WHEN "DateWeaned.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("DateWeaned.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        WHEN "DateWeaned.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateWeaned.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateWeaned.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateWeaned.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "Date Weaned off the support",
                   "PHOTOTHERAPY.label" AS "Phototherapy given during admission?",

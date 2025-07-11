@@ -13,6 +13,7 @@ create_summary_tables_node,
 create_summary_baseline_node,
 import_raw_json_files_node,
 create_summary_discharge_diagnosis_node,
+clean_derived_data_node
 )
 
 # The Pipeline Connecting All The Nodes For The Data Pipeline
@@ -31,6 +32,7 @@ def create_pipeline(**kwargs):
         create_summary_discharge_diagnosis_node,
         create_summary_baseline_node,
         create_summary_counts_node,
-        grant_privileges_node
+        grant_privileges_node,
+        clean_derived_data_node
         ]
     )
