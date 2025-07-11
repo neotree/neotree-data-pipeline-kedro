@@ -38,8 +38,20 @@ def summary_discharges_query():
                         ELSE NULL
                   END AS "Completed_at",
                   "time_spent" AS "Time Spent",
-                  "DateAdmissionDC.value" AS "DateAdmissionDC",
-                  "DateTimeDischarge.value" AS "DateTime of Discharge",
+                  CASE
+                        WHEN "DateAdmissionDC.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateAdmissionDC.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateAdmissionDC.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateAdmissionDC.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        ELSE NULL
+                  END AS "DateAdmissionDC",
+                   CASE
+                        WHEN "DateTimeDischarge.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateTimeDischarge.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateTimeDischarge.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateTimeDischarge.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        ELSE NULL
+                  END AS "DateTime of Discharge",
                   "NeoTreeOutcome.label" AS "Outcome",
                   "Apgar1DC.value" AS "Apgar score at 1min DC",
                   "Apgar5DC.value" AS "Apgar score at 5mins DC",
@@ -47,7 +59,13 @@ def summary_discharges_query():
                   "HIVtestResultDC.label" AS "HIV test Result DC",
                   "NVPgiven.value" AS "NVP given?",
                   "ModeDeliveryDC.label" AS "Mode of Delivery DC",
-                  "DateDischVitals.value" AS "Date Discharge Vitals taken",
+                   CASE
+                        WHEN "DateDischVitals.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateDischVitals.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateDischVitals.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateDischVitals.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        ELSE NULL
+                  END AS "Date Discharge Vitals taken",
                   "BWDC.value" AS "Birth Weight (g) DC",
                   "GestationDC.value" AS "Gestation DC",
                   "DischHR.value" AS "Discharge Heart Rate",
@@ -55,13 +73,25 @@ def summary_discharges_query():
                   "DischTemp.value" AS "Discharge Temperature",
                   "DischRR.value" AS "Discharge Respiratory Rate",
                   "DischWeight.value" AS "Discharge Weight (g)",
-                  "DateDischWeight.value" AS "Date of Discharge Weight",
+                     CASE
+                        WHEN "DateDischWeight.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateDischWeight.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateDischWeight.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateDischWeight.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        ELSE NULL
+                  END AS "Date of Discharge Weight",
                   "DIAGDIS1.label" AS "Discharge Primary Diagnosis",
                   "DIAGDIS1OTH.value" AS "Other discharge diagnosis",
                   "ThermCare.label" AS "Thermoregulation during admission",
                   "FeedsAdm.label" AS "Feeds during admission",
                   "RESPSUP.label" AS "Respiratory Support",
-                  "DateWeaned.value" AS "Date Weaned off the support",
+                  CASE
+                        WHEN "DateWeaned.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                        to_timestamp("DateWeaned.value" || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
+                        WHEN "DateWeaned.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                        to_timestamp("DateWeaned.value" || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        ELSE NULL
+                  END AS "Date Weaned off the support",
                   "PHOTOTHERAPY.label" AS "Phototherapy given during admission?",
                   "MedsGiven.label" AS "Medications Given",
                   "MEDOTH.label" AS "Other medications given",
