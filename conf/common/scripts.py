@@ -73,7 +73,7 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     return process_and_save_script(script_type, raw_data)
 
 def get_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
-
+    logging.info(f"##....ERE...{script_type}")
     processed_data = load_processed_script(script_type)
     if processed_data is not None:
         return processed_data
@@ -184,5 +184,5 @@ def process_dataframe_with_types(
     
     # Create new dataframe with processed columns
     result_df = pd.DataFrame(columns_to_process)
-    
+
     return result_df

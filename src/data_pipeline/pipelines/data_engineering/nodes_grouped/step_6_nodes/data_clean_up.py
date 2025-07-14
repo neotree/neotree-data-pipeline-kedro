@@ -33,6 +33,7 @@ def clean_data_for_research(create_summary_counts_output):
                                 if not script_id:
                                     continue
                                 else:
+                                    logging.info(f"##....IFF...{script_id}")
                                     script_json = get_script(script_id)
                                     if(script_json is not None):
                                         merged_admissions=merge_script_data(merged_admissions,script_json)
@@ -67,8 +68,8 @@ def clean_data_for_research(create_summary_counts_output):
 
     except Exception as e:
         logging.error(
-            "!!! An error occured Granting Priviledges: ")
-        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Granting Privileges".format(cron_time,env))
+            "!!! An error occured Cleaning Derived Data: ")
+        cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Data Cleaning for Reasearch".format(cron_time,env))
         cron_log.close()
         logging.error(formatError(e))
         sys.exit(1)
