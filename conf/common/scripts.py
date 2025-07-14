@@ -10,26 +10,54 @@ from pathlib import Path
 from typing import Optional, OrderedDict as OrderedDictType,Dict
 
 
-def download_file(url: str, filename: str) -> bool:
-    """Download a file from URL and save it locally."""
+# def download_file(url: str, filename: str) -> bool:
+#     """Download a file from URL and save it locally."""
     
-    try:
-        response = requests.get(url, stream=True, timeout=10)
-        response.raise_for_status()
+#     try:
+#         response = requests.get(url, stream=True, timeout=10)
+#         response.raise_for_status()
         
+#         # Ensure directory exists
+#         Path(filename).parent.mkdir(parents=True, exist_ok=True)
+        
+#         with open(filename, 'wb') as f:
+#             for chunk in response.iter_content(chunk_size=8192):
+#                 if chunk:  # filter out keep-alive chunks
+#                     f.write(chunk)
+#         return True
+    
+#     except requests.exceptions.RequestException as e:
+#         logging.error(f"Download failed: {type(e).__name__} - {e}")
+#         return False
+    
+def download_file(url: str, filename: str) -> bool:
+    """Download a JSON response and save it properly (not raw HTML)."""
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()  # Raises HTTP errors (4xx/5xx)
+
+        # Check if response is JSON (optional but recommended)
+        content_type = response.headers.get('Content-Type', '')
+        if 'application/json' not in content_type:
+            logging.warning(f"Unexpected Content-Type: {content_type}. May not be JSON!")
+
+        # Parse JSON (fails if invalid JSON)
+        json_data = response.json()
+
         # Ensure directory exists
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(filename, 'wb') as f:
-            logging.info(f"####--RESP----{response}")
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:  # filter out keep-alive chunks
-                    f.write(chunk)
+
+        # Save pretty-printed JSON to file
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+
         return True
-    
+
     except requests.exceptions.RequestException as e:
-        logging.error(f"Download failed: {type(e).__name__} - {e}")
-        return False
+        logging.error(f"Request failed: {type(e).__name__} - {e}")
+    except json.JSONDecodeError as e:
+        logging.error(f"Invalid JSON: {e} (Is the server returning HTML instead?)")
+    return False
 
 
 def load_processed_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
