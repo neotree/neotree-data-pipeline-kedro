@@ -39,6 +39,16 @@ def load_processed_script(script_type: str) -> OrderedDictType[str, Dict[str, st
             return OrderedDict(items)
     return None
 
+import os
+import json
+from collections import OrderedDict
+from typing import Dict, OrderedDict as OrderedDictType
+import logging
+
+# Set up basic logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType[str, Dict[str, str]]:
     filename = f'conf/local/scripts/{script_type}.json'
     os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -51,9 +61,25 @@ def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType
                 fields_dict[field['key']] = {
                     'key': field['key'],
                     'dataType': field['dataType']
-                }
-    with open(filename, 'w') as file:
-        json.dump(list(fields_dict.items()), file)
+                } 
+    # Convert to JSON and validate before saving
+    try:
+        json_data = list(fields_dict.items())
+        # Validate by serializing and deserializing
+        json_string = json.dumps(json_data)
+        json.loads(json_string)  # This will raise ValueError if invalid
+        
+        # Save to file
+        with open(filename, 'w') as file:
+            file.write(json_string)
+        logger.info(f"Successfully saved script data to {filename}")
+        
+    except ValueError as e:
+        logger.error(f"Invalid JSON data generated for {script_type}: {str(e)}")
+        logger.error("Skipping file save due to invalid JSON data")
+    except Exception as e:
+        logger.error(f"Unexpected error while processing {script_type}: {str(e)}")
+        logger.error("Skipping file save due to unexpected error")
     
     return fields_dict
 
@@ -62,7 +88,6 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     params = config()
     url = f"{params['webeditor']}/scripts/{script_type}/metadata"
     filename = f'conf/local/scripts/{script_type}.json'
-    logging.info(f"...URL....{url}")
 
     # Download directly to the file
     download_file(url, filename)
