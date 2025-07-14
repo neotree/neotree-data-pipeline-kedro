@@ -88,7 +88,7 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     params = config()
     url = f"{params['webeditor']}/scripts/{script_type}/metadata"
     filename = f'conf/local/scripts/{script_type}.json'
-
+    logging.info(f"MY URL=={url}")
     # Download directly to the file
     download_file(url, filename)
     
