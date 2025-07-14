@@ -21,6 +21,7 @@ def download_file(url: str, filename: str) -> bool:
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
         
         with open(filename, 'wb') as f:
+            logging.info(f"####--RESP----{response}")
             for chunk in response.iter_content(chunk_size=8192):
                 if chunk:  # filter out keep-alive chunks
                     f.write(chunk)
