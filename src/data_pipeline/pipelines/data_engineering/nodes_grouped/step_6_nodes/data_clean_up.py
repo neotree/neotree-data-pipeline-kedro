@@ -4,7 +4,7 @@ sys.path.append(os.getcwd())
 from conf.common.scripts import get_script,merge_script_data,merge_two_script_outputs,process_dataframe_with_types
 from conf.common.hospital_config import hospital_conf
 from conf.common.format_error import formatError
-from conf.common.sql_functions import run_query_and_return_df
+from conf.common.sql_functions import run_query_and_return_df,generate_create_insert_sql
 from conf.base.catalog import cron_log_file,cron_time,start,env
 from data_pipeline.pipelines.data_engineering.queries.grant_usage_on_tables_sql import grant_usage_query 
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (read_derived_data_query)
@@ -53,6 +53,7 @@ def clean_data_for_research(create_summary_counts_output):
                     joined_admission_discharges = run_query_and_return_df(read_derived_data_query('joined_admissions_discharges','clean_joined_adm_discharges'))
                     cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
                     if(cleaned_df is not None and not cleaned_df.empty):
+                        generate_create_insert_sql(cleaned_df,'derived','clean_joined_adm_discharges')
                         logging.info(f"################GENERATED DF ==={cleaned_df.head()}")
          
             return dict(

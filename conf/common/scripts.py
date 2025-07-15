@@ -42,9 +42,6 @@ def download_file(url: str, filename: str, api_key: str) -> bool:
         response.raise_for_status() # Raises HTTP errors (4xx/5xx)
         json_data = response.json()
 
-        if('-ZO1TK4zMvLhxTw6eKia' in filename): 
-            logging.info(f"MY DOWNLOAD URL===={json_data}")
-
         # Ensure directory exists
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
 
@@ -204,6 +201,7 @@ def process_dataframe_with_types(
         if '.' in col:
             base_key, suffix = col.split('.', 1)
             if base_key in merged_data:
+                logging.info(f"MWEPU::::{base_key} == {merged_data[base_key]}")
                 data_type = merged_data[base_key].get('dataType', '').lower()
                 
                 if suffix == 'value':
