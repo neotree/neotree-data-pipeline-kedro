@@ -36,9 +36,10 @@ def download_file(url: str, filename: str) -> bool:
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raises HTTP errors (4xx/5xx)
-        if('-ZO1TK4zMvLhxTw6eKia' in filename): 
-            logging.info(f"MY DOWNLOAD URL===={response}")
         json_data = response.json()
+
+        if('-ZO1TK4zMvLhxTw6eKia' in filename): 
+            logging.info(f"MY DOWNLOAD URL===={json_data}")
 
         # Ensure directory exists
         Path(filename).parent.mkdir(parents=True, exist_ok=True)
@@ -73,13 +74,17 @@ def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType
     
     # Process the data
     fields_dict = OrderedDict()
-    for screen in raw_data.get('screens', []):
-        for field in screen.get('fields', []):
-            if 'dataType' in field and 'key' in field:
-                fields_dict[field['key']] = {
-                    'key': field['key'],
-                    'dataType': field['dataType']
-                } 
+    if raw_data.get('data'):
+        for entry in raw_data['data']:
+            screens = entry.get('screens') or []
+            for screen in screens:
+                fields = screen.get('fields') or []
+                for field in fields:
+                    if isinstance(field, dict) and 'dataType' in field and 'key' in field:
+                        fields_dict[field['key']] = {
+                            'key': field['key'],
+                            'dataType': field['dataType']
+                        }
     # Convert to JSON and validate before saving
     try:
         json_data = list(fields_dict.items())
