@@ -32,6 +32,7 @@ from typing import Optional, OrderedDict as OrderedDictType,Dict
     
 def download_file(url: str, filename: str) -> bool:
     """Download a JSON response and save it properly (not raw HTML)."""
+    logging.info(f"MY DOWNLOAD URL===={url}")
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raises HTTP errors (4xx/5xx)
