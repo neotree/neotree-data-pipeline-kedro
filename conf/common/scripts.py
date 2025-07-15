@@ -182,58 +182,56 @@ def process_dataframe_with_types(
     merged_data: Dict[str, Dict[str, str]]
 ) -> pd.DataFrame:
     """
-    Process dataframe columns with special handling for .value/.label columns,
-    while preserving original columns exactly as they are (just lowercasing names).
+    Process dataframe columns using metadata from merged_data.
+    Handles .value and .label suffixes and preserves base columns (no dot).
     
     Args:
-        df: Input dataframe with potential .value/.label columns
-        merged_data: Dictionary with type information {key: {'dataType': type}}
+        df: Input dataframe
+        merged_data: Dictionary {key: {'dataType': type}}
         
     Returns:
-        Processed dataframe with formatted columns and values
+        Processed dataframe with renamed and type-coerced columns
     """
     processed_df = df.copy()
     columns_to_process = {}
     columns_to_drop = set()
-    
-    # Only process columns containing dots (.)
+
     for col in processed_df.columns:
         if '.' in col:
             base_key, suffix = col.split('.', 1)
-            if base_key in merged_data:
-                logging.info(f"MWEPU::::{base_key} == {merged_data[base_key]}")
-                data_type = merged_data[base_key].get('dataType', '').lower()
-                
-                if suffix == 'value':
-                    new_key = base_key.lower()
-                    if data_type in ['dropdown', 'single_select_option', 'multi_select_option', 'period']:
-                        columns_to_process[new_key] = processed_df[col].astype(str)
-                    elif data_type == 'boolean':
-                        bool_map = {'y': True, 'yes': True, 'true': True, True: True,
-                                  'n': False, 'no': False, 'false': False, False: False}
-                        columns_to_process[new_key] = (
-                            processed_df[col].astype(str).str.lower().map(bool_map).fillna(False)
-                        )
-                    elif data_type in ['number', 'integer', 'float']:
-                        columns_to_process[new_key] = pd.to_numeric(processed_df[col], errors='coerce')
-                    elif data_type in ['datetime', 'timestamp', 'date']:
-                        columns_to_process[new_key] = pd.to_datetime(processed_df[col], errors='coerce')
-                    else:
-                        columns_to_process[new_key] = processed_df[col].astype(str)
-                    columns_to_drop.add(col)
-                    
-                elif suffix == 'label':
-                    if data_type in ['dropdown', 'single_select_option', 'multi_select_option']:
-                        new_key = f"{base_key.lower()}_label"
-                        columns_to_process[new_key] = processed_df[col]
-                    columns_to_drop.add(col)
-    
-    # For regular columns (no dots), keep exactly as they are (just lowercase names)
-    for col in processed_df.columns:
-        if '.' not in col and col not in columns_to_drop:
-            columns_to_process[col.lower()] = processed_df[col]
-    
-    # Create new dataframe with processed columns
-    result_df = pd.DataFrame(columns_to_process)
+            meta = merged_data.get(base_key)
+            if not meta:
+                continue  # skip if key not in metadata
 
-    return result_df
+            data_type = meta.get('dataType', '').lower()
+            new_key = base_key.lower()
+
+            if suffix == 'value':
+                if data_type in ['dropdown', 'single_select_option', 'multi_select_option', 'period']:
+                    columns_to_process[new_key] = processed_df[col].astype(str)
+                elif data_type == 'boolean':
+                    bool_map = {
+                        'y': True, 'yes': True, 'true': True, '1': True, True: True,
+                        'n': False, 'no': False, 'false': False, '0': False, False: False
+                    }
+                    columns_to_process[new_key] = (
+                        processed_df[col].astype(str).str.strip().str.lower().map(bool_map).fillna(False)
+                    )
+                elif data_type in ['number', 'integer', 'float']:
+                    columns_to_process[new_key] = pd.to_numeric(processed_df[col], errors='coerce')
+                elif data_type in ['datetime', 'timestamp', 'date']:
+                    columns_to_process[new_key] = pd.to_datetime(processed_df[col], errors='coerce')
+                else:
+                    columns_to_process[new_key] = processed_df[col].astype(str)
+                columns_to_drop.add(col)
+
+            elif suffix == 'label' and data_type in ['dropdown', 'single_select_option', 'multi_select_option']:
+                label_key = f"{new_key}_label"
+                columns_to_process[label_key] = processed_df[col].astype(str)
+                columns_to_drop.add(col)
+        else:
+            # If it's a base column and not marked for drop, include it
+            if col not in columns_to_drop:
+                columns_to_process[col.lower()] = processed_df[col]
+
+    return pd.DataFrame(columns_to_process)
