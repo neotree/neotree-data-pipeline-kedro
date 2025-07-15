@@ -33,7 +33,6 @@ def clean_data_for_research(create_summary_counts_output):
                                 if not script_id:
                                     continue
                                 else:
-                                    logging.info(f"##....IFF...{script_id}")
                                     script_json = get_script(script_id)
                                     if(script_json is not None):
                                         merged_admissions=merge_script_data(merged_admissions,script_json)

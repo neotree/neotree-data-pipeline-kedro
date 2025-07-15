@@ -120,9 +120,6 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     return process_and_save_script(script_type, raw_data)
 
 def get_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
-    processed_data = load_processed_script(script_type)
-    if processed_data is not None:
-        return processed_data
   
     return download_script(script_type)
 
