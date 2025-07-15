@@ -104,13 +104,12 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     """Download script and return processed data."""
     params = config()
     data = {
-    'scriptIds': [script_type.strip('"')],
+    'scriptsIds': [script_type.strip('"')],
     'returnDraftsIfExist': True
    }
     
     url = f"{params['webeditor']}/api/scripts/metadata?data={json.dumps(data)}"
     filename = f'conf/local/scripts/{script_type}.json'
-    logging.info(f"MY URL=={url}")
     # Download directly to the file
     download_file(url, filename)
     
