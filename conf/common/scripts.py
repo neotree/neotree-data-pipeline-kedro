@@ -196,14 +196,15 @@ def process_dataframe_with_types(
     columns_to_process = {}
     columns_to_drop = set()
 
-    for col in processed_df.columns:
+    for idx, col in enumerate(processed_df.columns):
         if '.' in col:
             base_key, suffix = col.split('.', 1)
             meta = merged_data.get(base_key)
             if not meta:
                 continue  # skip if key not in metadata
-
-            data_type = meta.get('dataType', '').lower()
+            if(idx<50):
+                logging.info(f"MY META=== {meta}")
+            data_type = (meta.get('dataType') or '').lower()
             new_key = base_key.lower()
 
             if suffix == 'value':
