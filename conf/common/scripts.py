@@ -36,7 +36,8 @@ def download_file(url: str, filename: str) -> bool:
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raises HTTP errors (4xx/5xx)
-        
+        if('-ZO1TK4zMvLhxTw6eKia' in filename): 
+            logging.info(f"MY DOWNLOAD URL===={response}")
         json_data = response.json()
 
         # Ensure directory exists
