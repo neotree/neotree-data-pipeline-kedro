@@ -30,12 +30,16 @@ from typing import Optional, OrderedDict as OrderedDictType,Dict
 #         logging.error(f"Download failed: {type(e).__name__} - {e}")
 #         return False
     
-def download_file(url: str, filename: str) -> bool:
+def download_file(url: str, filename: str, api_key: str) -> bool:
     """Download a JSON response and save it properly (not raw HTML)."""
-    logging.info(f"MY DOWNLOAD URL===={url}")
+    headers = {
+        'x-api-key': api_key,
+        'Accept': 'application/json'
+    }
+
     try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()  # Raises HTTP errors (4xx/5xx)
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status() # Raises HTTP errors (4xx/5xx)
         json_data = response.json()
 
         if('-ZO1TK4zMvLhxTw6eKia' in filename): 
@@ -113,11 +117,11 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     'scriptsIds': [script_type.strip('"')],
     'returnDraftsIfExist': True
    }
-    
+    api_key = params['webeditor_api_key']
     url = f"{params['webeditor']}/api/scripts/metadata?data={json.dumps(data)}"
     filename = f'conf/local/scripts/{script_type}.json'
     # Download directly to the file
-    download_file(url, filename)
+    download_file(url, filename,api_key)
     
     # Now process the downloaded file
     with open(filename, 'r') as file:
