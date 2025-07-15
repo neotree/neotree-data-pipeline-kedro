@@ -35,13 +35,7 @@ def download_file(url: str, filename: str) -> bool:
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()  # Raises HTTP errors (4xx/5xx)
-
-        # Check if response is JSON (optional but recommended)
-        content_type = response.headers.get('Content-Type', '')
-        if 'application/json' not in content_type:
-            logging.warning(f"Unexpected Content-Type: {content_type}. May not be JSON!")
-
-        # Parse JSON (fails if invalid JSON)
+        
         json_data = response.json()
 
         # Ensure directory exists
@@ -115,7 +109,8 @@ def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType
 def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     """Download script and return processed data."""
     params = config()
-    url = f"{params['webeditor']}/scripts/{script_type}/metadata"
+    returnDraft = True
+    url = f"{params['webeditor']}/scripts/metadata?data={{'scriptIds':{[script_type]},'returnDraftsIfExist':{True}}}"
     filename = f'conf/local/scripts/{script_type}.json'
     logging.info(f"MY URL=={url}")
     # Download directly to the file
