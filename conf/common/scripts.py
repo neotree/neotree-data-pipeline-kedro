@@ -61,13 +61,6 @@ def load_processed_script(script_type: str) -> OrderedDictType[str, Dict[str, st
             items = json.load(file)
             return OrderedDict(items)
     return None
-
-import os
-import json
-from collections import OrderedDict
-from typing import Dict, OrderedDict as OrderedDictType
-import logging
-
 # Set up basic logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -116,7 +109,7 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     
     url = f"{params['webeditor']}/api/scripts/metadata?data={json.dumps(data)}"
     filename = f'conf/local/scripts/{script_type}.json'
-    logging.info(f"MY URL=={script_type}")
+    logging.info(f"MY URL=={url}")
     # Download directly to the file
     download_file(url, filename)
     
