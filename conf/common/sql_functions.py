@@ -73,9 +73,6 @@ def inject_sql(sql_script, file_name):
                     continue
                 cur.execute(command)
                 conn.commit()
-                if('clean_joined_adm_discharges' in file_name and 'INSERTING' not in file_name):
-                    logging.info(f"...QQ=={command.strip()}")
-
             except Exception as e:
                 logging.error(f"Error executing command in {file_name}")
                 logging.error(f"Error type: {type(e)}")
