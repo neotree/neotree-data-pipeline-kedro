@@ -91,8 +91,6 @@ def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType
                                 'key': key,
                                 'dataType': data_type
                             }
-    for k, v in fields_dict.items():
-        logging.info(f"KEY={k}=>VALUE=>{v}")
     # Convert to JSON and validate before saving
     try:
         json_data = list(fields_dict.items())

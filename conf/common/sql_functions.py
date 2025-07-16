@@ -68,7 +68,7 @@ def inject_sql(sql_script, file_name):
         cur = conn.cursor()
         sql_commands = str(sql_script).split(';;')
         for command in sql_commands:
-            if('clean_joined_adm_discharges' in file_name):
+            if('clean_joined_adm_discharges' in file_name and 'INSERTING' not in file_name):
                 logging.info(f"...QQ=={command.strip()}")
             try:
                 if not command.strip():  # skip empty commands
