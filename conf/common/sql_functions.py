@@ -68,15 +68,14 @@ def inject_sql(sql_script, file_name):
         cur = conn.cursor()
         sql_commands = str(sql_script).split(';;')
         for command in sql_commands:
-            if('clean_joined_adm_discharges' in file_name and 'INSERTING' not in file_name):
-                logging.info(f"...QQ=={command.strip()}")
             try:
                 if not command.strip():  # skip empty commands
                     continue
                 cur.execute(command)
                 conn.commit()
-                if('clean_joined_adm_discharges' in file_name):
-                    logging.info(f"..SUCCESSFULLY CREATED .clean_joined_adm_discharges...")
+                if('clean_joined_adm_discharges' in file_name and 'INSERTING' not in file_name):
+                    logging.info(f"...QQ=={command.strip()}")
+
             except Exception as e:
                 logging.error(f"Error executing command in {file_name}")
                 logging.error(f"Error type: {type(e)}")
@@ -524,7 +523,7 @@ def generate_create_insert_sql(df,schema, table_name):
                 pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
                 create_cols.append(f'"{col}" {pg_type}')
 
-            create_stmt = f'CREATE TABLE IF NOT EXISTS "{schema}.{table_name}" ({",".join(create_cols)});;'
+            create_stmt = f'CREATE TABLE IF NOT EXISTS {schema}.{table_name} ({",".join(create_cols)});;'
             inject_sql(create_stmt,f"CREATING {table_name}")
             
         generate_postgres_insert(df,schema,table_name)
