@@ -77,15 +77,22 @@ def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType
     fields_dict = OrderedDict()
     if raw_data.get('data'):
         for entry in raw_data['data']:
-            screens = entry.get('screens') or []
+            screens = entry.get('screens', [])
             for screen in screens:
-                fields = screen.get('fields') or []
+                fields = screen.get('fields', [])
                 for field in fields:
-                    if isinstance(field, dict) and 'dataType' in field and 'key' in field:
-                        fields_dict[field['key']] = {
-                            'key': field['key'],
-                            'dataType': field['dataType']
-                        }
+                    # Ensure it's a dict and has necessary keys
+                    if isinstance(field, dict) and 'key' in field and 'dataType' in field:
+                        key = field['key']
+                        data_type = field['dataType']
+                        # Only add the key if it's not already in the dict
+                        if key not in fields_dict:
+                            fields_dict[key] = {
+                                'key': key,
+                                'dataType': data_type
+                            }
+    for k, v in fields_dict.items():
+        logging.info(f"KEY={k}=>VALUE=>{v}")
     # Convert to JSON and validate before saving
     try:
         json_data = list(fields_dict.items())
