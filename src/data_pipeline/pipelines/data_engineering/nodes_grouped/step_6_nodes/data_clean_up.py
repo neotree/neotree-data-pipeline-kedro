@@ -54,7 +54,6 @@ def clean_data_for_research(create_summary_counts_output):
                     cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
                     if(cleaned_df is not None and not cleaned_df.empty):
                         generate_create_insert_sql(cleaned_df,'derived','clean_joined_adm_discharges')
-                        logging.info(f"################GENERATED DF ==={cleaned_df.head()}")
          
             return dict(
             status='Success',

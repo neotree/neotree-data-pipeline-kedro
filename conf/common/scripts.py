@@ -202,8 +202,6 @@ def process_dataframe_with_types(
             meta = merged_data.get(base_key)
             if not meta:
                 continue  # skip if key not in metadata
-            if(idx<50):
-                logging.info(f"MY META=== {meta}")
             data_type = (meta.get('dataType') or '').lower()
             new_key = base_key.lower()
 
