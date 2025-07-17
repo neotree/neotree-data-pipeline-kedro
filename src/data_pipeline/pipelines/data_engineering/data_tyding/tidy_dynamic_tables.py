@@ -70,7 +70,6 @@ def tidy_dynamic_tables():
                         if not script_df.empty:
                             ##### REMOVE INVALID CHARACTERS FROM DATAFRAMES 
                             script_df.columns = script_df.columns.str.replace(r"[()-]", "_",regex=True)
-                            catalog_save_name = f'''create_derived_{script}'''
                             if table_exists('derived',script):
                                 cols = pd.DataFrame(get_table_column_names(f'{script}', 'derived'), columns=["column_name"])
                                 new_columns = set(script_df.columns) - set(cols.columns) 
@@ -81,7 +80,6 @@ def tidy_dynamic_tables():
                                         create_new_columns(f'{script}','derived',column_pairs)
                             script_df=convert_false_numbers_to_text(script_df,'derived',script); 
                             generate_create_insert_sql(script_df,'derived',script)
-                            #catalog.save(catalog_save_name,script_df)
                             logging.info("... Creating MCL count tables for Generic Scripts")
                             explode_column(script_df,script_mcl,script+'_') 
                         

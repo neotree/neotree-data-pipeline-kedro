@@ -14,7 +14,27 @@ from data_pipeline.pipelines.data_engineering.queries.data_fix import (update_ag
                                                                        update_hive_result,
                                                                        fix_broken_dates_combined,
                                                                        update_gender,
-                                                                       deduplicate_combined
+                                                                       deduplicate_combined,
+                                                                       update_puurine,
+                                                                       update_haart,
+                                                                       update_lengthhaart,
+                                                                       update_stools,
+                                                                       update_admreason,
+                                                                       update_reason,
+                                                                       update_anmatsyphtreat,
+                                                                       update_patnsyph ,
+                                                                       update_birthfac,
+                                                                       update_ageestimate,
+                                                                       update_anster,
+                                                                       update_ansteroids,
+                                                                       update_transfusion,
+                                                                       update_transtype,
+                                                                       update_specrev,
+                                                                       update_specrevtype,
+                                                                       update_matadmit,
+                                                                       update_matdisc,
+                                                                       update_troward
+                                                                       
                                                                        )
 from conf.base.catalog import cron_log_file,cron_time,env
 
@@ -45,6 +65,25 @@ def manually_fix_admissions(tidy_data_output):
             fix_broken_dates_combined()
             logging.info("################### DONE FIXING BROKEN DATE;THAT WAS QUICK HEY!!#####")
             update_gender()
+            update_puurine()
+            update_haart()
+            update_lengthhaart()
+            update_stools()
+            update_admreason()
+            update_reason()
+            update_anmatsyphtreat()
+            update_patnsyph()
+            update_birthfac()
+            update_ageestimate()
+            update_anster()
+            update_ansteroids()
+            update_transfusion()
+            update_transtype()
+            update_specrev()
+            update_specrevtype()
+            update_matadmit()
+            update_matdisc()
+            update_troward()
             return dict(
             status='Success',
             message = "Manual Fixing Of Admissions Complete"
