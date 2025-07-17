@@ -31,6 +31,7 @@ def hospital_conf(filename='conf/local/hospitals.ini'):
         else:
             log.error('The file hospital_config.ini does not exist, please put it in the folder conf/local')
             sys.exit()
+        logging.info(f'#### MY CONFIG:::{conf}')
         return conf
 
    

@@ -527,6 +527,7 @@ def generate_create_insert_sql(df,schema, table_name):
     except Exception as ex:
        logging.info(f"FAILED TO INSERT {formatError(ex)}")
 
+
 def escape_special_characters(input_string): 
     return str(input_string).replace("\\","\\\\").replace("'","")
 

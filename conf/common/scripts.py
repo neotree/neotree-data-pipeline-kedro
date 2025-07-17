@@ -211,8 +211,11 @@ def process_dataframe_with_types(
             new_key = base_key.lower()
 
             if suffix == 'value':
-                if data_type in ['dropdown', 'single_select_option', 'multi_select_option', 'period']:
+                if data_type in ['dropdown', 'single_select_option', 'period']:
                     columns_to_process[new_key] = processed_df[col].astype(str)
+                elif data_type == 'multi_select_option':
+                    columns_to_process[new_key] = df[col].astype(str).apply(clean_to_jsonb_array)  
+
                 elif data_type == 'boolean':
                     bool_map = {
                         'y': True, 'yes': True, 'true': True, '1': True, True: True,
@@ -229,9 +232,16 @@ def process_dataframe_with_types(
                     columns_to_process[new_key] = processed_df[col].astype(str)
                 columns_to_drop.add(col)
 
-            elif suffix == 'label' and data_type in ['dropdown', 'single_select_option', 'multi_select_option']:
+            elif suffix == 'label' and data_type in ['dropdown', 'single_select_option']:
                 label_key = f"{new_key}_label"
-                columns_to_process[label_key] = processed_df[col].astype(str)
+                if data_type == 'multi_select_option':
+                    columns_to_process[label_key] = processed_df[col].astype(str).apply(clean_to_jsonb_array) 
+                else:
+                    columns_to_process[label_key] = processed_df[col].astype(str)
+                columns_to_drop.add(col)
+
+            ### DROP COLUMN NAMES WITH NONE AS COLUMN NAME
+            if 'none' in str(col).lower():
                 columns_to_drop.add(col)
         else:
             # If it's a base column and not marked for drop, include it
@@ -239,3 +249,10 @@ def process_dataframe_with_types(
                 columns_to_process[col.lower()] = processed_df[col]
 
     return pd.DataFrame(columns_to_process)
+
+def clean_to_jsonb_array(val):
+ 
+    if isinstance(val, str) and val.startswith("{") and val.endswith("}"):
+        inner = val[1:-1]
+        return f"[{','.join(x.strip() for x in inner.split(','))}]"
+    return val

@@ -18,50 +18,50 @@ def clean_data_for_research(create_summary_counts_output):
         #Test If Previous Node Has Completed Successfully
         if create_summary_counts_output:
 
-            logging.info("...........Cleaning Joined Admissions Discharges.............")
-            hospital_scripts = hospital_conf()
-            merged_admissions= None
-            merged_discharges= None
-            if hospital_scripts:
-                for hospital in hospital_scripts:
-                    ids = hospital_scripts[hospital]
-                    for script in ids.keys():
-                        if script =='admissions':
-                            script_ids = str(ids[script]).split(',') 
-                            for script_id in script_ids:
-                                script_id = script_id.strip()
-                                if not script_id:
-                                    continue
-                                else:
-                                    script_json = get_script(script_id)
-                                    if(script_json is not None):
-                                        merged_admissions=merge_script_data(merged_admissions,script_json)
-                        if script =='discharges':
-                            script_ids = str(ids[script]).split(',') 
-                            for script_id in script_ids:
-                                script_id = script_id.strip()
-                                if not script_id:
-                                    continue
-                                else:
-                                    script_json = get_script(script_id)
-                                    if(script_json is not None):
-                                        merged_discharges=merge_script_data(merged_discharges,script_json)
-                ####################################################################################################
-                logging.info("###### GETTING JOINED ADMISSIONS DISCHARGES ##############################")
-                merged_keys = merge_two_script_outputs(merged_admissions,merged_discharges)
-                if (merged_keys is not None and bool(merged_keys)):
-                    joined_admission_discharges = run_query_and_return_df(read_derived_data_query('joined_admissions_discharges','clean_joined_adm_discharges'))
-                    cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
-                    if(cleaned_df is not None and not cleaned_df.empty):
-                        generate_create_insert_sql(cleaned_df,'derived','clean_joined_adm_discharges')
+        #     logging.info("...........Cleaning Derived Data.............")
+        #     hospital_scripts = hospital_conf()
+        #     merged_admissions= None
+        #     merged_discharges= None
+        #     if hospital_scripts:
+        #         for hospital in hospital_scripts:
+        #             ids = hospital_scripts[hospital]
+        #             for script in ids.keys():  
+        #                 merged_script_data =None
+        #                 script_ids = str(ids[script]).split(',') 
+        #                 for script_id in script_ids:
+        #                     script_id = script_id.strip()
+        #                     if not script_id:
+        #                         continue
+        #                     else:
+        #                         script_json = get_script(script_id)
+        #                         if(script_json is not None):
+        #                             merged_script_data =merge_script_data(merged_script_data,script_json)
+                                            
+        #             if (merged_script_data is not None and bool(merged_script_data)):
+        #                 new_data_df = run_query_and_return_df(read_derived_data_query({script},f'clean_{script}'))
+        #                 cleaned_df = process_dataframe_with_types(new_data_df,merged_keys)
+        #                 if(cleaned_df is not None and not cleaned_df.empty):
+        #                     generate_create_insert_sql(cleaned_df,'derived',f'clean_{script}')
+        #             if script =='admissions':
+        #                 merged_admissions = merge_script_data(merged_admissions,merged_script_data)
+        #             if script=='discharges':
+        #                 merged_discharges = merge_script_data(merged_discharges,merged_script_data)   
+
+        #         logging.info("###### GETTING JOINED ADMISSIONS DISCHARGES ##############################")
+        #         merged_keys = merge_two_script_outputs(merged_admissions,merged_discharges)
+        #         if (merged_keys is not None and bool(merged_keys)):
+        #             joined_admission_discharges = run_query_and_return_df(read_derived_data_query('joined_admissions_discharges','clean_joined_adm_discharges'))
+        #             cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
+        #             if(cleaned_df is not None and not cleaned_df.empty):
+        #                 generate_create_insert_sql(cleaned_df,'derived','clean_joined_adm_discharges')
          
-            return dict(
-            status='Success',
-            message = "Data Cleanup Complete"
-            )
-        else:
-            logging.error(
-                "Granting Priviledges Complete Did Not Execute To Completion")
+        #     return dict(
+        #     status='Success',
+        #     message = "Data Cleanup Complete"
+        #     )
+        # else:
+        #     logging.error(
+        #         "Granting Priviledges Complete Did Not Execute To Completion")
 
             return None
 
