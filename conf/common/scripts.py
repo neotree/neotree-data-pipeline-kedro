@@ -232,7 +232,7 @@ def process_dataframe_with_types(
                     columns_to_process[new_key] = processed_df[col].astype(str)
                 columns_to_drop.add(col)
 
-            elif suffix == 'label' and data_type in ['dropdown', 'single_select_option']:
+            elif suffix == 'label' and data_type in ['dropdown', 'single_select_option','multi_select_option']:
                 label_key = f"{new_key}_label"
                 if data_type == 'multi_select_option':
                     columns_to_process[label_key] = processed_df[col].astype(str).apply(clean_to_jsonb_array) 

@@ -779,7 +779,7 @@ def update_puurine():
     variable = "PUInfant.value"
     to_update = "PUInfant.label"
     table="admissions"
-    where = "Passing urine?%"
+    where = "Passing urine%"
     values=f'''Norm,Passing urine normally
             NoPU,Not passing urine'''
             
