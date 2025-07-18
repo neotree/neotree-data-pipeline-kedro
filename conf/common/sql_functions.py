@@ -222,7 +222,6 @@ def insert_old_adm_query(target_table, source_table, columns):
 def create_new_columns(table_name,schema,columns):
     for column,col_type in columns:
         if not column_exists(schema,table_name,column):
-       
             if col_type == "object":
                 sql_type = "TEXT"
             elif "float" in col_type:

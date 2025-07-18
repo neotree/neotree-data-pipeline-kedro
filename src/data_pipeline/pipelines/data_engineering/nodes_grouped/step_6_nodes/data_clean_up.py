@@ -54,13 +54,13 @@ def clean_data_for_research(create_summary_counts_output):
                             cleaned_df = process_dataframe_with_types(new_data_df, merged_script_data)
                             if cleaned_df is not None and not cleaned_df.empty:
                                 cleaned_df.columns = cleaned_df.columns.str.replace(r"[()-]", "_",regex=True)
-                                if table_exists('derived',script):
-                                    cols = pd.DataFrame(get_table_column_names(script, 'derived'), columns=["column_name"])
+                                if table_exists('derived',f'''clean_{script}'''):
+                                    cols = pd.DataFrame(get_table_column_names(f'''clean_{script}''', 'derived'), columns=["column_name"])
                                     new_columns = set(cleaned_df.columns) - set(cols.columns) 
                                     if new_columns:
                                         column_pairs =  [(col, str(cleaned_df[col].dtype)) for col in new_columns]
                                         if len(column_pairs)>0:
-                                            create_new_columns(script,'derived',column_pairs)
+                                            create_new_columns(f'clean_{script}','derived',column_pairs)
                                 generate_create_insert_sql(cleaned_df, 'derived', f'clean_{script}')
 
                     # Track merged admissions/discharges specifically
