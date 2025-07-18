@@ -49,18 +49,19 @@ def clean_data_for_research(create_summary_counts_output):
                                 merged_script_data = merge_script_data(merged_script_data, script_json)
 
                     if merged_script_data is not None and bool(merged_script_data):
-                        new_data_df = run_query_and_return_df(read_derived_data_query({script}, f'clean_{script}'))
-                        cleaned_df = process_dataframe_with_types(new_data_df, merged_script_data)
-                        if cleaned_df is not None and not cleaned_df.empty:
-                            cleaned_df.columns = cleaned_df.columns.str.replace(r"[()-]", "_",regex=True)
-                            if table_exists('derived',script):
-                                cols = pd.DataFrame(get_table_column_names(f'{script}', 'derived'), columns=["column_name"])
-                                new_columns = set(cleaned_df.columns) - set(cols.columns) 
-                                if new_columns:
-                                    column_pairs =  [(col, str(cleaned_df[col].dtype)) for col in new_columns]
-                                    if len(column_pairs)>0:
-                                        create_new_columns(f'{script}','derived',column_pairs)
-                            generate_create_insert_sql(cleaned_df, 'derived', f'clean_{script}')
+                        new_data_df = run_query_and_return_df(read_derived_data_query({script}, str('clean_'+{script})))
+                        if new_data_df is not None and not new_data_df.empty:
+                            cleaned_df = process_dataframe_with_types(new_data_df, merged_script_data)
+                            if cleaned_df is not None and not cleaned_df.empty:
+                                cleaned_df.columns = cleaned_df.columns.str.replace(r"[()-]", "_",regex=True)
+                                if table_exists('derived',script):
+                                    cols = pd.DataFrame(get_table_column_names({script}, 'derived'), columns=["column_name"])
+                                    new_columns = set(cleaned_df.columns) - set(cols.columns) 
+                                    if new_columns:
+                                        column_pairs =  [(col, str(cleaned_df[col].dtype)) for col in new_columns]
+                                        if len(column_pairs)>0:
+                                            create_new_columns({script},'derived',column_pairs)
+                                generate_create_insert_sql(cleaned_df, 'derived', f'clean_{script}')
 
                     # Track merged admissions/discharges specifically
                     if script == 'admissions':
@@ -70,17 +71,18 @@ def clean_data_for_research(create_summary_counts_output):
                     if(merged_admissions is not None and merged_discharges is not None):
                        merged_keys = merge_two_script_outputs(merged_admissions,merged_discharges)
                        joined_admission_discharges = run_query_and_return_df(read_derived_data_query('joined_admissions_discharges','clean_joined_adm_discharges'))
-                       if (merged_keys is not None and bool(merged_keys)):
-                            cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
-                            if(cleaned_df is not None and not cleaned_df.empty):
-                                if table_exists('derived','clean_joined_adm_discharges'):
-                                    cols = pd.DataFrame(get_table_column_names(f'clean_joined_adm_discharges', 'derived'), columns=["column_name"])
-                                    new_columns = set(cleaned_df.columns) - set(cols.columns) 
-                                    if new_columns:
-                                        column_pairs =  [(col, str(cleaned_df[col].dtype)) for col in new_columns]
-                                        if len(column_pairs)>0:
-                                            create_new_columns(f'clean_joined_adm_discharges','derived',column_pairs)
-                                generate_create_insert_sql(cleaned_df,'derived','clean_joined_adm_discharges')
+                       if joined_admission_discharges is not None and not joined_admission_discharges.empty:
+                            if (merged_keys is not None and bool(merged_keys)):
+                                        cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
+                                        if(cleaned_df is not None and not cleaned_df.empty):
+                                            if table_exists('derived','clean_joined_adm_discharges'):
+                                                cols = pd.DataFrame(get_table_column_names(f'clean_joined_adm_discharges', 'derived'), columns=["column_name"])
+                                                new_columns = set(cleaned_df.columns) - set(cols.columns) 
+                                                if new_columns:
+                                                    column_pairs =  [(col, str(cleaned_df[col].dtype)) for col in new_columns]
+                                                    if len(column_pairs)>0:
+                                                        create_new_columns(f'clean_joined_adm_discharges','derived',column_pairs)
+                                            generate_create_insert_sql(cleaned_df,'derived','clean_joined_adm_discharges')
             return dict(
             status='Success',
             message = "Data Cleanup Complete"
