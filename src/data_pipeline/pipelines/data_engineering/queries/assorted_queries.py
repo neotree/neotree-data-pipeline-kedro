@@ -323,19 +323,28 @@ def get_dynamic_condition(destination_table) :
     
     return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid)'''
 
-def read_derived_data_query(source_table,destination_table=None):
-    condition =''
+def read_derived_data_query(source_table, destination_table=None):
+    condition = ''
+    
     if destination_table:
-        exists = table_exists('derived',destination_table)
-        if(exists):
-            condition =get_dynamic_condition(destination_table)
+        exists = table_exists('derived', destination_table)
+        if exists:
+            condition = get_dynamic_condition(destination_table)
+    
+        # Ensure source_table is safely unquoted and inserted
+    source_table_clean = str(source_table).strip('"').strip("'").strip("{}")
+    
     query = f'''
-                select 
-                    *
-                from derived."{source_table}" cs where cs.unique_key is not null and cs.uid!='null' {condition};;
-            '''
-    if('neolab' in source_table):
-        logging.info(f"MY QUERY #####----{query}")   
+        select 
+            *
+        from derived."{source_table_clean}" cs 
+        where cs.unique_key is not null 
+          and cs.uid != 'null' {condition};
+    '''
+
+    if 'neolab' in source_table_clean:
+        logging.info(f"MY QUERY #####----{query}")
+
     return query
 
 def read_joined_admissions_without_discharges():   
