@@ -59,6 +59,7 @@ def clean_data_for_research(create_summary_counts_output):
                                     new_columns = set(cleaned_df.columns) - set(cols.columns) 
                                     if new_columns:
                                         column_pairs =  [(col, str(cleaned_df[col].dtype)) for col in new_columns]
+                                        
                                         if len(column_pairs)>0:
                                             create_new_columns(f'clean_{script}','derived',column_pairs)
                                 generate_create_insert_sql(cleaned_df, 'derived', f'clean_{script}')
