@@ -49,7 +49,7 @@ def clean_data_for_research(create_summary_counts_output):
                                 merged_script_data = merge_script_data(merged_script_data, script_json)
 
                     if merged_script_data is not None and bool(merged_script_data):
-                        new_data_df = run_query_and_return_df(read_derived_data_query({script}, str('clean_'+{script})))
+                        new_data_df = run_query_and_return_df(read_derived_data_query({script}, f'''clean_{script}'''))
                         if new_data_df is not None and not new_data_df.empty:
                             cleaned_df = process_dataframe_with_types(new_data_df, merged_script_data)
                             if cleaned_df is not None and not cleaned_df.empty:
