@@ -337,7 +337,7 @@ def read_derived_data_query(source_table, destination_table=None):
     query = f'''
         select 
             *
-        from derived."{source_table_clean}" cs 
+        from derived.{source_table_clean} cs 
         where cs.unique_key is not null 
           and cs.uid != 'null' {condition};
     '''
