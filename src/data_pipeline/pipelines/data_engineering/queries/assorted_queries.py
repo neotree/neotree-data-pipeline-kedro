@@ -325,7 +325,6 @@ def get_dynamic_condition(destination_table) :
 
 def read_derived_data_query(source_table, destination_table=None):
     condition = ''
-    logging.info(f"MY SOURCE ===={source_table}")
     if destination_table:
         exists = table_exists('derived', destination_table)
         if exists:
@@ -334,7 +333,7 @@ def read_derived_data_query(source_table, destination_table=None):
     # Clean the source_table to remove extra quotes/braces
     source_table_clean = str(source_table).strip().strip('"').strip("'").strip("{}")
 
-    query = f"select * from derived.\"{source_table_clean}\" cs where cs.unique_key is not null and cs.uid != 'null' {condition};"
+    query = f'''select * from derived."{source_table_clean}" cs where cs.unique_key is not null and cs.uid != 'null' {condition};'''
 
     if 'neolab' in source_table_clean:
         logging.info(f"MY QUERY #####----{query}")
