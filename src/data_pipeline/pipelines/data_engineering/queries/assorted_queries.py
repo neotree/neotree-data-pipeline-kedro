@@ -329,12 +329,14 @@ def read_derived_data_query(source_table,destination_table=None):
         exists = table_exists('derived',destination_table)
         if(exists):
             condition =get_dynamic_condition(destination_table)
-            
-    return f'''
+    query = f'''
                 select 
                     *
-                from derived.{source_table} cs where cs.unique_key is not null and cs.uid!='null' {condition};;
+                from derived."{source_table}" cs where cs.unique_key is not null and cs.uid!='null' {condition};;
             '''
+    if('neolab' in source_table):
+        logging.info(f"MY QUERY #####----{query}")   
+    return query
 
 def read_joined_admissions_without_discharges():   
         return f'''

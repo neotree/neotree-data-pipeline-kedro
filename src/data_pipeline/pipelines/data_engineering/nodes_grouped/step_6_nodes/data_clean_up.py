@@ -28,7 +28,8 @@ def clean_data_for_research(create_summary_counts_output):
 
                 for script in all_script_types:
                     merged_script_data = None
-
+                    if script=='country' or script=='name':
+                        continue
                     for hospital in hospital_scripts:
                         ids = hospital_scripts[hospital]
                         script_id_entry = ids.get(script, '')
@@ -49,7 +50,7 @@ def clean_data_for_research(create_summary_counts_output):
 
                     if merged_script_data is not None and bool(merged_script_data):
                         new_data_df = run_query_and_return_df(read_derived_data_query({script}, f'clean_{script}'))
-                        cleaned_df = process_dataframe_with_types(new_data_df, merged_keys)
+                        cleaned_df = process_dataframe_with_types(new_data_df, merged_script_data)
                         if cleaned_df is not None and not cleaned_df.empty:
                             cleaned_df.columns = cleaned_df.columns.str.replace(r"[()-]", "_",regex=True)
                             if table_exists('derived',script):
