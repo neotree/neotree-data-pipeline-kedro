@@ -79,7 +79,6 @@ def clean_data_for_research(create_summary_counts_output):
                        joined_admission_discharges = run_query_and_return_df(read_derived_data_query('joined_admissions_discharges','clean_joined_adm_discharges'))
                        if joined_admission_discharges is not None and not joined_admission_discharges.empty:
                             if (merged_keys is not None and bool(merged_keys)):
-                                        logging(f"****JOINED_JOINED_JOINED ==={merged_keys}")
                                         cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
                                         logging(f"****JOINED_CLEAN ==={len(cleaned_df)}")
                                         if(cleaned_df is not None and not cleaned_df.empty):
