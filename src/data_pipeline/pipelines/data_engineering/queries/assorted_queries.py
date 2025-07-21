@@ -326,9 +326,9 @@ def get_dynamic_condition(destination_table) :
 def read_derived_data_query(source_table, destination_table=None):
     condition = ''
     if destination_table:
-        exists = table_exists('derived', destination_table)
+        exists = table_exists('derived', destination_table.strip())
         if exists:
-            condition = get_dynamic_condition(destination_table)
+            condition = get_dynamic_condition(destination_table.strip())
 
     # Clean the source_table to remove extra quotes/braces
     source_table_clean = str(source_table).strip().strip('"').strip("'").strip("{}")
