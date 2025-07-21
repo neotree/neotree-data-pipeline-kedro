@@ -702,13 +702,21 @@ def update_gender():
 def deduplicate_combined():
     tables = ['admissions','discharges'
               ,'joined_admissions_discharges','vital_signs'
-              ,'neolabs','maternal_outcomes',
+              ,'neolab','maternal_outcomes',
               'maternal_completeness',
               'daily_review','infections','phc_discharges'
               ,'old_new_admissions_view',
               'old_new_discharges_view'
               ,'old_new_matched_view'
-              ,'baseline','maternal_completeness','phc_admissions','phc_discharges']
+              ,'baseline','maternal_completeness'
+              ,'phc_admissions','phc_discharges'
+              ,'clean_admissions','clean_discharges'
+              ,'clean_joined_adm_discharges'
+              ,'clean_maternal_outcomes'
+              ,'clean_maternal_completeness',
+              'clean_infections',
+              'clean_daily_review','clean_phc_discharges','clean_phc_admissions'
+              ,'clean_vital_signs','clean_neolab']
     
     for table in tables:
         if (table_exists('derived',table)):
