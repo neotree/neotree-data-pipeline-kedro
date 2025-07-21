@@ -47,8 +47,6 @@ def clean_data_for_research(create_summary_counts_output):
                             script_json = get_script(script_id)
                             if script_json is not None:
                                 merged_script_data = merge_script_data(merged_script_data, script_json)
-                    if script=='admissions':
-                        logging.info(f"MY MERGED ====={merged_script_data}")
 
                     if merged_script_data is not None and bool(merged_script_data):
                         new_data_df = run_query_and_return_df(read_derived_data_query(script, f'''clean_{script}'''))
@@ -80,7 +78,6 @@ def clean_data_for_research(create_summary_counts_output):
                        if joined_admission_discharges is not None and not joined_admission_discharges.empty:
                             if (merged_keys is not None and bool(merged_keys)):
                                         cleaned_df = process_dataframe_with_types(joined_admission_discharges,merged_keys)
-                                        logging(f"****JOINED_CLEAN ==={len(cleaned_df)}")
                                         if(cleaned_df is not None and not cleaned_df.empty):
                                             if table_exists('derived','clean_joined_adm_discharges'):
                                                 cols = pd.DataFrame(get_table_column_names('clean_joined_adm_discharges', 'derived'), columns=["column_name"])
