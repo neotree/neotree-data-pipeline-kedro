@@ -403,12 +403,15 @@ def generate_postgres_insert(df, schema,table_name):
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
-        if row['uid'] is None or row['unique_key'] is None:
-            logging.info("###...I ENCOUNTERED A NONE#####")
+        if 'uid' not in row or pd.isna(row['uid']) or str(row['uid']).strip().lower() in {'null', 'nan', 'nat'}:
+            continue
+        if 'unique_key' not in row or pd.isna(row['unique_key']) or str(row['unique_key']).strip().lower() in {'null', 'nan', 'nat'}:
             continue
         row_values = []
-        for val in row:
-            if is_effectively_na(val) or  str(val) in {'NaT', 'None', 'nan',''}:
+        for  key, val in row.items():
+            if key=='uid' or key=='unique_key' and str(val) in {'NaT', 'None', 'nan',''}:
+                continue
+            if str(val) in {'NaT', 'None', 'nan',''}:
                 row_values.append("NULL")
 
             elif isinstance(val, (list, dict)):
@@ -453,7 +456,7 @@ def is_effectively_na(val):
         return pd.isna(val) 
     
 def format_value(col, value, col_type):
-    if is_effectively_na(value) or str(value) in {'NaT', 'None', 'nan'}:
+    if str(value) in {'NaT', 'None', 'nan'}:
         return f"\"{col}\" = NULL"
     
     col_type_lower = col_type.lower()
