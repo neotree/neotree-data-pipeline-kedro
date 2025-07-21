@@ -321,7 +321,7 @@ def get_dynamic_condition(destination_table) :
     if('daily_review' in destination_table or 'infections' in destination_table):
         return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
     
-    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid)'''
+    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid and cs.uid is not null and ds.uid is not null and cs.unique_key is not null and ds.unique_key is not null)'''
 
 def read_derived_data_query(source_table, destination_table=None):
     condition = ''
@@ -333,7 +333,7 @@ def read_derived_data_query(source_table, destination_table=None):
     # Clean the source_table to remove extra quotes/braces
     source_table_clean = str(source_table).strip().strip('"').strip("'").strip("{}")
 
-    query = f'''select * from derived."{source_table_clean}" cs where cs.unique_key is not null and cs.uid != 'null' {condition};'''
+    query = f'''select * from derived."{source_table_clean}" cs where cs.unique_key is not null and cs.uid is not null {condition};'''
 
     return query
 
