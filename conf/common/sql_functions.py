@@ -375,7 +375,9 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                 for col in df.columns:
                     col_type = column_types[col]
                     value = row[col]
-                    updates.append(format_value(col, value, col_type))
+                    formatted = format_value(col, value, col_type)
+                    if formatted is not None:
+                        updates.append()
                 
                 # Join the updates into a single SET clause
                 set_clause = ', '.join(updates)
@@ -409,6 +411,8 @@ def generate_postgres_insert(df, schema,table_name):
             continue
         row_values = []
         for  key, val in row.items():
+            if len(key)<=1:
+                continue
             if key=='uid' or key=='unique_key' and str(val) in {'NaT', 'None', 'nan',''}:
                 continue
             if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
@@ -456,6 +460,8 @@ def is_effectively_na(val):
         return pd.isna(val) 
     
 def format_value(col, value, col_type):
+    if len(col)<=1:
+        return None
     if str(value) in {'NaT', 'None', 'nan','<NA>'}:
         return f"\"{col}\" = NULL"
     
