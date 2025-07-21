@@ -411,7 +411,7 @@ def generate_postgres_insert(df, schema,table_name):
         for  key, val in row.items():
             if key=='uid' or key=='unique_key' and str(val) in {'NaT', 'None', 'nan',''}:
                 continue
-            if str(val) in {'NaT', 'None', 'nan',''}:
+            if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
                 row_values.append("NULL")
 
             elif isinstance(val, (list, dict)):
@@ -456,7 +456,7 @@ def is_effectively_na(val):
         return pd.isna(val) 
     
 def format_value(col, value, col_type):
-    if str(value) in {'NaT', 'None', 'nan'}:
+    if str(value) in {'NaT', 'None', 'nan','<NA>'}:
         return f"\"{col}\" = NULL"
     
     col_type_lower = col_type.lower()
