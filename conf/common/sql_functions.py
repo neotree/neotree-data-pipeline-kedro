@@ -403,6 +403,9 @@ def generate_postgres_insert(df, schema,table_name):
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
+        if row['uid'] is None or row['unique_key'] is None:
+            logging.info("###...I ENCOUNTERED A NONE#####")
+            continue
         row_values = []
         for val in row:
             if is_effectively_na(val) or  str(val) in {'NaT', 'None', 'nan',''}:
