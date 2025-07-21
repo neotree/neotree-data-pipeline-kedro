@@ -335,9 +335,11 @@ def read_derived_data_query(source_table, destination_table=None):
 
     query = f'''select * from derived."{source_table_clean}" cs where cs.unique_key is not null and cs.uid != 'null' {condition};'''
 
-    if 'admissions' in source_table_clean:
+    if 'joined_admissions_discharges' in source_table_clean:
+        logging.info(f"MY JNH QUERY #####-{source_table_clean}--{destination_table}-{query}")
 
-        logging.info(f"MY QUERY #####-{source_table_clean}--{destination_table}-{query}")
+    if 'clean_admissions' in destination_table:
+        logging.info(f"MY AMIN QUERY #####-{source_table_clean}--{destination_table}-{query}")
 
     return query
 

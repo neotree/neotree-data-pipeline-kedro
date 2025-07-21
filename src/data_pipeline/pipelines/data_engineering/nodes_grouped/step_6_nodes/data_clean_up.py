@@ -50,9 +50,7 @@ def clean_data_for_research(create_summary_counts_output):
 
                     if merged_script_data is not None and bool(merged_script_data):
                         new_data_df = run_query_and_return_df(read_derived_data_query(script, f'''clean_{script}'''))
-                        if script=='admissions':
-                            logging.info(f"MY DF LENGH ====={len(new_data_df)}")
-
+        
                         if new_data_df is not None and not new_data_df.empty:
                             cleaned_df = process_dataframe_with_types(new_data_df, merged_script_data)
                             if cleaned_df is not None and not cleaned_df.empty:
