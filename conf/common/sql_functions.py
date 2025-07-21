@@ -377,7 +377,7 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
                     value = row[col]
                     formatted = format_value(col, value, col_type)
                     if formatted is not None:
-                        updates.append()
+                        updates.append(formatted)
                 
                 # Join the updates into a single SET clause
                 set_clause = ', '.join(updates)
@@ -400,8 +400,8 @@ def is_date_prefix(s):
 
 def generate_postgres_insert(df, schema,table_name):
     # Escape column names and join them
+    df = df[[col for col in df.columns if len(col) > 1]]
     columns = ', '.join(f'"{col}"' for col in df.columns)
-
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
@@ -411,10 +411,10 @@ def generate_postgres_insert(df, schema,table_name):
             continue
         row_values = []
         for  key, val in row.items():
-            if len(key)<=1:
+            if len(str(key))<=1:
+                
                 continue
-            if key=='uid' or key=='unique_key' and str(val) in {'NaT', 'None', 'nan',''}:
-                continue
+
             if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
                 row_values.append("NULL")
 
