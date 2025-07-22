@@ -1344,8 +1344,8 @@ def update_DateVDRLSameHIV():
 
 
 def update_AnvdrlResult():
-    variable = "AnvdrlResult.value"
-    to_update = "AnvdrlResult.label"
+    variable = "ANVDRLResult.value"
+    to_update = "ANVDRLResult.label"
     table="admissions"
     where = "%Result%"
     values=f'''N,Negative
@@ -1357,11 +1357,8 @@ def update_AnvdrlResult():
     if len(transformed)>0:
         query1 = generate_update_query('',variable,to_update,transformed,table,where)
         query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
-
-        logging.info(f"WWWIII:::::{query1}")
-             
+          
         if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
-            logging.info(f"EXISTS EXISTS:::::{to_update} {variable}")
             inject_sql(query1,"UPDATE AnvdrlResult")
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE AnvdrlResult IN IN JOINED ADMISSIONS")
