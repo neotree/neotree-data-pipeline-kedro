@@ -246,7 +246,6 @@ def process_dataframe_with_types(
         else:
             # If it's a base column and not marked for drop, include it
             if col not in columns_to_drop:
-                logging.info(f"###MY BASE {col}")
                 columns_to_process[col.lower().strip()] = processed_df[col]
 
     return pd.DataFrame(columns_to_process)

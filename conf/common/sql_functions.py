@@ -405,8 +405,9 @@ def generate_postgres_insert(df, schema,table_name):
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
-        if table_name=='clean_admissions':
-            logging.info(f"MY UID === {row['uid']}")
+        
+        if row['uid'] is None:
+            continue
             
         if 'uid' not in row or pd.isna(row['uid']) or str(row['uid']).strip().lower() in {'null', 'nan', 'nat','<na>',''}:
             continue
