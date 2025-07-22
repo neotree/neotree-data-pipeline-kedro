@@ -118,33 +118,32 @@ def update_mode_delivery():
      where = "Mode of%"
      if not table_exists('derived',table_name=table):
          return
-     for facility in facilities:
-         if facility=='KCH' or facility=='KDH' or facility=='BHC' or facility=='PHC':
-            values=f'''1,Spontaneous Vaginal Delivery (SVD)
-                       2,Vacuum extraction
-                       3,Forceps extraction
-                       4,Elective Ceasarian Section (ELCS)
-                       5,Emergency Ceasarian Section (EMCS)
-                       6,Breech extraction (vaginal)
-                       7,Induced Vaginal Delivery'''
+  
+     values=f'''1,Spontaneous Vaginal Delivery (SVD)
+                2,Vacuum extraction
+                3,Forceps extraction
+                4,Elective Ceasarian Section (ELCS)
+                5,Emergency Ceasarian Section (EMCS)
+                6,Breech extraction (vaginal)
+                7,Induced Vaginal Delivery
+                SVD,Spontaneous Vaginal Delivery (SVD)
+                CSPrLab,Caeser before onset labour
+                CSPoLab,Caeser after onset labour
+                '''
             
-            transformed= transform_values(values)
-            if len(transformed):
-                query1=''
-                query2=''
-                query3=''
-                if facility=='PHC':
-                    query3 = generate_update_query(facility,variable,to_update,transformed,"phc_admissions",where)
-                else:
-                    query1 = generate_update_query(facility,variable,to_update,transformed,table,where)
-                    query2 = generate_update_query(facility,variable,to_update,transformed,"joined_admissions_discharges",where) 
+     transformed= transform_values(values)
+     if len(transformed):
+                
+        query3 = generate_update_query('',variable,to_update,transformed,"phc_admissions",where)              
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where) 
 
-                if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
-                    inject_sql(query1,"UPDATE MODE DELIVERY FROM")
-                if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
-                    inject_sql(query2,"UPDATE DELIVERY IN JOINED ADMISSIONS")
-                if len(query3)>0 and  table_exists('derived',table_name='phc_admissions') and column_exists("derived","phc_admissions",to_update):
-                    inject_sql(query3,"UPDATE PHC ADMISSIONS")
+     if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+        inject_sql(query1,"UPDATE MODE DELIVERY FROM")
+     if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+        inject_sql(query2,"UPDATE DELIVERY IN JOINED ADMISSIONS")
+     if len(query3)>0 and  table_exists('derived',table_name='phc_admissions') and column_exists("derived","phc_admissions",to_update):
+        inject_sql(query3,"UPDATE PHC ADMISSIONS")
 
 
 def update_signature():
@@ -801,6 +800,26 @@ def update_puurine():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE PASSING URINE IN IN JOINED ADMISSIONS")
 
+def update_puurine_nb():
+    variable = "PUNewborn.value"
+    to_update = "PUNewborn.label"
+    table="admissions"
+    where = "Passing urine?%"
+    values=f'''Yes,Has passed urine in 1st 24 hrs
+            No,Has not passed urine
+            Unk,Not sure
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE PASSING URINE")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE PASSING URINE IN IN JOINED ADMISSIONS")
+
 def update_haart():
     variable = "HAART.value"
     to_update = "HAART.label"
@@ -1166,6 +1185,321 @@ def update_reason():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE CS Reasons IN IN JOINED ADMISSIONS")     
 
+def update_readmission():
+    variable = "Readmission.value"
+    to_update = "Readmission.label"
+    table="admissions"
+    where = "%Readmission%"
+    values=f'''Y,Yes
+                N,No
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE ReAdmission")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE ReAdmission IN IN JOINED ADMISSIONS") 
+            
+def update_ANVDRL():
+    variable = "ANVDRL.value"
+    to_update = "ANVDRL.label"
+    table="admissions"
+    where = "%Syphilis test?%"
+    values=f'''Y,Yes
+                N,No
+                U,Not sure
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE Syphylis")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE Syphylis IN IN JOINED ADMISSIONS") 
+
+def update_IRON():
+    variable = "Iron.value"
+    to_update = "Iron.label"
+    table="admissions"
+    where = "%received?%"
+    values=f'''Y,Yes
+                N,No
+                U,Unkown
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE IRON")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE IRON IN IN JOINED ADMISSIONS")
+
+def update_TTV():
+    variable = "TTV.value"
+    to_update = "TTV.label"
+    table="admissions"
+    where = "%received?%"
+    values=f'''Y,Yes
+                N,No
+                U,Unkown
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE TTV")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE TTV IN IN JOINED ADMISSIONS") 
+
+def update_CryBirth():
+    variable = "CryBirth.value"
+    to_update = "CryBirth.label"
+    table="admissions"
+    where = "%did?%"
+    values=f'''Y,Yes
+                N,No
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE CryBirth")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE CryBirth IN IN JOINED ADMISSIONS")
+
+def update_VitK():
+    variable = "VitK.value"
+    to_update = "VitK.label"
+    table="admissions"
+    where = "%Did%"
+    values=f'''Y,Yes
+                N,No,
+                NS,Not Sure
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE VitK")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE VitK IN IN JOINED ADMISSIONS")
+
+def update_TEO():
+    variable = "TEO.value"
+    to_update = "TEO.label"
+    table="admissions"
+    where = "%given?%"
+    values=f'''Y,Yes
+                N,No,
+                NS,Not Sure
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE TEO")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE TEO IN IN JOINED ADMISSIONS")
+
+def update_DateVDRLSameHIV():
+    variable = "DateVDRLSameHIV.value"
+    to_update = "DateVDRLSameHIV.label"
+    table="admissions"
+    where = "%Date%"
+    values=f'''Y,Yes
+                N,No
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE DateVDRLSameHIV")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE DateVDRLSameHIV IN IN JOINED ADMISSIONS")
+
+
+def update_AnvdrlResult():
+    variable = "AnvdrlResult.value"
+    to_update = "AnvdrlResult.label"
+    table="admissions"
+    where = "%Result%"
+    values=f'''N,Negative
+                P,Positive
+                U,Unkown
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE AnvdrlResult")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE AnvdrlResult IN IN JOINED ADMISSIONS")
+            
+def update_BSUnit():
+    variable = "BSUnit.value"
+    to_update = "BSUnit.label"
+    table="admissions"
+    where = "%Blood%"
+    values=f'''Mol,mmol\\/L
+                Mg,mg\\/dL
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE BSUnit")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE BSUnit IN IN JOINED ADMISSIONS")
+
+def update_BsMonyn():
+    variable = "BSmonYN.value"
+    to_update = "BSmonYN.label"
+    table="admissions"
+    where = "%measure%"
+    values=f'''Y,Yes
+                N,No
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE BSmonYN")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE BSmonYN IN IN JOINED ADMISSIONS")
+
+def update_VRLKnown():
+    variable = "VLKnown.value"
+    to_update = "VLKnown.label"
+    table="admissions"
+    where = "%Do%"
+    values=f'''Y,Yes
+                N,No
+                NA,Not applicable
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE VLKnown")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE VLKnown IN IN JOINED ADMISSIONS")
+
+def update_ROM():
+    variable = "ROM.value"
+    to_update = "ROM.label"
+    table="admissions"
+    where = "%rupture?%"
+    values=f'''Y,Yes
+                N,No
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE ROM")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE ROM IN IN JOINED ADMISSIONS") 
+
+def update_ROMLENGTH():
+    variable = "ROMlength.value"
+    to_update = "ROMlength.label"
+    table="admissions"
+    where = "%How long%"
+    values=f'''NOPROM,Less than 18 hours
+                PROM,Greater than 18 hours
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE ROMlength")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE ROMlength IN IN JOINED ADMISSIONS") 
+
+def update_vomiting():
+    variable = "Vomiting.value"
+    to_update = "Vomiting.label"
+    table="admissions"
+    where = "%Vomiting?%"
+    values=f'''Poss,Small milky possets after feeds \\(normal\\)
+                Yes,Vomiting all feeds
+                YesBl,Vomiting with blood
+                YesGr,Vomiting bright green
+                No,NONE
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE Vomiting")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE Vomiting IN IN JOINED ADMISSIONS") 
+
+def update_passedmec():
+    variable = "PassedMec.value"
+    to_update = "PassedMec.label"
+    table="admissions"
+    where = "%Meconium?%"
+    values=f'''MecLiq,Meconium present at delivery
+                Mec24,Passed meconium in 1st 24 hrs
+                NoMec,No meconium in 1st 24 hrs
+            '''
+            
+    transformed= transform_values(values)
+    if len(transformed)>0:
+        query1 = generate_update_query('',variable,to_update,transformed,table,where)
+        query2 = generate_update_query('',variable,to_update,transformed,"joined_admissions_discharges",where)
+             
+        if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
+            inject_sql(query1,"UPDATE Meconium")
+        if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
+            inject_sql(query2,"UPDATE Meconium IN IN JOINED ADMISSIONS")
 
 def deduplicate_derived_tables(table: str):
     query = f'''DO $$

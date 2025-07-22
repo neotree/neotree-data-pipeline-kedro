@@ -201,7 +201,7 @@ def process_dataframe_with_types(
     columns_to_process = {}
     columns_to_drop = set()
 
-    for idx, col in enumerate(processed_df.columns):
+    for col in processed_df.columns:
         if '.' in col:
             base_key, suffix = col.split('.', 1)
             meta = merged_data.get(base_key)
@@ -246,7 +246,8 @@ def process_dataframe_with_types(
         else:
             # If it's a base column and not marked for drop, include it
             if col not in columns_to_drop:
-                columns_to_process[col.lower()] = processed_df[col]
+                logging.info(f"###MY BASE {col}")
+                columns_to_process[col.lower().strip()] = processed_df[col]
 
     return pd.DataFrame(columns_to_process)
 

@@ -405,9 +405,12 @@ def generate_postgres_insert(df, schema,table_name):
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
-        if 'uid' not in row or pd.isna(row['uid']) or str(row['uid']).strip().lower() in {'null', 'nan', 'nat'}:
+        if table_name=='clean_admissions':
+            logging.info(f"MY UID === {row['uid']}")
+            
+        if 'uid' not in row or pd.isna(row['uid']) or str(row['uid']).strip().lower() in {'null', 'nan', 'nat','<na>',''}:
             continue
-        if 'unique_key' not in row or pd.isna(row['unique_key']) or str(row['unique_key']).strip().lower() in {'null', 'nan', 'nat'}:
+        if 'unique_key' not in row or pd.isna(row['unique_key']) or str(row['unique_key']).strip().lower() in {'null', 'nan', 'nat','<na>',''}:
             continue
         row_values = []
         for  key, val in row.items():

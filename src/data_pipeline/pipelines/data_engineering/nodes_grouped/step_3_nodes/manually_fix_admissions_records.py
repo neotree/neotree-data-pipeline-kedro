@@ -4,37 +4,19 @@ sys.path.append(os.getcwd())
 from conf.common.sql_functions import inject_sql
 from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.admissions_manually_fix_records_sql import manually_fix_admissions_query
-from data_pipeline.pipelines.data_engineering.queries.data_fix import (update_age_category
-                                                                       ,update_admission_weight
-                                                                       ,update_mode_delivery
-                                                                       ,update_refferred_from
-                                                                       ,update_signature
-                                                                       ,update_cause_death,
-                                                                       update_disdiag, 
-                                                                       update_hive_result,
-                                                                       fix_broken_dates_combined,
-                                                                       update_gender,
-                                                                       deduplicate_combined,
-                                                                       update_puurine,
-                                                                       update_haart,
-                                                                       update_lengthhaart,
-                                                                       update_stools,
-                                                                       update_admreason,
-                                                                       update_reason,
-                                                                       update_anmatsyphtreat,
-                                                                       update_patnsyph ,
-                                                                       update_birthfac,
-                                                                       update_ageestimate,
-                                                                       update_anster,
-                                                                       update_ansteroids,
-                                                                       update_transfusion,
-                                                                       update_transtype,
-                                                                       update_specrev,
-                                                                       update_specrevtype,
-                                                                       update_matadmit,
-                                                                       update_matdisc,
-                                                                       update_troward
-                                                                       
+from data_pipeline.pipelines.data_engineering.queries.data_fix import (update_age_category,update_admission_weight,update_mode_delivery,            
+                                                                       update_refferred_from,update_ANVDRL,update_signature,update_cause_death,
+                                                                       update_disdiag, update_hive_result,fix_broken_dates_combined,update_gender,
+                                                                       deduplicate_combined,update_puurine,update_haart,update_lengthhaart,
+                                                                       update_stools,update_admreason,update_reason,update_anmatsyphtreat,
+                                                                       update_patnsyph ,update_birthfac,update_ageestimate,
+                                                                       update_anster,update_ansteroids,update_transfusion,update_transtype,
+                                                                       update_specrev,update_specrevtype,update_matadmit,update_matdisc,
+                                                                       update_troward,update_readmission,update_vomiting,update_passedmec,
+                                                                       update_puurine_nb,update_IRON,update_TTV,update_ROMLENGTH,update_ROM,
+                                                                       update_CryBirth,update_VitK,update_TEO,update_DateVDRLSameHIV,
+                                                                       update_AnvdrlResult,update_BSUnit,update_BsMonyn,update_VRLKnown
+    
                                                                        )
 from conf.base.catalog import cron_log_file,cron_time,env
 
@@ -84,6 +66,23 @@ def manually_fix_admissions(tidy_data_output):
             update_matadmit()
             update_matdisc()
             update_troward()
+            update_readmission()
+            update_vomiting()
+            update_passedmec()
+            update_puurine_nb()
+            update_ANVDRL()
+            update_IRON()
+            update_TTV()
+            update_ROMLENGTH()
+            update_ROM()
+            update_CryBirth()
+            update_VitK()
+            update_TEO()
+            update_DateVDRLSameHIV()
+            update_AnvdrlResult()
+            update_BSUnit()
+            update_BsMonyn()
+            update_VRLKnown()
             return dict(
             status='Success',
             message = "Manual Fixing Of Admissions Complete"

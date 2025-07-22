@@ -7,7 +7,6 @@ from conf.common.format_error import formatError
 from conf.common.sql_functions import run_query_and_return_df,generate_create_insert_sql,get_table_column_names,create_new_columns,table_exists
 from conf.base.catalog import cron_log_file,cron_time,start,env
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (read_derived_data_query)
-import logging
 import pandas as pd
 
 #This file calls the query to grant privileges to users on the generated tables
@@ -53,6 +52,12 @@ def clean_data_for_research(create_summary_counts_output):
         
                         if new_data_df is not None and not new_data_df.empty:
                             cleaned_df = process_dataframe_with_types(new_data_df, merged_script_data)
+
+                            if(script=='admissions'):
+                                logging.info(f"MY MERGED SCRII==={merged_script_data.keys()}")
+                                logging.info(f"VS MY CLEAN DF==={new_data_df.columns}")
+                                log_uid_issues(cleaned_df)
+                                
                             if cleaned_df is not None and not cleaned_df.empty:
                                 cleaned_df.columns = cleaned_df.columns.str.replace(r"[()-]", "_",regex=True)
                                 if table_exists('derived',f'''clean_{script}'''):
@@ -102,3 +107,12 @@ def clean_data_for_research(create_summary_counts_output):
         cron_log.close()
         logging.error(formatError(e))
         sys.exit(1)
+
+def log_uid_issues(df: pd.DataFrame):
+    if 'uid' not in df.columns:
+        logging.warning("#########----Column 'uid' not found in the DataFrame.")
+        return
+
+    uid_issues = df['uid'].isna() | (df['uid'].astype(str).str.strip() == '')
+    count = uid_issues.sum()
+    logging.info(f"########## Number of rows with missing, null, or empty 'uid': {count}")
