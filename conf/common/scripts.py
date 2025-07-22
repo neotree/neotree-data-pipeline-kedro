@@ -205,6 +205,10 @@ def process_dataframe_with_types(
         if '.' in col:
             base_key, suffix = col.split('.', 1)
             meta = merged_data.get(base_key)
+            #DROP ANY OTHER INTERNAL UID COLUMNS IN FAVOR OF THE OFFICIAL UID Column
+            if 'uid' in base_key.lower() :
+                columns_to_drop.add(col)
+                continue              
             if not meta:
                 continue  # skip if key not in metadata
             data_type = (meta.get('dataType') or '').lower()
@@ -243,6 +247,7 @@ def process_dataframe_with_types(
             ### DROP COLUMN NAMES WITH NONE AS COLUMN NAME
             if 'none' in str(col).lower():
                 columns_to_drop.add(col)
+            
         else:
             # If it's a base column and not marked for drop, include it
             if col not in columns_to_drop:
