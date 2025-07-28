@@ -74,13 +74,23 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
 
         try:
             if value_col in df.columns:
-                if dtype in ['dropdown', 'single_select_option', 'period','multi_select_option']:
+                if dtype == 'number':
+                    temp_col = f"__{value_col}_as_number"
+                    df[temp_col] = pd.to_numeric(df[value_col], errors='coerce')  # non-convertible → NaN
+                    validator = context.sources.pandas_default.read_dataframe(df)
+                    invalid_mask = (~df[value_col].isnull()) & (df[temp_col].isnull())
+                    invalid_sample = df.loc[invalid_mask, value_col].dropna().unique()[:3].tolist()
+                    if invalid_sample:
+                        logger.error(f"❌ Column '{value_col}' has values that are not numeric or empty: {invalid_sample}")
+                        errors.append(f"Non-numeric values in '{value_col}': {invalid_sample}")
+                elif dtype in ['dropdown', 'single_select_option', 'period','multi_select_option','text','string','uid']:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
                 elif dtype in ['datetime', 'timestamp', 'date']:
                     datetime_regex = r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$"
                     validator.expect_column_values_to_match_regex(value_col, datetime_regex)
-                elif dtype == 'number':
-                    validator.expect_column_values_to_be_in_type_list(value_col, ['int64', 'float64'])
+
+                elif dtype == 'boolean':
+                    validator.expect_column_values_to_be_in_type_list(value_col, 'bool')
                 else:
                     logger.warning(f"No rule for type '{dtype}' for column '{value_col}'")
             else:
@@ -90,17 +100,23 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
             logger.error(err_msg)
             errors.append(err_msg)
 
-    forbidden = ['who', 'when', 'where', 'was', 'is', '?', 'what', 'do', 'how', 'date', 'reason','readmission', 'did', 'which', 'if', 'age category', 'were']
+    forbidden = ['who', 'when', 'where', 'is', '?', 'what', 'do', 'how', 'date', 'reason','readmission', 'did', 'which', 'if', 'age category', 'were']
     pattern = r"(?i)\b(" + "|".join(map(re.escape, forbidden)) + r")\b"
-
+    escaped_values =['Chest is clear']
 
     for col in df.columns:
         if col.endswith(('.value', '.label')):
             try:
+                if df[col].dropna().empty:
+                    logger.warning(f"Skipping regex match: column '{col}' is empty or all nulls")
+                    continue
                 validator.expect_column_values_to_not_match_regex(col, pattern)
                
                 bad_vals = df[df[col].astype(str).str.contains(pattern, na=False, regex=True)]
-                sample = bad_vals[col].dropna().head(3).tolist()
+               # Exclude escaped values
+                bad_vals_filtered = bad_vals[~bad_vals[col].isin(escaped_values)]
+                sample = bad_vals_filtered[col].dropna().head(3).tolist()
+
                 if sample:
                     logger.error(f"Forbidden content in {col}: {sample}")
             except Exception as e:
