@@ -7,12 +7,13 @@ from email.message import EmailMessage
 import logging
 import traceback
 from .templates import get_html_validation_template
+from conf.common.scripts import get_script,merge_script_data
 from typing import  Dict
 from datetime import datetime
-from conf.base.catalog import params
+from conf.base.catalog import params,hospital_conf
 import re
 
-STATUS_FILE = "./logs/validation_status.json"
+STATUS_FILE = "logs/validation_status.json"
 
 
 def set_status(status: str):
@@ -27,12 +28,12 @@ def get_status():
         return json.load(f).get("status")
 
 
-def reset_log(log_file_path="./logs/validation.log"):
+def reset_log(log_file_path="logs/validation.log"):
     with open(log_file_path, "w") as f:
         f.write("")
 
 
-def begin_validation_run(log_file_path="./logs/validation.log"):
+def begin_validation_run(log_file_path="logs/validation.log"):
     set_status("running")
     reset_log(log_file_path)
 
@@ -40,20 +41,24 @@ def begin_validation_run(log_file_path="./logs/validation.log"):
 def finalize_validation():
     if get_status() == "running":
         set_status("done")
-        country = params['country']
-        log_file_path="./logs/validation.log"
+        log_file_path="logs/validation.log"
         email_recipients= params["MAIL_RECEIVERS"]
         if email_recipients:
-            send_log_via_email(log_file_path, country,email_recipients)
+            send_log_via_email(log_file_path,email_receivers=email_recipients)
 
 
-def validate_dataframe_with_ge(df: pd.DataFrame,script:str,schema: Dict[str, Dict[str, str]], log_file_path="./logs/validation.log"):
+def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/validation.log"):
     context = gx.get_context()
     errors = []
-
-    # Setup logging
     logging.basicConfig(filename=log_file_path, level=logging.INFO, filemode='a')
     logger = logging.getLogger()
+    schema=get_schema(script)
+
+    if not schema:
+        logger.warning(f"#####SCHEMA FOR SCRIPT {script} NOT FOUND")
+        return
+    # Setup logging
+    
     logger.info(f" \n VALIDATING ::::::::::::::::{script} \n")
     suite_name = "dynamic_expectation_suite"
     context.create_expectation_suite(suite_name, overwrite_existing=True)
@@ -125,36 +130,61 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str,schema: Dict[str, Dic
         logger.error(err_msg)
         errors.append(err_msg)
 
-def send_log_via_email(log_file_path: str, country: str, email_receivers):  # type: ignore
+def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
     with open(log_file_path, 'r') as f:
         log_content = f.read()
+    if 'ERROR' in log_content or "WARN" in log_content:
+        MAIL_HOST = params['MAIL_HOST']
+        MAIL_PORT = params['MAIL_PORT']
+        MAIL_USERNAME = params['MAIL_USERNAME']
+        MAIL_PASSWORD = params['MAIL_PASSWORD']
+        MAIL_FROM_ADDRESS = params['MAIL_FROM_ADDRESS']
+        MAIL_FROM_NAME = "NeoTree"
+        country = params['country']
 
-    MAIL_HOST = params['MAIL_HOST']
-    MAIL_PORT = params['MAIL_PORT']
-    MAIL_USERNAME = params['MAIL_USERNAME']
-    MAIL_PASSWORD = params['MAIL_PASSWORD']
-    MAIL_FROM_ADDRESS = params['MAIL_FROM_ADDRESS']
-    MAIL_FROM_NAME = "NeoTree"
+        msg = EmailMessage()
+        msg['Subject'] = 'Data Validation Error Log'
+        msg['From'] = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>"
+        
+        if isinstance(email_receivers, list):
+            msg['To'] = ', '.join(email_receivers)
+        else:
+            msg['To'] = email_receivers
 
-    msg = EmailMessage()
-    msg['Subject'] = 'Data Validation Error Log'
-    msg['From'] = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>"
-    
-    if isinstance(email_receivers, list):
-        msg['To'] = ', '.join(email_receivers)
-    else:
-        msg['To'] = email_receivers
+        html_body = get_html_validation_template(country, log_content)
+        msg.set_content("Validation errors occurred. See the HTML version.")
+        msg.add_alternative(html_body, subtype='html')
 
-    html_body = get_html_validation_template(country, log_content)
-    msg.set_content("Validation errors occurred. See the HTML version.")
-    msg.add_alternative(html_body, subtype='html')
+        try:
+            with smtplib.SMTP(MAIL_HOST, int(MAIL_PORT)) as server:
+                server.starttls()
+                server.login(MAIL_USERNAME, MAIL_PASSWORD)
+                server.send_message(msg)
+            logging.info("Error log emailed successfully.")
+        except Exception as e:
+            logging.error(f"Failed to send email: {str(e)}")
 
-    try:
-        with smtplib.SMTP(MAIL_HOST, int(MAIL_PORT)) as server:
-            server.starttls()
-            server.login(MAIL_USERNAME, MAIL_PASSWORD)
-            server.send_message(msg)
-        logging.info("Error log emailed successfully.")
-    except Exception as e:
-        logging.error(f"Failed to send email: {str(e)}")
+def get_schema(script: str):
+    hospital_scripts = hospital_conf()
+    merged_script_data = None
 
+    if not hospital_scripts:
+        return None
+
+    for hospital in hospital_scripts:
+        script_id_entry = hospital_scripts[hospital].get(script, '')
+        if not script_id_entry:
+            continue
+
+        script_ids = str(script_id_entry).split(',')
+
+        for script_id in script_ids:
+            script_id = script_id.strip()
+            if not script_id:
+                continue
+
+            script_json = get_script(script_id)
+            if script_json is not None:
+                merged_script_data = merge_script_data(merged_script_data, script_json)
+
+    return merged_script_data

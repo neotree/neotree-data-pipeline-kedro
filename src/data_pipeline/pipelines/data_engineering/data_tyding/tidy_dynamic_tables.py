@@ -10,6 +10,7 @@ from conf.common.sql_functions import create_new_columns,get_table_column_names,
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import convert_false_numbers_to_text
+from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge
 
 from conf.base.catalog import params
 # Import libraries
@@ -79,6 +80,7 @@ def tidy_dynamic_tables():
                                     if len(column_pairs)>0:
                                         create_new_columns(script,'derived',column_pairs)
                             script_df=convert_false_numbers_to_text(script_df,'derived',script); 
+                            validate_dataframe_with_ge(script_df,script)
                             generate_create_insert_sql(script_df,'derived',script)
                             logging.info("... Creating MCL count tables for Generic Scripts")
                             explode_column(script_df,script_mcl,script+'_') 

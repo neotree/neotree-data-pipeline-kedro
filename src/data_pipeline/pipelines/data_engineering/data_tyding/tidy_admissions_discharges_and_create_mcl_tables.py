@@ -19,6 +19,7 @@ from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_k
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
+from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge, begin_validation_run,finalize_validation
 
 
 
@@ -58,6 +59,7 @@ def tidy_tables():
     #     raise ex
 
     # Read the raw admissions and discharge data into dataframes
+    begin_validation_run()
     try:
         tidy_dynamic_tables()
         
@@ -304,6 +306,7 @@ def tidy_tables():
                     if len(column_pairs)>0:
                         create_new_columns('admissions','derived',column_pairs)
             adm_df=convert_false_numbers_to_text(adm_df,'derived','admissions'); 
+            validate_dataframe_with_ge(adm_df,'admissions')
             generate_create_insert_sql(adm_df,'derived','admissions')        
             #catalog.save('create_derived_admissions',adm_df)
             logging.info("... Creating MCL count tables for Admissions DF") 
@@ -376,6 +379,7 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('discharges','derived',column_pairs)
             dis_df=convert_false_numbers_to_text(dis_df,'derived','discharges'); 
+            validate_dataframe_with_ge(dis_df,'discharges')
             generate_create_insert_sql(dis_df,'derived','discharges')  
             #catalog.save('create_derived_discharges',dis_df)
             logging.info("... Creating MCL count tables for Discharge DF") 
@@ -424,6 +428,7 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('maternal_outcomes','derived',column_pairs)
             mat_outcomes_df=convert_false_numbers_to_text(mat_outcomes_df,'derived','maternal_outcomes'); 
+            validate_dataframe_with_ge(mat_outcomes_df,'maternal_outcomes')
             generate_create_insert_sql(mat_outcomes_df,'derived','maternal_outcomes')  
             #catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
@@ -464,6 +469,7 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('vitalsigns','derived',column_pairs)
             vit_signs_df= convert_false_numbers_to_text(vit_signs_df,'derived','vitalsigns'); 
+            validate_dataframe_with_ge(vit_signs_df,'vitalsigns')
             generate_create_insert_sql(vit_signs_df,'derived','vitalsigns') 
             #catalog.save('create_derived_vitalsigns',vit_signs_df)
             logging.info("... Creating MCL count tables for Vital Signs DF")
@@ -578,6 +584,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(neolab_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('neolab','derived',column_pairs)
+            validate_dataframe_with_ge(neolab_df,'neolab')
             generate_create_insert_sql(neolab_df,'derived','neolab') 
 
             try:
@@ -663,7 +670,7 @@ def tidy_tables():
                     column_pairs =  [(col, str(baseline_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('baseline','derived',column_pairs)
-           
+            validate_dataframe_with_ge(baseline_df,'baseline')
             generate_create_insert_sql(baseline_df,'derived','baseline') 
             #catalog.save('create_derived_baseline',baseline_df)
             logging.info("... Creating MCL count tables for Baseline DF")
@@ -699,6 +706,12 @@ def tidy_tables():
             generate_create_insert_sql(mat_completeness_df,'derived','maternity_completeness') 
             #catalog.save('create_derived_maternity_completeness',mat_completeness_df)
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
+    except Exception as ex:
+        logging.error(formatError(ex))
+    try:
+        finalize_validation()
+    except Exception as e:
+        logging.error(formatError(e))
 
 
     except Exception as e:
