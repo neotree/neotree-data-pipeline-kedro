@@ -43,7 +43,7 @@ def finalize_validation():
     if get_status() == "running":
         set_status("done")
         log_file_path="logs/validation.log"
-        email_recipients= params["MAIL_RECEIVERS"]
+        email_recipients= params['MAIL_RECEIVERS']
         if email_recipients:
             send_log_via_email(log_file_path,email_receivers=email_recipients)
 
@@ -58,7 +58,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         logger.warning(f"#####SCHEMA FOR SCRIPT {script} NOT FOUND")
         return
     # Setup logging   
-    logger.info(f" \n VALIDATING ::::::::::::::::{script} \n")
+    logger.info(f" \n VALIDATING ::::::::::::::::{script}:::::::::::::::::::::::::::: \n")
 
     validator = context.sources.pandas_default.read_dataframe(df)
     try:
