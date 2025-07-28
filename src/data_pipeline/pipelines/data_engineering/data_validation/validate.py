@@ -8,6 +8,7 @@ import logging
 import traceback
 from .templates import get_html_validation_template
 from conf.common.scripts import get_script,merge_script_data
+from conf.common.logger import setup_logger
 from typing import  Dict
 from datetime import datetime
 from conf.base.catalog import params,hospital_conf
@@ -50,8 +51,7 @@ def finalize_validation():
 def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/validation.log"):
     context = gx.get_context()
     errors = []
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, filemode='a')
-    logger = logging.getLogger()
+    logger =setup_logger(log_file_path)
     schema=get_schema(script)
 
     if not schema:
@@ -59,7 +59,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         return
     # Setup logging   
     logger.info(f" \n VALIDATING ::::::::::::::::{script} \n")
-    suite_name = "dynamic_expectation_suite"
+
     validator = context.sources.pandas_default.read_dataframe(df)
     try:
         validator.expect_column_values_to_not_be_null(column="uid")
@@ -109,7 +109,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 errors.append(err_msg)
 
     try:
-        results = validator.validate(expectation_suite_name=suite_name)
+        results = validator.validate()
         for result in results.get("results", []):
                 expectation_type = result.get("expectation_config", {}).get("expectation_type")
                 column = result.get("expectation_config", {}).get("kwargs", {}).get("column")
