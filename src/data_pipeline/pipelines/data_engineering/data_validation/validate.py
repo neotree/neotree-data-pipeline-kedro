@@ -57,14 +57,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
     if not schema:
         logger.warning(f"#####SCHEMA FOR SCRIPT {script} NOT FOUND")
         return
-    # Setup logging
-    
+    # Setup logging   
     logger.info(f" \n VALIDATING ::::::::::::::::{script} \n")
     suite_name = "dynamic_expectation_suite"
     validator = context.sources.pandas_default.read_dataframe(df)
-
-
-
     try:
         validator.expect_column_values_to_not_be_null(column="uid")
     except Exception as e:
@@ -72,13 +68,12 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         logger.error(err_msg)
         errors.append(err_msg)
 
-    for base_col in schema.items():
+    for base_col, meta in schema.items():
         value_col = f"{base_col}.value"
-        meta = schema.get(base_col)
         dtype = (meta.get('dataType') or '').lower()
 
         try:
-            if value_col in validator.columns:
+            if value_col in df.columns:
                 if dtype in ['dropdown', 'single_select_option', 'period','multi_select_option']:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
                 elif dtype in ['datetime', 'timestamp', 'date']:
@@ -99,15 +94,15 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
     pattern = r"(?i)\b(" + "|".join(map(re.escape, forbidden)) + r")\b"
 
 
-    for col in validator.columns:
+    for col in df.columns:
         if col.endswith(('.value', '.label')):
             try:
                 validator.expect_column_values_to_not_match_regex(col, pattern)
-                if col in df.columns:
-                    bad_vals = df[df[col].astype(str).str.contains(pattern, na=False, regex=True)]
-                    sample = bad_vals[col].dropna().head(3).tolist()
-                    if sample:
-                        logger.error(f"Forbidden content in {col}: {sample}")
+               
+                bad_vals = df[df[col].astype(str).str.contains(pattern, na=False, regex=True)]
+                sample = bad_vals[col].dropna().head(3).tolist()
+                if sample:
+                    logger.error(f"Forbidden content in {col}: {sample}")
             except Exception as e:
                 err_msg = f"Error applying content check to '{col}': {str(e)}\n{traceback.format_exc()}"
                 logger.error(err_msg)
