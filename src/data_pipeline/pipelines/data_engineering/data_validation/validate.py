@@ -60,9 +60,9 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
     # Setup logging
     
     logger.info(f" \n VALIDATING ::::::::::::::::{script} \n")
-    suite_name = "dynamic_expectation_suite"
-    context.create_expectation_suite(suite_name, overwrite_existing=True)
     validator = context.sources.pandas_default.read_dataframe(df)
+    validator.create_expectation_suite(suite_name="dynamic_expectation_suite", overwrite_existing=True)
+
 
     try:
         validator.expect_column_values_to_not_be_null(column="uid")
