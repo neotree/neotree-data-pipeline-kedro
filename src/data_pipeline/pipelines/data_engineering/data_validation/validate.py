@@ -133,10 +133,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 column = result.get("expectation_config", {}).get("kwargs", {}).get("column")
                 success = result.get("success")
 
-                if not success and column in df.columns:
+                if not success and column in df.columns and 'expect_column_values_to_be_of_type' in expectation_type:
                     unexpected_list = result.get("result", {}).get("partial_unexpected_list", [])
                     sample_vals = unexpected_list[:3]
-                    msg = f"❌ Expectation failed for column '{column}' (type: {expectation_type}). Sample invalid values: {sample_vals}"
+                    msg = f"❌ Expectation failed for column '{column}' :: Sample invalid values: {sample_vals}"
                     logger.error(msg)
                     errors.append(msg)
     except Exception as e:
@@ -148,6 +148,7 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
     with open(log_file_path, 'r') as f:
         log_content = f.read()
     if 'ERROR' in log_content or "WARN" in log_content:
+        logging.info("::::::::::::HAS FAILED GE DATA VALIDATION:::::::::::::::::")
         MAIL_HOST = params['mail_host']
         MAIL_PORT = params['mail_port']
         MAIL_USERNAME = params['MAIL_USERNAME'.lower()]
