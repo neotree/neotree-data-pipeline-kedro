@@ -165,16 +165,17 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
             msg['To'] = ', '.join(email_receivers)
         else:
             msg['To'] = email_receivers
-
+        logging.info(f'::RECEIVERS:: {email_receivers}')
         html_body = get_html_validation_template(country, log_content)
         msg.set_content("Validation errors occurred. See the HTML version.")
         msg.add_alternative(html_body, subtype='html')
-
+        
         try:
             with smtplib.SMTP(MAIL_HOST, int(MAIL_PORT)) as server:
                 server.starttls()
                 server.login(MAIL_USERNAME, MAIL_PASSWORD)
                 server.send_message(msg)
+                logging.info(f'::MAIL DETAILS:: {MAIL_USERNAME}--{MAIL_FROM_ADDRESS}--{MAIL_HOST}')
             logging.info("Error log emailed successfully.")
         except Exception as e:
             logging.error(f"Failed to send email: {str(e)}")
