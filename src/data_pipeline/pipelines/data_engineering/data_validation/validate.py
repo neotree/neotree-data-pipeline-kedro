@@ -90,13 +90,13 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     validator.expect_column_values_to_match_regex(value_col, datetime_regex)
 
                 elif dtype == 'boolean':
-                    validator.expect_column_values_to_be_in_type_list(value_col, 'bool')
+                    validator.expect_column_values_to_be_of_type(value_col, 'bool')
                 else:
                     logger.warning(f"No rule for type '{dtype}' for column '{value_col}'")
             else:
-                logger.warning(f"Column '{value_col}' not found in dataframe.")
+                continue
         except Exception as e:
-            err_msg = f"Error validating column '{value_col}': {str(e)}\n{traceback.format_exc()}"
+            err_msg = f"Error validating column '{value_col}' {dtype}: {str(e)}\n"
             logger.error(err_msg)
             errors.append(err_msg)
 
@@ -107,11 +107,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
     for col in df.columns:
         if col.endswith(('.value', '.label')):
             try:
-                if df[col].dropna().empty:
-                    logger.warning(f"Skipping regex match: column '{col}' is empty or all nulls")
-                    continue
-                validator.expect_column_values_to_not_match_regex(col, pattern)
-               
+                df[col] = df[col].astype(str).fillna("")
+                validator.expect_column_values_to_not_match_regex(col, pattern)    
                 bad_vals = df[df[col].astype(str).str.contains(pattern, na=False, regex=True)]
                # Exclude escaped values
                 bad_vals_filtered = bad_vals[~bad_vals[col].isin(escaped_values)]
@@ -138,7 +135,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     logger.error(msg)
                     errors.append(msg)
     except Exception as e:
-        err_msg = f"Validation execution error: {str(e)}\n{traceback.format_exc()}"
+        err_msg = f"Validation execution error on : {str(e)}"
         logger.error(err_msg)
         errors.append(err_msg)
 
