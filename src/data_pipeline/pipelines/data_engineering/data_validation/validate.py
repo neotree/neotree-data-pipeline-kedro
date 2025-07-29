@@ -43,6 +43,8 @@ def finalize_validation():
     if get_status() == "running":
         set_status("done")
         log_file_path="logs/validation.log"
+        logging.info(f"#########ASTU#########{params}")
+        logging.info(f"#########MRTTT#########{params['MAIL_RECEIVERS']}")
         email_recipients= params['MAIL_RECEIVERS']
         if email_recipients:
             send_log_via_email(log_file_path,email_receivers=email_recipients)
@@ -84,7 +86,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                         logger.error(f"❌ Column '{value_col}' has values that are not numeric or empty: {invalid_sample}")
                         errors.append(f"Non-numeric values in '{value_col}': {invalid_sample}")
                     df.drop(columns=[temp_col], inplace=True) 
-                     
+
                 elif dtype in ['dropdown', 'single_select_option', 'period','multi_select_option','text','string','uid']:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
                 elif dtype in ['datetime', 'timestamp', 'date']:
@@ -145,6 +147,8 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
     with open(log_file_path, 'r') as f:
         log_content = f.read()
     if 'ERROR' in log_content or "WARN" in log_content:
+        logging.info(f"##################{email_receivers}")
+        logging.info(f"#########MR#########{params['MAIL_RECEIVERS']}")
         MAIL_HOST = params['MAIL_HOST']
         MAIL_PORT = params['MAIL_PORT']
         MAIL_USERNAME = params['MAIL_USERNAME']
