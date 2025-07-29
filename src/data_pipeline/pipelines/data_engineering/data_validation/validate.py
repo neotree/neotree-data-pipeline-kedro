@@ -75,7 +75,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         try:
             if value_col in df.columns:
                 if dtype == 'number':
-                    temp_col = f"__{value_col}_as_number"
+                    temp_col = f"_{value_col}_as_number"
                     df[temp_col] = pd.to_numeric(df[value_col], errors='coerce')  # non-convertible → NaN
                     validator = context.sources.pandas_default.read_dataframe(df)
                     invalid_mask = (~df[value_col].isnull()) & (df[temp_col].isnull())
@@ -83,6 +83,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     if invalid_sample:
                         logger.error(f"❌ Column '{value_col}' has values that are not numeric or empty: {invalid_sample}")
                         errors.append(f"Non-numeric values in '{value_col}': {invalid_sample}")
+                    df.drop(columns=[temp_col], inplace=True) 
+                     
                 elif dtype in ['dropdown', 'single_select_option', 'period','multi_select_option','text','string','uid']:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
                 elif dtype in ['datetime', 'timestamp', 'date']:
