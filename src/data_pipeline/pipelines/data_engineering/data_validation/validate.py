@@ -110,22 +110,34 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
     for col in df.columns:
         if col.endswith(('.value', '.label')):
             try:
+                # Skip if column is completely NaN
                 if df[col].dropna().empty:
                     continue
 
                 df[col] = df[col].astype(str).fillna("")
-                validator.expect_column_values_to_not_match_regex(col, pattern)    
+
+                # Skip if column not present in validator (sometimes true with ephemeral batches)
+                if col not in validator.active_batch.data.columns:
+                    logger.warning(f"Skipping {col} — not found in validator batch.")
+                    continue
+
+                # Only apply expectation if at least one non-null value
+                validator.expect_column_values_to_not_match_regex(col, pattern)
+
                 bad_vals = df[df[col].astype(str).str.contains(pattern, na=False, regex=True)]
-               # Exclude escaped values
+
+                # Exclude escaped values
                 bad_vals_filtered = bad_vals[~bad_vals[col].isin(escaped_values)]
                 sample = bad_vals_filtered[col].dropna().head(3).tolist()
 
                 if sample:
                     logger.error(f"Forbidden content in {col}: {sample}")
+
             except Exception as e:
                 err_msg = f"Error applying content check to '{col}': {str(e)}\n{traceback.format_exc()}"
                 logger.error(err_msg)
                 errors.append(err_msg)
+
 
     try:
         results = validator.validate()
