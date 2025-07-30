@@ -148,9 +148,7 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
     with open(log_file_path, 'r') as f:
         log_content = f.read()
     if 'ERROR' in log_content or "WARN" in log_content:
-        logging.info("::::::::::::HAS FAILED GE DATA VALIDATION:::::::::::::::::")
-        MAIL_HOST = params['mail_host']
-        MAIL_PORT = params['mail_port']
+        MAIL_HOST = str('smtp.'+params['mail_host'])
         MAIL_USERNAME = params['MAIL_USERNAME'.lower()]
         MAIL_PASSWORD = params['MAIL_PASSWORD'.lower()]
         MAIL_FROM_ADDRESS = params['MAIL_FROM_ADDRESS'.lower()]
@@ -165,17 +163,17 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
             msg['To'] = ', '.join(email_receivers)
         else:
             msg['To'] = email_receivers
-        logging.info(f'::RECEIVERS:: {email_receivers}')
         html_body = get_html_validation_template(country, log_content)
         msg.set_content("Validation errors occurred. See the HTML version.")
         msg.add_alternative(html_body, subtype='html')
         
         try:
-            with smtplib.SMTP(MAIL_HOST, int(MAIL_PORT)) as server:
+            with smtplib.SMTP(MAIL_HOST, 587) as server:
+                server.set_debuglevel(1)
                 server.starttls()
                 server.login(MAIL_USERNAME, MAIL_PASSWORD)
                 server.send_message(msg)
-                logging.info(f'::MAIL DETAILS:: {MAIL_USERNAME}--{MAIL_FROM_ADDRESS}--{MAIL_HOST}')
+                logging.info(f'::MAIL DETAILS:: {MAIL_USERNAME}--{MAIL_FROM_ADDRESS}--{MAIL_HOST} --{MAIL_PASSWORD}')
             logging.info("Error log emailed successfully.")
         except Exception as e:
             logging.error(f"Failed to send email: {str(e)}")
