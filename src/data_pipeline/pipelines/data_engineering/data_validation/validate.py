@@ -157,7 +157,7 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
 
         msg = EmailMessage()
         msg['Subject'] = 'Data Validation Error Log'
-        msg['From'] = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>"
+        msg['From'] = MAIL_FROM_ADDRESS
         
         if isinstance(email_receivers, list):
             msg['To'] = ', '.join(email_receivers)
@@ -166,14 +166,13 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         html_body = get_html_validation_template(country, log_content)
         msg.set_content("Validation errors occurred. See the HTML version.")
         msg.add_alternative(html_body, subtype='html')
+        msg["Disposition-Notification-To"] = 'mbaradza1@gmail.com'
         
         try:
             with smtplib.SMTP(MAIL_HOST, 587) as server:
-                server.set_debuglevel(1)
                 server.starttls()
                 server.login(MAIL_USERNAME, MAIL_PASSWORD)
                 server.send_message(msg)
-                logging.info(f'::MAIL DETAILS:: {MAIL_USERNAME}--{MAIL_FROM_ADDRESS}--{MAIL_HOST} --{MAIL_PASSWORD}')
             logging.info("Error log emailed successfully.")
         except Exception as e:
             logging.error(f"Failed to send email: {str(e)}")
