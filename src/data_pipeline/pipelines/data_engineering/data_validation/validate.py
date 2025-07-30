@@ -13,6 +13,7 @@ from typing import  Dict
 from datetime import datetime
 from conf.base.catalog import params,hospital_conf
 import re
+import pdfkit
 
 STATUS_FILE = "logs/validation_status.json"
 
@@ -133,7 +134,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 column = result.get("expectation_config", {}).get("kwargs", {}).get("column")
                 success = result.get("success")
 
-                if (not success and column in df.columns and ('expect_column_values_to_be_of_type' in expectation_type or 'expect_column_values_to_match_regex' in expectation_type)):
+                if (not success and column in df.columns and ('expect_column_values_to_be_of_type' in expectation_type
+                                                               or 'expect_column_values_to_match_regex' in expectation_type)):
                     unexpected_list = result.get("result", {}).get("partial_unexpected_list", [])
                     sample_vals = unexpected_list[:3]
                     msg = f"❌ Expectation failed for column '{column}' :: Sample invalid values: {sample_vals}"
@@ -152,7 +154,6 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         MAIL_USERNAME = params['MAIL_USERNAME'.lower()]
         MAIL_PASSWORD = params['MAIL_PASSWORD'.lower()]
         MAIL_FROM_ADDRESS = params['MAIL_FROM_ADDRESS'.lower()]
-        MAIL_FROM_NAME = "NeoTree"
         country = params['country']
 
         msg = EmailMessage()
@@ -164,8 +165,16 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         else:
             msg['To'] = email_receivers
         html_body = get_html_validation_template(country, log_content)
-        msg.set_content("Validation errors occurred. See the HTML version.")
+        pdf_path = "/tmp/validation_log.pdf"
+        pdfkit.from_string(html_body, pdf_path)
+        msg.set_content("Your VALDATION LOG IS ATTACHED AS PDF.")
         msg.add_alternative(html_body, subtype='html')
+        try:
+            with open(pdf_path, 'rb') as f:
+                msg.add_attachment(f.read(), maintype='application', subtype='pdf', filename='validation.pdf')
+
+        except:
+            logging.error(f">>>>>>>>>Failed TO ATTACH LOG PDF: {str(e)}") 
         
         try:
             with smtplib.SMTP(MAIL_HOST, 587) as server:

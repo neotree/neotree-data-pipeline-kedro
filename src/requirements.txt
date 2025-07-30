@@ -17,5 +17,6 @@ python-crontab== 2.7.1
 setuptools==65.5.1
 memory-profiler==0.61.0 
 great_expectations==0.18.14
+pdfkit==1.0.0
 
 

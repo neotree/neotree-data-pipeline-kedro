@@ -213,4 +213,7 @@ name= Parirenyatwa Group of Hospitals
 country=  zimbabwe
 new_script = DNPARDEMOSERTDOOO
 
+#### PDF GENERATION
+> For PDF Generation on ubuntu please run : sudo apt install wkhtmltopdf and on macos run: brew install wkhtmltopdf
+
 
