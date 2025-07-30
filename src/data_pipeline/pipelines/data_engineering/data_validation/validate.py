@@ -166,7 +166,6 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         html_body = get_html_validation_template(country, log_content)
         msg.set_content("Validation errors occurred. See the HTML version.")
         msg.add_alternative(html_body, subtype='html')
-        msg["Disposition-Notification-To"] = 'mbaradza1@gmail.com'
         
         try:
             with smtplib.SMTP(MAIL_HOST, 587) as server:
