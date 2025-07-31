@@ -103,7 +103,7 @@ def deduplicate_data_query(condition, destination_table):
                 data,
                 unique_key,
                 review_number
-            );;''' 
+            )''' 
             condition = script_condition + f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
 
         else:

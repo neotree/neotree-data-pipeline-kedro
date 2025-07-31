@@ -118,6 +118,8 @@ if hospital_scripts:
                      deduplication_query = deduplicate_baseline_query(condition+additional_where)   
                   else:
                      deduplication_query = deduplicate_data_query(condition+additional_where,dedup_destination)
+                     if script_name=='infections' or script_name=='daily_review':
+                         logging.info(f"#####-----{deduplication_query}")
                   generic_dedup_queries.append(deduplication_query)
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
