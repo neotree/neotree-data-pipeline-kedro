@@ -119,7 +119,7 @@ def deduplicate_data_query(condition, destination_table):
                     data,
                     unique_key
                 FROM public.clean_sessions cs
-                WHERE id<524436 and scriptid {condition}
+                WHERE scriptid {condition}
             ),
             deduplicated AS (
                 SELECT DISTINCT ON (scriptid, uid, completed_date,unique_key)
@@ -299,7 +299,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
 
 def get_dynamic_condition(destination_table) :
     if('daily_review' in destination_table or 'infections' in destination_table):
-        return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
+        return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.unique_key=ds.unique_key and cs.review_number=ds.review_number and cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
     
     return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid and cs.uid is not null and ds.uid is not null and cs.unique_key is not null and ds.unique_key is not null)'''
 
