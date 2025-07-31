@@ -78,7 +78,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         try:
             if value_col in df.columns:
                 temp_base_series = (
-                    df[col]
+                    df[value_col]
                     .astype(str)
                     .replace(['nan', '<NA>', 'None', 'null','NAT'], '')
                     .str.strip()
@@ -86,7 +86,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 )
                 
                 if temp_base_series.isna().all():
-                    logger.info(f"Skipping {col} - all values are null/empty.")
+                    logger.info(f"Skipping {value_col} - all values are null/empty.")
                     continue
                 if dtype == 'number':
                     temp_col = f"_{value_col}_as_number"
