@@ -86,8 +86,11 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 )
                 
                 if temp_base_series.isna().all():
-                    logger.info(f"Skipping {value_col} - all values are null/empty.")
                     continue
+
+                if value_col not in validator.columns():
+                    continue
+
                 if dtype == 'number':
                     temp_col = f"_{value_col}_as_number"
                     df[temp_col] = pd.to_numeric(df[value_col], errors='coerce')  # non-convertible → NaN
@@ -95,7 +98,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     invalid_mask = (~df[value_col].isnull()) & (df[temp_col].isnull())
                     invalid_sample = df.loc[invalid_mask, value_col].dropna().unique()[:3].tolist()
                     if invalid_sample:
-                        logger.error(f"❌ Column '{value_col}' has values that are not numeric or empty: {invalid_sample}")
+                        logger.error(f"❌ Column '{value_col}' has values that are not numeric or values that are empty: {invalid_sample}")
                         errors.append(f"Non-numeric values in '{value_col}': {invalid_sample}")
                     df.drop(columns=[temp_col], inplace=True) 
 
@@ -135,12 +138,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 )
                 
                 if temp_series.isna().all():
-                    logger.info(f"Skipping {col} - all values are null/empty.")
                     continue
                     
                 # Skip if column not in validator
                 if col not in validator.columns():
-                    logger.warning(f"Skipping {col} - not found in validator.")
                     continue
 
                 content_result = validator.expect_column_values_to_not_match_regex(
@@ -151,21 +152,16 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 
                 # Use the validation result to get problematic values
                 if not content_result.success:
-                    bad_count = content_result.result['unexpected_count']
                     bad_values = content_result.result['partial_unexpected_list'][:3]
-                    logger.warning(
-                        f"Content check failed for {col}: "
-                        f"{bad_count} violations. Sample: {bad_values}"
-                    )
-                    
+                
                     # Additional check to exclude escaped values
                     actual_bad_values = [
                         val for val in bad_values 
                         if val not in escaped_values
                     ]
                     if actual_bad_values:
-                        logger.warning(
-                            f"After escaping, found {len(actual_bad_values)} "
+                        logger.error(
+                            f"Found {len(actual_bad_values)} "
                             f"true violations in {col}. Sample: {actual_bad_values[:3]}"
                         )
 
@@ -206,14 +202,12 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         pdf_options = {
             'page-size': 'A4',
             'margin-top': '10mm',
-            'margin-right': '10mm',
+            'margin-right': '15mm',
             'margin-bottom': '10mm',
-            'margin-left': '10mm',
+            'margin-left': '15mm',
             'encoding': "UTF-8",
             'no-outline': None,
-            'dpi': 300,
-            'enable-local-file-access': None, 
-            'disable-smart-shrinking': ''
+            'enable-local-file-access': None,
              
             # Required in some environments
 }
