@@ -117,7 +117,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 df[col] = df[col].astype(str).fillna("")
 
                 # Skip if column not present in validator (sometimes true with ephemeral batches)
-                if col not in validator.active_batch.data.columns:
+                if col not in validator.active_batch.data.data.columns:
                     logger.warning(f"Skipping {col} — not found in validator batch.")
                     continue
 
@@ -137,6 +137,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 err_msg = f"Error applying content check to '{col}': {str(e)}\n{traceback.format_exc()}"
                 logger.error(err_msg)
                 errors.append(err_msg)
+                logging.error(f"GE ERROR::{err_msg}")
 
 
     try:
