@@ -439,7 +439,7 @@ def generate_postgres_insert(df, schema,table_name):
     values = ','.join(values_list)
 
     # Compose the full INSERT statement
-    insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES{values};;'
+    insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES ({values});;'
     if 'phc' in table_name:
         logging.error(f"PPPPPPPP---{insert_query}")
     inject_sql(insert_query,f"INSERTING INTO {table_name}")
