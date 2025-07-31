@@ -101,9 +101,10 @@ def deduplicate_data_query(condition, destination_table):
                 ingested_at,
                 completed_at,
                 data,
-                unique_key
-            )''' 
-            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
+                unique_key,
+                review_number
+            );;''' 
+            condition = script_condition + f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
 
         else:
             operation = f'''DROP TABLE IF EXISTS {destination_table} CASCADE;
@@ -127,20 +128,34 @@ def deduplicate_data_query(condition, destination_table):
                     *
                 FROM filtered
                 ORDER BY scriptid, uid, completed_date, id DESC
+            ),
+            numbered_sessions AS (
+                SELECT
+                    scriptid,
+                    uid,
+                    id,
+                    ingested_at,
+                    completed_date AS completed_at,
+                    data,
+                    unique_key,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY uid, scriptid
+                        ORDER BY completed_date
+                    ) AS review_number
+                FROM  {destination_table} 
             )
             SELECT
                 scriptid,
                 uid,
                 id,
                 ingested_at,
-                completed_date AS completed_at,
+                completed_at,
                 data,
-                unique_key
-            FROM deduplicated
-            WHERE scriptid {script_condition};;
-        """
-
-     
+                unique_key,
+                review_number
+            FROM numbered_sessions
+            WHERE scriptid {script_condition};;"""
+                    
     else:
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
@@ -249,30 +264,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     
     if destination_table == 'daily_review' or destination_table == 'infections':
         sql = f'''
-        WITH distinct_sessions AS (
-            SELECT DISTINCT
-                cs.uid,
-                cs.scriptid,
-                cs.completed_at
-            FROM {source_table} cs
-            WHERE cs.scriptid {where_condition}
-            AND cs.uid IS NOT NULL
-            AND cs.uid != 'null'
-            AND cs.uid != 'Unknown'
-            AND cs.unique_key IS NOT NULL
-            {condition}
-        ),
-        numbered_sessions AS (
-            SELECT
-                uid,
-                scriptid,
-                completed_at,
-                ROW_NUMBER() OVER (
-                    PARTITION BY uid, scriptid
-                    ORDER BY completed_at
-                ) AS review_number
-            FROM distinct_sessions
-        )
+      
         SELECT
             cs.uid,
             cs.ingested_at,
@@ -280,23 +272,13 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs."data"->'scriptVersion' AS "scriptVersion",
             cs."data"->'started_at' AS "started_at",
             cs.completed_at,
-            ns.review_number,
+            cs.review_number,
             cs."data"->'entries' AS "entries",
             cs."data"->'entries'->'repeatables' AS "repeatables",
             cs.unique_key,
             cs."data"->>'completed_at' as "completed_time"
             {case_condition}
-        FROM {source_table} cs
-        JOIN numbered_sessions ns
-        ON cs.uid = ns.uid
-        AND cs.scriptid = ns.scriptid
-        AND cs.completed_at = ns.completed_at
-        WHERE cs.scriptid {where_condition}
-        AND cs.uid IS NOT NULL
-        AND cs.uid != 'null'
-        AND cs.uid != 'Unknown'
-        AND cs.unique_key IS NOT NULL
-        {condition};;
+        FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs.uid IS NOT NULL AND cs.uid != 'null' AND cs.uid != 'Unknown' AND cs.unique_key IS NOT NULL {condition};;
         '''
 
     else:
