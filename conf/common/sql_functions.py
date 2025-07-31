@@ -80,7 +80,7 @@ def inject_sql(sql_script, file_name):
                 raise
         
     except Exception as e:
-        logging.error(f"Transaction failed completely for {file_name}")
+        logging.error(f"Transaction failed completely for {sql_script}")
         raise
     finally:
         if cur:
