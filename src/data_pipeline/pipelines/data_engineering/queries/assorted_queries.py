@@ -106,10 +106,9 @@ def deduplicate_data_query(condition, destination_table):
             )'''
             condition = script_condition + f''' AND NOT EXISTS (
                 SELECT 1 FROM {schema}."{table}" ds
-                WHERE cs.unique_key = ds.unique_key
+                WHERE LEFT(cs.unique_key,10) = LEFT(ds.unique_key,10)
                 AND cs.uid = ds.uid
-                AND CAST(cs.data->>'completed_at' AS date) = ds.completed_at
-                AND cs.scriptid = ds.scriptid
+            
             )'''
 
             return f"""{operation}
@@ -171,7 +170,7 @@ def deduplicate_data_query(condition, destination_table):
 
         else:
             operation = f'''CREATE TABLE {schema}."{table}" AS'''
-            condition = script_condition  # safe even on create
+            condition = script_condition  # still safe
 
             return f"""{operation}
                 (WITH filtered AS (
@@ -186,6 +185,18 @@ def deduplicate_data_query(condition, destination_table):
                     FROM public.clean_sessions cs
                     WHERE cs.scriptid {condition}
                 ),
+                deduplicated AS (
+                    SELECT DISTINCT ON (uid,LEFT(unique_key,10))
+                        scriptid,
+                        uid,
+                        id,
+                        ingested_at,
+                        completed_date,
+                        data,
+                        unique_key
+                    FROM filtered
+                    ORDER BY uid,LEFT(unique_key,10), completed_date DESC, id DESC
+                ),
                 final_numbering AS (
                     SELECT
                         scriptid,
@@ -199,7 +210,7 @@ def deduplicate_data_query(condition, destination_table):
                             PARTITION BY uid, scriptid
                             ORDER BY completed_date, id
                         ) AS review_number
-                    FROM filtered
+                    FROM deduplicated
                 )
                 SELECT
                     scriptid,
@@ -211,7 +222,7 @@ def deduplicate_data_query(condition, destination_table):
                     unique_key,
                     review_number
                 FROM final_numbering);;"""
-                        
+                      
     else:
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
