@@ -434,9 +434,12 @@ def generate_postgres_insert(df, schema,table_name):
                 row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
             else:
                 row_values.append(str(val))
-        values_list.append(f"({',\n'.join(row_values)})")
+        values_list.append(f"({','.join(row_values)})")
+
+    logging.info(f"MI VALUES BEF=={values_list}")
 
     values = ',\n'.join(values_list)
+    logging.info(f"MI VALUES AFTER=={values}")
 
     # Compose the full INSERT statement
     insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
