@@ -119,10 +119,10 @@ def deduplicate_data_query(condition, destination_table):
                     data,
                     unique_key
                 FROM public.clean_sessions cs
-                WHERE scriptid {condition}
+                WHERE id<524436 and scriptid {condition}
             ),
             deduplicated AS (
-                SELECT DISTINCT ON (scriptid, uid, completed_date)
+                SELECT DISTINCT ON (scriptid, uid, completed_date,LEFT(unique_key,10))
                     *
                 FROM filtered
                 ORDER BY scriptid, uid, completed_date, id DESC
