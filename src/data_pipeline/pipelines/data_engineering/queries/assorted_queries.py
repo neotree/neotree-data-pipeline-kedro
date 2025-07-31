@@ -103,7 +103,7 @@ def deduplicate_data_query(condition, destination_table):
                 unique_key,
                 review_number
             )''' 
-            condition = script_condition + f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}" ds where cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
+            condition = script_condition + f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}" ds where cs.unique_key=ds.unique_key and cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
 
         else:
             operation = f'''CREATE TABLE {schema}."{table}" AS'''
@@ -122,10 +122,10 @@ def deduplicate_data_query(condition, destination_table):
                 WHERE id<524436 and scriptid {condition}
             ),
             deduplicated AS (
-                SELECT DISTINCT ON (scriptid, uid, completed_date,LEFT(unique_key,10))
+                SELECT DISTINCT ON (scriptid, uid, completed_date,unique_key)
                     *
                 FROM filtered
-                ORDER BY scriptid, uid, completed_date,LEFT(unique_key,10), id DESC
+                ORDER BY scriptid, uid, completed_date,unique_key, id DESC
             ),
             numbered_sessions AS (
                 SELECT
@@ -137,10 +137,10 @@ def deduplicate_data_query(condition, destination_table):
                     data,
                     unique_key,
                     ROW_NUMBER() OVER (
-                        PARTITION BY uid, scriptid
+                        PARTITION BY uid, scriptid,completed_date,unique_key
                         ORDER BY completed_date
                     ) AS review_number
-                FROM  deduplicated 
+                FROM   
             )
             SELECT
                 scriptid,
@@ -153,6 +153,7 @@ def deduplicate_data_query(condition, destination_table):
                 review_number
             FROM numbered_sessions
             WHERE scriptid {script_condition};;"""
+
                     
     else:
         # all other cases -> group on ingested_at

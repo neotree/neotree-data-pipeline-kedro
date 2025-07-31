@@ -204,7 +204,7 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         country = params['country']
 
         pdf_options = {
-            'page-size': 'A3',
+            'page-size': 'A4',
             'margin-top': '10mm',
             'margin-right': '10mm',
             'margin-bottom': '10mm',
