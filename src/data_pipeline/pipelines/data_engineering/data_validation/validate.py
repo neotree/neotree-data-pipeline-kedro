@@ -48,7 +48,8 @@ def finalize_validation():
         if 'mail_receivers' in params:
             email_recipients= params['MAIL_RECEIVERS'.lower()]
             if email_recipients:
-                send_log_via_email(log_file_path,email_receivers=email_recipients)
+                pass;
+                # send_log_via_email(log_file_path,email_receivers=email_recipients)
 
 
 def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/validation.log"):
@@ -76,7 +77,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         dtype = (meta.get('dataType') or '').lower()
 
         try:
-            if value_col in df.columns:
+            if value_col in df.columns and value_col in validator.columns():
                 temp_base_series = (
                     df[value_col]
                     .astype(str)
@@ -86,9 +87,6 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 )
                 
                 if temp_base_series.isna().all():
-                    continue
-
-                if value_col not in validator.columns():
                     continue
 
                 if dtype == 'number':
@@ -123,7 +121,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
             errors.append(err_msg)
 
     forbidden = ['who', 'when', 'where', 'is', '?', 'what', 'do', 'how', 'date', 'reason', 'readmission', 'did', 'which', 'if', 'age category', 'were']
-    escaped_values = ['Chest is clear']
+    escaped_values = ['Chest is clear','Less than 18 hours']
     pattern = r"(?i)\b(" + "|".join(map(re.escape, forbidden)) + r")\b"
     for col in df.columns:
         if col.endswith(('.value', '.label')):

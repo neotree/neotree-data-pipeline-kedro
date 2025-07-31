@@ -91,6 +91,7 @@ def deduplicate_data_query(condition, destination_table):
     elif 'daily_review' in destination_table or 'infections' in destination_table:
         schema, table = destination_table.split('.')
         exists = table_exists(schema, table)
+
         if exists:
             operation = f'''
             INSERT INTO {schema}."{table}" (
@@ -102,45 +103,63 @@ def deduplicate_data_query(condition, destination_table):
                 data,
                 unique_key,
                 review_number
-            )''' 
-            condition = script_condition + f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}" ds where cs.unique_key=ds.unique_key and cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
-
+            )'''
+            condition = script_condition + f''' AND NOT EXISTS (
+                SELECT 1 FROM {schema}."{table}" ds
+                WHERE cs.unique_key = ds.unique_key
+                AND cs.uid = ds.uid
+                AND CAST(cs.data->>'completed_at' AS date) = ds.completed_at
+                AND cs.scriptid = ds.scriptid
+            )'''
         else:
             operation = f'''CREATE TABLE {schema}."{table}" AS'''
+            condition = script_condition  # still need condition for filtering
 
         return f"""{operation}
             (WITH filtered AS (
                 SELECT
-                    scriptid,
-                    uid,
-                    id,
-                    ingested_at,
-                    CAST(data->>'completed_at' AS date) AS completed_date,
-                    data,
-                    unique_key
+                    cs.scriptid,
+                    cs.uid,
+                    cs.id,
+                    cs.ingested_at,
+                    CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                    cs.data,
+                    cs.unique_key
                 FROM public.clean_sessions cs
-                WHERE scriptid {condition}
+                WHERE cs.scriptid {condition}
             ),
-            deduplicated AS (
-                SELECT DISTINCT ON (scriptid, uid, completed_date,unique_key)
-                    *
-                FROM filtered
-                ORDER BY scriptid, uid, completed_date,unique_key, id DESC
+            numbered_with_prior AS (
+                SELECT
+                    f.scriptid,
+                    f.uid,
+                    f.id,
+                    f.ingested_at,
+                    f.completed_date AS completed_at,
+                    f.data,
+                    f.unique_key,
+                    f.completed_date,
+                    COALESCE((
+                        SELECT MAX(di.review_number)
+                        FROM {schema}."{table}" di
+                        WHERE di.uid = f.uid
+                        AND di.scriptid = f.scriptid
+                    ), 0) AS max_existing_review_number
+                FROM filtered f
             ),
-            numbered_sessions AS (
+            final_numbering AS (
                 SELECT
                     scriptid,
                     uid,
                     id,
                     ingested_at,
-                    completed_date AS completed_at,
+                    completed_at,
                     data,
                     unique_key,
                     ROW_NUMBER() OVER (
-                        PARTITION BY uid, scriptid,completed_date,unique_key
-                        ORDER BY completed_date
-                    ) AS review_number
-                FROM  deduplicated
+                        PARTITION BY uid, scriptid
+                        ORDER BY completed_date, id
+                    ) + max_existing_review_number AS review_number
+                FROM numbered_with_prior
             )
             SELECT
                 scriptid,
@@ -151,8 +170,8 @@ def deduplicate_data_query(condition, destination_table):
                 data,
                 unique_key,
                 review_number
-            FROM numbered_sessions
-            WHERE scriptid {script_condition});;"""
+            FROM final_numbering);;"""
+
 
                     
     else:
