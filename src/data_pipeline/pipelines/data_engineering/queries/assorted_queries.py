@@ -140,7 +140,7 @@ def deduplicate_data_query(condition, destination_table):
                         PARTITION BY uid, scriptid,completed_date,unique_key
                         ORDER BY completed_date
                     ) AS review_number
-                FROM   
+                FROM  deduplicated
             )
             SELECT
                 scriptid,
