@@ -121,7 +121,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     df[col] = df[col].astype(str).replace('nan', '').replace('<NA>', '').fillna('')
 
                     # Check if column exists in validator
-                    if col not in validator.columns:
+                    if col not in validator.columns():
                         logger.warning(f"Skipping {col} — not found in validator batch.")
                         continue
 
