@@ -125,7 +125,7 @@ def deduplicate_data_query(condition, destination_table):
                 SELECT DISTINCT ON (scriptid, uid, completed_date,LEFT(unique_key,10))
                     *
                 FROM filtered
-                ORDER BY scriptid, uid, completed_date, id DESC
+                ORDER BY scriptid, uid, completed_date,LEFT(unique_key,10), id DESC
             ),
             numbered_sessions AS (
                 SELECT

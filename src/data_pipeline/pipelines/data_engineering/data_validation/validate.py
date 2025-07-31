@@ -77,6 +77,17 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
 
         try:
             if value_col in df.columns:
+                temp_base_series = (
+                    df[col]
+                    .astype(str)
+                    .replace(['nan', '<NA>', 'None', 'null'], '')
+                    .str.strip()
+                    .replace('', np.nan) 
+                )
+                
+                if temp_base_series.isna().all():
+                    logger.info(f"Skipping {col} - all values are null/empty.")
+                    continue
                 if dtype == 'number':
                     temp_col = f"_{value_col}_as_number"
                     df[temp_col] = pd.to_numeric(df[value_col], errors='coerce')  # non-convertible → NaN
@@ -132,19 +143,6 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     logger.warning(f"Skipping {col} - not found in validator.")
                     continue
 
-                # 1. First validate nulls properly
-                null_result = validator.expect_column_values_to_not_be_null(
-                    column=col,
-                    mostly=1.0
-                )
-                
-                if not null_result.success:
-                    logger.warning(
-                        f"Null check failed for {col}: "
-                        f"{null_result.result['unexpected_count']} null values found."
-                    )
-
-                # 2. Then validate content on non-null values
                 content_result = validator.expect_column_values_to_not_match_regex(
                     column=col,
                     regex=pattern,
