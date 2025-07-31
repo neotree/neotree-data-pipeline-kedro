@@ -89,7 +89,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 elif dtype in ['dropdown', 'single_select_option', 'period','multi_select_option','text','string','uid']:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
                 elif dtype in ['datetime', 'timestamp', 'date']:
-                    datetime_regex = r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$"
+                    datetime_regex = r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$"
                     validator.expect_column_values_to_match_regex(value_col, datetime_regex)
 
                 elif dtype == 'boolean':
@@ -111,19 +111,26 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         if col.endswith(('.value', '.label')):
             try:
                 # Skip if column is completely NaN
-                if df[col].dropna().empty:
-                    continue
+                if col.endswith(('.value', '.label')):
+                    # Skip if column is completely NaN
+                    if df[col].dropna().empty:
+                        logger.info(f"Skipping {col} — all values are null.")
+                        continue
 
-                df[col] = df[col].astype(str).fillna("")
+                    # Convert to string and handle nulls
+                    df[col] = df[col].astype(str).replace('nan', '').replace('<NA>', '').fillna('')
 
-        
-                if col not in validator.columns():
-                    logger.warning(f"Skipping {col} — not found in validator batch.")
-                    continue
+                    # Check if column exists in validator
+                    if col not in validator.columns:
+                        logger.warning(f"Skipping {col} — not found in validator batch.")
+                        continue
 
-                # Only apply expectation if at least one non-null value
-                validator.expect_column_values_to_not_match_regex(col, pattern)
-
+                    # Apply expectation with proper null handling
+                    validator.expect_column_values_to_not_match_regex(
+                        column=col,
+                        regex=pattern,
+                        mostly=1.0, 
+                    )
                 bad_vals = df[df[col].astype(str).str.contains(pattern, na=False, regex=True)]
 
                 # Exclude escaped values
