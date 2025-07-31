@@ -14,13 +14,17 @@ def get_html_validation_template(country, log_content):
             font-family: Arial, sans-serif;
           }}
           .email {{
-            width: 80%;
+            width: 100%;
             margin: 0 auto;
             background-color: #fff;
             border: 1px solid #ccc;
             border-radius: 8px;
             overflow: hidden;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
           }}
+
           .email-header {{
             background-color: #1a313d;
             color: #fff;
@@ -28,7 +32,10 @@ def get_html_validation_template(country, log_content):
             text-align: center;
           }}
           .email-body {{
-            padding: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 0;
+            padding: 0;
             color: #333;
           }}
           .email-footer {{
