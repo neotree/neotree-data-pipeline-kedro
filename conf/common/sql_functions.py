@@ -440,6 +440,8 @@ def generate_postgres_insert(df, schema,table_name):
 
     # Compose the full INSERT statement
     insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
+    if 'phc' in table_name:
+                logging.info(f"#######JUNE#----{insert_query}")
     inject_sql(insert_query,f"INSERTING INTO {table_name}")
 
 def clean_datetime_string(s:str):
@@ -534,7 +536,8 @@ def generate_create_insert_sql(df,schema, table_name):
                 pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
                 create_cols.append(f'"{col}" {pg_type}')
 
-            create_stmt = f'CREATE TABLE IF NOT EXISTS {schema}.{table_name} ({",".join(create_cols)});;'
+            create_stmt = f'CREATE TABLE IF NOT EXISTS {schema}."{table_name}" ({",".join(create_cols)});;'
+           
             inject_sql(create_stmt,f"CREATING {table_name}")
             
         generate_postgres_insert(df,schema,table_name)
