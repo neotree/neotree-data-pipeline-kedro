@@ -116,9 +116,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
 
                 df[col] = df[col].astype(str).fillna("")
 
-                # Skip if column not present in validator (sometimes true with ephemeral batches)
-                logging.info(f"#####--RRREE---{validator.active_batch.data}")
-                if col not in validator.active_batch.data:
+        
+                if col not in validator.columns:
                     logger.warning(f"Skipping {col} — not found in validator batch.")
                     continue
 
