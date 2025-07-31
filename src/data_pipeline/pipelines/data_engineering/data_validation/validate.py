@@ -94,7 +94,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     validator.expect_column_values_to_match_regex(value_col, datetime_regex)
 
                 elif dtype == 'boolean':
-                    validator.expect_column_values_to_be_of_type(value_col, 'bool')
+                    validator.expect_column_values_to_be_in_set(
+                    value_col,
+                    ["True", "False", "true", "false", True, False, 1, 0,"y","n","Y","N","Yes","No","yes","no"]
+)
                 else:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
             else:
@@ -155,8 +158,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 column = result.get("expectation_config", {}).get("kwargs", {}).get("column")
                 success = result.get("success")
 
-                if (not success and column in df.columns and ('expect_column_values_to_be_of_type' in expectation_type
-                                                               or 'expect_column_values_to_match_regex' in expectation_type)):
+                if (not success and column in df.columns and ('expect_column_values_to_be' in expectation_type
+                                                               or 'expect_column_values_to_match' in expectation_type)):
                     unexpected_list = result.get("result", {}).get("partial_unexpected_list", [])
                     sample_vals = unexpected_list[:3]
                     msg = f"❌ Expectation failed for column '{column}' :: Sample invalid values: {sample_vals}"
@@ -177,6 +180,18 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         MAIL_FROM_ADDRESS = params['MAIL_FROM_ADDRESS'.lower()]
         country = params['country']
 
+        pdf_options = {
+            'page-size': 'A4',
+            'margin-top': '2mm',
+            'margin-right': '2mm',
+            'margin-bottom': '2mm',
+            'margin-left': '2mm',
+            'encoding': "UTF-8",
+            'no-outline': None,
+            'dpi': 300,
+            'enable-local-file-access': None,  # Required in some environments
+}
+
         msg = EmailMessage()
         msg['Subject'] = 'Data Validation Error Log'
         msg['From'] = MAIL_FROM_ADDRESS
@@ -187,7 +202,7 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
             msg['To'] = email_receivers
         html_body = get_html_validation_template(country, log_content)
         pdf_path = "/tmp/validation_log.pdf"
-        pdfkit.from_string(html_body, pdf_path)
+        pdfkit.from_string(html_body, pdf_path,options=pdf_options)
         msg.set_content("Your VALDATION LOG IS ATTACHED AS PDF.")
         msg.add_alternative(html_body, subtype='html')
         try:
