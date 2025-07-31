@@ -109,7 +109,7 @@ def deduplicate_data_query(condition, destination_table):
             operation = f'''CREATE TABLE {schema}."{table}" AS'''
 
         return f"""{operation}
-            WITH filtered AS (
+            (WITH filtered AS (
                 SELECT
                     scriptid,
                     uid,
@@ -152,7 +152,7 @@ def deduplicate_data_query(condition, destination_table):
                 unique_key,
                 review_number
             FROM numbered_sessions
-            WHERE scriptid {script_condition};;"""
+            WHERE scriptid {script_condition});;"""
 
                     
     else:
