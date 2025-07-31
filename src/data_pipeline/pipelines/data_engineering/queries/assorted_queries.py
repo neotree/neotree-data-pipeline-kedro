@@ -138,7 +138,6 @@ def deduplicate_data_query(condition, destination_table):
                             SELECT MAX(di.review_number)
                             FROM {schema}."{table}" di
                             WHERE di.uid = f.uid
-                            AND di.scriptid = f.scriptid
                         ), 0) AS max_existing_review_number
                     FROM filtered f
                 ),
@@ -152,7 +151,7 @@ def deduplicate_data_query(condition, destination_table):
                         data,
                         unique_key,
                         ROW_NUMBER() OVER (
-                            PARTITION BY uid, scriptid
+                            PARTITION BY uid, LEFT(unique_key,10)
                             ORDER BY completed_date, id
                         ) + max_existing_review_number AS review_number
                     FROM numbered_with_prior
@@ -207,7 +206,7 @@ def deduplicate_data_query(condition, destination_table):
                         data,
                         unique_key,
                         ROW_NUMBER() OVER (
-                            PARTITION BY uid, scriptid
+                            PARTITION BY uid
                             ORDER BY completed_date, id
                         ) AS review_number
                     FROM deduplicated
