@@ -91,10 +91,9 @@ def deduplicate_data_query(condition, destination_table):
     elif 'daily_review' in destination_table or 'infections' in destination_table:
         schema, table = destination_table.split('.')
         exists = table_exists(schema, table)
-
         if exists:
             operation = f'''
-            INSERT INTO {destination_table} (
+            INSERT INTO {schema}."{table}" (
                 scriptid,
                 uid,
                 id,
@@ -104,11 +103,10 @@ def deduplicate_data_query(condition, destination_table):
                 unique_key,
                 review_number
             )''' 
-            condition = script_condition + f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
+            condition = script_condition + f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}" ds where cs.uid=ds.uid and CAST(cs.data->>'completed_at' AS date)=ds.completed_at and cs.scriptid=ds.scriptid) '''
 
         else:
-            operation = f'''DROP TABLE IF EXISTS {destination_table} CASCADE;
-            CREATE TABLE {destination_table} AS'''
+            operation = f'''CREATE TABLE {schema}."{table}" AS'''
 
         return f"""{operation}
             WITH filtered AS (
@@ -142,7 +140,7 @@ def deduplicate_data_query(condition, destination_table):
                         PARTITION BY uid, scriptid
                         ORDER BY completed_date
                     ) AS review_number
-                FROM  {destination_table} 
+                FROM  deduplicated 
             )
             SELECT
                 scriptid,
@@ -160,11 +158,10 @@ def deduplicate_data_query(condition, destination_table):
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
         exists= table_exists(schema,table)
-        operation = f''' drop table if exists {destination_table} cascade;;
-            create table {destination_table} as '''
+        operation = f''' create table {destination_table} as '''
         
         if(exists):
-            operation= f''' INSERT INTO {destination_table} (
+            operation= f''' INSERT INTO {schema}."{table}"  (
                         scriptid,
                         uid,
                         id,
@@ -174,7 +171,7 @@ def deduplicate_data_query(condition, destination_table):
                         month,
                         data
                         )'''
-            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {destination_table} ds where cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
+            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}"  ds where cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
             
         return f'''{operation}
             (
