@@ -60,7 +60,7 @@ def get_html_validation_template(country, log_content):
               <pre>{log_content}</pre>
             </div>
             <div class="email-footer">
-               <p>© 2021 Neotree - All Rights Reserved. Charity no. 1186748, Registered office address: The Broadgate Tower, Third Floor, 20 Primrose Street, London EC2A 2RS | Designed by Creative Clinic</p>
+               <p>© 2021 Neotree - All Rights Reserved. Charity no. 1186748, Registered office address: The Broadgate Tower, Third Floor, 20 Primrose Street, London EC2A 2RS | Designed by Morris Baradza</p>
             </div>
           </div>
         </div>
