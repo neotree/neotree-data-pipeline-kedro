@@ -111,42 +111,53 @@ def deduplicate_data_query(condition, destination_table):
                 AND CAST(cs.data->>'completed_at' AS date) = ds.completed_at
                 AND cs.scriptid = ds.scriptid
             )'''
-        else:
-            operation = f'''CREATE TABLE {schema}."{table}" AS'''
-            condition = script_condition  # still need condition for filtering
 
-        return f"""{operation}
-            (WITH filtered AS (
-                SELECT
-                    cs.scriptid,
-                    cs.uid,
-                    cs.id,
-                    cs.ingested_at,
-                    CAST(cs.data->>'completed_at' AS date) AS completed_date,
-                    cs.data,
-                    cs.unique_key
-                FROM public.clean_sessions cs
-                WHERE cs.scriptid {condition}
-            ),
-            numbered_with_prior AS (
-                SELECT
-                    f.scriptid,
-                    f.uid,
-                    f.id,
-                    f.ingested_at,
-                    f.completed_date AS completed_at,
-                    f.data,
-                    f.unique_key,
-                    f.completed_date,
-                    COALESCE((
-                        SELECT MAX(di.review_number)
-                        FROM {schema}."{table}" di
-                        WHERE di.uid = f.uid
-                        AND di.scriptid = f.scriptid
-                    ), 0) AS max_existing_review_number
-                FROM filtered f
-            ),
-            final_numbering AS (
+            return f"""{operation}
+                (WITH filtered AS (
+                    SELECT
+                        cs.scriptid,
+                        cs.uid,
+                        cs.id,
+                        cs.ingested_at,
+                        CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                        cs.data,
+                        cs.unique_key
+                    FROM public.clean_sessions cs
+                    WHERE cs.scriptid {condition}
+                ),
+                numbered_with_prior AS (
+                    SELECT
+                        f.scriptid,
+                        f.uid,
+                        f.id,
+                        f.ingested_at,
+                        f.completed_date AS completed_at,
+                        f.data,
+                        f.unique_key,
+                        f.completed_date,
+                        COALESCE((
+                            SELECT MAX(di.review_number)
+                            FROM {schema}."{table}" di
+                            WHERE di.uid = f.uid
+                            AND di.scriptid = f.scriptid
+                        ), 0) AS max_existing_review_number
+                    FROM filtered f
+                ),
+                final_numbering AS (
+                    SELECT
+                        scriptid,
+                        uid,
+                        id,
+                        ingested_at,
+                        completed_at,
+                        data,
+                        unique_key,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY uid, scriptid
+                            ORDER BY completed_date, id
+                        ) + max_existing_review_number AS review_number
+                    FROM numbered_with_prior
+                )
                 SELECT
                     scriptid,
                     uid,
@@ -155,25 +166,52 @@ def deduplicate_data_query(condition, destination_table):
                     completed_at,
                     data,
                     unique_key,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY uid, scriptid
-                        ORDER BY completed_date, id
-                    ) + max_existing_review_number AS review_number
-                FROM numbered_with_prior
-            )
-            SELECT
-                scriptid,
-                uid,
-                id,
-                ingested_at,
-                completed_at,
-                data,
-                unique_key,
-                review_number
-            FROM final_numbering);;"""
+                    review_number
+                FROM final_numbering);;"""
 
+        else:
+            operation = f'''CREATE TABLE {schema}."{table}" AS'''
+            condition = script_condition  # safe even on create
 
-                    
+            return f"""{operation}
+                (WITH filtered AS (
+                    SELECT
+                        cs.scriptid,
+                        cs.uid,
+                        cs.id,
+                        cs.ingested_at,
+                        CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                        cs.data,
+                        cs.unique_key
+                    FROM public.clean_sessions cs
+                    WHERE cs.scriptid {condition}
+                ),
+                final_numbering AS (
+                    SELECT
+                        scriptid,
+                        uid,
+                        id,
+                        ingested_at,
+                        completed_date AS completed_at,
+                        data,
+                        unique_key,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY uid, scriptid
+                            ORDER BY completed_date, id
+                        ) AS review_number
+                    FROM filtered
+                )
+                SELECT
+                    scriptid,
+                    uid,
+                    id,
+                    ingested_at,
+                    completed_at,
+                    data,
+                    unique_key,
+                    review_number
+                FROM final_numbering);;"""
+                        
     else:
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
