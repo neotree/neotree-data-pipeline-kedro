@@ -434,7 +434,7 @@ def generate_postgres_insert(df, schema,table_name):
                 row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
             else:
                 row_values.append(str(val))
-        values_list.append(f"({', '.join(row_values)})")
+        values_list.append(f"({',\n'.join(row_values)})")
 
     values = ',\n'.join(values_list)
 
