@@ -439,11 +439,10 @@ def generate_postgres_insert(df, schema,table_name):
     values = ',\n'.join(values_list)
 
     # Compose the full INSERT statement
-    insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
-    if 'phc' in table_name:
-        logging.info(f"###------YTTTY=={columns}")
-        logging.info(f"###------YYY=={values}")
-    inject_sql(insert_query,f"INSERTING INTO {table_name}")
+    if columns and values:
+        insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
+        
+        inject_sql(insert_query,f"INSERTING INTO {table_name}")
 
 def clean_datetime_string(s:str):
     try:
