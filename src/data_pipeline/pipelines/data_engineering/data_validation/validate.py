@@ -1,6 +1,7 @@
 import os
 import json
 import pandas as pd
+import numpy as np
 import great_expectations as gx
 import smtplib
 from email.message import EmailMessage
@@ -107,50 +108,74 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
             logger.error(err_msg)
             errors.append(err_msg)
 
-    forbidden = ['who', 'when', 'where', 'is', '?', 'what', 'do', 'how', 'date', 'reason','readmission', 'did', 'which', 'if', 'age category', 'were']
+    forbidden = ['who', 'when', 'where', 'is', '?', 'what', 'do', 'how', 'date', 'reason', 'readmission', 'did', 'which', 'if', 'age category', 'were']
+    escaped_values = ['Chest is clear']
     pattern = r"(?i)\b(" + "|".join(map(re.escape, forbidden)) + r")\b"
-    escaped_values =['Chest is clear']
-
     for col in df.columns:
         if col.endswith(('.value', '.label')):
             try:
-                # Skip if column is completely NaN
-                if col.endswith(('.value', '.label')):
-                    # Skip if column is completely NaN
-                    if df[col].dropna().empty:
-                        logger.info(f"Skipping {col} — all values are null.")
-                        continue
+                # Create a clean series with consistent null handling
+                temp_series = (
+                    df[col]
+                    .astype(str)
+                    .replace(['nan', '<NA>', 'None', 'null'], '')
+                    .str.strip()
+                    .replace('', np.nan) 
+                )
+                
+                if temp_series.isna().all():
+                    logger.info(f"Skipping {col} - all values are null/empty.")
+                    continue
+                    
+                # Skip if column not in validator
+                if col not in validator.columns():
+                    logger.warning(f"Skipping {col} - not found in validator.")
+                    continue
 
-                    # Convert to string and handle nulls
-                    df[col] = df[col].astype(str).replace('nan', '').replace('<NA>', '').fillna('')
-
-                    # Check if column exists in validator
-                    if col not in validator.columns():
-                        logger.warning(f"Skipping {col} — not found in validator batch.")
-                        continue
-
-                    # Apply expectation with proper null handling
-                    validator.expect_column_values_to_not_match_regex(
-                        column=col,
-                        regex=pattern,
-                        mostly=1.0, 
+                # 1. First validate nulls properly
+                null_result = validator.expect_column_values_to_not_be_null(
+                    column=col,
+                    mostly=1.0
+                )
+                
+                if not null_result.success:
+                    logger.warning(
+                        f"Null check failed for {col}: "
+                        f"{null_result.result['unexpected_count']} null values found."
                     )
-                bad_vals = df[df[col].astype(str).str.contains(pattern, na=False, regex=True)]
 
-                # Exclude escaped values
-                bad_vals_filtered = bad_vals[~bad_vals[col].isin(escaped_values)]
-                sample = bad_vals_filtered[col].dropna().head(3).tolist()
-
-                if sample:
-                    logger.error(f"Forbidden content in {col}: {sample}")
+                # 2. Then validate content on non-null values
+                content_result = validator.expect_column_values_to_not_match_regex(
+                    column=col,
+                    regex=pattern,
+                    mostly=1.0
+                )
+                
+                # Use the validation result to get problematic values
+                if not content_result.success:
+                    bad_count = content_result.result['unexpected_count']
+                    bad_values = content_result.result['partial_unexpected_list'][:3]
+                    logger.warning(
+                        f"Content check failed for {col}: "
+                        f"{bad_count} violations. Sample: {bad_values}"
+                    )
+                    
+                    # Additional check to exclude escaped values
+                    actual_bad_values = [
+                        val for val in bad_values 
+                        if val not in escaped_values
+                    ]
+                    if actual_bad_values:
+                        logger.warning(
+                            f"After escaping, found {len(actual_bad_values)} "
+                            f"true violations in {col}. Sample: {actual_bad_values[:3]}"
+                        )
 
             except Exception as e:
-                err_msg = f"Error applying content check to '{col}': {str(e)}\n{traceback.format_exc()}"
-                logger.error(err_msg)
-                errors.append(err_msg)
-                logging.error(f"GE ERROR::{err_msg}")
-
-
+                logger.error(
+                    f"Validation failed for {col}: {str(e)}\n"
+                    f"Data sample: {temp_series.dropna().head(3).tolist()}"
+                )
     try:
         results = validator.validate()
         for result in results.get("results", []):
