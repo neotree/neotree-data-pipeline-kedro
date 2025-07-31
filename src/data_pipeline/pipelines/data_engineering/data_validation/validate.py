@@ -207,14 +207,17 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
 
         pdf_options = {
             'page-size': 'A4',
-            'margin-top': '2mm',
-            'margin-right': '2mm',
-            'margin-bottom': '2mm',
-            'margin-left': '2mm',
+            'margin-top': '10mm',
+            'margin-right': '10mm',
+            'margin-bottom': '10mm',
+            'margin-left': '10mm',
             'encoding': "UTF-8",
             'no-outline': None,
             'dpi': 300,
-            'enable-local-file-access': None,  # Required in some environments
+            'enable-local-file-access': None, 
+            'disable-smart-shrinking': ''
+             
+            # Required in some environments
 }
 
         msg = EmailMessage()
