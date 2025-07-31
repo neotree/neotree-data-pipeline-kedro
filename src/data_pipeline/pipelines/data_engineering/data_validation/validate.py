@@ -80,7 +80,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 temp_base_series = (
                     df[col]
                     .astype(str)
-                    .replace(['nan', '<NA>', 'None', 'null'], '')
+                    .replace(['nan', '<NA>', 'None', 'null','NAT'], '')
                     .str.strip()
                     .replace('', np.nan) 
                 )
@@ -129,7 +129,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 temp_series = (
                     df[col]
                     .astype(str)
-                    .replace(['nan', '<NA>', 'None', 'null'], '')
+                    .replace(['nan', '<NA>', 'None', 'null','NAT'], '')
                     .str.strip()
                     .replace('', np.nan) 
                 )
