@@ -1515,7 +1515,7 @@ def deduplicate_derived_tables(table: str):
                             PARTITION BY LEFT(unique_key,10), uid
                             ORDER BY ctid
                         ) AS rn
-                    FROM derived.{table} 
+                    FROM derived."{table}"
                     WHERE unique_key IS NOT NULL
                 ),
                 to_delete AS (
@@ -1524,7 +1524,7 @@ def deduplicate_derived_tables(table: str):
                     WHERE rn > 1
                     LIMIT batch_size
                 )
-                DELETE FROM derived.{table} 
+                DELETE FROM derived."{table}" 
                 WHERE ctid IN (SELECT ctid FROM to_delete);
 
                 GET DIAGNOSTICS rows_deleted = ROW_COUNT;
