@@ -106,8 +106,8 @@ def deduplicate_data_query(condition, destination_table):
             )'''
             condition = script_condition + f''' AND NOT EXISTS (
                 SELECT 1 FROM {schema}."{table}" ds
-                WHERE cs.unique_key = ds.unique_key
-                AND cs.uid = ds.uid
+                WHERE cs.uid = ds.uid
+                 AND  CAST(cs.data->>'completed_at' AS date) = ds.completed_at          
             
             )'''
 
@@ -185,7 +185,7 @@ def deduplicate_data_query(condition, destination_table):
                     WHERE cs.scriptid {condition}
                 ),
                 deduplicated AS (
-                    SELECT DISTINCT ON (uid,unique_key)
+                    SELECT DISTINCT ON (uid,completed_date)
                         scriptid,
                         uid,
                         id,
@@ -194,7 +194,7 @@ def deduplicate_data_query(condition, destination_table):
                         data,
                         unique_key
                     FROM filtered
-                    ORDER BY uid,unique_key, completed_date DESC, id DESC
+                    ORDER BY uid, completed_date DESC
                 ),
                 final_numbering AS (
                     SELECT
