@@ -106,7 +106,7 @@ def deduplicate_data_query(condition, destination_table):
             )'''
             condition = script_condition + f''' AND NOT EXISTS (
                 SELECT 1 FROM {schema}."{table}" ds
-                WHERE LEFT(cs.unique_key,10) = LEFT(ds.unique_key,10)
+                WHERE cs.unique_key = ds.unique_key
                 AND cs.uid = ds.uid
             
             )'''
@@ -151,7 +151,7 @@ def deduplicate_data_query(condition, destination_table):
                         data,
                         unique_key,
                         ROW_NUMBER() OVER (
-                            PARTITION BY uid, LEFT(unique_key,10)
+                            PARTITION BY uid
                             ORDER BY completed_date, id
                         ) + max_existing_review_number AS review_number
                     FROM numbered_with_prior
@@ -170,7 +170,7 @@ def deduplicate_data_query(condition, destination_table):
         else:
             operation = f'''CREATE TABLE {schema}."{table}" AS'''
             condition = script_condition  # still safe
-
+            
             return f"""{operation}
                 (WITH filtered AS (
                     SELECT
@@ -185,7 +185,7 @@ def deduplicate_data_query(condition, destination_table):
                     WHERE cs.scriptid {condition}
                 ),
                 deduplicated AS (
-                    SELECT DISTINCT ON (uid,LEFT(unique_key,10))
+                    SELECT DISTINCT ON (uid,unique_key)
                         scriptid,
                         uid,
                         id,
@@ -194,7 +194,7 @@ def deduplicate_data_query(condition, destination_table):
                         data,
                         unique_key
                     FROM filtered
-                    ORDER BY uid,LEFT(unique_key,10), completed_date DESC, id DESC
+                    ORDER BY uid,unique_key, completed_date DESC, id DESC
                 ),
                 final_numbering AS (
                     SELECT
