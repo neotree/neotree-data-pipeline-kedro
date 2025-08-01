@@ -401,7 +401,7 @@ def read_data_with_no_unique_key():
             "data"->>'appVersion' AS "appVersion"
         FROM 
             public.clean_sessions
-        WHERE scriptid NOT IN ('f715e123-3cd0-49ac-8e45-45ab5db72942','588477ee-9274-414c-baa9-dda5951fdf1d','afa5984e-c07d-4025-8150-de25bb37144a') AND
+        WHERE scriptid NOT IN('f715e123-3cd0-49ac-8e45-45ab5db72942','588477ee-9274-414c-baa9-dda5951fdf1d','afa5984e-c07d-4025-8150-de25bb37144a') AND
 
             (cleaned is false and ("unique_key" NOT LIKE '%-%-%' or unique_key is null))
         AND 
