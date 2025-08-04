@@ -149,7 +149,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 
                 # Use the validation result to get problematic values
                 if not content_result.success:
-                    bad_values = content_result.result['partial_unexpected_list'][:3]
+                    bad_values = content_result.result['partial_unexpected_list']
                 
                     # Additional check to exclude escaped values
                     actual_bad_values = [
