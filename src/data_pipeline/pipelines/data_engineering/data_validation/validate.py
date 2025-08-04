@@ -48,8 +48,7 @@ def finalize_validation():
         if 'mail_receivers' in params:
             email_recipients= params['MAIL_RECEIVERS'.lower()]
             if email_recipients:
-                pass;
-                # send_log_via_email(log_file_path,email_receivers=email_recipients)
+                send_log_via_email(log_file_path,email_receivers=email_recipients)
 
 
 def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/validation.log"):
