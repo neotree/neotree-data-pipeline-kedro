@@ -75,10 +75,9 @@ def join_table():
         discharge_exists = table_exists('derived','discharges')
         joined_exists = table_exists('derived','joined_admissions_discharges')
         if(discharge_exists and joined_exists):
-            #Load Derived Admissions Withoud Discharges From Kedro Catalog
             adm_df_2 = catalog.load('admissions_without_discharges')  
-            #Load Derived Discharges Not Yet Joined From Kedro Catalog
             dis_df_2 = catalog.load('discharges_not_joined') 
+            logging.info(f"####DERE{len(adm_df_2)} {len(dis_df_2)}")
           
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
@@ -86,6 +85,8 @@ def join_table():
                 jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match('^\d+$', na=False)]
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
+                    logging.info(f"####KERE{len(filtered_df)}")
+                    logging.info(f"####MY HEAD{len(filtered_df.head())}")
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
 
     except Exception as e:
