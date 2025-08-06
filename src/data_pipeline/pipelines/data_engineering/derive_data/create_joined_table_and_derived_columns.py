@@ -64,7 +64,7 @@ def join_table():
             if not date_column_types.empty:
                 jn_adm_dis = format_date_without_timezone(jn_adm_dis,date_column_types)
                 jn_adm_dis.columns = jn_adm_dis.columns.astype(str) 
-                jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match('^\d+$', na=False)]
+                jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match('^\\d+$', na=False)]
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
             generate_create_insert_sql(jn_adm_dis,"derived","joined_admissions_discharges")
