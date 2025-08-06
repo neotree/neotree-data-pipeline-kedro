@@ -118,7 +118,10 @@ def deduplicate_data_query(condition, destination_table):
                         cs.uid,
                         cs.id,
                         cs.ingested_at,
-                        CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                        CASE when cs.data->'entries'->'TodDate'->'values'->'value'::text->>0 is null
+                        THEN  CAST(cs.data->>'completed_at' AS date)
+                        ELSE CAST(cs.data->'entries'->'TodDate'->'values'->'value'::text->>0 as date)  
+                        END AS completed_date,
                         cs.data,
                         cs.unique_key
                     FROM public.clean_sessions cs
@@ -386,10 +389,10 @@ def read_derived_data_query(source_table, destination_table=None):
 
 def read_joined_admissions_without_discharges():   
         return f'''
-            select   * from derived.admissions WHERE uid IN (SELECT uid from derived.joined_admissions_discharges where "NeoTreeOutcome.value" is null);;'''
+            select   * from derived.admissions WHERE uid IN (SELECT uid from derived.joined_admissions_discharges where "NeoTreeOutcome.value" is null or ("DateTimeDischarge.value" is null and "DateTimeDeath.value" is null));;'''
 
 def read_dicharges_not_joined():
-        return f'''SELECT * from derived.discharges WHERE uid IN (SELECT uid from derived.joined_admissions_discharges where "NeoTreeOutcome.value" is null);;'''
+        return f'''SELECT * from derived.discharges WHERE uid IN (SELECT uid from derived.joined_admissions_discharges where "NeoTreeOutcome.value" is null or ("DateTimeDischarge.value" is null and "DateTimeDeath.value" is null));;'''
 
 
 def read_data_with_no_unique_key():
