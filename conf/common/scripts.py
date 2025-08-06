@@ -135,6 +135,29 @@ def get_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
   
     return download_script(script_type)
 
+def get_raw_json(script_id:str):
+
+    params = config()
+    data = {
+    'scriptsIds': [script_id.strip('"')],
+    'returnDraftsIfExist': True
+    }
+
+    api_key = params['webeditor_api_key']
+    url = f"{params['webeditor']}/api/scripts/metadata?data={json.dumps(data)}"
+      
+    headers = {
+        'x-api-key': api_key,
+        'Accept': 'application/json'
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except Exception as ex:
+        return {}
+
 def merge_script_data(
     existing_data: Optional[OrderedDictType[str, Dict[str, str]]], 
     new_data: OrderedDictType[str, Dict[str, str]]

@@ -12,6 +12,7 @@ from .extract_key_values import get_key_values,format_repeatables_to_rows
 from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date
 from data_pipeline.pipelines.data_engineering.utils.assorted_fixes import extract_years
+from data_pipeline.pipelines.data_engineering.utils.field_info import update_fields_info,transform_matching_labels
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date,format_date_without_timezone,format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.queries.fix_duplicate_uids_for_diff_records import fix_duplicate_uid
 from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
@@ -115,6 +116,7 @@ def tidy_tables():
     try:
         adm_df = pd.json_normalize(adm_new_entries)
         if not adm_df.empty:
+            update_fields_info("admissions")
             adm_df.set_index(['uid'])
             adm_df = format_date_without_timezone(adm_df,['started_at', 'completed_at','EndScriptDatetime.value','DateTimeAdmission.value'])
             adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
@@ -305,7 +307,10 @@ def tidy_tables():
                     column_pairs =  [(col, str(adm_df[col].dtype)) for col in new_adm_columns]
                     if len(column_pairs)>0:
                         create_new_columns('admissions','derived',column_pairs)
+            
             adm_df=convert_false_numbers_to_text(adm_df,'derived','admissions'); 
+            adm_df = adm_df.loc[:, ~adm_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+            adm_df =transform_matching_labels(adm_df,'admissions')
             validate_dataframe_with_ge(adm_df,'admissions')
             generate_create_insert_sql(adm_df,'derived','admissions')        
             #catalog.save('create_derived_admissions',adm_df)
@@ -324,6 +329,7 @@ def tidy_tables():
         ##################################DISCHARGES SCRIPT#################################################### 
         dis_df = pd.json_normalize(dis_new_entries)
         if not dis_df.empty:
+            update_fields_info("discharges")
             logging.info(f"##########DISC DATAFRAME SIZE={len(dis_df)}")
             if "started_at" in dis_df and 'completed_at' in dis_df :
                 try:
@@ -378,7 +384,9 @@ def tidy_tables():
                     column_pairs =  [(col, str(dis_df[col].dtype)) for col in new_disc_columns]
                     if column_pairs:
                         create_new_columns('discharges','derived',column_pairs)
-            dis_df=convert_false_numbers_to_text(dis_df,'derived','discharges'); 
+            dis_df=convert_false_numbers_to_text(dis_df,'derived','discharges');
+            dis_df = dis_df.loc[:, ~dis_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)] 
+            dis_df= transform_matching_labels(dis_df,'discharges')
             validate_dataframe_with_ge(dis_df,'discharges')
             generate_create_insert_sql(dis_df,'derived','discharges')  
             #catalog.save('create_derived_discharges',dis_df)
@@ -399,6 +407,7 @@ def tidy_tables():
         ##################################MATERNAL OUTCOMES########################################33
         mat_outcomes_df =pd.json_normalize(mat_outcomes_new_entries)
         if not mat_outcomes_df.empty:
+            update_fields_info("maternal_outcomes")
             logging.info("...##########MAT DF IS NOT EMPTY################")
             mat_outcomes_df.set_index(['unique_key'])
             mat_outcomes_df=format_date_without_timezone(mat_outcomes_df,['started_at','completed_at','DateAdmission.value']) 
@@ -428,6 +437,8 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('maternal_outcomes','derived',column_pairs)
             mat_outcomes_df=convert_false_numbers_to_text(mat_outcomes_df,'derived','maternal_outcomes'); 
+            mat_outcomes_df = mat_outcomes_df.loc[:, ~mat_outcomes_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+            mat_outcomes_df= transform_matching_labels(mat_outcomes_df,'maternal_outcomes')
             validate_dataframe_with_ge(mat_outcomes_df,'maternal_outcomes')
             generate_create_insert_sql(mat_outcomes_df,'derived','maternal_outcomes')  
             #catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
@@ -445,6 +456,7 @@ def tidy_tables():
         
         vit_signs_df = pd.json_normalize(vit_signs_new_entries)
         if not vit_signs_df.empty:
+            update_fields_info("vitalsigns")
             vit_signs_df.set_index(['uid'])
             vit_signs_df = format_date_without_timezone(vit_signs_df,['started_at','completed_at',]) 
             if "started_at" in vit_signs_df and 'completed_at' in vit_signs_df :
@@ -469,6 +481,8 @@ def tidy_tables():
                     if column_pairs:
                         create_new_columns('vitalsigns','derived',column_pairs)
             vit_signs_df= convert_false_numbers_to_text(vit_signs_df,'derived','vitalsigns'); 
+            vit_signs_df = vit_signs_df.loc[:, ~vit_signs_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+            vit_signs_df= transform_matching_labels(vit_signs_df,'vitalsigns')
             validate_dataframe_with_ge(vit_signs_df,'vitalsigns')
             generate_create_insert_sql(vit_signs_df,'derived','vitalsigns') 
             #catalog.save('create_derived_vitalsigns',vit_signs_df)
@@ -477,6 +491,7 @@ def tidy_tables():
     ##################### NEOLAB ###################################################################################    
         neolab_df = pd.json_normalize(neolab_new_entries)
         if not neolab_df.empty:
+            update_fields_info("neolab")
             if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
                 neolab_df['DateBCR.value'] is not None and neolab_df['DateBCT.value'] is not None):
             
@@ -584,6 +599,8 @@ def tidy_tables():
                     column_pairs =  [(col, str(neolab_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('neolab','derived',column_pairs)
+            neolab_df = neolab_df.loc[:, ~neolab_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+            neolab_df= transform_matching_labels(neolab_df,'neolab')
             validate_dataframe_with_ge(neolab_df,'neolab')
             generate_create_insert_sql(neolab_df,'derived','neolab') 
 
@@ -600,6 +617,7 @@ def tidy_tables():
         #########################BASELINE###############################################################    
         baseline_df = pd.json_normalize(baseline_new_entries) 
         if not baseline_df.empty:
+            update_fields_info("baseline")
             date_column_types = pd.DataFrame(get_date_column_names('baseline', 'derived'))
             baseline_df = format_date_without_timezone(baseline_df, date_column_types) 
             if "started_at" in baseline_df.columns and 'completed_at' in baseline_df.columns:
@@ -670,6 +688,8 @@ def tidy_tables():
                     column_pairs =  [(col, str(baseline_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('baseline','derived',column_pairs)
+            baseline_df = baseline_df.loc[:, ~baseline_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+            baseline_df= transform_matching_labels(baseline_df,'baseline')
             validate_dataframe_with_ge(baseline_df,'baseline')
             generate_create_insert_sql(baseline_df,'derived','baseline') 
             #catalog.save('create_derived_baseline',baseline_df)
@@ -686,6 +706,7 @@ def tidy_tables():
         ###################MATERNAL COMPLETENES CASE OF MALAWI###################   
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if not mat_completeness_df.empty:
+            update_fields_info("maternity_completeness")
             mat_completeness_df= format_date_without_timezone(mat_completeness_df,['DateAdmission.value','DateTimeAdmission.value'])
             # Join Maternal Completeness and Maternal Outcomes /A Case For Malawi
             if not mat_outcomes_df.empty: 
@@ -703,6 +724,8 @@ def tidy_tables():
                     column_pairs =  [(col, str(mat_completeness_df[col].dtype)) for col in new_columns]
                     if column_pairs:
                         create_new_columns('maternity_completeness','derived',column_pairs)
+            mat_completeness_df = mat_completeness_df.loc[:, ~mat_completeness_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+            mat_completeness_df= transform_matching_labels(mat_completeness_df,'maternity_completeness')
             generate_create_insert_sql(mat_completeness_df,'derived','maternity_completeness') 
             #catalog.save('create_derived_maternity_completeness',mat_completeness_df)
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")

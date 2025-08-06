@@ -11,6 +11,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import convert_false_numbers_to_text
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge
+from data_pipeline.pipelines.data_engineering.utils.field_info import update_fields_info,transform_matching_labels
 
 from conf.base.catalog import params
 # Import libraries
@@ -34,6 +35,7 @@ def tidy_dynamic_tables():
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
                 try:
                     script_df = pd.json_normalize(script_new_entries)
+                    update_fields_info(script)
                     if 'uid' in script_df:
                         script_df.set_index(['uid'])
                      # ADD TIME SPENT TO ALL DFs
@@ -80,6 +82,8 @@ def tidy_dynamic_tables():
                                     if len(column_pairs)>0:
                                         create_new_columns(script,'derived',column_pairs)
                             script_df=convert_false_numbers_to_text(script_df,'derived',script); 
+                            script_df = script_df.loc[:, ~script_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+                            script_df=transform_matching_labels(script_df,script=script)
                             validate_dataframe_with_ge(script_df,script)
                             generate_create_insert_sql(script_df,'derived',script)
                             logging.info("... Creating MCL count tables for Generic Scripts")

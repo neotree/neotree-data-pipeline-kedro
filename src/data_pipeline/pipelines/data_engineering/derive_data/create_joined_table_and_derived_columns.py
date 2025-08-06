@@ -64,7 +64,7 @@ def join_table():
             if not date_column_types.empty:
                 jn_adm_dis = format_date_without_timezone(jn_adm_dis,date_column_types)
                 jn_adm_dis.columns = jn_adm_dis.columns.astype(str) 
-                jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match('^\\d+$', na=False)]
+                jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
 
             logging.info(f"##########JDS DATAFRAME SIZE={len(jn_adm_dis)}")
             generate_create_insert_sql(jn_adm_dis,"derived","joined_admissions_discharges")
@@ -82,7 +82,8 @@ def join_table():
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
                 jn_adm_dis_2.columns = jn_adm_dis_2.columns.astype(str) 
-                jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match('^\d+$', na=False)]
+                jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
                     logging.info(f"####KERE{len(filtered_df)}")

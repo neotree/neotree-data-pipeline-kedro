@@ -519,6 +519,7 @@ def format_value(col, value, col_type):
     
 def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
+    drop_keywords=['surname','firstname']
     try:
         if not table_exists(schema,table_name):
             dtype_map = {
@@ -531,13 +532,20 @@ def generate_create_insert_sql(df,schema, table_name):
             }
 
             create_cols = []
+            if("twenty_8_day_follow_up" in table_name):
+                df = reorder_dataframe_columns(df,script=table_name)
             for col in df.columns:
                 dtype = str(df[col].dtype)
                 pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
                 create_cols.append(f'"{col}" {pg_type}')
 
             create_stmt = f'CREATE TABLE IF NOT EXISTS {schema}."{table_name}" ({",".join(create_cols)});;'
-           
+            columns_to_drop = df.columns[
+                df.columns.str.lower().str.contains('|'.join([kw.lower() for kw in drop_keywords]))
+            ]
+            #DROP CONFIDENTIAL COLUMNS
+            df = df.drop(columns=columns_to_drop)
+
             inject_sql(create_stmt,f"CREATING {table_name}")
             
         generate_postgres_insert(df,schema,table_name)
@@ -562,3 +570,100 @@ def table_exists(schema, table_name):
             return bool(result[0])
         return bool(result)
     return False
+
+
+def reorder_dataframe_columns(df:pd.DataFrame, script:str):
+    """
+    Reorders DataFrame columns based on a case-insensitive match with desired_order,
+    keeping unmatched columns at the end in their original order.
+    
+    Parameters:
+        df (pd.DataFrame): Input DataFrame
+        desired_order (list): List of base column names to match (case-insensitive)
+        
+    Returns:
+        pd.DataFrame: DataFrame with reordered columns
+    """
+    # Get all DataFrame columns
+    df_columns = df.columns.tolist()
+    desired_order = columns_order(script)
+    # Split columns into: (1) Matches desired order, (2) Others
+    ordered_cols = []
+    other_cols = []
+    
+    for col in df_columns:
+        # Check if column matches any base in desired_order (case-insensitive)
+        col_lower = col.lower()
+        match_found = any(
+            re.match(f"^{base.lower()}(\.|$)", col_lower)
+            for base in desired_order
+        )
+        
+        if match_found:
+            ordered_cols.append(col)
+        else:
+            other_cols.append(col)
+    
+    # Sort matched columns based on desired_order priority
+    def get_sort_key(col_name):
+        col_lower = col_name.lower()
+        for i, base in enumerate(desired_order):
+            if re.match(f"^{base.lower()}(\.|$)", col_lower):
+                return (i, col_name)  # Sort first by order priority, then by name
+        return (len(desired_order), col_name)  # Shouldn't happen for matched cols
+    
+    ordered_cols_sorted = sorted(ordered_cols, key=get_sort_key)
+    
+    # Combine columns
+    final_columns = ordered_cols_sorted + other_cols
+    
+    # Return reordered DataFrame
+    return df[final_columns]
+
+def columns_order (script: str):
+    if "twenty_8_day_follow_up" in script:
+        return [
+    "Dobtob",
+    "Feedasse",
+    "Mothersurname",
+    "Motherfirstname",
+    "CurrCond",
+    "FeedAsse",
+    "ReasAdmi",
+    "ReceWeigKnow",
+    "ReceWeig",
+    "Anyilln",
+    "NameIlln",
+    "MediHelp",
+    "MediHelpType",
+    "MediHelpWher",
+    "Hosp",
+    "NameHosp",
+    "MediGive",
+    "MediGiveType",
+    "TermPre",
+    "PreTermClinAtte",
+    "DatePreTermClinAtte",
+    "AnySupp",
+    "AnySuppType",
+    "Day3Chec",
+    "Day7Chec",
+    "Day7WeigKno",
+    "Day7Weig",
+    "BabyPass",
+    "ReasQuit",
+    "OthReasQuit",
+    "DatetimeDeath",
+    "PlacOfDeat",
+    "CauseofDeatKnow",
+    "CauseDeath",
+    "CauseDeathOther",
+    "MediHelp",
+    "MediHelpType",
+    "MediHelpWher",
+    "ReceWeigKnow",
+    "ReceWeig",
+    "MediGive",
+    "MediGIveType",
+    "Termpre"
+]
