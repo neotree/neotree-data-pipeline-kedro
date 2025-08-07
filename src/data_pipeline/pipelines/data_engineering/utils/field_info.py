@@ -5,62 +5,56 @@ from conf.common.scripts import get_raw_json
 import pandas as pd
 import logging
 
-def process_and_save_field_info(script, json_data):
 
-    filename =  filename = f'conf/local/scripts/{script}.json'
-    
+def process_and_save_field_info(script, json_data):
+    filename = f'conf/local/scripts/{script}.json'
+    # Load existing data (simple key-value dict)
     if os.path.exists(filename):
         with open(filename, 'r') as f:
             result = json.load(f)
-        # Convert list back to dictionary for easier processing
-        result = {item['key']: item for item in result}
+        # Convert from list to dict if needed
+        if isinstance(result, list):
+            result = {item['key']: item for item in result}
     else:
         result = {}
 
-    for screen in json_data:
-        logging.info(f'MY SCRIPT::{script}::MY JSON: {json_data}')
-        if "fields" not in screen:
-            continue
-            
-        for field in screen["fields"]:
-            key = field["key"]
-            field_type = field["type"]
-            label = field["label"]
-            
-            # Initialize the entry if it doesn't exist
-            if key not in result:
-                result[key] = {
-                    "key": key,
-                    "type": field_type,
-                    "label": label,
-                    "options": []
-                }
-            
-            # Add options if they exist
-            if "value" in field and "valueLabel" in field:
-                value = field["value"]
-                value_label = field["valueLabel"]
+    # Process screens from the input data
+    for script_entry in json_data.get('data', []):
+        for screen in script_entry.get('screens', []):
+            if "fields" not in screen:
+                continue
                 
-                if value is not None and value_label is not None:
-                    # Check if this option already exists
-                    option_exists = any(
-                        opt["value"] == value and opt["valueLabel"] == value_label 
-                        for opt in result[key]["options"]
-                    )
+            for field in screen["fields"]:
+                key = field["key"]
+                field_type = field.get("type")
+                label = field.get("label")
+                
+                # Initialize if doesn't exist
+                if key not in result:
+                    result[key] = {
+                        "key": key,
+                        "type": field_type,
+                        "label": label,
+                        "options": []
+                    }
+                
+                # Add options if they exist
+                if "value" in field and "valueLabel" in field:
+                    value = field["value"]
+                    value_label = field["valueLabel"]
                     
-                    if not option_exists:
-                        result[key]["options"].append({
-                            "value": value,
-                            "valueLabel": value_label
-                        })
-    
-    # Convert result back to list for saving
-    final_result = list(result.values())
-    
+                    if value and value_label:
+                        if not any(opt["value"] == value and opt["valueLabel"] == value_label 
+                                 for opt in result[key]["options"]):
+                            result[key]["options"].append({
+                                "value": value,
+                                "valueLabel": value_label
+                            })
+    # Convert to list of field objects before saving
+    final_result = list(result.values()) 
     # Save to file
     with open(filename, 'w') as f:
         json.dump(final_result, f, indent=2)
-    
 
 def update_fields_info(script: str):
     hospital_scripts = hospital_conf()
