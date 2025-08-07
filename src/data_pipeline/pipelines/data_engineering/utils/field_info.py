@@ -3,6 +3,7 @@ import os
 from conf.base.catalog import params,hospital_conf
 from conf.common.scripts import get_raw_json
 import pandas as pd
+import logging
 
 def process_and_save_field_info(script, json_data):
 
@@ -17,6 +18,7 @@ def process_and_save_field_info(script, json_data):
         result = {}
 
     for screen in json_data:
+        logging.info(f'MY SCRIPT::{script}::MY JSON: {json_data}')
         if "fields" not in screen:
             continue
             

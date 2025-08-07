@@ -29,7 +29,11 @@ def tidy_dynamic_tables():
             catalog_query = f'''read_{script}'''
             
             script_raw = safe_load(catalog,catalog_query)
-            
+            if script_raw is not None:
+                if "How is the baby being fed?" in script_raw:
+                    FeedAsse = script_raw["How is the baby being fed?"]
+                    del script_raw["How is the baby being fed?"]
+                    script_raw["FeedAsse"] = FeedAsse      
             try:
                 script_new_entries, script_mcl = get_key_values(script_raw)
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")

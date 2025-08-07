@@ -156,6 +156,7 @@ def get_raw_json(script_id:str):
         response.raise_for_status()
         return response.json()
     except Exception as ex:
+        logging.error(f'####MY ERROR EPOSA:::{ex}:::')
         return {}
 
 def merge_script_data(
