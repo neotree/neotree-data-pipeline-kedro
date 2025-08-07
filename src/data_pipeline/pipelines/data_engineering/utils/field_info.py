@@ -85,15 +85,35 @@ def update_fields_info(script: str):
 def load_json_for_comparison(filename):
 
     try:
-        with open(filename, 'r') as f:
-            data = json.load(f)
-        return data
+        file_path = f'conf/scripts/{filename}.json'
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as f:
+                data = json.load(f)
+            return data
+        return None
     except FileNotFoundError:
         print(f"Error: File '{filename}' not found.")
         return None
     except json.JSONDecodeError:
         print(f"Error: File '{filename}' contains invalid JSON.")
         return None
+
+
+def merge_json_files(file1_path, file2_path):
+    file_path1= f'conf/scripts/{file1_path}.json'
+    file_path2= f'conf/scripts/{file2_path}.json'
+    if os.path.exists(file_path1) and  os.path.exists(file2_path):
+        with open(file_path1, 'r') as f1, open(file_path2, 'r') as f2:
+            data1 = json.load(f1)
+            data2 = json.load(f2)
+
+        merged = dict(data1)
+        for k, v in data2.items():
+            if k not in merged:
+                merged[k] = v
+
+        return merged
+    return None
 
 
 def transform_matching_labels(df, script):
@@ -103,8 +123,7 @@ def transform_matching_labels(df, script):
     
     field_info = {item['key']: item for item in json_data}
     transformed_df = df.copy()
-    
-    # CRITICAL SECTION - Handle null values first (highest priority)
+   
     for value_col in [col for col in df.columns if col.endswith('.value')]:
         base_key = value_col[:-6]
         label_col = f"{base_key}.label"
@@ -145,3 +164,79 @@ def transform_matching_labels(df, script):
                 transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col]
     
     return transformed_df
+
+
+def transform_matching_labels_for_update_queries(df, script):
+
+    json_data = load_json_for_comparison(script)
+    if 'joined_admissions_discharges' in script:
+        json_data=merge_json_files('admissions','discharges')
+    if not json_data:
+        return pd.DataFrame(columns=['uid', 'unique_key'])  # empty fallback
+    
+    field_info = {f['key']: f for f in json_data}
+    df_transformed = df.copy()
+    label_cols_changed = []
+
+    for value_col in [col for col in df.columns if col.endswith('.value')]:
+        base_key = value_col[:-6]
+        label_col = f"{base_key}.label"
+
+        if label_col not in df.columns or base_key not in field_info:
+            continue
+
+        null_mask = df[value_col].isna()
+        df_transformed.loc[null_mask, label_col] = None
+        
+        field = field_info[base_key]
+        value_to_label = {opt['value']: opt['valueLabel'] for opt in field.get('options', [])}
+        expected_label = field['label']
+        field_type = field.get('type', '')
+
+        # Build mask of rows to update
+        mask = df[value_col].notna() & (df[label_col] == expected_label)
+        if not mask.any():
+            continue
+
+        # Store original label values to compare later
+        original_labels = df[label_col].copy()
+
+        # Apply transformation
+        if field_type in ('multi_select', 'checklist'):
+            df_transformed.loc[mask, label_col] = df.loc[mask, value_col].apply(
+                lambda x: ','.join(
+                    [value_to_label.get(v.strip(), v.strip()) for v in str(x).split(',') if v.strip()]
+                )
+            )
+        elif value_to_label:
+            df_transformed.loc[mask, label_col] = df.loc[mask, value_col].map(value_to_label)
+        else:
+            df_transformed.loc[mask, label_col] = df.loc[mask, value_col]
+
+        # Determine which rows changed
+        changed = df_transformed[label_col] != original_labels
+        if changed.any():
+            label_cols_changed.append(label_col)
+        else:
+            # No actual changes, revert
+            df_transformed[label_col] = original_labels
+
+    # Filter only updated rows
+    if not label_cols_changed:
+        return pd.DataFrame(columns=['uid', 'unique_key'])  # no changes
+    
+    update_mask = df_transformed[label_cols_changed] != df[label_cols_changed]
+    changed_rows = update_mask.any(axis=1)
+    result = df_transformed.loc[changed_rows, ['uid', 'unique_key'] + label_cols_changed]
+
+    marker = '__UNTOUCHED__'
+    prepared = result.fillna(marker)
+
+    records = prepared.to_dict(orient='records')
+
+    filtered_records = [
+        {k: (None if v == marker else v) for k, v in row.items() if v != marker}
+        for row in records
+    ]
+
+    return filtered_records

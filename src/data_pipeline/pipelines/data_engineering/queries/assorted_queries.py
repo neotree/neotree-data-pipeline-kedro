@@ -387,6 +387,11 @@ def read_derived_data_query(source_table, destination_table=None):
 
     return query
 
+def read_all_from_derived_table(table:str):
+    if table_exists('derived', table.strip()):
+        return f'select * from derived."{table}";;'
+    return None
+
 def read_joined_admissions_without_discharges():   
         return f'''
             select   * from derived.admissions WHERE uid IN (SELECT uid from derived.joined_admissions_discharges where "NeoTreeOutcome.value" is null or ("DateTimeDischarge.value" is null and "DateTimeDeath.value" is null));;'''

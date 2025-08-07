@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 import logging
 from psycopg2 import sql,connect
+from psycopg2.extras import execute_values
+from collections import defaultdict
 import re
 
 params = config()
@@ -263,6 +265,7 @@ def run_query_and_return_df(query):
         logging.error(formatError(ex))
     finally:
         conn.close()
+
 
 
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
@@ -620,13 +623,68 @@ def reorder_dataframe_columns(df:pd.DataFrame, script:str):
     # Return reordered DataFrame
     return df[final_columns]
 
+
+def generate_label_fix_updates(filtered_records, table_name:str):
+    if not filtered_records:
+        return []
+
+    groups = defaultdict(list)
+
+    for row in filtered_records:
+        update_keys = tuple(sorted(k for k in row if k not in ['uid', 'unique_key']))
+        groups[update_keys].append(row)
+
+    sql_batches = []
+
+    for update_columns in groups:
+        update_cols = list(update_columns)
+        value_columns = ['uid', 'unique_key'] + update_cols
+        rows = groups[update_columns]
+
+        values = [
+            tuple(row.get(col) for col in value_columns)
+            for row in rows
+        ]
+
+        alias = 'v'
+        set_clause = ", ".join([
+            f"{col} = {alias}.{col}" for col in update_cols
+        ])
+        columns_str = ", ".join(value_columns)
+
+        sql = f"""
+            UPDATE derived."{table_name}" AS t SET
+                {set_clause}
+            FROM (
+                VALUES %s
+            ) AS {alias}({columns_str})
+            WHERE t.uid = {alias}.uid AND t.unique_key = {alias}.unique_key
+        """
+
+        sql_batches.append((sql, values))
+
+    return sql_batches
+
+def run_bulky_query(table:str,filtered_records=None):
+ # your connection
+    if filtered_records is None: 
+        pass
+    else:
+        conn = engine.raw_connection()
+        cur = conn.cursor()
+
+        sql_batches = generate_label_fix_updates(filtered_records, table_name=table)
+
+        for sql, values in sql_batches:
+            execute_values(cur, sql, values)
+        conn.commit()
+    
+
 def columns_order (script: str):
     if "twenty_8_day_follow_up" in script:
         return [
     "Dobtob",
     "Feedasse",
-    "Mothersurname",
-    "Motherfirstname",
     "CurrCond",
     "FeedAsse",
     "ReasAdmi",
