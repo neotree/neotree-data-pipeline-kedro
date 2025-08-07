@@ -100,7 +100,11 @@ def create_table(df: pd.DataFrame, table_name):
 
 def create_exploded_table(df: pd.DataFrame, table_name):
     # create tables in derived schema and restrict all columns to Text
-    df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False,dtype={col_name: TEXT for col_name in df})
+    try:
+        df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False,dtype={col_name: TEXT for col_name in df})
+    except Exception as ex:
+        logging.error(f"FAILED DF:\n{df.to_string()}")
+        logging.error(f'ERR DF=={ex}')
 
 def append_data(df: pd.DataFrame,table_name):
     #Add Data To An Existing Table
