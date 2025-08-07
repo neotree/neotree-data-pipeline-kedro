@@ -48,7 +48,8 @@ def manually_fix_admissions(tidy_data_output):
                         if df is not None:
                             transformed = transform_matching_labels_for_update_queries(df,script)
                             if transformed is not None:
-                                run_bulky_query(script,transformed)                
+                                run_bulky_query(script,transformed)  
+                    logging.info(f"###DONE FIXING DYNAMIC RECORDS FOR::{script}:: THE LENGTH WAS {len(transformed)}")              
             
                 return dict(
                 status='Success',
