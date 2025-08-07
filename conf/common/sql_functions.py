@@ -107,7 +107,9 @@ def create_exploded_table(df: pd.DataFrame, table_name):
 
         if "How is the baby being fed?.value" in df:
             df.rename(columns={'FeedAsse.value': 'How is the baby being fed?.value'}, inplace=True)
-
+        if "How is the baby being fed" in table_name:
+            table_name="exploded_twenty_8_day_follow_u_FeedAsse.label"
+            
         df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False,dtype={col_name: TEXT for col_name in df})
     except Exception as ex:
         logging.error(f"FAILED DF:\n{df.to_string()}")

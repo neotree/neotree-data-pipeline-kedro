@@ -81,8 +81,7 @@ def join_table():
 
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
-                    logging.info(f"####KERE{len(filtered_df)}")
-                    logging.info(f"####MY HEAD{len(filtered_df.head())}")
+                   
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
 
     except Exception as e:
