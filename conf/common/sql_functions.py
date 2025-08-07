@@ -100,7 +100,14 @@ def create_table(df: pd.DataFrame, table_name):
 
 def create_exploded_table(df: pd.DataFrame, table_name):
     # create tables in derived schema and restrict all columns to Text
+  
     try:
+        if "How is the baby being fed?.label" in df:
+            df.rename(columns={'FeedAsse.label': 'How is the baby being fed?.label'}, inplace=True)
+
+        if "How is the baby being fed?.value" in df:
+            df.rename(columns={'FeedAsse.value': 'How is the baby being fed?.value'}, inplace=True)
+
         df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False,dtype={col_name: TEXT for col_name in df})
     except Exception as ex:
         logging.error(f"FAILED DF:\n{df.to_string()}")

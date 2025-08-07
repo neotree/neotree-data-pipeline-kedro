@@ -164,7 +164,9 @@ def transform_matching_labels(df, script):
 
 def transform_matching_labels_for_update_queries(df, script):
 
+    logging.info(f"@@@@@--LEN DF--{len(df)}")
     json_data = load_json_for_comparison(script)
+    logging.info(f"@@@@@----{json_data}")
     if 'joined_admissions_discharges' in script:
         json_data=merge_json_files('admissions','discharges')
     if not json_data:
@@ -177,7 +179,8 @@ def transform_matching_labels_for_update_queries(df, script):
     for value_col in [col for col in df.columns if col.endswith('.value')]:
         base_key = value_col[:-6]
         label_col = f"{base_key}.label"
-
+        logging.info(f"@@@@LAB@----{label_col}")
+        logging.info(f"@@@@base_key@----{base_key}")
         if label_col not in df.columns or base_key not in field_info:
             continue
 
@@ -189,8 +192,11 @@ def transform_matching_labels_for_update_queries(df, script):
         expected_label = field['label']
         field_type = field.get('type', '')
 
+        logging.info(f"@@@@FLIB!@----{expected_label}")
+
         # Build mask of rows to update
         mask = df[value_col].notna() & (df[label_col] == expected_label)
+        logging.info(f"@@@@FLIB!@----len{len(mask)}")
         if not mask.any():
             continue
 
@@ -224,15 +230,17 @@ def transform_matching_labels_for_update_queries(df, script):
     update_mask = df_transformed[label_cols_changed] != df[label_cols_changed]
     changed_rows = update_mask.any(axis=1)
     result = df_transformed.loc[changed_rows, ['uid', 'unique_key'] + label_cols_changed]
+    logging.info(f"@@@@KEN!@----{len(update_mask)}")
 
     marker = '__UNTOUCHED__'
     prepared = result.fillna(marker)
 
     records = prepared.to_dict(orient='records')
-
+    logging.info(f"@@@@KEN2@----{len(records)}")
     filtered_records = [
         {k: (None if v == marker else v) for k, v in row.items() if v != marker}
         for row in records
     ]
+    logging.info(f"@@@@KEN3@----{len(filtered_records)}")
 
     return filtered_records

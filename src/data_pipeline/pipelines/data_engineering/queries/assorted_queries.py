@@ -393,19 +393,69 @@ def read_all_from_derived_table(table:str):
     return None
 
 def read_admissions_not_joined():   
-        return f'''SELECT * FROM derived.admissions WHERE NOT EXISTS (SELECT 1 FROM derived.joined_admissions_discharges j WHERE admissions.uid = j.uid AND admissions.unique_key = j.unique_key);;'''
+        return f'''SELECT * 
+FROM derived.admissions ad
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM derived.joined_admissions_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key
+);'''
 
 
 def read_dicharges_not_joined():
-        return f'''SELECT * from derived.discharges WHERE uid IN ( SELECT uid FROM derived.admissions ad WHERE NOT EXISTS (SELECT 1 FROM derived.joined_admissions_discharges j WHERE ad.uid = j.uid AND ad.unique_key = j.unique_key));;'''
+        return f'''SELECT * 
+FROM derived.discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.admissions ad 
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM derived.joined_admissions_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key
+    )
+);
+;'''
 
 def admissions_without_discharges():
-     return f'''SELECT * FROM derived.admissions ad WHERE EXISTS (SELECT 1 FROM derived.joined_admissions_discharges j WHERE ad.uid = j.uid AND ad.unique_key = j.unique_key AND (j."NeoTreeOutcome.value" is NULL or (j."DateTimeDischarge.value" is null and j."DateTimeDeath.value" is null));;'''
+     return f'''SELECT * 
+FROM derived.admissions ad 
+WHERE EXISTS (
+    SELECT 1 
+    FROM derived.joined_admissions_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key 
+      AND (
+          j."NeoTreeOutcome.value" IS NULL 
+          OR (
+              j."DateTimeDischarge.value" IS NULL 
+              AND j."DateTimeDeath.value" IS NULL
+          )
+      )
+)
+'''
 
 def discharges_not_matched():
-     return f'''SELECT * FROM derived.discharges where uid in (SELECT uid from derived.admissions ad  WHERE EXISTS (SELECT 1 FROM derived.joined_admissions_discharges j WHERE ad.uid = j.uid AND ad.unique_key = j.unique_key AND (j."NeoTreeOutcome.value" is NULL or (j."DateTimeDischarge.value" is null and j."DateTimeDeath.value" is null));;'''
-
-
+     return f'''SELECT * 
+FROM derived.discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.admissions ad  
+    WHERE EXISTS (
+        SELECT 1 
+        FROM derived.joined_admissions_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key 
+          AND (
+              j."NeoTreeOutcome.value" IS NULL 
+              OR (
+                  j."DateTimeDischarge.value" IS NULL 
+                  AND j."DateTimeDeath.value" IS NULL
+              )
+          )
+    )
+)'''
 def read_data_with_no_unique_key():
 
     return f'''

@@ -29,17 +29,18 @@ def tidy_dynamic_tables():
             catalog_query = f'''read_{script}'''
             
             script_raw = safe_load(catalog,catalog_query)
-            if script_raw is not None:
-                if "How is the baby being fed?" in script_raw:
-                    FeedAsse = script_raw["How is the baby being fed?"]
-                    del script_raw["How is the baby being fed?"]
-                    script_raw["FeedAsse"] = FeedAsse      
+            
             try:
                 script_new_entries, script_mcl = get_key_values(script_raw)
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
                 try:
                     script_df = pd.json_normalize(script_new_entries)
                     update_fields_info(script)
+                    if "How is the baby being fed?.label" in script_df.columns:
+                        script_df.rename(columns={'FeedAsse.label': 'How is the baby being fed?.label'}, inplace=True)
+
+                    if "How is the baby being fed?.value" in script_df.columns:
+                        script_df.rename(columns={'FeedAsse.value': 'How is the baby being fed?.value'}, inplace=True)
                     if 'uid' in script_df:
                         script_df.set_index(['uid'])
                      # ADD TIME SPENT TO ALL DFs
