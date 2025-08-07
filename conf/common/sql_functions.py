@@ -629,7 +629,7 @@ def reorder_dataframe_columns(df:pd.DataFrame, script:str):
 
 
 def generate_label_fix_updates(filtered_records, table_name:str):
-    if not filtered_records:
+    if filtered_records is not None:
         return []
 
     groups = defaultdict(list)

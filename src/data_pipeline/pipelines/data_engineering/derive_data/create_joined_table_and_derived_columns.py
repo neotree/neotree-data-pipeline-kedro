@@ -2,7 +2,11 @@ import pandas as pd # type: ignore
 from conf.base.catalog import catalog,params
 from data_pipeline.pipelines.data_engineering.utils.date_validator import is_date, is_date_formatable
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_joined_admissions_without_discharges,read_dicharges_not_joined
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
+                                                                               read_dicharges_not_joined,
+                                                                               read_admissions_not_joined,
+                                                                               admissions_without_discharges,
+                                                                               discharges_not_matched)
 from conf.common.sql_functions import (create_new_columns
                                        ,get_table_column_names
                                        ,generateAndRunUpdateQuery
@@ -26,23 +30,11 @@ def join_table():
     try:
     
         #Load Derived Admissions From Kedro Catalog
-        read_admissions_query = read_joined_admissions_without_discharges()
-        adm_df = run_query_and_return_df(read_admissions_query) 
-      
- 
+        read_admissions_query = read_admissions_not_joined()
+        adm_df = run_query_and_return_df(read_admissions_query)  
         #Load Derived Discharges From Kedro Catalog
         read_discharges_query = read_dicharges_not_joined()
-        dis_df = run_query_and_return_df(read_discharges_query) 
-    except Exception as e:
-        logging.error("!!! An error occured fetching the data: ")
-        raise e
-
-    # Create join of admissions & discharges (left outter join)
-    logging.info("... Creating joined admissions and discharge table")
-    try:
-        
-        # join admissions and discharges using uid and facility
-       
+        dis_df = run_query_and_return_df(read_discharges_query)    
         jn_adm_dis =createJoinedDataSet(adm_df,dis_df)
 
     except Exception as e:
@@ -77,8 +69,10 @@ def join_table():
         discharge_exists = table_exists('derived','discharges')
         joined_exists = table_exists('derived','joined_admissions_discharges')
         if(discharge_exists and joined_exists):
-            adm_df_2 = catalog.load('admissions_without_discharges')  
-            dis_df_2 = catalog.load('discharges_not_joined') 
+            read_admissions_query_2 = admissions_without_discharges()
+            adm_df_2 = run_query_and_return_df(read_admissions_query_2)
+            read_discharges_query_2 = discharges_not_matched()
+            dis_df_2 = run_query_and_return_df(read_discharges_query_2)
           
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
