@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 
-
+@DeprecationWarning
 def fix_data_errors():
     
     script_df = catalog.load('script_ids')

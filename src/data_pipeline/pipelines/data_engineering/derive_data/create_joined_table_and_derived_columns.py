@@ -75,17 +75,13 @@ def join_table():
             adm_df_2 = run_query_and_return_df(read_admissions_query_2)
             read_discharges_query_2 = discharges_not_matched()
             dis_df_2 = run_query_and_return_df(read_discharges_query_2)
-            logging.info(f"#######DIS{len(dis_df_2)}") 
-            logging.info(f"#######ADM{len(adm_df_2)}") 
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
                 jn_adm_dis_2.columns = jn_adm_dis_2.columns.astype(str) 
                 jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
-                logging.info(f"#######JDS{len(jn_adm_dis_2)}") 
         
                 if not jn_adm_dis_2.empty:
-                    filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]  
-                    logging.info(f"#######FIRITAD{len(filtered_df)}")          
+                    filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]           
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
 
     except Exception as e:

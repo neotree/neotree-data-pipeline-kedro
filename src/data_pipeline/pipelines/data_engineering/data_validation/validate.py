@@ -129,7 +129,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     validator.expect_column_values_to_be_of_type(value_col, 'object') 
 
                 if expected_label is not None and label_col in df.columns:
-                   pattern = r"(?i)\b" + re.escape(expected_label) + r"\b"
+                   pattern = rf"(?i)^{re.escape(expected_label)}$"
                    validator.expect_column_values_to_not_match_regex(
                    column=label_col,
                    regex=pattern,
@@ -215,27 +215,4 @@ def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
         except Exception as e:
             logging.error(f"Failed to send email: {str(e)}")
 
-def get_schema(script: str):
-    hospital_scripts = hospital_conf()
-    merged_script_data = None
 
-    if not hospital_scripts:
-        return None
-
-    for hospital in hospital_scripts:
-        script_id_entry = hospital_scripts[hospital].get(script, '')
-        if not script_id_entry:
-            continue
-
-        script_ids = str(script_id_entry).split(',')
-
-        for script_id in script_ids:
-            script_id = script_id.strip()
-            if not script_id:
-                continue
-
-            script_json = get_script(script_id)
-            if script_json is not None:
-                merged_script_data = merge_script_data(merged_script_data, script_json)
-
-    return merged_script_data

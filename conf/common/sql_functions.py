@@ -35,12 +35,14 @@ engine = create_engine(
 #Inject SQL Procedures
 QUERY_LOG_PATH="logs/queries.log"
 query_logger = setup_logger(QUERY_LOG_PATH,'queries')
+
 def inject_sql_procedure(sql_script, file_name):
         conn = engine.raw_connection()
         cur = conn.cursor()
         try:
             cur.execute(sql_script)
             conn.commit()
+            query_logger.log(f"DEDUP-{sql_script}")
         except Exception as e:
             logging.error(e)
             logging.error('Something went wrong with the SQL file');
@@ -402,7 +404,21 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
         logging.error(formatError(ex))
 
 def is_date_prefix(s):
-    return bool(re.match(r'^\d{4}-\d{2}-\d{2}.*', s))
+    if not isinstance(s, str):
+        return False
+    if re.match(r'^\d{4}-\d{2}-\d{2}.*', s):
+        return True
+        
+    # Check for textual month format (DD Mon, YYYY)
+    if re.match(r'^\d{1,2}\s+[A-Za-z]{3,},\s*\d{4}.*', s):
+        try:
+            # Try parsing to validate it's a real date
+            datetime.strptime(s[:12], '%d %b, %Y')  # First 12 chars should be enough
+            return True
+        except ValueError:
+            return False
+            
+    return False
 
 def generate_postgres_insert(df, schema,table_name):
     # Escape column names and join them
@@ -481,23 +497,39 @@ def format_value(col, value, col_type):
     
     if 'timestamp' in col_type_lower:
         try:
+            if("DateTimeDischarge.value" in col):
+                logging.info(f"VVVV====={value}")
             if isinstance(value, (datetime, pd.Timestamp)):
-                return f"\"{col}\" = '{str(value)[:19].replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
+                return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+            
             elif isinstance(value, str):
-                # First try to parse as datetime
+                # Try multiple common timestamp formats
                 try:
-                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
-                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d %H:%M:%S')}'"
-                except:
-        
-                    clean_value = value.strip().replace('.','').replace('T', ' ')
-                    # Validate it looks like a timestamp
-                    if re.match(r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}', clean_value):
-                        return f"\"{col}\" = '{str(clean_value)[:19]}'"
+                    dt = pd.to_datetime(value, errors='raise', format='mixed').tz_localize(None)
+                    if("DateTimeDischarge.value" in col):
+                        logging.info(f"FORMATED====={dt}")
+                    return f"\"{col}\" = '{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
+                except ValueError:
+                    clean_value = value.strip()
+                    if re.fullmatch(
+                        r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$', 
+                        clean_value,
+                        re.IGNORECASE
+                    ):
+                        # Standardize the format
+                        clean_value = clean_value.replace('T', ' ').replace('Z', '')
+                        if '.' in clean_value:  # Handle milliseconds if present
+                            clean_value = clean_value.split('.')[0]
+                            if("DateTimeDischarge.value" in col):
+                                logging.info(f"CLINID====={dt}")
+                        return f"\"{col}\" = '{clean_value[:19]}'"
+                    
                     return f"\"{col}\" = NULL"
+            
             else:
                 return f"\"{col}\" = NULL"
-        except:
+        
+        except Exception:
             return f"\"{col}\" = NULL"
             
     elif 'date' in col_type_lower:

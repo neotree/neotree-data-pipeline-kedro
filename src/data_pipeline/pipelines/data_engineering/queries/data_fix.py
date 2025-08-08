@@ -635,6 +635,7 @@ def fix_broken_dates_query(table:str):
                                 query= f'''UPDATE derived.{table} SET "{value}" =to_char(to_timestamp("{label}",'DD Mon, YYYY HH24:MI'),
                                 'YYYY-MM-DD HH24:MI:00') WHERE  "{label}"::text ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*' and ("{value}" is null
                                 OR "{value}"::text ~ '^[0-9]{{1,2}} [A-Za-z]{{3,10}}.*');;'''
+
                             else:
                                 if ('date' in data_type or 'timestamp' in data_type):
                                     query= f''' UPDATE derived.{table} SET "{value}" = to_timestamp("{label}"
@@ -648,6 +649,7 @@ def fix_broken_dates_query(table:str):
         except Exception as ex:
             logging.error("#### FAILED TO FIX YOUR DIRTY DATES #########")
             logging.error(formatError(ex))
+
 
 def fix_broken_dates_combined():
     fix_broken_dates_query('admissions')
@@ -673,9 +675,11 @@ def get_affected_date_columns(table: str):
     AND (LOWER(column_name) LIKE '%date%' OR LOWER(column_name) LIKE '%day%')  AND LOWER(column_name) LIKE '%.value';;'''
     return inject_sql_with_return(query)
 
+
 def get_lable_from_value(label:str):
     return label.replace('.value','.label')
 
+@DeprecationWarning
 def update_gender():
      facilities = ['SMCH','BPH','CPH','PGH'] 
      variable = "Gender.value"
@@ -697,6 +701,7 @@ def update_gender():
                     inject_sql(query1,"UPDATE GENDER IN ADMISSIONS")
                 if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
                     inject_sql(query2,"UPDATE GENDER IN IN JOINED ADMISSIONS")
+
 
 def deduplicate_combined():
     tables = ['admissions','discharges'
@@ -742,6 +747,7 @@ def update_stools():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE STOOLS IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_admreason():
     variable = "AdmReason.value"
     to_update = "AdmReason.label"
@@ -782,6 +788,7 @@ def update_admreason():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE AdmReason IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_puurine():
     variable = "PUInfant.value"
     to_update = "PUInfant.label"
