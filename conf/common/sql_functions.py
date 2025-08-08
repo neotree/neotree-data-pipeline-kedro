@@ -42,7 +42,7 @@ def inject_sql_procedure(sql_script, file_name):
         try:
             cur.execute(sql_script)
             conn.commit()
-            query_logger.log(f"DEDUP-{sql_script}")
+            query_logger.info(f"DEDUP-{sql_script}")
         except Exception as e:
             logging.error(e)
             logging.error('Something went wrong with the SQL file');
