@@ -12,6 +12,7 @@ from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import convert_false_numbers_to_text
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge
 from data_pipeline.pipelines.data_engineering.utils.field_info import update_fields_info,transform_matching_labels
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
 
 from conf.base.catalog import params
 # Import libraries
@@ -91,6 +92,7 @@ def tidy_dynamic_tables():
                             script_df=transform_matching_labels(script_df,script=script)
                             validate_dataframe_with_ge(script_df,script)
                             generate_create_insert_sql(script_df,'derived',script)
+                            deduplicate_table(script)
                             logging.info("... Creating MCL count tables for Generic Scripts")
                             explode_column(script_df,script_mcl,script+'_') 
                         

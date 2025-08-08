@@ -515,15 +515,15 @@ def format_value(col, value, col_type):
                     if re.fullmatch(
                         r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$', 
                         clean_value,
-                        re.IGNORECASE
-                    ):
-                        # Standardize the format
+                        re.IGNORECASE):
                         clean_value = clean_value.replace('T', ' ').replace('Z', '')
                         if '.' in clean_value:  # Handle milliseconds if present
                             clean_value = clean_value.split('.')[0]
-                            if("DateTimeDischarge.value" in col):
-                                logging.info(f"CLINID====={dt}")
-                        return f"\"{col}\" = '{clean_value[:19]}'"
+                          
+                        cv= f"\"{col}\" = '{clean_value[:19]}'"
+                        if("DateTimeDischarge.value" in col):
+                            logging.info(f"CV====={cv}")
+                        return cv
                     
                     return f"\"{col}\" = NULL"
             

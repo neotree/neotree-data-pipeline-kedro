@@ -5,8 +5,6 @@ from conf.common.sql_functions import inject_sql,run_bulky_query,run_query_and_r
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_all_from_derived_table
 from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.admissions_manually_fix_records_sql import manually_fix_admissions_query
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_combined
-
 from data_pipeline.pipelines.data_engineering.utils.field_info import transform_matching_labels_for_update_queries
 from conf.base.catalog import cron_log_file,cron_time,env
 
@@ -23,7 +21,6 @@ def manually_fix_admissions(tidy_data_output):
         
         elif tidy_data_output is not None:
             try:
-                deduplicate_combined()
                 current_scripts = ['admissions','discharges','maternal_outcomes'
                                 ,'daily_review','infections','neolab','vitalsigns'
                                 ,'maternal_completeness','baseline'

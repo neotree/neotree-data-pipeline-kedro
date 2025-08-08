@@ -14,6 +14,7 @@ from conf.common.sql_functions import (create_new_columns
                                        get_date_column_names,run_query_and_return_df)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.data_validation.validate import reset_log
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
 
 
 
@@ -83,6 +84,7 @@ def join_table():
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]           
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
+        deduplicate_table('joined_admissions_discharges')
 
     except Exception as e:
         logging.error(

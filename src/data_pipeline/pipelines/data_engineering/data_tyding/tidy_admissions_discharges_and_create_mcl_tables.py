@@ -20,6 +20,7 @@ from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_k
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge, begin_validation_run,finalize_validation
 
 
@@ -314,6 +315,7 @@ def tidy_tables():
             validate_dataframe_with_ge(adm_df,'admissions')
             generate_create_insert_sql(adm_df,'derived','admissions')        
             #catalog.save('create_derived_admissions',adm_df)
+            deduplicate_table('admissions')
             logging.info("... Creating MCL count tables for Admissions DF") 
             explode_column(adm_df, adm_mcl,"")  
             ###########################REPEATABLES############################################################
@@ -390,6 +392,7 @@ def tidy_tables():
             validate_dataframe_with_ge(dis_df,'discharges')
             generate_create_insert_sql(dis_df,'derived','discharges')  
             #catalog.save('create_derived_discharges',dis_df)
+            deduplicate_table('discharges')
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
 
@@ -442,6 +445,7 @@ def tidy_tables():
             validate_dataframe_with_ge(mat_outcomes_df,'maternal_outcomes')
             generate_create_insert_sql(mat_outcomes_df,'derived','maternal_outcomes')  
             #catalog.save('create_derived_maternal_outcomes',mat_outcomes_df)
+            deduplicate_table('maternal_outcomes')
             logging.info("... Creating MCL count tables for Maternal Outcomes DF") 
             explode_column(mat_outcomes_df,mat_outcomes_mcl,"mat_")
 
@@ -486,6 +490,7 @@ def tidy_tables():
             validate_dataframe_with_ge(vit_signs_df,'vitalsigns')
             generate_create_insert_sql(vit_signs_df,'derived','vitalsigns') 
             #catalog.save('create_derived_vitalsigns',vit_signs_df)
+            deduplicate_table('vitalsigns')
             logging.info("... Creating MCL count tables for Vital Signs DF")
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
     ##################### NEOLAB ###################################################################################    
@@ -603,6 +608,7 @@ def tidy_tables():
             neolab_df= transform_matching_labels(neolab_df,'neolab')
             validate_dataframe_with_ge(neolab_df,'neolab')
             generate_create_insert_sql(neolab_df,'derived','neolab') 
+            deduplicate_table('neolab')
 
             try:
                 repeatables = format_repeatables_to_rows(neolab_raw, "neolab")
@@ -693,6 +699,7 @@ def tidy_tables():
             validate_dataframe_with_ge(baseline_df,'baseline')
             generate_create_insert_sql(baseline_df,'derived','baseline') 
             #catalog.save('create_derived_baseline',baseline_df)
+            deduplicate_table('baseline')
             logging.info("... Creating MCL count tables for Baseline DF")
             explode_column(baseline_df,baseline_mcl,"bsl_")
         
@@ -728,6 +735,7 @@ def tidy_tables():
             mat_completeness_df= transform_matching_labels(mat_completeness_df,'maternity_completeness')
             generate_create_insert_sql(mat_completeness_df,'derived','maternity_completeness') 
             #catalog.save('create_derived_maternity_completeness',mat_completeness_df)
+            deduplicate_table('maternity_completeness')
             explode_column(mat_completeness_df,mat_completeness_mcl,"matcomp_")
     except Exception as ex:
         logging.error(formatError(ex))
