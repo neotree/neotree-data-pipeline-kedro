@@ -79,7 +79,6 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         base_key = value_col[:-6]  
         label_col = f"{base_key}.label"
         if  base_key not in field_info:
-            logger.warning(f"Column '{base_key}' is not found in any current: {script} script")
             pass;
         else:
             field = field_info[base_key]
@@ -113,18 +112,30 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     datetime_regex = r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$"
                     validator.expect_column_values_to_match_regex(value_col, datetime_regex)
                 elif field_type == 'boolean' or field_type=='yesno':
-                    validator.expect_column_values_to_be_in_set(
-                    value_col,
-                    ["True", "False", "true", "false", True, False, 1, 0,"y","n","Y","N","Yes","No","yes","no"])
-
+                    accepted_values = [
+                            "True", "False", "true", "false",
+                            "1", "0",
+                            "y", "n", "Y", "N",
+                            "Yes", "No", "yes", "no"
+                            ]
+                    values = set(str(v).lower() for v in accepted_values)
+                    pattern = r"^(?i)(" + "|".join(map(re.escape, values)) + r")$"
+                    validator.expect_column_values_to_match_regex(
+                    column=value_col,
+                    regex=pattern,
+                    mostly=1.0
+                    )
                 else:
-                    validator.expect_column_values_to_be_of_type(value_col, 'object')
+                    validator.expect_column_values_to_be_of_type(value_col, 'object') 
 
                 if expected_label is not None and label_col in df.columns:
-                    validator.expect_column_values_to_satisfy(
-                    column=label_col,
-                    condition=lambda x: not_90_percent_similar_to_label(x, expected_label))
-                  
+                   pattern = r"(?i)\b" + re.escape(expected_label) + r"\b"
+                   validator.expect_column_values_to_not_match_regex(
+                   column=label_col,
+                   regex=pattern,
+                   mostly=1.0
+                   )
+                 
             except Exception as e:
                 logger.error(
                     f"Validation failed for {base_key} of {script} script: {str(e)}\n")

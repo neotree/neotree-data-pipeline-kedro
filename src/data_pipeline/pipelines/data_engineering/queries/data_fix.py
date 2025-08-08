@@ -1528,7 +1528,7 @@ def update_passedmec():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE Meconium IN IN JOINED ADMISSIONS")
 
-@DeprecationWarning
+
 def deduplicate_derived_tables(table: str):
     query = f'''DO $$
         DECLARE
