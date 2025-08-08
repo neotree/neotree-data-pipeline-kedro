@@ -724,6 +724,7 @@ def deduplicate_combined():
     
     for table in tables:
         if (table_exists('derived',table)):
+            logging.info(f">>>TABLE {table}>>>>EXISTS")
             deduplicate_derived_tables(table)
   
 @DeprecationWarning
@@ -1567,9 +1568,8 @@ def deduplicate_derived_tables(table: str):
                 
                 RAISE NOTICE 'Deleted % rows in this batch, % total', rows_deleted, total_deleted;
                 
-                -- Small delay to reduce lock contention
                 PERFORM pg_sleep(0.1);
             END LOOP;
-        END $$;;'''
+        END $$;'''
     inject_sql_procedure(query,f"DEDUPLICATE DERIVED {table}")
 

@@ -42,6 +42,7 @@ def inject_sql_procedure(sql_script, file_name):
         try:
             cur.execute(sql_script)
             conn.commit()
+            query_logger.info(f"::DEDUPLICATING::")
             query_logger.info(f"DEDUP-{sql_script}")
         except Exception as e:
             logging.error(e)
@@ -181,7 +182,6 @@ def inject_bulk_sql(queries, batch_size=1000):
                 try:
                     cursor.execute(command)
                     conn.commit()
-                    query_logger.info(f'::EXECUTED::{command}')
                 except Exception as e:
                     logging.error(f"Error executing command: {command}")
                     logging.error(e)
