@@ -499,37 +499,41 @@ def format_value(col, value, col_type):
         try:
            
             if isinstance(value, (datetime, pd.Timestamp)):
-                fomatted =f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
-              
-                return fomatted
-            
+                return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+
             elif isinstance(value, str):
-                # Try multiple common timestamp formats
+                clean_value = value.strip().rstrip(",")  # Remove trailing commas
+
                 try:
-                    dt = pd.to_datetime(value, errors='raise', format='mixed').tz_localize(None)
-              
+                    dt = pd.to_datetime(clean_value, errors='raise', infer_datetime_format=True)
                     return f"\"{col}\" = '{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
                 except ValueError:
-                    logging.info(f"I HAVE SINNED====={value}")
-                    clean_value = value.strip()
-                    if re.fullmatch(
-                        r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$', 
-                        clean_value,
-                        re.IGNORECASE):
-                        clean_value = clean_value.replace('T', ' ').replace('Z', '')
-                        if '.' in clean_value:  # Handle milliseconds if present
+                    logging.error(f"I HAVE SINNED::::::{value}")
+                    timestamp_pattern = re.compile(
+                        r'^('
+                        r'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}'                       
+                        r'(?:\.\d+)?'                                                   
+                        r'(?:Z|[+-]\d{2}:?\d{2})?'                                       
+                        r'|'                                                             
+                        r'\d{1,2}[ -](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[ ,]*\d{4}' 
+                        r'|'                                                             
+                        r'\d{1,2}[/-]\d{1,2}[/-]\d{4}'                                  
+                        r')$',
+                        re.IGNORECASE
+                            )
+
+                    if re.fullmatch(timestamp_pattern, clean_value):
+                        if '.' in clean_value:
                             clean_value = clean_value.split('.')[0]
-                          
-                        cv= f"\"{col}\" = '{clean_value[:19]}'"
-                        if("DateTimeDischarge.value" in col):
-                            logging.info(f"CV====={cv}")
-                        return cv
-                    
+                        clean_value = clean_value.replace('T', ' ')
+                        logging.error(f"I BEEN REDEEMED::::::{clean_value}")
+                        return f"\"{col}\" = '{clean_value}'"
+                    logging.error(f"I REDEMPTION FAILED I DON'T MATCH::::::{value}")
                     return f"\"{col}\" = NULL"
-            
+
             else:
                 return f"\"{col}\" = NULL"
-        
+                    
         except Exception:
             logging.info(f"I HAVE EXCEPTIONED====={value}")
             return f"\"{col}\" = NULL"
