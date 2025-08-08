@@ -497,19 +497,20 @@ def format_value(col, value, col_type):
     
     if 'timestamp' in col_type_lower:
         try:
-            if("DateTimeDischarge.value" in col):
-                logging.info(f"VVVV====={value}")
+           
             if isinstance(value, (datetime, pd.Timestamp)):
-                return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+                fomatted =f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
+              
+                return fomatted
             
             elif isinstance(value, str):
                 # Try multiple common timestamp formats
                 try:
                     dt = pd.to_datetime(value, errors='raise', format='mixed').tz_localize(None)
-                    if("DateTimeDischarge.value" in col):
-                        logging.info(f"FORMATED====={dt}")
+              
                     return f"\"{col}\" = '{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
                 except ValueError:
+                    logging.info(f"I HAVE SINNED====={value}")
                     clean_value = value.strip()
                     if re.fullmatch(
                         r'^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$', 
@@ -530,6 +531,7 @@ def format_value(col, value, col_type):
                 return f"\"{col}\" = NULL"
         
         except Exception:
+            logging.info(f"I HAVE EXCEPTIONED====={value}")
             return f"\"{col}\" = NULL"
             
     elif 'date' in col_type_lower:

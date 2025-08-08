@@ -106,7 +106,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                 grouped = jn_adm_dis.groupby(["uid", "facility", "DEDUPLICATER"])
                 duplicates = grouped.filter(lambda x: len(x) > 1)
                 # Identify the index of the first record in each group
-                to_drop = duplicates.groupby(["uid", "facility", "DEDUPLICATER"]).tail(-1).index
+                to_drop = duplicates.groupby(["uid", "facility", "DEDUPLICATER"]).head(1).index
                 # Drop the identified records from the original DataFrame
                 jn_adm_dis = jn_adm_dis.drop(index=to_drop)
 
@@ -117,7 +117,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                     grouped = jn_adm_dis.groupby(["uid", "facility", "OFCDis.value"])
                     duplicates = grouped.filter(lambda x: len(x) > 1)
                     # Identify the index of the first record in each group
-                    to_drop = duplicates.groupby(["uid", "facility", "OFCDis.value"]).tail(-1).index
+                    to_drop = duplicates.groupby(["uid", "facility", "OFCDis.value"]).head(1).index
                     # Drop the identified records from the original DataFrame
                     jn_adm_dis = jn_adm_dis.drop(index=to_drop)
 
@@ -127,7 +127,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                     grouped = jn_adm_dis.groupby(["uid", "facility", "BirthWeight.value_discharge"])
                     duplicates = grouped.filter(lambda x: len(x) > 1)
                     # Identify the index of the first record in each group
-                    to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value_discharge"]).tail(-1).index
+                    to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value_discharge"]).head(1).index
                     # Drop the identified records from the original DataFrame
                     jn_adm_dis = jn_adm_dis.drop(index=to_drop)
 
