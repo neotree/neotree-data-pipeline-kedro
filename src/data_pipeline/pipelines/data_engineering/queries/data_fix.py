@@ -720,8 +720,8 @@ def deduplicate_combined():
     for table in tables:
         if (table_exists('derived',table)):
             deduplicate_derived_tables(table)
-    logging.info("#######DONE DEDUPLICATING DERIVED TABLES################")
-
+  
+@DeprecationWarning
 def update_stools():
     variable = "StoolsInfant.value"
     to_update = "StoolsInfant.label"
@@ -820,6 +820,7 @@ def update_puurine_nb():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE PASSING URINE IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_haart():
     variable = "HAART.value"
     to_update = "HAART.label"
@@ -838,7 +839,7 @@ def update_haart():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE HAART IN IN JOINED ADMISSIONS") 
 
-
+@DeprecationWarning
 def update_lengthhaart():
     variable = "LengthHAART.value"
     to_update = "LengthHAART.label"
@@ -860,6 +861,7 @@ def update_lengthhaart():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE LengthHAART IN IN JOINED ADMISSIONS")  
 
+@DeprecationWarning
 def update_anmatsyphtreat():
     variable = "ANMatSyphTreat.value"
     to_update = "ANMatSyphTreat.label"
@@ -876,8 +878,9 @@ def update_anmatsyphtreat():
         if len(query1)>0 and column_exists("derived",table,to_update) and column_exists("derived",table,variable):
             inject_sql(query1,"UPDATE ANMatSyphTreat")
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
-            inject_sql(query2,"UPDATE ANMatSyphTreat IN IN JOINED ADMISSIONS")  
+            inject_sql(query2,"UPDATE ANMatSyphTreat IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_patnsyph():
     variable = "PartnerTrSyph.value"
     to_update = "PartnerTrSyph.label"
@@ -897,6 +900,7 @@ def update_patnsyph():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE PartnerTrSyph IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_anster():
     variable = "ANSterCrse.value"
     to_update = "ANSterCrse.label"
@@ -917,7 +921,7 @@ def update_anster():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE ANSterCrse IN IN JOINED ADMISSIONS") 
 
-
+@DeprecationWarning
 def update_ansteroids():
     variable = "ANSteroids.value"
     to_update = "ANSteroids.label"
@@ -937,6 +941,7 @@ def update_ansteroids():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE ANSteroids IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_transfusion():
     variable = "Transfusion.value"
     to_update = "Transfusion.label"
@@ -955,6 +960,7 @@ def update_transfusion():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE Transfusion IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_transtype():
     variable = "TransType.value"
     to_update = "TransType.label"
@@ -977,6 +983,7 @@ def update_transtype():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE TransType IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_specrev():
     variable = "SPECREV.value"
     to_update = "SPECREV.label"
@@ -996,6 +1003,7 @@ def update_specrev():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE SPECREV IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_matadmit():
     variable = "MatAdmit.value"
     to_update = "MatAdmit.label"
@@ -1015,6 +1023,7 @@ def update_matadmit():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE MatAdmit IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_matdisc():
     variable = "MatDischarge.value"
     to_update = "MatDischarge.label"
@@ -1035,6 +1044,7 @@ def update_matdisc():
             inject_sql(query2,"UPDATE MatDischarge IN IN JOINED ADMISSIONS")  
 
 
+@DeprecationWarning
 def update_matdisc():
     variable = "MatDischarge.value"
     to_update = "MatDischarge.label"
@@ -1054,6 +1064,7 @@ def update_matdisc():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE MatDischarge IN IN JOINED ADMISSIONS")  
 
+@DeprecationWarning
 def update_troward():
     variable = "TROWard.value"
     to_update = "TROWard.label"
@@ -1075,6 +1086,7 @@ def update_troward():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE TROWard IN IN JOINED ADMISSIONS")  
 
+@DeprecationWarning
 def update_specrevtype():
     variable = "SPECREVTYP.value"
     to_update = "SPECREVTYP.label"
@@ -1100,7 +1112,7 @@ def update_specrevtype():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE SPECREVTYP IN IN JOINED ADMISSIONS") 
 
-
+@DeprecationWarning
 def update_ageestimate():
     variable = "AgeEstimate.value"
     to_update = "AgeEstimate.label"
@@ -1122,6 +1134,7 @@ def update_ageestimate():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE AgeEstimate IN IN JOINED ADMISSIONS")  
 
+@DeprecationWarning
 def update_birthfac():
     variable = "BirthFacility.value"
     to_update = "BirthFacility.label"
@@ -1154,7 +1167,7 @@ def update_birthfac():
             inject_sql(query2,"UPDATE BirthFacility IN IN JOINED ADMISSIONS")  
 
 
-
+@DeprecationWarning
 def update_reason():
     variable = "Reason.value"
     to_update = "Reason.label"
@@ -1185,6 +1198,7 @@ def update_reason():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE CS Reasons IN IN JOINED ADMISSIONS")     
 
+@DeprecationWarning
 def update_readmission():
     variable = "Readmission.value"
     to_update = "Readmission.label"
@@ -1203,7 +1217,8 @@ def update_readmission():
             inject_sql(query1,"UPDATE ReAdmission")
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE ReAdmission IN IN JOINED ADMISSIONS") 
-            
+
+@DeprecationWarning           
 def update_ANVDRL():
     variable = "ANVDRL.value"
     to_update = "ANVDRL.label"
@@ -1224,6 +1239,7 @@ def update_ANVDRL():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE Syphylis IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_IRON():
     variable = "Iron.value"
     to_update = "Iron.label"
@@ -1244,6 +1260,7 @@ def update_IRON():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE IRON IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_TTV():
     variable = "TTV.value"
     to_update = "TTV.label"
@@ -1264,6 +1281,7 @@ def update_TTV():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE TTV IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_CryBirth():
     variable = "CryBirth.value"
     to_update = "CryBirth.label"
@@ -1283,6 +1301,7 @@ def update_CryBirth():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE CryBirth IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_VitK():
     variable = "VitK.value"
     to_update = "VitK.label"
@@ -1303,6 +1322,7 @@ def update_VitK():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE VitK IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_TEO():
     variable = "TEO.value"
     to_update = "TEO.label"
@@ -1323,6 +1343,7 @@ def update_TEO():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE TEO IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_DateVDRLSameHIV():
     variable = "DateVDRLSameHIV.value"
     to_update = "DateVDRLSameHIV.label"
@@ -1342,7 +1363,7 @@ def update_DateVDRLSameHIV():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE DateVDRLSameHIV IN IN JOINED ADMISSIONS")
 
-
+@DeprecationWarning
 def update_AnvdrlResult():
     variable = "ANVDRLResult.value"
     to_update = "ANVDRLResult.label"
@@ -1362,7 +1383,8 @@ def update_AnvdrlResult():
             inject_sql(query1,"UPDATE AnvdrlResult")
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE AnvdrlResult IN IN JOINED ADMISSIONS")
-            
+
+@DeprecationWarning           
 def update_BSUnit():
     variable = "BSUnit.value"
     to_update = "BSUnit.label"
@@ -1382,6 +1404,7 @@ def update_BSUnit():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE BSUnit IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_BsMonyn():
     variable = "BSmonYN.value"
     to_update = "BSmonYN.label"
@@ -1401,6 +1424,7 @@ def update_BsMonyn():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE BSmonYN IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_VRLKnown():
     variable = "VLKnown.value"
     to_update = "VLKnown.label"
@@ -1421,6 +1445,7 @@ def update_VRLKnown():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE VLKnown IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def update_ROM():
     variable = "ROM.value"
     to_update = "ROM.label"
@@ -1440,6 +1465,7 @@ def update_ROM():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE ROM IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_ROMLENGTH():
     variable = "ROMlength.value"
     to_update = "ROMlength.label"
@@ -1458,7 +1484,7 @@ def update_ROMLENGTH():
             inject_sql(query1,"UPDATE ROMlength")
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE ROMlength IN IN JOINED ADMISSIONS") 
-
+@DeprecationWarning
 def update_vomiting():
     variable = "Vomiting.value"
     to_update = "Vomiting.label"
@@ -1481,6 +1507,7 @@ def update_vomiting():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE Vomiting IN IN JOINED ADMISSIONS") 
 
+@DeprecationWarning
 def update_passedmec():
     variable = "PassedMec.value"
     to_update = "PassedMec.label"
@@ -1501,6 +1528,7 @@ def update_passedmec():
         if len(query2)>0 and column_exists("derived","joined_admissions_discharges",to_update) and column_exists("derived","joined_admissions_discharges",variable):
             inject_sql(query2,"UPDATE Meconium IN IN JOINED ADMISSIONS")
 
+@DeprecationWarning
 def deduplicate_derived_tables(table: str):
     query = f'''DO $$
         DECLARE

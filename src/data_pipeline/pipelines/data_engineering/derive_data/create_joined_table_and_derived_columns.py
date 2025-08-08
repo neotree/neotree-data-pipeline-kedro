@@ -13,6 +13,7 @@ from conf.common.sql_functions import (create_new_columns
                                        ,generate_create_insert_sql,
                                        get_date_column_names,run_query_and_return_df)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from data_pipeline.pipelines.data_engineering.data_validation.validate import reset_log
 
 
 
@@ -27,6 +28,7 @@ def join_table():
 
     # Read the raw admissions and discharge data into dataframes
     logging.info("... Fetching admissions and discharges data")
+    reset_log('logs/queries.log')
     try:
     
         #Load Derived Admissions From Kedro Catalog
@@ -73,15 +75,17 @@ def join_table():
             adm_df_2 = run_query_and_return_df(read_admissions_query_2)
             read_discharges_query_2 = discharges_not_matched()
             dis_df_2 = run_query_and_return_df(read_discharges_query_2)
-          
+            logging.info(f"#######DIS{len(dis_df_2)}") 
+            logging.info(f"#######ADM{len(adm_df_2)}") 
             if( adm_df_2 is not None and dis_df_2 is not None and not adm_df_2.empty):
                 jn_adm_dis_2 = createJoinedDataSet(adm_df_2,dis_df_2)
                 jn_adm_dis_2.columns = jn_adm_dis_2.columns.astype(str) 
                 jn_adm_dis_2 = jn_adm_dis_2.loc[:, ~jn_adm_dis_2.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
-
+                logging.info(f"#######JDS{len(jn_adm_dis_2)}") 
+        
                 if not jn_adm_dis_2.empty:
-                    filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]
-                   
+                    filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]  
+                    logging.info(f"#######FIRITAD{len(filtered_df)}")          
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
 
     except Exception as e:
@@ -106,9 +110,10 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                 grouped = jn_adm_dis.groupby(["uid", "facility", "DEDUPLICATER"])
                 duplicates = grouped.filter(lambda x: len(x) > 1)
                 # Identify the index of the first record in each group
-                to_drop = duplicates.groupby(["uid", "facility", "DEDUPLICATER"]).head(1).index
+                to_drop = duplicates.groupby(["uid", "facility", "DEDUPLICATER"]).tail(-1).index
                 # Drop the identified records from the original DataFrame
                 jn_adm_dis = jn_adm_dis.drop(index=to_drop)
+
 
                 # FURTHER DEDUPLICATION ON UID,FACILITY,OFC-DISCHARGE
                 # THIS FIELD HELPS IN ISOLATING DIFFERENT ADMISSIONS MAPPED TO THE SAME DISCHARGE
@@ -116,7 +121,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                     grouped = jn_adm_dis.groupby(["uid", "facility", "OFCDis.value"])
                     duplicates = grouped.filter(lambda x: len(x) > 1)
                     # Identify the index of the first record in each group
-                    to_drop = duplicates.groupby(["uid", "facility", "OFCDis.value"]).head(1).index
+                    to_drop = duplicates.groupby(["uid", "facility", "OFCDis.value"]).tail(-1).index
                     # Drop the identified records from the original DataFrame
                     jn_adm_dis = jn_adm_dis.drop(index=to_drop)
 
@@ -126,7 +131,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                     grouped = jn_adm_dis.groupby(["uid", "facility", "BirthWeight.value_discharge"])
                     duplicates = grouped.filter(lambda x: len(x) > 1)
                     # Identify the index of the first record in each group
-                    to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value_discharge"]).head(1).index
+                    to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value_discharge"]).tail(-1).index
                     # Drop the identified records from the original DataFrame
                     jn_adm_dis = jn_adm_dis.drop(index=to_drop)
 
@@ -142,17 +147,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                         if column_pairs:
                             create_new_columns('joined_admissions_discharges','derived',column_pairs)
 
-            # else:
-            #     # Merge for non-null Dates (exact match)
-            #     jn_adm_dis = adm_df.merge(
-            #     dis_df_with_date, 
-            #     how='left', 
-            #     on=['uid', 'facility','Date_only'], 
-            #     suffixes=('', '_discharge')
-            #     )
-            #     # Drop helper columns if needed
-            #     jn_adm_dis.drop(columns=['Date_only'],inplace=True)
-
+       
             if 'Gestation.value' in jn_adm_dis:
                 jn_adm_dis['Gestation.value'] =  pd.to_numeric(jn_adm_dis['Gestation.value'],downcast='integer', errors='coerce')
             
@@ -190,23 +185,3 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
 
 
 
-# def format_value(col, value, col_type):
-#     if pd.isna(value):
-#         return f"\"{col}\" = NULL"
-#     elif ('timestamp' in col_type.lower() or 'date' in col_type.lower()):
-#         if isinstance(value, datetime):
-#             return f"\"{col}\" = '{value.strftime('%Y-%m-%d %H:%M:%S')}'"
-#         elif isinstance(value,date):
-#             return f"{col} = '{value.strftime('%Y-%m-%d')}'"
-#         else:
-#             return f"\"{col}\" = NULL"
-        
-#     elif col_type == 'text':
-#         return f"\"{col}\" = '{escape_special_characters(value)}'"
-#     elif 'timestamp' in col_type.lower():
-#         return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d %H:%M:%S')}'"
-#     elif 'date' in col_type.lower():
-#         return f"\"{col}\" = '{value.replace('.','').replace('NaT',None).strftime('%Y-%m-%d')}'"
-#     else:
-#         return f"\"{col}\"= {value}"
-    

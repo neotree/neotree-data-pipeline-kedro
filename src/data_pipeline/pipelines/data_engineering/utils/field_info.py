@@ -164,10 +164,9 @@ def transform_matching_labels(df, script):
 
 
 def transform_matching_labels_for_update_queries(df, script):
-
     json_data = load_json_for_comparison(script)
     if 'joined_admissions_discharges' in script:
-        json_data=merge_json_files('admissions','discharges')
+        json_data = merge_json_files('admissions', 'discharges')
     if not json_data:
         return pd.DataFrame(columns=['uid', 'unique_key'])  # empty fallback
     
@@ -176,61 +175,79 @@ def transform_matching_labels_for_update_queries(df, script):
     label_cols_changed = []
 
     for value_col in [col for col in df.columns if col.endswith('.value')]:
-        base_key = value_col[:-6]
+        base_key = value_col[:-6]  # removes '.value' suffix
         label_col = f"{base_key}.label"
+        
+        # Skip if label column doesn't exist or field not in JSON
         if label_col not in df.columns or base_key not in field_info:
             continue
 
-        null_mask = df[value_col].isna()
-        df_transformed.loc[null_mask, label_col] = None
-        
+        # Get field metadata
         field = field_info[base_key]
         value_to_label = {opt['value']: opt['valueLabel'] for opt in field.get('options', [])}
         expected_label = field['label']
         field_type = field.get('type', '')
 
+        # Initialize NULL handling - set label to NULL where value is NULL
+        null_value_mask = df[value_col].isna()
+        df_transformed.loc[null_value_mask, label_col] = None
 
-        # Build mask of rows to update
-        mask = df[value_col].notna() & (df[label_col] == expected_label)
-        logging.info(f"@@@@FLIB!@----len{len(mask)}")
-        if not mask.any():
+        # Build mask of rows to process (including cases where value is NULL but label isn't)
+        process_mask = (
+            # Cases where value exists and label matches expected
+            (df[value_col].notna() & (df[label_col] == expected_label)) | (
+            # OR cases where value is NULL but label is not NULL (the problematic cases)
+            (df[value_col].isna() & df[label_col].notna())
+        ))
+
+        if not process_mask.any():
             continue
 
-        # Store original label values to compare later
+        # Store original labels for comparison
         original_labels = df[label_col].copy()
 
-        # Apply transformation
-        if field_type in ('multi_select', 'checklist'):
-            df_transformed.loc[mask, label_col] = df.loc[mask, value_col].apply(
-                lambda x: ','.join(
-                    [value_to_label.get(v.strip(), v.strip()) for v in str(x).split(',') if v.strip()]
+        # Apply transformations
+        try:
+            if field_type in ('multi_select', 'checklist'):
+                # For NULL values, we've already set label to NULL above
+                non_null_mask = process_mask & df[value_col].notna()
+                df_transformed.loc[non_null_mask, label_col] = df.loc[non_null_mask, value_col].apply(
+                    lambda x: ','.join(
+                        [value_to_label.get(v.strip(), v.strip()) for v in str(x).split(',') if v.strip()]
+                    )
                 )
-            )
-        elif value_to_label:
-            df_transformed.loc[mask, label_col] = df.loc[mask, value_col].map(value_to_label)
-        else:
-            df_transformed.loc[mask, label_col] = df.loc[mask, value_col]
+            elif value_to_label:
+                # For NULL values, we've already set label to NULL above
+                non_null_mask = process_mask & df[value_col].notna()
+                df_transformed.loc[non_null_mask, label_col] = df.loc[non_null_mask, value_col].map(value_to_label)
+            else:
+                # For NULL values, we've already set label to NULL above
+                non_null_mask = process_mask & df[value_col].notna()
+                df_transformed.loc[non_null_mask, label_col] = df.loc[non_null_mask, value_col]
+        except Exception as e:
+            print(f"Error processing {base_key}: {str(e)}")
+            continue
 
-        # Determine which rows changed
-        changed = df_transformed[label_col] != original_labels
+        # Track changed columns (including NULL to NULL changes)
+        changed = df_transformed[label_col].ne(original_labels)
         if changed.any():
             label_cols_changed.append(label_col)
         else:
-            # No actual changes, revert
-            df_transformed[label_col] = original_labels
+            df_transformed[label_col] = original_labels  # revert if no changes
 
-    # Filter only updated rows
+    # Prepare final output
     if not label_cols_changed:
-        return pd.DataFrame(columns=['uid', 'unique_key'])  # no changes
-    
-    update_mask = df_transformed[label_cols_changed] != df[label_cols_changed]
-    changed_rows = update_mask.any(axis=1)
+        return pd.DataFrame(columns=['uid', 'unique_key'])
+
+    # Find changed rows (including NULL to NULL changes)
+    changed_rows = df_transformed[label_cols_changed].ne(df[label_cols_changed]).any(axis=1)
     result = df_transformed.loc[changed_rows, ['uid', 'unique_key'] + label_cols_changed]
 
+    # Convert to records with proper NULL handling
     marker = '__UNTOUCHED__'
     prepared = result.fillna(marker)
-
     records = prepared.to_dict(orient='records')
+    
     filtered_records = [
         {k: (None if v == marker else v) for k, v in row.items() if v != marker}
         for row in records

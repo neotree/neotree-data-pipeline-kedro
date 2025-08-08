@@ -15,6 +15,8 @@ from datetime import datetime
 from conf.base.catalog import params,hospital_conf
 import re
 import pdfkit
+from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
+from difflib import SequenceMatcher
 
 STATUS_FILE = "logs/validation_status.json"
 
@@ -55,7 +57,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
     context = gx.get_context()
     errors = []
     logger =setup_logger(log_file_path)
-    schema=get_schema(script)
+    schema=load_json_for_comparison(script)
 
     if not schema:
         logger.warning(f"#####SCHEMA FOR SCRIPT {script} NOT FOUND")
@@ -71,12 +73,19 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
         logger.error(err_msg)
         errors.append(err_msg)
 
-    for base_col, meta in schema.items():
-        value_col = f"{base_col}.value"
-        dtype = (meta.get('dataType') or '').lower()
+    field_info = {f['key']: f for f in schema}
 
-        try:
-            if value_col in df.columns and value_col in validator.columns():
+    for value_col in [col for col in df.columns if col.endswith('.value')]:
+        base_key = value_col[:-6]  
+        label_col = f"{base_key}.label"
+        if  base_key not in field_info:
+            logger.warning(f"Column '{base_key}' is not found in any current: {script} script")
+            pass;
+        else:
+            field = field_info[base_key]
+            expected_label = field['label']
+            field_type = field.get('type', '')
+            try:
                 temp_base_series = (
                     df[value_col]
                     .astype(str)
@@ -84,11 +93,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                     .str.strip()
                     .replace('', np.nan) 
                 )
-                
                 if temp_base_series.isna().all():
-                    continue
+                    logger.warning(f"Column '{base_key}' of {script} script is showing all NULL values")
 
-                if dtype == 'number':
+                if field_type == 'number':
                     temp_col = f"_{value_col}_as_number"
                     df[temp_col] = pd.to_numeric(df[value_col], errors='coerce')  # non-convertible → NaN
                     validator = context.sources.pandas_default.read_dataframe(df)
@@ -99,92 +107,50 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                         errors.append(f"Non-numeric values in '{value_col}': {invalid_sample}")
                     df.drop(columns=[temp_col], inplace=True) 
 
-                elif dtype in ['dropdown', 'single_select_option', 'period','multi_select_option','text','string','uid']:
+                elif field_type in ['dropdown', 'single_select', 'period','multi_select','text','string','uid']:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
-                elif dtype in ['datetime', 'timestamp', 'date']:
+                elif field_type in ['datetime', 'timestamp', 'date']:
                     datetime_regex = r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$"
                     validator.expect_column_values_to_match_regex(value_col, datetime_regex)
-
-                elif dtype == 'boolean':
+                elif field_type == 'boolean' or field_type=='yesno':
                     validator.expect_column_values_to_be_in_set(
                     value_col,
-                    ["True", "False", "true", "false", True, False, 1, 0,"y","n","Y","N","Yes","No","yes","no"]
-)
+                    ["True", "False", "true", "false", True, False, 1, 0,"y","n","Y","N","Yes","No","yes","no"])
+
                 else:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')
-            else:
-                continue
-        except Exception as e:
-            err_msg = f"Error validating column '{value_col}' {dtype}: {str(e)}\n"
-            logger.error(err_msg)
-            errors.append(err_msg)
 
-    forbidden = ['who', 'when', 'where', 'is', '?', 'what', 'do', 'how', 'date', 'reason', 'readmission', 'did', 'which', 'if', 'age category', 'were']
-    escaped_values = ['Chest is clear','Less than 18 hours']
-    pattern = r"(?i)\b(" + "|".join(map(re.escape, forbidden)) + r")\b"
-    for col in df.columns:
-        if col.endswith(('.value', '.label')):
-            try:
-                # Create a clean series with consistent null handling
-                temp_series = (
-                    df[col]
-                    .astype(str)
-                    .replace(['nan', '<NA>', 'None', 'null','NAT'], '')
-                    .str.strip()
-                    .replace('', np.nan) 
-                )
-                
-                if temp_series.isna().all():
-                    continue
-                    
-                # Skip if column not in validator
-                if col not in validator.columns():
-                    continue
-
-                content_result = validator.expect_column_values_to_not_match_regex(
-                    column=col,
-                    regex=pattern,
-                    mostly=1.0
-                )
-                
-                # Use the validation result to get problematic values
-                if not content_result.success:
-                    bad_values = content_result.result['partial_unexpected_list']
-                
-                    # Additional check to exclude escaped values
-                    actual_bad_values = [
-                        val for val in bad_values 
-                        if val not in escaped_values
-                    ]
-                    if actual_bad_values:
-                        logger.error(
-                            f"Found {len(actual_bad_values)} "
-                            f"true violations in {col}. Sample: {actual_bad_values[:3]}"
-                        )
-
+                if expected_label is not None and label_col in df.columns:
+                    validator.expect_column_values_to_satisfy(
+                    column=label_col,
+                    condition=lambda x: not_90_percent_similar_to_label(x, expected_label))
+                  
             except Exception as e:
                 logger.error(
-                    f"Validation failed for {col}: {str(e)}\n"
-                    f"Data sample: {temp_series.dropna().head(3).tolist()}"
-                )
+                    f"Validation failed for {base_key} of {script} script: {str(e)}\n")
+                    
     try:
         results = validator.validate()
         for result in results.get("results", []):
-                expectation_type = result.get("expectation_config", {}).get("expectation_type")
                 column = result.get("expectation_config", {}).get("kwargs", {}).get("column")
                 success = result.get("success")
 
-                if (not success and column in df.columns and ('expect_column_values_to_be' in expectation_type
-                                                               or 'expect_column_values_to_match' in expectation_type)):
+                if (not success and column in df.columns):
                     unexpected_list = result.get("result", {}).get("partial_unexpected_list", [])
                     sample_vals = unexpected_list[:3]
-                    msg = f"❌ Expectation failed for column '{column}' :: Sample invalid values: {sample_vals}"
+                    msg = f"❌ Expectation failed for column '{column}'.I got {len(unexpected_list)} invalid values :: Sample invalid values: {sample_vals}"
                     logger.error(msg)
                     errors.append(msg)
     except Exception as e:
         err_msg = f"Validation execution error on : {str(e)}"
         logger.error(err_msg)
         errors.append(err_msg)
+
+def not_90_percent_similar_to_label(x, reference_value):
+    if x is None:
+        return True
+    ratio = SequenceMatcher(None, str(x).lower(), str(reference_value).lower()).ratio()
+    return ratio < 0.9
 
 def send_log_via_email(log_file_path: str, email_receivers):  # type: ignore
     with open(log_file_path, 'r') as f:

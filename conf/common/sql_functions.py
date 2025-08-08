@@ -1,4 +1,5 @@
 import logging
+from conf.common.logger import setup_logger
 import json
 from typing import Dict
 from conf.common.format_error import formatError
@@ -32,6 +33,8 @@ engine = create_engine(
 )
 #Useful functions to inject sql queries
 #Inject SQL Procedures
+QUERY_LOG_PATH="logs/queries.log"
+query_logger = setup_logger(QUERY_LOG_PATH,'queries')
 def inject_sql_procedure(sql_script, file_name):
         conn = engine.raw_connection()
         cur = conn.cursor()
@@ -45,23 +48,7 @@ def inject_sql_procedure(sql_script, file_name):
             sys.exit()
         logging.info('... {0} has successfully run'.format(file_name))
 
-# def inject_sql(sql_script, file_name):
-#     sql_commands = sql_script.split(';;')
-#     conn = engine.raw_connection()
-#     cur = conn.cursor()
-#     for command in sql_commands[:-1]:
-#         try:
-#             logging.info(text(file_name))
-#             cur.execute(text(command))
-    
-#         # last element in list is empty hence need for [:-1] slicing out the last element
-#         except Exception as e:
-#             logging.error('Something went wrong with the SQL file');
-#             logging.error(text(command))
-#             logging.error(e)
-#             raise e
-#     conn.commit()
-#     #logging.info('... {0} has successfully run'.format(file_name))
+
 def inject_sql(sql_script, file_name):
     conn = None
     cur = None
@@ -182,7 +169,8 @@ def inject_sql_with_return(sql_script):
     
 def inject_bulk_sql(queries, batch_size=1000):
     conn = engine.raw_connection()  # Get the raw DBAPI connection
-    cursor = conn.cursor()  # Create a cursor from the raw connection
+    cursor = conn.cursor()
+    # Create a cursor from the raw connection
     try:
         # Execute commands in batches
         for i in range(0, len(queries), batch_size):
@@ -190,6 +178,8 @@ def inject_bulk_sql(queries, batch_size=1000):
             for command in batch:
                 try:
                     cursor.execute(command)
+                    conn.commit()
+                    query_logger.info(f'::EXECUTED::{command}')
                 except Exception as e:
                     logging.error(f"Error executing command: {command}")
                     logging.error(e)
@@ -673,6 +663,7 @@ def generate_label_fix_updates(filtered_records, table_name:str):
             ) AS {alias}({columns_str})
             WHERE t.uid = {alias}.uid AND t.unique_key = {alias}.unique_key
         """
+        logging.info(f"###--FERE--{sql}")
 
         sql_batches.append((sql, values))
 
