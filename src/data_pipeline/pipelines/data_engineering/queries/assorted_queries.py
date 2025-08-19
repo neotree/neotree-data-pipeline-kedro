@@ -415,8 +415,7 @@ WHERE uid IN (
         WHERE ad.uid = j.uid 
           AND ad.unique_key = j.unique_key
     )
-);
-;'''
+)'''
 
 def admissions_without_discharges():
      return f'''SELECT * 

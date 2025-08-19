@@ -11,7 +11,7 @@ from sqlalchemy.types import TEXT
 import pandas as pd
 import numpy as np
 import logging
-from psycopg2 import sql,connect
+from psycopg2 import sql
 from psycopg2.extras import execute_values
 from collections import defaultdict
 import re
@@ -263,7 +263,7 @@ def column_exists(schema, table_name,column_name):
 def run_query_and_return_df(query):
     try:
        
-        conn = connect(con_string)
+        conn = engine.raw_connection()
         df = pd.read_sql_query(query, conn)
         return df
     except Exception as ex:
