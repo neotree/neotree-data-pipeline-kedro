@@ -596,14 +596,7 @@ def tidy_tables():
                     neolab_df.sort_values(by=['uid','episode']) 
             neolab_df= neolab_df[(neolab_df['uid'] != 'Unknown')] 
             ########SAVE DATA#####################################
-            if table_exists('derived','neolab'):
-                cols = pd.DataFrame(get_table_column_names('neolab', 'derived'), columns=["column_name"])
-                new_columns = set(neolab_df.columns) - set(cols.columns) 
-                      
-                if new_columns:
-                    column_pairs =  [(col, str(neolab_df[col].dtype)) for col in new_columns]
-                    if column_pairs:
-                        create_new_columns('neolab','derived',column_pairs)
+
             neolab_df = neolab_df.loc[:, ~neolab_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
             neolab_df= transform_matching_labels(neolab_df,'neolab')
             validate_dataframe_with_ge(neolab_df,'neolab')

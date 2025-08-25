@@ -448,11 +448,8 @@ def generate_postgres_insert(df, schema,table_name):
                 row_values.append(f"'{escape_special_characters(json_val)}'")
 
             elif (is_date_prefix(str(val))):
-                logging.info(f"::TRYANA:::{val}")
                 row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
-                logging.info(f"::APPENDED:::{clean_datetime_string(val).replace('.','')}")
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
-                logging.info(f"::PWIDII:::{val}")
                 row_values.append(f"'{clean_datetime_string(val)}'")
             elif isinstance(val, str):
                 row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
@@ -580,6 +577,10 @@ def generate_create_insert_sql(df,schema, table_name):
             create_cols = []
             if("twenty_8_day_follow_up" in table_name):
                 df = reorder_dataframe_columns(df,script=table_name)
+            if "neolab" in table_name:
+                drop_table = f'DROP TABLE IF EXISTS {schema}."{table_name}";;'
+                inject_sql(drop_table,f"DROPPING {table_name}")
+
             for col in df.columns:
                 dtype = str(df[col].dtype)
                 pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
