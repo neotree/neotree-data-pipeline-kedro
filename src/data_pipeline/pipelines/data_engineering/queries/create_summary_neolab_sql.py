@@ -6,23 +6,23 @@ def summary_neolab_query():
                 '''
   suffix = ')'
   where = ''
-  if(table_exists("derived","summary_neolab")):
-    prefix= f''' INSERT INTO derived.summary_neolab (
-    "facility", 
-    "uid", 
-    "episode", 
-    "DateBCR", 
-    "Org1.label", 
-    "Org1.value", 
-    "OtherOrg1.value", 
-    "BCResult", 
-    "Status", 
-    "DATEBCT", 
-    "NumberOfCulturesForEpisode", 
-    "CombinedResult"
-        )  '''
-    where = f''' AND  NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" IN (select uid from derived.neolab)) '''
-    suffix =''
+  # if(table_exists("derived","summary_neolab")):
+  #   prefix= f''' INSERT INTO derived.summary_neolab (
+  #   "facility", 
+  #   "uid", 
+  #   "episode", 
+  #   "DateBCR", 
+  #   "Org1.label", 
+  #   "Org1.value", 
+  #   "OtherOrg1.value", 
+  #   "BCResult", 
+  #   "Status", 
+  #   "DATEBCT", 
+  #   "NumberOfCulturesForEpisode", 
+  #   "CombinedResult"
+  #       )  '''
+  #   where = f''' AND  NOT EXISTS ( SELECT 1  FROM derived.summary_neolab  WHERE "uid" IN (select uid from derived.neolab)) '''
+  #   suffix =''
 
   return   prefix+f'''
             
