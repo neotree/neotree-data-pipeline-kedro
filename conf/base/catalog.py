@@ -137,8 +137,6 @@ if hospital_scripts:
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
                   read_table = f'''read_{script_name}'''
                   create_table =f'''create_derived_{script_name}''' 
-                  if 'neolab' in read_table:
-                      logging.info(f"MY READ:{read_query}")
                   generic_catalog.update({read_table: SQLQueryDataSet(
                                           sql= read_query,
                                           credentials=dict(con=con)

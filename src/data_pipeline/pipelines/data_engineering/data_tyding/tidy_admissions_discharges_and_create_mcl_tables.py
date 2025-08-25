@@ -104,7 +104,7 @@ def tidy_tables():
         baseline_new_entries,baseline_mcl = get_key_values(baseline_raw)
         diagnoses_new_entries = get_diagnoses_key_values(diagnoses_raw)
         mat_completeness_new_entries,mat_completeness_mcl = get_key_values(mat_completeness_raw)
-
+        
         neolab_new_entries,noelab_mcl = get_key_values(neolab_raw)
 
     except Exception as e:
@@ -495,6 +495,7 @@ def tidy_tables():
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
     ##################### NEOLAB ###################################################################################    
         neolab_df = pd.json_normalize(neolab_new_entries)
+        logging.info(f"MY BERERD {neolab_df.head()}")
         if not neolab_df.empty:
             update_fields_info("neolab")
             if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 
