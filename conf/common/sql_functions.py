@@ -437,8 +437,7 @@ def generate_postgres_insert(df, schema,table_name):
             continue
         row_values = []
         for  key, val in row.items():
-            if len(str(key))<=1:
-                
+            if len(str(key))<=1:  
                 continue
 
             if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
@@ -449,9 +448,12 @@ def generate_postgres_insert(df, schema,table_name):
                 row_values.append(f"'{escape_special_characters(json_val)}'")
 
             elif (is_date_prefix(str(val))):
+                logging.info(f"::TRYANA:::{val}")
                 row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
-            elif isinstance(val, (pd.Timestamp, pd.Timedelta)) or ():
-                row_values.append(f"'{val}'")
+                logging.info(f"::APPENDED:::{clean_datetime_string(val).replace('.','')}")
+            elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
+                logging.info(f"::PWIDII:::{val}")
+                row_values.append(f"'{clean_datetime_string(val)}'")
             elif isinstance(val, str):
                 row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
             else:
