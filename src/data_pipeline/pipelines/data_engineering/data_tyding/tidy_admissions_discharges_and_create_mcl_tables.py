@@ -495,7 +495,6 @@ def tidy_tables():
             explode_column(vit_signs_df,vit_signs_mcl,"vit_")
     ##################### NEOLAB ###################################################################################    
         neolab_df = pd.json_normalize(neolab_new_entries)
-        logging.info(f"MY BERERD {neolab_df.head()}")
         if not neolab_df.empty:
             update_fields_info("neolab")
             if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and 

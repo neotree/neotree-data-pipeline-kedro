@@ -51,7 +51,7 @@ def summary_neolab_query():
                     derived.neolab."BCType" like '%%PRELIMINARY%%' THEN 'PRELIMINARY'
                     WHEN derived.neolab."BCType" like '%%FINAL%%' THEN 'FINAL'
                     END AS "Status",
-                    derived.neolab."DateBCT.value" AS "DATEBCT",
+                   CAST(derived.neolab."DateBCT.value" AS date) AS "DATEBCT",
 				    (select count(derived.neolab.uid) from derived.neolab where 
 				    latest_neolab.uid=derived.neolab."uid" and latest_neolab.episode = derived.neolab."episode") AS "NumberOfCulturesForEpisode",
            CASE WHEN (derived.neolab."BCResult.value" ='Pos' and  derived.neolab."Org1.value" ='CONS') OR 
