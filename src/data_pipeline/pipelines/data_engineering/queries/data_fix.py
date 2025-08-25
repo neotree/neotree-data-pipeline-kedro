@@ -6,9 +6,7 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 
 def deduplicate_table(table:str):
     
-    logging.info(f">>>TABLE {table}>>>>NOT EXISTS")
     if (table_exists('derived',table)):
-        logging.info(f">>>TABLE {table}>>>>EXISTS")
         deduplicate_derived_tables(table)   
   
 
