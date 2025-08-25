@@ -26,19 +26,6 @@ def deduplicate_neolab_query(neolab_where):
             uid,
             extract(year from ingested_at) as year,
             extract(month from ingested_at) as month,
-            -- Extract DateBCT with null handling
-            CASE 
-                WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
-                THEN "data"->'entries'::text->1->'values'->0->'value'::text->>0
-                ELSE "data"->'entries'->'DateBCT'->'values'->'value'::text->>0  
-            END AS "DateBCT",
-            -- Extract DateBCR with null handling
-            CASE 
-                WHEN "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null 
-                THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
-                ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  
-            END AS "DateBCR",
-            -- Get first 10 characters of date fields, or null if either is null
             CASE 
                 WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
                 OR "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null
@@ -53,7 +40,7 @@ def deduplicate_neolab_query(neolab_where):
             max(id) as id
             from public.clean_sessions
             where scriptid {neolab_where}
-            group by 1,2,3,4,5,6,7
+            group by 1,2,3,4,5
         )
         select
             earliest_neolab.scriptid,
@@ -62,8 +49,6 @@ def deduplicate_neolab_query(neolab_where):
             sessions.ingested_at,
             earliest_neolab.year,
             earliest_neolab.month,
-            earliest_neolab."DateBCT",
-            earliest_neolab."DateBCR",
             earliest_neolab.date_key,
             sessions.unique_key,
             sessions.data
@@ -370,7 +355,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             {case_condition}
         FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs.uid IS NOT NULL AND cs.uid != 'null' AND cs.uid != 'Unknown' AND cs.unique_key IS NOT NULL {condition};;
         '''
-    elif destination_table=='neolab':
+    elif 'neolab' in destination_table:
         sql=f'''
             SELECT
             cs.uid,
