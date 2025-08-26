@@ -35,7 +35,15 @@ def tidy_dynamic_tables():
                 script_new_entries, script_mcl = get_key_values(script_raw)
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
                 try:
+                    #HARD FIXES
+
                     script_df = pd.json_normalize(script_new_entries)
+                    if "Facility.label" in script_df.columns and "PHC.label" not in script_df.columns:
+                        script_df = script_df.rename(columns={"Facility.label": "PHC.label"})
+                    
+                    if "Facility.value" in script_df.columns and "PHC.value" not in script_df.columns:
+                        script_df = script_df.rename(columns={"Facility.value": "PHC.value"})
+
                     update_fields_info(script)
                     if "How is the baby being fed?.label" in script_df.columns:
                         script_df.rename(columns={'FeedAsse.label': 'How is the baby being fed?.label'}, inplace=True)
