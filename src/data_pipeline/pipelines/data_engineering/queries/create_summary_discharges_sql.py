@@ -89,7 +89,7 @@ def summary_discharges_query():
                         WHEN "DateWeaned.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
                         to_timestamp("DateWeaned.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "DateWeaned.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
-                        to_timestamp("DateWeaned.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
+                        to_timestamp("DateWeaned.value"::text || '00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                         ELSE NULL
                   END AS "Date Weaned off the support",
                   "PHOTOTHERAPY.label" AS "Phototherapy given during admission?",
@@ -102,7 +102,7 @@ def summary_discharges_query():
                   "HealthEd.label" AS "Health Education given?",
                   "OtherProbs.label" AS "Other Problems",
                   "OtherProbsOth.label" AS "Other Problems (additional)",
-                  "DateTimeDeath.value" AS "DateTime of Death",
+                  to_timestamp("DateTimeDeath.value"::text || '00:00:00', 'YYYY Mon,DD HH24:MI:SS') AS "DateTime of Death",
                   "CauseDeath.label" AS "Cause of Death",
                   "CauseDeathOther.value" AS "Other Cause of Death_",
                   "CauseDeathOth.value" AS "Other Cause of death",
