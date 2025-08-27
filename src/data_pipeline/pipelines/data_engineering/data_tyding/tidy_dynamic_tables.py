@@ -36,13 +36,27 @@ def tidy_dynamic_tables():
                 logging.info("... Creating normalized dataframes for Dynamic Scripts")
                 try:
                     #HARD FIXES
-
                     script_df = pd.json_normalize(script_new_entries)
+                    if "Facility.value" in script_df.columns and "PHC.value" in script_df.columns:
+                        # Conditionally move values where Facility.value is not null AND PHC.value is null
+                        mask = (~script_df["Facility.value"].isna()) & (script_df["PHC.value"].isna())
+                        script_df.loc[mask, "PHC.value"] = script_df.loc[mask, "Facility.value"]
+                        
+                        # Remove Facility.value column after processing
+                        script_df = script_df.drop(columns=["Facility.value"])
+
+                    # Repeat for label columns
+                    if "Facility.label" in script_df.columns and "PHC.label" in script_df.columns:
+                        mask = (~script_df["Facility.label"].isna()) & (script_df["PHC.label"].isna())
+                        script_df.loc[mask, "PHC.label"] = script_df.loc[mask, "Facility.label"]
+                        script_df = script_df.drop(columns=["Facility.label"])
+
+                    # If only Facility columns exist but not PHC columns, rename them
+                    elif "Facility.value" in script_df.columns and "PHC.value" not in script_df.columns:
+                        script_df = script_df.rename(columns={"Facility.value": "PHC.value"})
+
                     if "Facility.label" in script_df.columns and "PHC.label" not in script_df.columns:
                         script_df = script_df.rename(columns={"Facility.label": "PHC.label"})
-                    
-                    if "Facility.value" in script_df.columns and "PHC.value" not in script_df.columns:
-                        script_df = script_df.rename(columns={"Facility.value": "PHC.value"})
 
                     update_fields_info(script)
                     if "How is the baby being fed?.label" in script_df.columns:

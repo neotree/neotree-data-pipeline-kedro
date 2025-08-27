@@ -145,7 +145,11 @@ def transform_matching_labels(df, script):
             options = field.get('options', [])
             value_to_label = {opt['value']: opt['valueLabel'] for opt in options}
             
-            # Skip rows where value is null (already handled in critical section)
+            inverted_mask = (transformed_df[value_col].isin(value_to_label.values()) & transformed_df[label_col].isin(value_to_label.keys()))
+            # Fix inverted rows FIRST
+            if options and inverted_mask.any():
+                transformed_df.loc[inverted_mask, [value_col, label_col]] = transformed_df.loc[inverted_mask, [label_col, value_col]].values
+
             non_null_mask = (transformed_df[value_col].notna()) & (transformed_df[label_col] == json_label)
             
             if field_type in ('multi_select', 'checklist'):
@@ -155,10 +159,12 @@ def transform_matching_labels(df, script):
                         for v in str(x).split(',') if v.strip()
                     ]) if pd.notna(x) else x
                 )
-            elif options:
-                transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col].map(value_to_label)
-            else:
-                transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col]
+            if non_null_mask.any():
+                if options:
+                    
+                    transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col].map(value_to_label)
+                else:
+                    transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col]
     
     return transformed_df
 
