@@ -423,6 +423,16 @@ WHERE NOT EXISTS (
       AND ad.unique_key = j.unique_key
 );'''
 
+def read_clean_admissions_not_joined():   
+        return f'''SELECT * 
+FROM derived.clean_admissions ad
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM derived.clean_joined_adm_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key
+);'''
+
 
 def read_dicharges_not_joined():
         return f'''SELECT * 
@@ -433,6 +443,20 @@ WHERE uid IN (
     WHERE NOT EXISTS (
         SELECT 1 
         FROM derived.joined_admissions_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key
+    )
+)'''
+
+def read_clean_dicharges_not_joined():
+        return f'''SELECT * 
+FROM derived.clean_discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.clean_admissions ad 
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM derived.clean_joined_adm_discharges j 
         WHERE ad.uid = j.uid 
           AND ad.unique_key = j.unique_key
     )
@@ -451,6 +475,23 @@ WHERE EXISTS (
           OR (
               j."DateTimeDischarge.value" IS NULL 
               AND j."DateTimeDeath.value" IS NULL
+          )
+      )
+)
+'''
+def read_clean_admissions_without_discharges():
+     return f'''SELECT * 
+FROM derived.clean_admissions ad 
+WHERE EXISTS (
+    SELECT 1 
+    FROM derived.clean_joined_adm_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key 
+      AND (
+          j."neotreeoutcome" IS NULL 
+          OR (
+              j."datetimedischarge" IS NULL 
+              AND j."datetimedeath" IS NULL
           )
       )
 )
@@ -476,6 +517,32 @@ WHERE uid IN (
           )
     )
 )'''
+
+
+def clean_discharges_not_matched():
+     return f'''SELECT * 
+FROM derived.clean_discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.clean_admissions ad  
+    WHERE EXISTS (
+        SELECT 1 
+        FROM derived.clean_joined_adm_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key 
+          AND (
+              j."neotreeoutcome" IS NULL 
+              OR (
+                  j."datetimedischarge" IS NULL 
+                  AND j."datetimedeath" IS NULL
+              )
+          )
+    )
+)'''
+
+
+
+
 def read_data_with_no_unique_key():
 
     return f'''

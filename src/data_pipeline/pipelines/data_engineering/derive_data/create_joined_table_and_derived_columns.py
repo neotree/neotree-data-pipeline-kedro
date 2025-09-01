@@ -6,7 +6,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
                                                                                read_dicharges_not_joined,
                                                                                read_admissions_not_joined,
                                                                                admissions_without_discharges,
-                                                                               discharges_not_matched)
+                                                                               discharges_not_matched,read_all_from_derived_table)
 from conf.common.sql_functions import (create_new_columns
                                        ,get_table_column_names
                                        ,generateAndRunUpdateQuery
@@ -33,10 +33,17 @@ def join_table():
     try:
     
         #Load Derived Admissions From Kedro Catalog
-        read_admissions_query = read_admissions_not_joined()
+        read_admissions_query=''
+        read_discharges_query=''
+        if table_exists('derived','joined_admissions_discharges'):
+            read_admissions_query= read_admissions_not_joined()
+            read_discharges_query = read_dicharges_not_joined()
+        else:
+            read_admissions_query= read_all_from_derived_table('admissions') 
+            read_discharges_query = read_all_from_derived_table('discharges') 
+     
         adm_df = run_query_and_return_df(read_admissions_query)  
         #Load Derived Discharges From Kedro Catalog
-        read_discharges_query = read_dicharges_not_joined()
         dis_df = run_query_and_return_df(read_discharges_query)    
         jn_adm_dis =createJoinedDataSet(adm_df,dis_df)
 
@@ -104,36 +111,25 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
             )
             if 'unique_key' in jn_adm_dis:
                 jn_adm_dis['DEDUPLICATER'] =jn_adm_dis['unique_key'].map(lambda x: str(x)[:10] if len(str(x))>=10 else None) 
-                # FURTHER DEDUPLICATION ON UNIQUE KEY
-                grouped = jn_adm_dis.groupby(["uid", "facility", "DEDUPLICATER"])
-                duplicates = grouped.filter(lambda x: len(x) > 1)
-                # Identify the index of the first record in each group
-                to_drop = duplicates.groupby(["uid", "facility", "DEDUPLICATER"]).head(1).index
-                # Drop the identified records from the original DataFrame
-                jn_adm_dis = jn_adm_dis.drop(index=to_drop)
-
-
+                jn_adm_dis = jn_adm_dis.drop_duplicates(
+                    subset=["uid", "facility", "DEDUPLICATER"], 
+                    keep='first'
+                )
                 # FURTHER DEDUPLICATION ON UID,FACILITY,OFC-DISCHARGE
                 # THIS FIELD HELPS IN ISOLATING DIFFERENT ADMISSIONS MAPPED TO THE SAME DISCHARGE
                 if "OFCDis.value" in jn_adm_dis:
-                    grouped = jn_adm_dis.groupby(["uid", "facility", "OFCDis.value"])
-                    duplicates = grouped.filter(lambda x: len(x) > 1)
-                    # Identify the index of the first record in each group
-                    to_drop = duplicates.groupby(["uid", "facility", "OFCDis.value"]).head(1).index
-                    # Drop the identified records from the original DataFrame
-                    jn_adm_dis = jn_adm_dis.drop(index=to_drop)
+                    jn_adm_dis = jn_adm_dis.drop_duplicates(
+                    subset=["uid", "facility", "OFCDis.value"], 
+                    keep='first'
+                   )
 
                 # FURTHER DEDUPLICATION ON UID,FACILITY,BIRTH-WEIGHT-DISCHARGE
                 # THIS FIELD HELPS IN ISOLATING DIFFERENT ADMISSIONS MAPPED TO THE SAME DISCHARGE
                 if "BirthWeight.value_discharge" in jn_adm_dis:
-                    grouped = jn_adm_dis.groupby(["uid", "facility", "BirthWeight.value_discharge"])
-                    duplicates = grouped.filter(lambda x: len(x) > 1)
-                    # Identify the index of the first record in each group
-                    to_drop = duplicates.groupby(["uid", "facility", "BirthWeight.value_discharge"]).head(1).index
-                    # Drop the identified records from the original DataFrame
-                    jn_adm_dis = jn_adm_dis.drop(index=to_drop)
-
-                
+                      jn_adm_dis = jn_adm_dis.drop_duplicates(
+                    subset=["uid", "facility", "BirthWeight.value_discharge"], 
+                    keep='first'
+                   )    
 
             # Drop helper columns if needed
             if table_exists('derived','joined_admissions_discharges'):
