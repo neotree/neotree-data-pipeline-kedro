@@ -347,7 +347,7 @@ def tidy_tables():
             dis_df =  format_date(dis_df,['DateAdmissionDC.value','DateDischVitals.value','DateDischWeight.value',
                                           'DateTimeDischarge.value','EndScriptDatetime.value','DateWeaned.value',
                                           'DateTimeDeath.value','DateAdmission.value','BirthDateDis.value','DateHIVtest.value'
-                                          ,'DateVDRLSameHIV.value'])
+                                          ,'DateVDRLSameHIV.value','started_at', 'completed_at'])
             
             for position,discharge in dis_df.iterrows():
                 if 'BirthWeight.value' in discharge and str(discharge['BirthWeight.value'])!='nan' and discharge['BirthWeight.value'] is not None:
