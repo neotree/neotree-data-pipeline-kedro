@@ -373,8 +373,14 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
         if(table is not None and df is not None and not df.empty):
 
             updates = []
-            column_types = {col: get_table_column_type('joined_admissions_discharges', 'derived', col)[0][0] for col in df.columns}
-            
+            logging.info("::MY QERI::",)
+            column_types = {}
+            for col in df.columns:
+                try:
+                    result = get_table_column_type('joined_admissions_discharges', 'derived', col)
+                    column_types[col] = result[0][0] if result else 'unknown'
+                except (IndexError, TypeError):
+                    column_types[col] = 'unknown'             
         
             # Generate UPDATE queries for each row
             update_queries = []

@@ -58,16 +58,15 @@ def convert_column_to_date(df: pd.DataFrame,column):
     if column in df:
         df[column] = df[column]
 
-def convert_to_date(value,format):
+def convert_to_date(value, format_str):
     if value is None or pd.isna(value):
         return None
         
     clean_value = str(value).strip().rstrip(",")
     
     try:
-        # First try pandas parsing
-        dt = pd.to_datetime(clean_value, errors='raise', infer_datetime_format=True)
-        return dt.strftime(format)
+        # Return datetime object, NOT formatted string
+        return pd.to_datetime(clean_value, errors='raise', infer_datetime_format=True)
         
     except (ValueError, TypeError):
         # Enhanced regex pattern that includes time for textual formats
@@ -87,15 +86,13 @@ def convert_to_date(value,format):
 
         if re.fullmatch(timestamp_pattern, clean_value):
             try:
-                # Try one more time with pandas after cleaning
-                dt = pd.to_datetime(clean_value, errors='raise')
-                return dt.strftime(format)
+                # Return datetime object, NOT formatted string
+                return pd.to_datetime(clean_value, errors='raise')
             except:
                 # Basic cleaning for known patterns
                 if '.' in clean_value:
                     clean_value = clean_value.split('.')[0]
                 clean_value = clean_value.replace('T', ' ')
-                return clean_value
+                return pd.to_datetime(clean_value, errors='coerce')
                 
         return None
-                
