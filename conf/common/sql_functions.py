@@ -80,6 +80,41 @@ def inject_sql(sql_script, file_name):
         if conn:
             conn.close()
 
+def generate_timestamp_conversion_query(table_name, columns):
+    """
+    Generate PostgreSQL query to convert columns to TIMESTAMP type.
+    
+    Args:
+        table_name (str): Table name (can include schema, e.g., 'schema.table')
+        columns (list): List of column names to convert
+        
+    Returns:
+        Void
+    """
+    if not columns:
+        return ""
+    
+    # Split table name into schema and table if needed
+    if '.' in table_name:
+        schema, table = table_name.split('.', 1)
+        full_table_name = f'"{schema}"."{table}"'
+    else:
+        full_table_name = f'"{table_name}"'
+    
+    # Generate individual ALTER COLUMN statements
+    alter_statements = []
+    for column in columns:
+        alter_statements.append(
+            f'ALTER COLUMN "{column}" TYPE TIMESTAMP USING "{column}"::TIMESTAMP'
+        )
+    
+    # Combine into single query
+    query = f'ALTER TABLE {full_table_name}\n'
+    query += ',\n'.join(alter_statements) + ';;'
+    if query:
+        inject_sql(query)
+   
+
 def create_table(df: pd.DataFrame, table_name):
     # create tables in derived schema
     try:
@@ -561,7 +596,7 @@ def format_value(col, value, col_type):
         except:
             return f"\"{col}\" = NULL"
             
-    elif col_type == 'text':
+    elif col_type == 'text' or col_type == 'unknown':
         return f"\"{col}\" = '{escape_special_characters(str(value))}'"
     else:
         return f"\"{col}\" = {value}"

@@ -6,7 +6,11 @@ from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, get_diagnoses_key_values
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
-from conf.common.sql_functions import create_new_columns, get_date_column_names,get_table_column_names,generate_create_insert_sql,generate_upsert_queries_and_create_table
+from conf.common.sql_functions import (create_new_columns
+                                       , get_date_column_names,get_table_column_names
+                                       ,generate_create_insert_sql
+                                       ,generate_upsert_queries_and_create_table,
+                                       generate_timestamp_conversion_query)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from .extract_key_values import get_key_values,format_repeatables_to_rows
 from conf.base.catalog import catalog
@@ -395,6 +399,7 @@ def tidy_tables():
             deduplicate_table('discharges')
             logging.info("... Creating MCL count tables for Discharge DF") 
             explode_column(dis_df, dis_mcl,"disc_")
+            generate_timestamp_conversion_query('derived.discharges',['completed_at','started_at'])
 
             ###########################REPEATABLES############################################################
             try:
