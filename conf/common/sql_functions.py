@@ -112,7 +112,7 @@ def generate_timestamp_conversion_query(table_name, columns):
     query = f'ALTER TABLE {full_table_name}\n'
     query += ',\n'.join(alter_statements) + ';;'
     if query:
-        inject_sql(query)
+        inject_sql(query,'ENFORCE TIMESTAMP COLUMNS')
    
 
 def create_table(df: pd.DataFrame, table_name):
