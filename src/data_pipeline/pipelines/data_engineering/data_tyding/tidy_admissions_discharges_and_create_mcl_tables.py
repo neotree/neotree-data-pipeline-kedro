@@ -321,7 +321,8 @@ def tidy_tables():
             #catalog.save('create_derived_admissions',adm_df)
             deduplicate_table('admissions')
             logging.info("... Creating MCL count tables for Admissions DF") 
-            explode_column(adm_df, adm_mcl,"")  
+            explode_column(adm_df, adm_mcl,"") 
+            generate_timestamp_conversion_query('derived.admissions',['completed_at','started_at']) 
             ###########################REPEATABLES############################################################
             try:
                 repeatables = format_repeatables_to_rows(adm_raw, "admissions")
