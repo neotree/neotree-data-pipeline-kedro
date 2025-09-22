@@ -249,6 +249,21 @@ def get_date_column_names(table_name,table_schema):
     query = f''' SELECT column_name FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}' and  (data_type like '%time%' or data_type like '%date%') ;; '''
     return inject_sql_with_return(query);
 
+def get_confidential_columns(table_name,table_schema):
+    query= f'''
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = '{table_schema}'
+                AND table_name = '{table_name}'
+                AND (
+                    column_name ILIKE '%dobtob%'
+                    OR column_name ILIKE '%firstname%'
+                    OR column_name ILIKE '%lastname%'
+                );;
+            '''
+    return inject_sql_with_return(query);
+
+
 def insert_old_adm_query(target_table, source_table, columns):
     # Join the column names with commas
     columns_str = '","'.join(columns)
@@ -548,7 +563,6 @@ def format_value(col, value, col_type):
                     dt = pd.to_datetime(clean_value, errors='raise', infer_datetime_format=True)
                     return f"\"{col}\" = '{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
                 except ValueError:
-                    logging.error(f"I HAVE SINNED::::::{value}")
                     timestamp_pattern = re.compile(
                         r'^('
                         r'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}'                       
@@ -603,7 +617,7 @@ def format_value(col, value, col_type):
     
 def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
-    drop_keywords=['surname','firstname']
+    drop_keywords=['surname','firstname','dobtob']
     try:
         if not table_exists(schema,table_name):
             dtype_map = {
@@ -745,7 +759,6 @@ def generate_label_fix_updates(filtered_records, table_name:str):
             ) AS {alias}({columns_str})
             WHERE t.uid = {alias}.uid AND t.unique_key = {alias}.unique_key
         """
-        logging.info(f"###--FERE--{sql}")
 
         sql_batches.append((sql, values))
 

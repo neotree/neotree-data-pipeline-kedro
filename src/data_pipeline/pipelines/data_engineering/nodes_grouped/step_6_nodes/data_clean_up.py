@@ -17,6 +17,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (r
                                                                                read_clean_admissions_without_discharges,
                                                                                clean_discharges_not_matched
                                                                                )
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
 import pandas as pd
 
 #This file calls the query to grant privileges to users on the generated tables
@@ -72,6 +73,7 @@ def clean_data_for_research(create_summary_counts_output):
                                         if len(column_pairs)>0:
                                             create_new_columns(f'clean_{script}','derived',column_pairs)
                                 generate_create_insert_sql(cleaned_df, 'derived', f'clean_{script}')
+                                deduplicate_table(f'clean_{script}')
                 
                   #Load Derived Admissions From Kedro Catalog
                 read_admissions_query=''
@@ -113,6 +115,7 @@ def clean_data_for_research(create_summary_counts_output):
                         if not jn_adm_dis_2.empty:
                             filtered_df = jn_adm_dis_2[jn_adm_dis_2['neotreeoutcome'].notna() & (jn_adm_dis_2['neotreeoutcome'] != '')]           
                             generateAndRunUpdateQuery('derived.clean_joined_adm_discharges',filtered_df)
+                            deduplicate_table('clean_joined_adm_discharges')
 
             return dict(
             status='Success',

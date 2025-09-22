@@ -820,4 +820,6 @@ def regenerate_unique_key_query(id, unique_key):
 
     return f''' UPDATE public.clean_sessions SET cleaned=true, unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}.*';;
               '''
-    
+
+
+  
