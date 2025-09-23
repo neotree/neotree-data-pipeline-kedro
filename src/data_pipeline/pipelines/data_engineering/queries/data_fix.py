@@ -1,17 +1,21 @@
 import logging
-from conf.common.sql_functions import inject_sql_procedure
+from conf.common.sql_functions import inject_sql_procedure,inject_sql_with_return
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 
 
 
-def deduplicate_table(table:str):
-    
+def deduplicate_table(table:str):  
     if (table_exists('derived',table)):
         deduplicate_derived_tables(table) 
         drop_confidential_columns(table)
-          
-  
-
+        if table=='clean_admissions':
+            update_mat_age('admissions','clean_admissions')
+        if table=='clean_joined_adm_discharges':
+            update_mat_age('joined_admissions_discharges','clean_joined_adm_discharges')
+        if table=='clean_maternal_outcomes':
+            update_mat_age('maternal_outcomes','clean_maternal_outcomes')
+             
+    
 
 def deduplicate_derived_tables(table: str):
     query = f'''DO $$
@@ -76,3 +80,39 @@ def drop_confidential_columns(table_name):
             END $$;
             '''
     inject_sql_procedure(query,f"DROP CONFIDENTIAL COLS {table_name}")
+
+
+def update_mat_age(source_table: str, dest_table: str) -> str:
+            # Determine which column exists in source
+            col_check_query = f"""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'derived' AND table_name = '{source_table}' 
+                AND column_name IN ('matageyrs', 'MatAgeYrs.value')
+                ORDER BY column_name='matageyrs' DESC  -- prefer matageyrs if present
+                LIMIT 1;;
+            """
+            
+            source_col = inject_sql_with_return(col_check_query)
+            if(len(source_col)>0):
+                sc = source_col[0]
+                query = f"""
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_schema = 'derived' AND table_name = '{dest_table}' AND column_name = 'matageyrs'
+                    )
+                    THEN
+                        UPDATE derived.{dest_table} d
+                        SET matageyrs = s.{sc}
+                        FROM derived.{source_table} s
+                        WHERE d.uid = s.uid
+                        AND d.unique_key = s.unique_key
+                        AND d.matageyrs IS NULL
+                        AND s.{sc} <= 85;
+                    END IF;
+                END $$;
+                """
+
+                inject_sql_procedure(query,f"FIX MATERNAL AGE {dest_table}")

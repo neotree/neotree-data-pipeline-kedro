@@ -95,16 +95,18 @@ def validate_dataframe_with_ge(df: pd.DataFrame,script:str, log_file_path="logs/
                 if temp_base_series.isna().all():
                     logger.warning(f"Column '{base_key}' of {script} script is showing all NULL values")
 
-
                 if field_type == 'number':
-                    temp_col = f"_{value_col}_as_number"
-                    df[temp_col] = pd.to_numeric(df[value_col], errors='coerce')  # non-convertible → NaN
-                    invalid_mask = df[temp_col].isnull()
-                    invalid_sample = df.loc[invalid_mask, value_col].unique()[:5].tolist()    
+                    # keep original values for inspection
+                    invalid_mask = ~df[value_col].astype(str).str.fullmatch(r"^\s*$|^-?\d+(\.\d+)?$")
+                    invalid_sample = df.loc[invalid_mask, value_col].unique()[:5].tolist()
+
                     if invalid_sample:
-                        logger.error(f"❌ Column '{value_col}' has values that are not numeric: {invalid_sample}")
-                        errors.append(f"Non-numeric values in '{value_col}': {invalid_sample}")        
-                    df.drop(columns=[temp_col], inplace=True)
+                        logger.error(f"❌ Column '{value_col}' has non-numeric values: {invalid_sample}")
+                        errors.append(f"Non-numeric values in '{value_col}': {invalid_sample}")
+
+                    # now safely convert to numeric (empty strings become NaN)
+                    df[value_col] = pd.to_numeric(df[value_col], errors='coerce')
+
 
                 elif field_type in ['dropdown', 'single_select', 'period','multi_select','text','string','uid']:
                     validator.expect_column_values_to_be_of_type(value_col, 'object')

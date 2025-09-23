@@ -126,6 +126,14 @@ def tidy_tables():
             adm_df = format_date_without_timezone(adm_df,['started_at', 'completed_at','EndScriptDatetime.value','DateTimeAdmission.value'])
             adm_df= format_date(adm_df,['DateHIVtest.value','ANVDRLDate.value'])
               # ADD TIME SPENT TO ALL DFs
+            if "DateTimeAdmission.value" in adm_df and "DOBTOB.value" in adm_df:
+                adm_df.loc[
+                    adm_df["Age.value"].isna() & adm_df["DateTimeAdmission.value"].notna() & df["DOBTOB.value"].notna(),
+                    "Age.value"
+                ] = (
+                    (pd.to_datetime(df["DateTimeAdmission.value"]) - pd.to_datetime(df["DOBTOB.value"]))
+                    .dt.total_seconds() / 3600
+                )
             if "started_at" in adm_df and 'completed_at' in adm_df :
                 try:
                     adm_df['started_at'] = pd.to_datetime(adm_df['started_at']).tz_localize(None)
