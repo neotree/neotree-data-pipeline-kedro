@@ -2,13 +2,24 @@
 import pandas as pd 
 from conf.common.sql_functions import column_exists,inject_sql,get_table_column_type
 import logging
+import re
 
-def format_column_as_numeric(df,fields):
+def format_column_as_numeric(df, fields):
     for field in fields:
-        fld = f'{field}.value'
+        fld = f"{field}.value"
         if fld in df.columns:
-            df[fld] = pd.to_numeric(df[fld], errors='coerce') 
+            def extract_numeric(val):
+                if pd.isna(val):
+                    return None
+                # Convert to string
+                val_str = str(val).strip()
+                # Search for first number (int or float)
+                match = re.search(r'\d+(\.\d+)?', val_str)
+                return float(match.group(0)) if match else None
+            
+            df[fld] = df[fld].apply(extract_numeric)
     return df
+
 
 def format_column_as_datetime(df,fields):
     for field in fields:
