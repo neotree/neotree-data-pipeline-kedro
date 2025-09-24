@@ -291,9 +291,6 @@ def run_query_and_return_df(query) -> pd.DataFrame:
         if not isinstance(query, str):
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
-
-        logging.info(f"Executing query: {query}")
-
         # Use context manager for connection
         with engine.connect() as conn:
             df = pd.read_sql_query(text(query), conn)     

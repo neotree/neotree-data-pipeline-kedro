@@ -13,6 +13,9 @@ def table_exists(schema, table_name):
     
     if query_result and len(query_result) > 0:
         result = query_result[0]
+        if('vitalsigns' in table_name):
+            logging.info(f"INSTANCE {isinstance(result, (tuple, list, np.ndarray))}")
+            logging.info(f"SED {result}")
         if isinstance(result, (tuple, list, np.ndarray)):
             return bool(result[0])
         return bool(result)
