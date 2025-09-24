@@ -293,7 +293,7 @@ def run_query_and_return_df(query) -> pd.DataFrame:
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
         
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             logging.info(f"Executing query:")
             df = pd.read_sql_query(query, conn)
         return df
