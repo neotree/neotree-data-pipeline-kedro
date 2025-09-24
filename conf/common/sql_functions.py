@@ -297,7 +297,6 @@ def run_query_and_return_df(query) -> pd.DataFrame:
         # Use context manager for connection
         with engine.connect() as conn:
             df = pd.read_sql_query(text(query), conn)     
-        logging.info(f"Query executed successfully.")
         return df
     except Exception as ex:
         logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")

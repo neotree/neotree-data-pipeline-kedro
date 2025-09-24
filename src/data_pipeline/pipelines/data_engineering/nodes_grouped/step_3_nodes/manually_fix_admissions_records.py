@@ -31,6 +31,8 @@ def manually_fix_admissions(tidy_data_output):
                 for script in current_scripts:
                     logging.info(f"@@@@@START@@@@@---{script}")
                     query = read_label_cleanup_data(script)
+                    if(script=='vitalsigns'):
+                        logging.info(f"@@@@@START@@@@@---{query}")
                     if query is not None:
                         df = run_query_and_return_df(query)
                         if df is not None:
@@ -38,8 +40,7 @@ def manually_fix_admissions(tidy_data_output):
                             if transformed is not None:
                                 run_bulky_query(script,transformed) 
                                 query=f'update derived.{script} set transformed=true;;'
-                                inject_sql(query,'set transformed')
-                        logging.info(f"@@@@@DONE@@@@@---{script}")             
+                                inject_sql(query,'set transformed')           
             
                 return dict(
                 status='Success',
