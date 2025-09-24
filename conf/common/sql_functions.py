@@ -178,7 +178,7 @@ def inject_sql_with_return(sql_script):
     try:
         # Use engine.begin() for automatic commit/rollback
         with engine as conn:
-            result = conn.execute(text(sql_script))
+            result = conn.connect().execute(text(sql_script))
             data = list(result.fetchall())  # return list of tuples
             return data
 
