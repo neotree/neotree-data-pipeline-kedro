@@ -43,9 +43,12 @@ def join_table():
             read_discharges_query = read_all_from_derived_table('discharges') 
      
         adm_df = run_query_and_return_df(read_admissions_query)  
+        logging.info(f"MY ADM LENGTH {len(adm_df)}")
         #Load Derived Discharges From Kedro Catalog
-        dis_df = run_query_and_return_df(read_discharges_query)    
+        dis_df = run_query_and_return_df(read_discharges_query)  
+        logging.info(f"MY ADM LENGTH DIS {len(dis_df)}")  
         jn_adm_dis =createJoinedDataSet(adm_df,dis_df)
+        logging.info(f"MY ADM LENGTH JN {len(jn_adm_dis)}")  
 
     except Exception as e:
         logging.error("!!! An error occured creating joined dataframe: ")
@@ -91,7 +94,7 @@ def join_table():
                 if not jn_adm_dis_2.empty:
                     filtered_df = jn_adm_dis_2[jn_adm_dis_2['NeoTreeOutcome.value'].notna() & (jn_adm_dis_2['NeoTreeOutcome.value'] != '')]           
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges',filtered_df)
-        deduplicate_table('joined_admissions_discharges')
+                    deduplicate_table('joined_admissions_discharges')
 
     except Exception as e:
         logging.error(
@@ -101,6 +104,7 @@ def join_table():
     logging.info("... Join script completed!")
 
 def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
+        logging.info("STARTED CREATING JND DATASET")
         jn_adm_dis = pd.DataFrame()
         if not adm_df.empty and not dis_df.empty:
             jn_adm_dis = adm_df.merge(
@@ -173,7 +177,7 @@ def createJoinedDataSet(adm_df:pd.DataFrame,dis_df:pd.DataFrame)->pd.DataFrame:
                     jn_adm_dis.loc[index,'LengthOfLife.value'] = delta_lol.days;
                 else:
                     jn_adm_dis.loc[index, 'LengthOfLife.value'] = None
-
+        logging.info("FINISH JND DATASET")
         return jn_adm_dis
 
 
