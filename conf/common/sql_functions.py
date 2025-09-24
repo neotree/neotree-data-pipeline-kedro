@@ -178,7 +178,9 @@ def inject_sql_with_return(sql_script):
     try:
         # Use engine.begin() for automatic commit/rollback
         with engine as conn:
+            logging.info("CONNECTING CONNECTING CONECTING")
             result = conn.connect().execute(text(sql_script))
+            logging.info("RAN RAN RAN")
             data = list(result.fetchall())  # return list of tuples
             return data
 
@@ -639,11 +641,7 @@ def escape_special_characters(input_string):
     return str(input_string).replace("\\","\\\\").replace("'","")
 
 def table_exists(schema, table_name):
-    query = f''' SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE  table_schema = '{schema}'
-                AND    table_name   = '{table_name}'
-                );;'''
+    query = f''' SELECT EXISTS (SELECT FROM information_schema.tables WHERE  table_schema = '{schema}' AND    table_name   = '{table_name}');'''
     query_result = inject_sql_with_return(query)
 
     if query_result and len(query_result) > 0:
