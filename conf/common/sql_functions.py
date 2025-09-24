@@ -66,7 +66,7 @@ def inject_sql(sql_script, file_name):
                 if not command:
                     continue
                 try:
-                    conn.execute(text(command))
+                    conn.connect().execute(text(command))
                 except Exception as e:
                     logging.error(f"Error executing command in {file_name}")
                     logging.error(f"Error type: {type(e)}")
