@@ -171,7 +171,7 @@ def append_data(df: pd.DataFrame,table_name):
 #         raise e
 
 
-def run_query_and_return_df(query) -> pd.DataFrame:
+def inject_sql_with_return(query) -> pd.DataFrame:
     try:
         if not isinstance(query, str):
             logging.warning(f"Query is of type {type(query)}, converting to string")
