@@ -104,7 +104,7 @@ def update_mat_age(source_table: str, dest_table: str) -> str:
     source_col_result = inject_sql_with_return(col_check_query)
     
     if source_col_result and len(source_col_result) > 0:
-        sc = source_col_result[0][0] if isinstance(source_col_result[0], tuple) else source_col_result[0]
+        sc = source_col_result[0][0]
         sc_quoted = f'"{sc}"' if '.' in sc else sc
 
         query = f"""

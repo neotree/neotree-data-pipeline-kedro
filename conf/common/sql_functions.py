@@ -401,7 +401,6 @@ def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
         if(table is not None and df is not None and not df.empty):
 
             updates = []
-            logging.info("::MY QERI::",)
             column_types = {}
             for col in df.columns:
                 try:
@@ -457,7 +456,7 @@ def is_date_prefix(s):
 def generate_postgres_insert(df, schema,table_name):
     # Escape column names and join them
     df = df[[col for col in df.columns if len(col) > 1]]
-    columns = ', '.join(f'"{col}"' for col in df.columns)
+    columns = ', '.join(f'"{col}"' for col in df.columns if col != 'column_name')
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
