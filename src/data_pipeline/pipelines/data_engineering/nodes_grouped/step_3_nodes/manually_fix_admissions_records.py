@@ -1,8 +1,8 @@
 import logging
 import sys,os
 sys.path.append(os.getcwd())
-from conf.common.sql_functions import inject_sql,run_bulky_query,run_query_and_return_df,generate_label_fix_updates
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_all_from_derived_table
+from conf.common.sql_functions import inject_sql,run_bulky_query,run_query_and_return_df
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_label_cleanup_data
 from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.admissions_manually_fix_records_sql import manually_fix_admissions_query
 from data_pipeline.pipelines.data_engineering.utils.field_info import transform_matching_labels_for_update_queries
@@ -21,18 +21,23 @@ def manually_fix_admissions(tidy_data_output):
         
         elif tidy_data_output is not None:
             try:
+                #FIX OLD DATA 
+                admissions_fix_query = manually_fix_admissions_query()
+                inject_sql(admissions_fix_query)
                 current_scripts = ['admissions','discharges','maternal_outcomes'
                                 ,'daily_review','infections','neolab','vitalsigns'
                                 ,'maternal_completeness','baseline'
                                 ,'joined_admissions_discharges','twenty_8_day_follow_up']
                 for script in current_scripts:
-                    query = read_all_from_derived_table(script)
+                    logging.info(f"@@@@@START@@@@@---{script}")
+                    query = read_label_cleanup_data(script)
                     if query is not None:
                         df = run_query_and_return_df(query)
                         if df is not None:
                             transformed = transform_matching_labels_for_update_queries(df,script)
                             if transformed is not None:
-                                run_bulky_query(script,transformed)              
+                                run_bulky_query(script,transformed) 
+                        logging.info(f"@@@@@DONE@@@@@---{script}")             
             
                 return dict(
                 status='Success',

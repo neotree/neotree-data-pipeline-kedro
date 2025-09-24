@@ -413,6 +413,11 @@ def read_all_from_derived_table(table:str):
         return f'select * from derived."{table}";;'
     return None
 
+def read_label_cleanup_data(table:str):
+    if table_exists('derived', table.strip()):
+        return f'select * from derived."{table}" where transformed is FALSE or transformed is NULL;;'
+    return None
+
 def read_admissions_not_joined():   
         return f'''SELECT * 
 FROM derived.admissions ad

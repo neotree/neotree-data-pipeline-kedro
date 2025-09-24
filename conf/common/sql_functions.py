@@ -621,7 +621,7 @@ def generate_create_insert_sql(df,schema, table_name):
             ]
             #DROP CONFIDENTIAL COLUMNS
             df = df.drop(columns=columns_to_drop)
-
+            df['transformed'] = False
             inject_sql(create_stmt,f"CREATING {table_name}")
             
         generate_postgres_insert(df,schema,table_name)

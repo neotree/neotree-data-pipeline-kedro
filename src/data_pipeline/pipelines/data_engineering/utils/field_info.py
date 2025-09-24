@@ -165,7 +165,7 @@ def transform_matching_labels(df, script):
                     transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col].map(value_to_label)
                 else:
                     transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col]
-    
+    transformed_df['transformed'] = True
     return transformed_df
 
 
