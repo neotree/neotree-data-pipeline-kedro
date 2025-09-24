@@ -290,6 +290,7 @@ def column_exists(schema, table_name,column_name):
 def run_query_and_return_df(query: str) -> pd.DataFrame:
     try:
         with engine.connect() as conn:
+            logging.info(f"MY Q==={query}")
             df = pd.read_sql_query(query, conn)
         return df
     except Exception as ex:
