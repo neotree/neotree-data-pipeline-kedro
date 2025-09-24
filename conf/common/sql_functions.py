@@ -171,25 +171,21 @@ def append_data(df: pd.DataFrame,table_name):
 #         raise e
 
 
-def inject_sql_with_return(query) -> pd.DataFrame:
+def inject_sql_with_return(sql_script):
+    if not sql_script.strip():  # skip empty commands
+        return []
+
     try:
-        if not isinstance(query, str):
-            logging.warning(f"Query is of type {type(query)}, converting to string")
-            query = str(query)
+        # Use engine.begin() for automatic commit/rollback
+        result = engine.connect().execute(text(sql_script))
+        data = list(result.fetchall())  # return list of tuples
+        return data
 
-        logging.info(f"Executing query: {query}")
+    except Exception as e:
+        logging.error(f"Error executing SQL: {e}")
+        raise
 
-        # Use context manager for connection
-        with engine.connect() as conn:
-            df = pd.read_sql_query(text(query), conn)
-        
-        logging.info(f"Query executed successfully.")
-        return df
-    except Exception as ex:
-        logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")
-        logging.error(f"Query that caused error: {query}")
-        return pd.DataFrame()
-
+    
 
 def inject_bulk_sql(queries, batch_size=1000):
     try:
@@ -290,22 +286,23 @@ def column_exists(schema, table_name,column_name):
         else:
             return False
         
-def run_query_and_return_df(query) -> pd.DataFrame:
+def run_query_and_return_df(query, engine) -> pd.DataFrame:
     try:
         if not isinstance(query, str):
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
-        
-       
-        logging.info(f"Executing query:")
-        conn = engine.connect()
-        df = pd.read_sql_query(text(query), conn) 
-        logging.info(f"SUCCESS")
+
+        logging.info(f"Executing query: {query}")
+
+        # Use context manager for connection
+        with engine.connect() as conn:
+            df = pd.read_sql_query(text(query), conn)     
+        logging.info(f"Query executed successfully.")
         return df
     except Exception as ex:
         logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")
         logging.error(f"Query that caused error: {query}")
-        return pd.DataFrame()  
+        return pd.DataFrame()
 
 
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
