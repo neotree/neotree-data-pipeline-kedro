@@ -171,21 +171,25 @@ def append_data(df: pd.DataFrame,table_name):
 #         raise e
 
 
-def inject_sql_with_return(sql_script):
-    if not sql_script.strip():  # skip empty commands
-        return []
-
+def run_query_and_return_df(query) -> pd.DataFrame:
     try:
-        # Use engine.begin() for automatic commit/rollback
-        result = engine.connect().execute(text(sql_script))
-        data = list(result.fetchall())  # return list of tuples
-        return data
+        if not isinstance(query, str):
+            logging.warning(f"Query is of type {type(query)}, converting to string")
+            query = str(query)
 
-    except Exception as e:
-        logging.error(f"Error executing SQL: {e}")
-        raise
+        logging.info(f"Executing query: {query}")
 
-    
+        # Use context manager for connection
+        with engine.connect() as conn:
+            df = pd.read_sql_query(text(query), conn)
+        
+        logging.info(f"Query executed successfully.")
+        return df
+    except Exception as ex:
+        logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")
+        logging.error(f"Query that caused error: {query}")
+        return pd.DataFrame()
+
 
 def inject_bulk_sql(queries, batch_size=1000):
     try:
@@ -295,7 +299,7 @@ def run_query_and_return_df(query) -> pd.DataFrame:
        
         logging.info(f"Executing query:")
         conn = engine.connect()
-        df = pd.read_sql_query(query, conn) 
+        df = pd.read_sql_query(text(query), conn) 
         logging.info(f"SUCCESS")
         return df
     except Exception as ex:
