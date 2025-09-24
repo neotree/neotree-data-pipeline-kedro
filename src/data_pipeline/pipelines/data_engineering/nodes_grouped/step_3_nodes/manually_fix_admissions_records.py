@@ -23,11 +23,11 @@ def manually_fix_admissions(tidy_data_output):
             try:
                 #FIX OLD DATA 
                 admissions_fix_query = manually_fix_admissions_query()
-                inject_sql(admissions_fix_query)
+                inject_sql(admissions_fix_query,'admissions_fix')
                 current_scripts = ['admissions','discharges','maternal_outcomes'
                                 ,'daily_review','infections','neolab','vitalsigns'
-                                ,'maternal_completeness','baseline'
-                                ,'joined_admissions_discharges','twenty_8_day_follow_up']
+                                ,'maternity_completeness','baseline'
+                                ,'joined_admissions_discharges','twenty_8_day_follow_up','phc_admissions','phc_discharges']
                 for script in current_scripts:
                     logging.info(f"@@@@@START@@@@@---{script}")
                     query = read_label_cleanup_data(script)
@@ -37,6 +37,8 @@ def manually_fix_admissions(tidy_data_output):
                             transformed = transform_matching_labels_for_update_queries(df,script)
                             if transformed is not None:
                                 run_bulky_query(script,transformed) 
+                                query=f'update derived.{script} set transformed=true;;'
+                                inject_sql(query,'set transformed')
                         logging.info(f"@@@@@DONE@@@@@---{script}")             
             
                 return dict(
