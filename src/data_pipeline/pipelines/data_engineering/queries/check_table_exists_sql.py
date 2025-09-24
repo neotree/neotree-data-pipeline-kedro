@@ -13,18 +13,7 @@ def table_exists(schema, table_name):
     query_result = inject_sql_with_return(query)
     
     if query_result and len(query_result) > 0:
-        result = query_result[0][0]
-        logging.info(f"LOGGING-----{result}")
-        # Convert result to boolean
-        if isinstance(result, (tuple, list, np.ndarray)) and len(result) > 0:
-            value = result[0]
-        else:
-            value = result
-        
-        if isinstance(value, str):
-            return value.lower() in ('true', 'yes')
-        
-        # Check for falsy values explicitly
-        return bool(value) or (value is False)  # Ensure (False,) returns False
-
+       return query_result[0][0]
     return False
+        
+
