@@ -287,14 +287,19 @@ def column_exists(schema, table_name,column_name):
         else:
             return False
         
-def run_query_and_return_df(query: str) -> pd.DataFrame:
+def run_query_and_return_df(query) -> pd.DataFrame:
     try:
+        if not isinstance(query, str):
+            logging.warning(f"Query is of type {type(query)}, converting to string")
+            query = str(query)
+        
         with engine.connect() as conn:
-            logging.info(f"MY Q==={query}")
+            logging.info(f"Executing query:")
             df = pd.read_sql_query(query, conn)
         return df
     except Exception as ex:
-        logging.error(formatError(ex))
+        logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")
+        logging.error(f"Query that caused error: {query}")
         return pd.DataFrame()  
 
 
