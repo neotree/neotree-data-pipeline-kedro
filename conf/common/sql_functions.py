@@ -286,7 +286,7 @@ def column_exists(schema, table_name,column_name):
         else:
             return False
         
-def run_query_and_return_df(query, engine) -> pd.DataFrame:
+def run_query_and_return_df(query) -> pd.DataFrame:
     try:
         if not isinstance(query, str):
             logging.warning(f"Query is of type {type(query)}, converting to string")
