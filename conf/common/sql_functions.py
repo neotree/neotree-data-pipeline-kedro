@@ -60,18 +60,18 @@ def inject_sql(sql_script, file_name):
 
     try:
         # Use engine.begin() for automatic commit/rollback
-        with engine as conn:
-            for command in sql_commands:
-                command = command.strip()
-                if not command:
-                    continue
-                try:
-                    conn.connect().execute(text(command))
-                except Exception as e:
-                    logging.error(f"Error executing command in {file_name}")
-                    logging.error(f"Error type: {type(e)}")
-                    logging.error(f"Full error: {str(e)}")
-                    raise
+      
+        for command in sql_commands:
+            command = command.strip()
+            if not command:
+                continue
+            try:
+                engine.connect().execute(text(command))
+            except Exception as e:
+                logging.error(f"Error executing command in {file_name}")
+                logging.error(f"Error type: {type(e)}")
+                logging.error(f"Full error: {str(e)}")
+                raise
 
     except Exception as e:
         logging.error(f"Transaction failed completely for {file_name}")
@@ -178,12 +178,12 @@ def inject_sql_with_return(sql_script):
     try:
         # Use engine.begin() for automatic commit/rollback
         logging.info(f"CONNECTING CONNECTING CONECTING=={sql_script}")
-        with engine as conn:
-            logging.info("CONNECTING CONNECTING CONECTING")
-            result = conn.connect().execute(text(sql_script))
-            logging.info("RAN RAN RAN")
-            data = list(result.fetchall())  # return list of tuples
-            return data
+        
+        logging.info("CONNECTING CONNECTING CONECTING")
+        result = engine.connect().execute(text(sql_script))
+        logging.info("RAN RAN RAN")
+        data = list(result.fetchall())  # return list of tuples
+        return data
 
     except Exception as e:
         logging.error(f"Error executing SQL: {e}")
@@ -194,19 +194,19 @@ def inject_sql_with_return(sql_script):
 def inject_bulk_sql(queries, batch_size=1000):
     try:
         # engine.begin() will commit if successful, rollback if error
-        with engine as conn:
-            for i in range(0, len(queries), batch_size):
-                batch = queries[i:i + batch_size]
+        
+        for i in range(0, len(queries), batch_size):
+            batch = queries[i:i + batch_size]
 
-                for command in batch:
-                    try:
-                        conn.execute(text(command))
-                    except Exception as e:
-                        logging.error(f"Error executing command: {command}")
-                        logging.error(e)
-                        raise e
+            for command in batch:
+                try:
+                    engine.connect().execute(text(command))
+                except Exception as e:
+                    logging.error(f"Error executing command: {command}")
+                    logging.error(e)
+                    raise e
 
-                logging.info("########################### DONE BULK PROCESSING ################")
+        logging.info("########################### DONE BULK PROCESSING ################")
 
     except Exception as e:
         logging.error("Something went wrong with the SQL batch processing")
@@ -296,9 +296,10 @@ def run_query_and_return_df(query) -> pd.DataFrame:
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
         
-        with engine as conn:
-            logging.info(f"Executing query:")
-            df = pd.read_sql_query(query, conn)
+       
+        logging.info(f"Executing query:")
+        df = pd.read_sql_query(query, engine) 
+        logging.info(f"SUCCESS")
         return df
     except Exception as ex:
         logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")
