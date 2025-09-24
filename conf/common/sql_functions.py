@@ -177,11 +177,7 @@ def inject_sql_with_return(sql_script):
 
     try:
         # Use engine.begin() for automatic commit/rollback
-        logging.info(f"CONNECTING CONNECTING CONECTING=={sql_script}")
-        
-        logging.info("CONNECTING CONNECTING CONECTING")
         result = engine.connect().execute(text(sql_script))
-        logging.info("RAN RAN RAN")
         data = list(result.fetchall())  # return list of tuples
         return data
 
@@ -298,7 +294,8 @@ def run_query_and_return_df(query) -> pd.DataFrame:
         
        
         logging.info(f"Executing query:")
-        df = pd.read_sql_query(query, engine) 
+        conn = engine.connect()
+        df = pd.read_sql_query(query, conn) 
         logging.info(f"SUCCESS")
         return df
     except Exception as ex:
