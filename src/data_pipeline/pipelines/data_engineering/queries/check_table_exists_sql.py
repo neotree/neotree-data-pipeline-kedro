@@ -15,20 +15,15 @@ def table_exists(schema, table_name):
     if query_result and len(query_result) > 0:
         result = query_result[0]
         
-        # Handle different result formats
-        if isinstance(result, (tuple, list, np.ndarray)):
-            # Extract the first element from tuple/list/array
-            if len(result) > 0:
-                value = result[0]
-                if isinstance(value, str):
-                    return value.lower() in ('true','yes')
-                return bool(value)
-            return False
-        elif isinstance(result, bool):
-            return result
+        # Convert result to boolean
+        if isinstance(result, (tuple, list, np.ndarray)) and len(result) > 0:
+            value = result[0]
         else:
-            # Handle other types (int, str, etc.)
-            if isinstance(result, str):
-                return result.lower() in ('true', 'yes')
-            return bool(result)
+            value = result
+    
+        logging.info(f"###----###--{value}")
+        if isinstance(value, str):
+            return value.lower() in ('true', 'yes')
+        return bool(value)
+
     return False
