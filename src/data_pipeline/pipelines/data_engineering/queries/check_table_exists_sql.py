@@ -20,10 +20,13 @@ def table_exists(schema, table_name):
             value = result[0]
         else:
             value = result
-    
+        
         logging.info(f"###----###--{value}")
+        
         if isinstance(value, str):
             return value.lower() in ('true', 'yes')
-        return bool(value)
+        
+        # Check for falsy values explicitly
+        return bool(value) or (value is False)  # Ensure (False,) returns False
 
     return False
