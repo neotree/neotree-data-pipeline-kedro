@@ -53,32 +53,29 @@ def inject_sql_procedure(sql_script, file_name):
 
 
 def inject_sql(sql_script, file_name):
-    conn = None
-    cur = None
+    if not sql_script.strip():  # skip if empty
+        return
+
+    sql_commands = str(sql_script).split(';;')
+
     try:
-        conn = engine.raw_connection()
-        cur = conn.cursor()
-        sql_commands = str(sql_script).split(';;')
-        for command in sql_commands:
-            try:
-                if not command.strip():  # skip empty commands
+        # Use engine.begin() for automatic commit/rollback
+        with engine.begin() as conn:
+            for command in sql_commands:
+                command = command.strip()
+                if not command:
                     continue
-                cur.execute(command)
-                conn.commit()
-            except Exception as e:
-                logging.error(f"Error executing command in {file_name}")
-                logging.error(f"Error type: {type(e)}")
-                logging.error(f"Full error: {str(e)}")
-                raise
-        
+                try:
+                    conn.execute(text(command))
+                except Exception as e:
+                    logging.error(f"Error executing command in {file_name}")
+                    logging.error(f"Error type: {type(e)}")
+                    logging.error(f"Full error: {str(e)}")
+                    raise
+
     except Exception as e:
-        logging.error(f"Transaction failed completely for {sql_script}")
+        logging.error(f"Transaction failed completely for {file_name}")
         raise
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 def generate_timestamp_conversion_query(table_name, columns):
     """
@@ -173,67 +170,45 @@ def append_data(df: pd.DataFrame,table_name):
 #         logging.error(e)
 #         raise e
 
+
 def inject_sql_with_return(sql_script):
-    conn = None
-    cur = None
+    if not sql_script.strip():  # skip empty commands
+        return []
+
     try:
-       
-        conn = engine.raw_connection()
-        cur = conn.cursor()
-        if not sql_script.strip():  # skip empty commands
-            return []
-        # Execute the SQL script
-        cur.execute(sql_script)
-        
-        # Fetch all results
-        rows = cur.fetchall()
-        
-        # Option 1: Return as list of tuples (default)
-        data = list(rows)
-        
-        # Option 2: Return as list of dictionaries (uncomment to use)
-        # data = [dict(zip(columns, row)) for row in rows]
-        conn.commit()
-        return data
-        
+        # Use engine.begin() for automatic commit/rollback
+        with engine.begin() as conn:
+            result = conn.execute(text(sql_script))
+            data = list(result.fetchall())  # return list of tuples
+            return data
+
     except Exception as e:
-        if conn:
-            conn.rollback()
         logging.error(f"Error executing SQL: {e}")
         raise
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+
     
+
 def inject_bulk_sql(queries, batch_size=1000):
-    conn = engine.raw_connection()  # Get the raw DBAPI connection
-    cursor = conn.cursor()
-    # Create a cursor from the raw connection
     try:
-        # Execute commands in batches
-        for i in range(0, len(queries), batch_size):
-            batch = queries[i:i + batch_size]
-            for command in batch:
-                try:
-                    cursor.execute(command)
-                    conn.commit()
-                except Exception as e:
-                    logging.error(f"Error executing command: {command}")
-                    logging.error(e)
-                    conn.rollback()  # Rollback the transaction on error
-                    raise e
-            conn.commit()  # Commit the batch
-            logging.info("########################### DONE BULK PROCESSING ################")
+        # engine.begin() will commit if successful, rollback if error
+        with engine.begin() as conn:
+            for i in range(0, len(queries), batch_size):
+                batch = queries[i:i + batch_size]
+
+                for command in batch:
+                    try:
+                        conn.execute(text(command))
+                    except Exception as e:
+                        logging.error(f"Error executing command: {command}")
+                        logging.error(e)
+                        raise e
+
+                logging.info("########################### DONE BULK PROCESSING ################")
+
     except Exception as e:
-        logging.error("Something went wrong with the SQL file")
+        logging.error("Something went wrong with the SQL batch processing")
         logging.error(e)
-        conn.rollback()  # Rollback the transaction on error
-        raise e
-    finally:
-        cursor.close()  # Close the cursor
-        conn.close()  #
+        raise
 
 def get_table_columns(table_name,table_schema):
     query = f''' SELECT column_name,data_type  FROM information_schema.columns WHERE table_schema = '{table_schema}' AND table_name   = '{table_name}';; ''';
@@ -312,113 +287,110 @@ def column_exists(schema, table_name,column_name):
         else:
             return False
         
-def run_query_and_return_df(query):
+def run_query_and_return_df(query: str) -> pd.DataFrame:
     try:
-       
-        conn = engine.raw_connection()
-        df = pd.read_sql_query(query, conn)
+        with engine.connect() as conn:
+            df = pd.read_sql_query(query, conn)
         return df
     except Exception as ex:
         logging.error(formatError(ex))
-    finally:
-        conn.close()
-
+        return pd.DataFrame()  
 
 
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
     if df.empty:
         return
 
-    conn = engine.raw_connection()
-    cur = conn.cursor()
+    schema = 'derived'
 
     try:
-        schema = 'derived'
+        # use engine.begin() for automatic commit/rollback
+        with engine.begin() as conn:
+            raw_conn = conn.connection  # underlying psycopg2 connection
+            cur = raw_conn.cursor()
 
-        # Step 1: Check if the table exists
-        cur.execute(
-            sql.SQL("SELECT to_regclass(%s)"),
-            [f"{schema}.{table_name}"]
-        )
-        result = cur.fetchone()
-        if result[0] is None:
-            # Create table with all current columns
-            create_cols = ', '.join([f'"{col}" TEXT' for col in df.columns])
-            create_query = sql.SQL("CREATE TABLE {}.{} ({})").format(
-                sql.Identifier(schema),
-                sql.Identifier(table_name),
-                sql.SQL(create_cols)
+            # Step 1: Check if table exists
+            cur.execute(
+                sql.SQL("SELECT to_regclass(%s)"),
+                [f"{schema}.{table_name}"]
             )
-            cur.execute(create_query)
-            conn.commit()
-            # Step 2: Add Unique Constraint on relevant columns
-            constraint_name = f"{table_name}_uid_form_created_facility_review_uq"
-            constraint_query = sql.SQL(
-                    """
-                    ALTER TABLE {schema}.{table}
-                    ADD CONSTRAINT {constraint}
-                    UNIQUE (uid, form_id, created_at, facility, review_number);
-                    """
-                ).format(
-                    schema=sql.Identifier(schema),
-                    table=sql.Identifier(table_name),
-                    constraint=sql.Identifier(constraint_name)
-                )
-            cur.execute(constraint_query)
-
-        # Step 3: Ensure all columns exist
-        cur.execute("""
-            SELECT column_name FROM information_schema.columns 
-            WHERE table_schema = %s AND table_name = %s
-        """, (schema, table_name))
-        existing_cols = {row[0] for row in cur.fetchall()}
-
-        for col in df.columns:
-            if col not in existing_cols:
-                alter_query = sql.SQL("ALTER TABLE {}.{} ADD COLUMN {} TEXT DEFAULT NULL").format(
+            result = cur.fetchone()
+            if result[0] is None:
+                # Create table with all current columns
+                create_cols = ', '.join([f'"{col}" TEXT' for col in df.columns])
+                create_query = sql.SQL("CREATE TABLE {}.{} ({})").format(
                     sql.Identifier(schema),
                     sql.Identifier(table_name),
-                    sql.Identifier(col)
+                    sql.SQL(create_cols)
                 )
-                cur.execute(alter_query)
-        conn.commit()
+                cur.execute(create_query)
 
-        # Step 4: Generate and execute UPSERTs
-        for _, row in df.iterrows():
-            columns = list(row.index)
-            values = [row[col] if pd.notnull(row[col]) else None for col in columns]
+                # Add unique constraint
+                constraint_name = f"{table_name}_uid_form_created_facility_review_uq"
+                constraint_query = sql.SQL("""
+                        ALTER TABLE {schema}.{table}
+                        ADD CONSTRAINT {constraint}
+                        UNIQUE (uid, form_id, created_at, facility, review_number);
+                    """).format(
+                        schema=sql.Identifier(schema),
+                        table=sql.Identifier(table_name),
+                        constraint=sql.Identifier(constraint_name)
+                    )
+                cur.execute(constraint_query)
 
-            update_cols = [
-                col for col in columns
-                if col not in ["uid", "form_id", "created_at", "facility", "review_number"]
-            ]
+            # Step 2: Ensure all columns exist
+            cur.execute("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_schema = %s AND table_name = %s
+            """, (schema, table_name))
+            existing_cols = {row[0] for row in cur.fetchall()}
 
-            insert_query = sql.SQL("""
-                INSERT INTO {}.{} ({})
-                VALUES ({})
-                ON CONFLICT (uid, form_id, created_at, facility, review_number)
-                DO UPDATE SET {}
-            """).format(
-                sql.Identifier(schema),
-                sql.Identifier(table_name),
-                sql.SQL(', ').join(map(sql.Identifier, columns)),
-                sql.SQL(', ').join(sql.Placeholder() for _ in columns),
-                sql.SQL(', ').join([
-                    sql.SQL("{} = EXCLUDED.{}").format(sql.Identifier(col), sql.Identifier(col))
-                    for col in update_cols
-                ])
-            )
+            for col in df.columns:
+                if col not in existing_cols:
+                    alter_query = sql.SQL(
+                        "ALTER TABLE {}.{} ADD COLUMN {} TEXT DEFAULT NULL"
+                    ).format(
+                        sql.Identifier(schema),
+                        sql.Identifier(table_name),
+                        sql.Identifier(col)
+                    )
+                    cur.execute(alter_query)
 
-            cur.execute(insert_query, values)
+            # Step 3: Generate and execute UPSERTs
+            for _, row in df.iterrows():
+                columns = list(row.index)
+                values = [row[col] if pd.notnull(row[col]) else None for col in columns]
 
-        conn.commit()
-        cur.close()
+                update_cols = [
+                    col for col in columns
+                    if col not in ["uid", "form_id", "created_at", "facility", "review_number"]
+                ]
+
+                insert_query = sql.SQL("""
+                    INSERT INTO {}.{} ({})
+                    VALUES ({})
+                    ON CONFLICT (uid, form_id, created_at, facility, review_number)
+                    DO UPDATE SET {}
+                """).format(
+                    sql.Identifier(schema),
+                    sql.Identifier(table_name),
+                    sql.SQL(', ').join(map(sql.Identifier, columns)),
+                    sql.SQL(', ').join(sql.Placeholder() for _ in columns),
+                    sql.SQL(', ').join([
+                        sql.SQL("{} = EXCLUDED.{}").format(sql.Identifier(col), sql.Identifier(col))
+                        for col in update_cols
+                    ])
+                )
+
+                cur.execute(insert_query, values)
+
+            cur.close()  # safe to close because conn context manages commit
 
     except Exception as ex:
         logging.error(f"Error upserting into '{schema}.{table_name}': {ex}")
-        conn.rollback()
-        cur.close()
         raise
+
 
 def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
     try:
