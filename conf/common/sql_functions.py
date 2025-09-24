@@ -177,6 +177,7 @@ def inject_sql_with_return(sql_script):
 
     try:
         # Use engine.begin() for automatic commit/rollback
+        logging.info(f"CONNECTING CONNECTING CONECTING=={sql_script}")
         with engine as conn:
             logging.info("CONNECTING CONNECTING CONECTING")
             result = conn.connect().execute(text(sql_script))
