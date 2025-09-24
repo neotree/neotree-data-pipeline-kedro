@@ -60,7 +60,7 @@ def inject_sql(sql_script, file_name):
 
     try:
         # Use engine.begin() for automatic commit/rollback
-        with engine.begin() as conn:
+        with engine as conn:
             for command in sql_commands:
                 command = command.strip()
                 if not command:
@@ -177,7 +177,7 @@ def inject_sql_with_return(sql_script):
 
     try:
         # Use engine.begin() for automatic commit/rollback
-        with engine.begin() as conn:
+        with engine as conn:
             result = conn.execute(text(sql_script))
             data = list(result.fetchall())  # return list of tuples
             return data
@@ -191,7 +191,7 @@ def inject_sql_with_return(sql_script):
 def inject_bulk_sql(queries, batch_size=1000):
     try:
         # engine.begin() will commit if successful, rollback if error
-        with engine.begin() as conn:
+        with engine as conn:
             for i in range(0, len(queries), batch_size):
                 batch = queries[i:i + batch_size]
 
@@ -293,7 +293,7 @@ def run_query_and_return_df(query) -> pd.DataFrame:
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
         
-        with engine.begin() as conn:
+        with engine as conn:
             logging.info(f"Executing query:")
             df = pd.read_sql_query(query, conn)
         return df
