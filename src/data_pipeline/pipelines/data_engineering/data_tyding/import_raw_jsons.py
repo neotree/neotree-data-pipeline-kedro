@@ -7,13 +7,10 @@ from conf.common.sql_functions import inject_sql_with_return,inject_sql
 
 def createAdmissionsAndDischargesFromRawData():
     data = formatRawData()
-    logging.info(f"######FFFF--{data}")
     if data is not None:
         distinct_sessions = []
         #Duplicates Key Should Be In Data To Show That It has Validated Availability of Duplicates(It can be Empty)
-        logging.info(f"---MY DATA:::{len(data)}")
         if "sessions"  in data and "duplicates" in data:
-            logging.info(f"---IMPORTING:::")
             possible_duplicates = data["duplicates"];
             if len(possible_duplicates) >0:
                 for session in data["sessions"]:
@@ -26,7 +23,7 @@ def createAdmissionsAndDischargesFromRawData():
                
             for sess in distinct_sessions:
                 insertion_data = json.dumps(sess);
-                json_string = insertion_data.replace("'s","s")
+                json_string = insertion_data.replace("'s","s").replace("'","\'")
                 
                 ingested_at = datetime.now()
                 scriptId = sess["script"]["id"]
@@ -44,9 +41,8 @@ def formatRawData():
     if(params is not None and params["mode"] is not None and params["mode"]=="import"):
         if 'files_dir' in params:
             files_dir = Path(params['files_dir'])
-            logging.info(f"@@@-BEFORE---{files_dir.is_dir()} {files_dir.exists()}")
+        
             if files_dir.exists() and files_dir.is_dir():
-                logging.info(f"@@@-EXISTS---{files_dir}")
                 formatedSessions = []
                 uids = []
                 if(any(files_dir.iterdir())):
@@ -56,7 +52,6 @@ def formatRawData():
                             json_file = open(filename,'r');
                             json_script = json_file.read();
                             json_sessions = json.loads(json_script);
-                            logging.info(f"@@@@@----@@@---{json_sessions}")
                             if "sessions" in json_sessions:
                                 sessions = json_sessions['sessions'] 
                                 for session in sessions:
