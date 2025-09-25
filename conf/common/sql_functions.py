@@ -622,11 +622,10 @@ def generate_create_insert_sql(df,schema, table_name):
             columns_to_drop = df.columns[
                 df.columns.str.lower().str.contains('|'.join([kw.lower() for kw in drop_keywords]))
             ]
-            #DROP CONFIDENTIAL COLUMNS
-            df = df.drop(columns=columns_to_drop)
-            df['transformed'] = False
             inject_sql(create_stmt,f"CREATING {table_name}")
-            
+        #DROP CONFIDENTIAL COLUMNS
+        df = df.drop(columns=columns_to_drop)
+        df['transformed'] = False  
         generate_postgres_insert(df,schema,table_name)
     except Exception as ex:
        logging.info(f"FAILED TO INSERT {formatError(ex)}")
