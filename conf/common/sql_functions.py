@@ -456,7 +456,7 @@ def is_date_prefix(s):
 def generate_postgres_insert(df, schema,table_name):
     # Escape column names and join them
     df = df[[col for col in df.columns if len(col) > 1]]
-    columns = ', '.join(f'"{col}"' for col in df.columns if col != 'column_name')
+    columns = ', '.join(f'"{col}"' for col in df.columns)
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
@@ -594,7 +594,7 @@ def format_value(col, value, col_type):
     
 def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
-    drop_keywords=['surname','firstname','dobtob']
+    drop_keywords=['surname','firstname','dobtob','column_name']
     try:
         if not table_exists(schema,table_name):
             dtype_map = {

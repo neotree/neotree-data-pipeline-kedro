@@ -108,35 +108,41 @@ def update_mat_age(source_table: str, dest_table: str) -> str:
         sc_quoted = f'"{sc}"' if '.' in sc else sc
 
         query = f"""
-        DO $$
-    BEGIN
-        IF EXISTS (
-            SELECT 1 
-            FROM information_schema.columns 
-            WHERE table_schema = 'derived' 
-            AND table_name = '{dest_table}' 
-            AND column_name = 'matageyrs'
-        )
-        THEN
-            UPDATE derived.{dest_table} d
-            SET matageyrs = s_val.num_val
-            FROM (
-                SELECT 
-                    uid,
-                    unique_key,
-                    COALESCE(
-                        CAST(NULLIF(regexp_replace({sc_quoted}, '[^0-9]', '', 'g'), '') AS INT),
-                        200
-                    ) AS num_val
-                FROM derived.{source_table}
-            ) s_val
-            WHERE d.uid = s_val.uid
-            AND d.unique_key = s_val.unique_key
-            AND d.matageyrs IS NULL
-            AND s_val.num_val <= 85;
-            END IF;
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_schema = 'derived' 
+                    AND table_name = '{dest_table}' 
+                    AND column_name = 'matageyrs'
+                )
+                THEN
+                    UPDATE derived.{dest_table} d
+                    SET matageyrs = s_val.num_val
+                    FROM (
+                        SELECT 
+                            uid,
+                            unique_key,
+                            COALESCE(
+                                CAST(
+                                    NULLIF(
+                                        regexp_replace({sc_quoted}::text, '[^0-9]', '', 'g'),
+                                        ''
+                                    ) AS INT
+                                ),
+                                200
+                            ) AS num_val
+                        FROM derived.{source_table}
+                    ) s_val
+                    WHERE d.uid = s_val.uid
+                    AND d.unique_key = s_val.unique_key
+                    AND d.matageyrs IS NULL
+                    AND s_val.num_val <= 85;
+                END IF;
             END $$;
-        """
+            """
+
 
         inject_sql_procedure(query, f"FIX MATERNAL AGE {dest_table}")
 
