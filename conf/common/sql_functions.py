@@ -51,6 +51,25 @@ def inject_sql_procedure(sql_script, file_name):
             sys.exit()
         logging.info('... {0} has successfully run'.format(file_name))
 
+def insert_session(sess):
+    # Serialize session dict to JSON
+    insertion_data = json.dumps(sess)
+    ingested_at = datetime.now()
+    uid = sess.get("uid")                       
+    scriptId = sess.get("script", {}).get("id") 
+    # Connect to PostgreSQL
+    conn = engine.raw_connection()
+    cur = conn.cursor()
+
+    # Parameterized query — safe for any data
+    insertion_query = """
+        INSERT INTO public.sessions (ingested_at, uid, scriptid, data)
+        VALUES (%s, %s, %s, %s)
+    """
+    cur.execute(insertion_query, (ingested_at, uid, scriptId, insertion_data))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def inject_sql(sql_script, file_name):
     if not sql_script.strip():  # skip if empty

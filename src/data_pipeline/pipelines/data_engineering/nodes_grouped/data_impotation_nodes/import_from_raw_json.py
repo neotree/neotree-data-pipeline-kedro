@@ -12,7 +12,6 @@ def import_json_files():
     try:
         
         if mode == "import":
-            logging.info(f"######{mode}")
             createAdmissionsAndDischargesFromRawData();
             return dict(
             status='Success',

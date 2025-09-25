@@ -3,7 +3,7 @@ from conf.base.catalog import params
 from pathlib import Path
 import json
 from datetime import datetime
-from conf.common.sql_functions import inject_sql_with_return,inject_sql
+from conf.common.sql_functions import inject_sql_with_return,insert_session
 
 def createAdmissionsAndDischargesFromRawData():
     data = formatRawData()
@@ -21,18 +21,10 @@ def createAdmissionsAndDischargesFromRawData():
             else:
                 distinct_sessions = data["sessions"]
                
-            for sess in distinct_sessions:
-                insertion_data = json.dumps(sess);
-                json_string = insertion_data.replace("'s","s").replace("'","\'")
-                
-                ingested_at = datetime.now()
-                scriptId = sess["script"]["id"]
-                uid = sess["uid"]
-                insertion_query = '''INSERT INTO public.sessions (ingested_at,uid, scriptid,data) VALUES('{0}','{1}','{2}','{3}');;'''.format(ingested_at,uid,scriptId,json_string)
-                logging.info(f"....FF....{insertion_query}")
-                inject_sql(insertion_query,"DATA INSERTION")
+            for sess in distinct_sessions:  
+                insert_session(sess)
     else:
-       logging.warn("Importing JSON Files Skipped Because No Data is Available In The specified Directory") 
+       logging.warning("Importing JSON Files Skipped Because No Data is Available In The specified Directory") 
             
 
 #Restructure All Data To Suit A Format That Is Easy To Read And Export To Dbase
