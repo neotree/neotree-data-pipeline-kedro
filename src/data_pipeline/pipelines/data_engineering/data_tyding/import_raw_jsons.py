@@ -10,7 +10,9 @@ def createAdmissionsAndDischargesFromRawData():
     if data is not None:
         distinct_sessions = []
         #Duplicates Key Should Be In Data To Show That It has Validated Availability of Duplicates(It can be Empty)
+        logging.info(f"---MY DATA:::{len(data)}")
         if "sessions"  in data and "duplicates" in data:
+            logging.info(f"---IMPORTING:::")
             possible_duplicates = data["duplicates"];
             if len(possible_duplicates) >0:
                 for session in data["sessions"]:
@@ -29,6 +31,7 @@ def createAdmissionsAndDischargesFromRawData():
                 scriptId = sess["script"]["id"]
                 uid = sess["uid"]
                 insertion_query = '''INSERT INTO public.sessions (ingested_at,uid, scriptid,data) VALUES('{0}','{1}','{2}','{3}');;'''.format(ingested_at,uid,scriptId,json_string)
+                logging.info(f"....FF....{insertion_query}")
                 inject_sql(insertion_query,"DATA INSERTION")
     else:
        logging.warn("Importing JSON Files Skipped Because No Data is Available In The specified Directory") 
@@ -209,13 +212,13 @@ def formatRawData():
                     potential_duplicates = checkDuplicateDatabaseRecord(uids);
                     return dict(sessions=formatedSessions,duplicates=potential_duplicates);        
                 else:
-                    logging.warn("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")
+                    logging.warning("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")
                     return None;  
             else:
-                logging.warn("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")   
+                logging.warning("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")   
             return None;
         else:
-            logging.warn("Importing JSON Files Will Be Skipped Because No 'files_dir' is set in database.ini")
+            logging.warning("Importing JSON Files Will Be Skipped Because No 'files_dir' is set in database.ini")
             return None;
     else:
         return None;
