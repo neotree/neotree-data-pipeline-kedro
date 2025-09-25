@@ -7,6 +7,7 @@ from conf.common.sql_functions import inject_sql_with_return,inject_sql
 
 def createAdmissionsAndDischargesFromRawData():
     data = formatRawData()
+    logging.info(f"######FFFF--{data}")
     if data is not None:
         distinct_sessions = []
         #Duplicates Key Should Be In Data To Show That It has Validated Availability of Duplicates(It can be Empty)
@@ -210,6 +211,7 @@ def formatRawData():
                             json_file.close();
                     #Check If There Exist A Record With The Same UID in The Database
                     potential_duplicates = checkDuplicateDatabaseRecord(uids);
+                    logging.info(f"@@@@@----@@@---{potential_duplicates}")
                     return dict(sessions=formatedSessions,duplicates=potential_duplicates);        
                 else:
                     logging.warning("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")
