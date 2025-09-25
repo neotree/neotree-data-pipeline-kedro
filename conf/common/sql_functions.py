@@ -638,11 +638,12 @@ def generate_create_insert_sql(df,schema, table_name):
                 create_cols.append(f'"{col}" {pg_type}')
 
             create_stmt = f'CREATE TABLE IF NOT EXISTS {schema}."{table_name}" ({",".join(create_cols)});;'
-            columns_to_drop = df.columns[
-                df.columns.str.lower().str.contains('|'.join([kw.lower() for kw in drop_keywords]))
-            ]
+            
             inject_sql(create_stmt,f"CREATING {table_name}")
         #DROP CONFIDENTIAL COLUMNS
+        columns_to_drop = df.columns[
+                df.columns.str.lower().str.contains('|'.join([kw.lower() for kw in drop_keywords]))
+            ]
         df = df.drop(columns=columns_to_drop)
         df['transformed'] = False  
         generate_postgres_insert(df,schema,table_name)
