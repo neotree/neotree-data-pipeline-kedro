@@ -44,7 +44,9 @@ def formatRawData():
     if(params is not None and params["mode"] is not None and params["mode"]=="import"):
         if 'files_dir' in params:
             files_dir = Path(params['files_dir'])
+            logging.info(f"@@@-BEFORE---{files_dir}")
             if files_dir.exists() and files_dir.is_dir():
+                logging.info(f"@@@-EXISTS---{files_dir}")
                 formatedSessions = []
                 uids = []
                 if(any(files_dir.iterdir())):
