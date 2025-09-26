@@ -7,21 +7,14 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 def deduplicate_table(table:str):  
     if (table_exists('derived',table)):
         deduplicate_derived_tables(table) 
-        logging.info(f'''HAS COMPLETED DEDUP {table}''')
         drop_confidential_columns(table)
-        logging.info(f'''HAS CONFIDENTIAL DROP {table}''')
         if table=='clean_admissions':
-            logging.info(f'''HAS STARTED MATAGE {table}''')
             update_mat_age('admissions','clean_admissions')
-            logging.info(f'''HAS COMPLETE MATAGE {table}''')
         if table=='clean_joined_adm_discharges':
-            logging.info(f'''HAS STARTED MATAGE {table}''')
             update_mat_age('joined_admissions_discharges','clean_joined_adm_discharges')
-            logging.info(f'''HAS COMPLETE MATAGE {table}''')
         if table=='clean_maternal_outcomes':
-            logging.info(f'''HAS STARTED MATAGE {table}''')
             update_mat_age('maternal_outcomes','clean_maternal_outcomes')
-            logging.info(f'''HAS COMPLETE MATAGE {table}''')
+      
              
     
 
@@ -125,11 +118,17 @@ def update_mat_age(source_table: str, dest_table: str) -> str:
                             uid,
                             unique_key,
                             COALESCE(
-                                CAST(
-                                    NULLIF(
-                                        regexp_replace({sc_quoted}::text, '[^0-9]', '', 'g'),
-                                        ''
-                                    ) AS INT
+                                FLOOR(
+                                    CASE 
+                                        WHEN NULLIF(regexp_replace({sc_quoted}::text, '[^0-9.,]', '', 'g'), '') IS NOT NULL 
+                                        THEN 
+                                            CASE 
+                                                -- If number > 100000, assume it's hours → convert to years
+                                                WHEN CAST(replace(regexp_replace({sc_quoted}::text, '[^0-9.,]', '', 'g'), ',', '') AS NUMERIC) > 100000
+                                                THEN CAST(replace(regexp_replace({sc_quoted}::text, '[^0-9.,]', '', 'g'), ',', '') AS NUMERIC) / 8766
+                                                ELSE CAST(replace(regexp_replace({sc_quoted}::text, '[^0-9.,]', '', 'g'), ',', '') AS NUMERIC)
+                                            END
+                                    END
                                 ),
                                 200
                             ) AS num_val
@@ -138,11 +137,9 @@ def update_mat_age(source_table: str, dest_table: str) -> str:
                     WHERE d.uid = s_val.uid
                     AND d.unique_key = s_val.unique_key
                     AND d.matageyrs IS NULL
-                    AND s_val.num_val <= 85;
+                    AND (s_val.num_val <= 85 OR s_val.num_val>100000);
                 END IF;
             END $$;
             """
-
-
         inject_sql_procedure(query, f"FIX MATERNAL AGE {dest_table}")
 
