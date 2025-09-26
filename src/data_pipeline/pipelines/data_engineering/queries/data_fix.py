@@ -137,7 +137,7 @@ def update_mat_age(source_table: str, dest_table: str) -> str:
                     WHERE d.uid = s_val.uid
                     AND d.unique_key = s_val.unique_key
                     AND d.matageyrs IS NULL
-                    AND (s_val.num_val <= 85 OR s_val.num_val>100000);
+                    AND (s_val.num_val <= 85);
                 END IF;
             END $$;
             """

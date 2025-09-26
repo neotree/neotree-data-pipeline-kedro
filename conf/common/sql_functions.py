@@ -499,7 +499,7 @@ def generate_postgres_insert(df, schema,table_name):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
 
-            elif (is_date_prefix(str(val))):
+            elif (is_date_prefix(str(val)) and key!='unique_key' and 'clean' not in table_name):
                 row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
                 row_values.append(f"'{clean_datetime_string(val)}'")
