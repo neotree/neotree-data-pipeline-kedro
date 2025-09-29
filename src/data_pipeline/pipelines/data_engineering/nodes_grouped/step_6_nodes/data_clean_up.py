@@ -55,10 +55,10 @@ def clean_data_for_research(create_summary_counts_output):
                             script_json = get_script(script_id)
                             if script_json is not None:
                                 merged_script_data = merge_script_data(merged_script_data, script_json)
-
+                    logging.info(f"@@@..TR-@@--{bool(merged_script_data)}")
                     if merged_script_data is not None and bool(merged_script_data):
                         query= read_derived_data_query(script, f'''clean_{script}''')
-                        logging.info(f"########CLEAN QSS-----{query}-----{script}")
+                        logging.info(f"KWERY..TR-@@--{query}")
                         new_data_df = run_query_and_return_df(query)
         
                         if new_data_df is not None and not new_data_df.empty:

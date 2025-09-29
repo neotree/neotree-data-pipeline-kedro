@@ -414,8 +414,6 @@ def read_all_from_derived_table(table:str):
     return None
 
 def read_label_cleanup_data(table:str):
-  
-    logging.info(f"T-EXISTS {table} == {table_exists('derived', table.strip())}")
     if table_exists('derived', table.strip()):
         return f'select * from derived."{table}" where transformed is FALSE or transformed is NULL;;'
     return None
