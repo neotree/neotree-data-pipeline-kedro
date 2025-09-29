@@ -476,6 +476,8 @@ def generate_postgres_insert(df, schema,table_name):
     # Escape column names and join them
     df = df[[col for col in df.columns if len(col) > 1]]
     columns = ', '.join(f'"{col}"' for col in df.columns)
+    if('neolab' in table_name):
+        logging.info(f"..COLMS:::.{df.columns}")
     # Generate values part
     values_list = []
     for _, row in df.iterrows():
