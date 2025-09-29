@@ -29,7 +29,7 @@ def tidy_dynamic_tables():
     
     try:
         #Read Data From The Kedro Catalog
-         
+        logging.info(f"TEEEEEEEEEEEESTING EXISTS::::{table_exists('derived','admissions')}")
         for script in new_scripts:
             catalog_query = f'''read_{script}'''
             
@@ -113,6 +113,7 @@ def tidy_dynamic_tables():
                                     column_pairs =  [(col, str(script_df[col].dtype)) for col in new_columns]
                                     if len(column_pairs)>0:
                                         create_new_columns(script,'derived',column_pairs)
+
                             script_df=convert_false_numbers_to_text(script_df,'derived',script); 
                             script_df = script_df.loc[:, ~script_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
                             script_df=transform_matching_labels(script_df,script=script)
