@@ -495,6 +495,8 @@ def generate_postgres_insert(df, schema,table_name):
             if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
                 row_values.append("NULL")
 
+            if key=='unique_key':
+                row_values.append(f''' '{str(val)}' ''') 
             elif isinstance(val, (list, dict)):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
