@@ -657,19 +657,17 @@ def escape_special_characters(input_string):
     return str(input_string).replace("\\","\\\\").replace("'","")
 
 def table_exists(schema, table_name):
-    query = f''' SELECT EXISTS (SELECT FROM information_schema.tables WHERE  table_schema = '{schema}' AND    table_name   = '{table_name}');'''
-        
+    query = f''' SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE  table_schema = '{schema}'
+                AND    table_name   = '{table_name}'
+                );'''
     query_result = inject_sql_with_return(query)
-    if('infections' in table_name):
-        logging.info(f"@@@@--@@@---{query_result}")
+    
     if query_result and len(query_result) > 0:
-        result = query_result[0]
-        if isinstance(result, (tuple, list, np.ndarray)):
-            return bool(result[0])
-        return bool(result)
-    logging.info(f"@@@@--GETTT---")
+       return query_result[0][0]
     return False
-
+        
 
 def reorder_dataframe_columns(df:pd.DataFrame, script:str):
     """
