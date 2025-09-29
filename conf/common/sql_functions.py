@@ -500,11 +500,10 @@ def generate_postgres_insert(df, schema,table_name):
             elif isinstance(val, (list, dict)):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
-
-            elif (is_date_prefix(str(val)) and key!='unique_key' and 'clean' not in table_name):
-                row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
                 row_values.append(f"'{clean_datetime_string(val)}'")
+            elif (is_date_prefix(str(val)) and key!='unique_key'):
+                row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
             elif isinstance(val, str):
                 row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
             else:
