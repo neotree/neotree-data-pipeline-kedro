@@ -501,13 +501,24 @@ def generate_postgres_insert(df, schema,table_name):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
-                row_values.append(f"'{clean_datetime_string(val)}'")
+                converted= f"'{clean_datetime_string(val)}'"
+                if str(converted) in {'NaT', 'None', 'nan','','<NA>'}:
+                    row_values.append("NULL")
+                else:
+                    row_values.append(converted)
             elif (is_date_prefix(str(val)) and key!='unique_key'):
-                row_values.append(f"'{clean_datetime_string(val)}'".replace('.',''))
+                converted_date_like = f"'{clean_datetime_string(val)}'".replace('.','')
+                if str(converted_date_like) in {'NaT', 'None', 'nan','','<NA>'}:
+                    row_values.append("NULL")
+                else:
+                    row_values.append(converted_date_like)
             elif isinstance(val, str):
                 row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
             else:
-                row_values.append(str(val))
+                if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
+                    row_values.append("NULL")
+                else:
+                    row_values.append(str(val))
         values_list.append(f"({','.join(row_values)})")
 
     values = ',\n'.join(values_list)
