@@ -491,16 +491,15 @@ def generate_postgres_insert(df, schema,table_name):
             continue
         row_values = []
         for  key, val in row.items():
-            if('neolab' in table_name or 'infections' in table_name):
-                logging.info(f"...MY KEY....{key}")
             if len(str(key))<=1:  
                 continue
 
             if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
                 row_values.append("NULL")
-
+                continue
             if key=='unique_key':
                 row_values.append(f''' '{str(val)}' ''') 
+                continue
             elif isinstance(val, (list, dict)):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
