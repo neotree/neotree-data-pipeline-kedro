@@ -616,6 +616,7 @@ def generate_create_insert_sql(df,schema, table_name):
     drop_keywords=['surname','firstname','dobtob','column_name']
     try:
         logging.info(f"##########--KWESSE--##--{table_exists(schema,table_name)} ---{table_name}")
+        logging.info(f"TEEEEEEEEEEEESTING INFECTIONS::::{table_exists('derived','infections')}")
         if not table_exists(schema,table_name):
             dtype_map = {
                 'int64': 'INTEGER',
@@ -657,6 +658,8 @@ def escape_special_characters(input_string):
 
 def table_exists(schema, table_name):
     query = f''' SELECT EXISTS (SELECT FROM information_schema.tables WHERE  table_schema = '{schema}' AND    table_name   = '{table_name}');'''
+    if('infections' in table_name):
+        logging.info(f"---OOOOO-----{query}")
     query_result = inject_sql_with_return(query)
 
     if query_result and len(query_result) > 0:

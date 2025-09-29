@@ -29,7 +29,6 @@ def tidy_dynamic_tables():
     
     try:
         #Read Data From The Kedro Catalog
-        logging.info(f"TEEEEEEEEEEEESTING INFECTIONS::::{table_exists('derived','infections')}")
         for script in new_scripts:
             catalog_query = f'''read_{script}'''
             
