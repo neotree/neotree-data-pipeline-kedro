@@ -615,6 +615,7 @@ def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
     drop_keywords=['surname','firstname','dobtob','column_name']
     try:
+        logging.info(f"##########--KWESSE--##--{table_exists(schema,table_name)} ---{table_name}")
         if not table_exists(schema,table_name):
             dtype_map = {
                 'int64': 'INTEGER',
