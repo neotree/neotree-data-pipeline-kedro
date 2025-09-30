@@ -472,65 +472,65 @@ def is_date_prefix(s):
             
     return False
 
-def generate_postgres_insert(df, schema,table_name):
-    # Escape column names and join them
+def generate_postgres_insert(df, schema, table_name):
+    # Ensure we only keep "real" columns (skip weird 1-char column names)
     df = df[[col for col in df.columns if len(col) > 1]]
-    columns = ', '.join(f'"{col}"' for col in df.columns)
-    if('neolab' in table_name or 'infections' in table_name):
-        logging.info(f"..COLMS:::.{df.columns}")
-    # Generate values part
+
     values_list = []
     for _, row in df.iterrows():
-        
-        if row['uid'] is None:
+        # Skip invalid rows (no uid or unique_key)
+        if 'uid' not in row or pd.isna(row['uid']) or str(row['uid']).strip().lower() in {'null', 'nan', 'nat', '<na>', ''}:
             continue
-            
-        if 'uid' not in row or pd.isna(row['uid']) or str(row['uid']).strip().lower() in {'null', 'nan', 'nat','<na>',''}:
+        if 'unique_key' not in row or pd.isna(row['unique_key']) or str(row['unique_key']).strip().lower() in {'null', 'nan', 'nat', '<na>', ''}:
             continue
-        if 'unique_key' not in row or pd.isna(row['unique_key']) or str(row['unique_key']).strip().lower() in {'null', 'nan', 'nat','<na>',''}:
-            continue
-        row_values = []
-        for  key, val in row.items():
-            if len(str(key))<=1:  
-                continue
 
-            if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
+        row_values = []
+        row_columns = []
+        for key, val in row.items():
+            if len(str(key)) <= 1:  
+                continue  # skip junk columns
+
+            row_columns.append(f'"{key}"')  # keep aligned column name
+
+            # NULL handling
+            if str(val) in {'NaT', 'None', 'nan', '', '<NA>'}:
                 row_values.append("NULL")
                 continue
-            if key=='unique_key':
-                row_values.append(f''' '{str(val)}' ''') 
-                continue
+
+            # Handle specific types
+            if key == 'unique_key':
+                row_values.append(f"'{str(val)}'")
             elif isinstance(val, (list, dict)):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
-                converted= f"'{clean_datetime_string(val)}'"
-                if str(converted) in {'NaT', 'None', 'nan','','<NA>'}:
-                    row_values.append("NULL")
-                else:
-                    row_values.append(converted)
-            elif (is_date_prefix(str(val)) and key!='unique_key'):
-                converted_date_like = f"'{clean_datetime_string(val)}'".replace('.','')
-                if str(converted_date_like) in {'NaT', 'None', 'nan','','<NA>'}:
-                    row_values.append("NULL")
-                else:
-                    row_values.append(converted_date_like)
+                converted = f"'{clean_datetime_string(val)}'"
+                row_values.append("NULL" if converted.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted)
+            elif (is_date_prefix(str(val)) and key != 'unique_key'):
+                converted_date_like = f"'{clean_datetime_string(val)}'".replace('.', '')
+                row_values.append("NULL" if converted_date_like.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted_date_like)
             elif isinstance(val, str):
-                row_values.append(f''' '{escape_special_characters(str(val))}' ''') 
+                row_values.append(f"'{escape_special_characters(val)}'")
             else:
-                if str(val) in {'NaT', 'None', 'nan','','<NA>'}:
-                    row_values.append("NULL")
-                else:
-                    row_values.append(str(val))
-        values_list.append(f"({','.join(row_values)})")
+                row_values.append("NULL" if str(val) in {'NaT', 'None', 'nan', '', '<NA>'} else str(val))
+        if row_columns and row_values:
+            values_list.append((row_columns, row_values))
+    if values_list:
+        # All rows may not have exactly the same column set (in case of skipping), 
+        # so insert them one batch per unique column set
+        inserts_by_columns = {}
+        for cols, vals in values_list:
+            col_key = tuple(cols)
+            if col_key not in inserts_by_columns:
+                inserts_by_columns[col_key] = []
+            inserts_by_columns[col_key].append(f"({','.join(vals)})")
 
-    values = ',\n'.join(values_list)
+        for col_set, rows in inserts_by_columns.items():
+            columns = ', '.join(col_set)
+            values = ',\n'.join(rows)
+            insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
+            inject_sql(insert_query, f"INSERTING INTO {table_name}")
 
-    # Compose the full INSERT statement
-    if columns and values:
-        insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
-        
-        inject_sql(insert_query,f"INSERTING INTO {table_name}")
 
 def clean_datetime_string(s:str):
     try:
