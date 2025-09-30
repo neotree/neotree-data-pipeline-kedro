@@ -128,10 +128,10 @@ def tidy_tables():
               # ADD TIME SPENT TO ALL DFs
             if "DateTimeAdmission.value" in adm_df and "DOBTOB.value" in adm_df:
                 adm_df.loc[
-                    adm_df["Age.value"].isna() & adm_df["DateTimeAdmission.value"].notna() & df["DOBTOB.value"].notna(),
+                    adm_df["Age.value"].isna() & adm_df["DateTimeAdmission.value"].notna() & adm_df["DOBTOB.value"].notna(),
                     "Age.value"
                 ] = (
-                    (pd.to_datetime(df["DateTimeAdmission.value"]) - pd.to_datetime(df["DOBTOB.value"]))
+                    (pd.to_datetime(df["DateTimeAdmission.value"]) - pd.to_datetime(adm_df["DOBTOB.value"]))
                     .dt.total_seconds() / 3600
                 )
             if "started_at" in adm_df and 'completed_at' in adm_df :
