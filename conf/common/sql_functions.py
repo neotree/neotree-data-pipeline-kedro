@@ -475,6 +475,8 @@ def is_date_prefix(s):
 def generate_postgres_insert(df, schema, table_name):
     # Ensure we only keep "real" columns (skip weird 1-char column names)
     df = df[[col for col in df.columns if len(col) > 1]]
+    if 'transformed' not in df.columns():
+        df['transformed']=False
 
     values_list = []
     for _, row in df.iterrows():
@@ -483,7 +485,6 @@ def generate_postgres_insert(df, schema, table_name):
             continue
         if 'unique_key' not in row or pd.isna(row['unique_key']) or str(row['unique_key']).strip().lower() in {'null', 'nan', 'nat', '<na>', ''}:
             continue
-
         row_values = []
         row_columns = []
         for key, val in row.items():
