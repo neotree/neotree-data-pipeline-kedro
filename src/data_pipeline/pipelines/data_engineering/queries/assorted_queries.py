@@ -18,7 +18,7 @@ def deduplicate_neolab_query(neolab_where):
     return f'''
             drop table if exists scratch.deduplicated_neolab cascade;
 
-        create table scratch.deduplicated_neolab as 
+        create table if not exists scratch.deduplicated_neolab as 
         (
         with earliest_neolab as (
             select
@@ -66,7 +66,7 @@ def deduplicate_data_query(condition, destination_table):
     if "maternity_completeness" in destination_table:
         # special case for malawi -> group on DateAdmission
         return f'''drop table if exists {destination_table} cascade;;
-            create table {destination_table} as 
+            create table if not exists {destination_table} as 
             (
             with earliest_record as (
             select
@@ -178,7 +178,7 @@ def deduplicate_data_query(condition, destination_table):
                 FROM final_numbering);;"""
 
         else:
-            operation = f'''CREATE TABLE {schema}."{table}" AS'''
+            operation = f'''CREATE TABLE if not exists {schema}."{table}" AS'''
             condition = script_condition  # still safe
             
             return f"""{operation}
@@ -236,7 +236,7 @@ def deduplicate_data_query(condition, destination_table):
         # all other cases -> group on ingested_at
         schema,table = destination_table.split('.')
         exists= table_exists(schema,table)
-        operation = f''' create table {destination_table} as '''
+        operation = f''' create table if not exists {destination_table} as '''
         
         if(exists):
             operation= f''' INSERT INTO {schema}."{table}"  (
