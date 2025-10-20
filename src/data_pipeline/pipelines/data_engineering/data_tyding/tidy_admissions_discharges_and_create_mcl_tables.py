@@ -518,10 +518,13 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
     # Calculate BCReturnTime
     if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and
         neolab_df['DateBCR.value'].notna().any() and neolab_df['DateBCT.value'].notna().any()):
-        neolab_df['BCReturnTime'] = (
+        # Calculate timedelta and convert to hours
+        timedelta_result = (
             pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S', utc=True, errors='coerce') -
             pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S', utc=True, errors='coerce')
-        ).astype('timedelta64[h]')
+        )
+        # Convert to hours by dividing total_seconds by 3600
+        neolab_df['BCReturnTime'] = timedelta_result.dt.total_seconds() / 3600
     else:
         neolab_df['BCReturnTime'] = None
 

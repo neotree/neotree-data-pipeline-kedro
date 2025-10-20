@@ -7,6 +7,9 @@ import logging
 
 
 def process_and_save_field_info(script, json_data):
+    # Ensure directory exists
+    os.makedirs('conf/local/scripts', exist_ok=True)
+
     filename = f'conf/local/scripts/{script}.json'
     # Load existing data (simple key-value dict)
     if os.path.exists(filename):
@@ -28,23 +31,42 @@ def process_and_save_field_info(script, json_data):
                 key = field["key"]
                 field_type = field.get("type")
                 label = field.get("label")
-                
+                data_type = field.get("dataType")
+                optional = field.get("optional", True)  # Default to optional if not specified
+                min_value = field.get("minValue")
+                max_value = field.get("maxValue")
+
                 # Initialize if doesn't exist
                 if key not in result:
                     result[key] = {
                         "key": key,
                         "type": field_type,
+                        "dataType": data_type,
                         "label": label,
+                        "optional": optional,
+                        "minValue": min_value,
+                        "maxValue": max_value,
                         "options": []
                     }
-                
+                else:
+                    # Update optional, minValue, maxValue if they exist in new field
+                    # (keep the most restrictive: required over optional)
+                    if not optional:  # If new field is required, mark as required
+                        result[key]["optional"] = False
+                    if min_value is not None:
+                        result[key]["minValue"] = min_value
+                    if max_value is not None:
+                        result[key]["maxValue"] = max_value
+                    if data_type and not result[key].get("dataType"):
+                        result[key]["dataType"] = data_type
+
                 # Add options if they exist
                 if "value" in field and "valueLabel" in field:
                     value = field["value"]
                     value_label = field["valueLabel"]
-                    
+
                     if value and value_label:
-                        if not any(opt["value"] == value and opt["valueLabel"] == value_label 
+                        if not any(opt["value"] == value and opt["valueLabel"] == value_label
                                  for opt in result[key]["options"]):
                             result[key]["options"].append({
                                 "value": value,
