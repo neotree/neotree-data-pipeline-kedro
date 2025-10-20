@@ -35,6 +35,7 @@ def manually_fix_admissions(tidy_data_output):
                         if df is not None:
                             transformed = transform_matching_labels_for_update_queries(df,script)
                             if transformed is not None:
+                                inject_sql(f'ALTER TABLE derived.{script} ADD COLUMN IF NOT EXISTS transformed BOOLEAN DEFAULT FALSE;;','create transformed columns')
                                 run_bulky_query(script,transformed) 
                                 query=f'update derived.{script} set transformed=true;;'
                                 inject_sql(query,'set transformed')           

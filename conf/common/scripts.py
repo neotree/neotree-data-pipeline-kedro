@@ -115,6 +115,17 @@ def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType
 def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     """Download script and return processed data."""
     params = config()
+
+    # Check if webeditor config exists
+    if 'webeditor_api_key' not in params or 'webeditor' not in params:
+        logging.warning(f"webeditor_api_key or webeditor URL not configured in database.ini - skipping script download for {script_type}")
+        # Try to load from existing file if available
+        existing_data = load_processed_script(script_type)
+        if existing_data:
+            logging.info(f"Using existing cached script data for {script_type}")
+            return existing_data
+        return OrderedDict()
+
     data = {
     'scriptsIds': [script_type.strip('"')],
     'returnDraftsIfExist': True
@@ -124,11 +135,11 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
     filename = f'conf/local/scripts/{script_type}.json'
     # Download directly to the file
     download_file(url, filename,api_key)
-    
+
     # Now process the downloaded file
     with open(filename, 'r') as file:
         raw_data = json.load(file)
-    
+
     return process_and_save_script(script_type, raw_data)
 
 def get_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
@@ -138,6 +149,12 @@ def get_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
 def get_raw_json(script_id:str):
 
     params = config()
+
+    # Check if webeditor config exists
+    if 'webeditor_api_key' not in params or 'webeditor' not in params:
+        logging.warning(f"webeditor_api_key or webeditor URL not configured in database.ini - returning empty data for {script_id}")
+        return {}
+
     data = {
     'scriptsIds': [script_id.strip('"')],
     'returnDraftsIfExist': True
@@ -145,7 +162,7 @@ def get_raw_json(script_id:str):
 
     api_key = params['webeditor_api_key']
     url = f"{params['webeditor']}/api/scripts/metadata?data={json.dumps(data)}"
-      
+
     headers = {
         'x-api-key': api_key,
         'Accept': 'application/json'

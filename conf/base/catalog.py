@@ -1,6 +1,6 @@
 from kedro.extras.datasets.pandas import (
     SQLQueryDataSet,SQLTableDataSet)
-from kedro.io import DataCatalog
+from kedro.io.data_catalog import DataCatalog
 from pathlib import Path
 from  conf.common.config import config
 from conf.common.hospital_config import hospital_conf
@@ -42,10 +42,8 @@ old_scripts = ['admissions','discharges','maternal_outcomes','maternals_dev','vi
 
 ##INITIALISE NEW SCRIPTS
 new_scripts = []
-
+generic_catalog = {}
 if hospital_scripts:
-
-      generic_catalog = {}
      
       #Remove Dev Data From Production Instance:
       #Take Everything (Applies To Dev And Stage Environments)
@@ -68,13 +66,13 @@ if hospital_scripts:
                      if script != 'name' and script != 'country' and script!='allow_multiple':
                         script_ids = str(ids[script]).split(',')  # Handle multiple script IDs
                         for script_id in script_ids:
+                              script_case = f", CASE WHEN cs.scriptid='{script_id}' THEN '{hospital}'"
                               script_id = script_id.strip()
                               if not script_id:
                                  continue
 
                               if script not in processed_script_names: 
                                  processed_scripts.append({script: [script_id]})
-                                 script_case = f", CASE WHEN cs.scriptid='{script_id}' THEN '{hospital}'"
                                  processed_case.append({script: script_case})
                                  processed_script_names.append(script)
                               else:
@@ -105,6 +103,7 @@ if hospital_scripts:
             
             if(type(myIds) is list):
                condition =''
+               script_case=''
                if len(myIds)==1:
                   script_id = myIds[0]
                   condition = f''' = '{script_id}' '''

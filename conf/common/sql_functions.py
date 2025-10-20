@@ -1,96 +1,142 @@
 import logging
-from conf.common.logger import setup_logger
-import json
-from typing import Dict
-from conf.common.format_error import formatError
-from datetime import datetime, date
-from .config import config
-from sqlalchemy import create_engine,text
 import sys
-from sqlalchemy.types import TEXT
+import json
+import re
+from typing import TYPE_CHECKING
+from collections import defaultdict
+from datetime import datetime, date
+
 import pandas as pd
 import numpy as np
-import logging
-from psycopg2 import sql
-from psycopg2.extras import execute_values
-from collections import defaultdict
-import re
+
+from conf.common.logger import setup_logger
+from conf.common.format_error import formatError
+from .config import config
+
+# Import handling with proper type checking
+if TYPE_CHECKING:
+    from sqlalchemy import Engine  # type: ignore  # noqa: F401
+    from sqlalchemy.engine import Connection  # type: ignore  # noqa: F401
+    from psycopg2 import sql as psycopg2_sql  # type: ignore  # noqa: F401
+    from psycopg2.extras import execute_values as psycopg2_execute_values  # type: ignore  # noqa: F401
+
+try:
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.types import TEXT
+    SQLALCHEMY_AVAILABLE = True
+except ImportError:
+    SQLALCHEMY_AVAILABLE = False
+    create_engine = None  # type: ignore
+    text = None  # type: ignore
+    TEXT = None  # type: ignore
+
+try:
+    from psycopg2 import sql
+    from psycopg2.extras import execute_values
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+    sql = None  # type: ignore
+    execute_values = None  # type: ignore
 
 params = config()
-#Postgres Connection String
+# Postgres Connection String
 con = 'postgresql+psycopg2://' + \
 params["user"] + ':' + params["password"] + '@' + \
 params["host"] + ':' + '5432' + '/' + params["database"]
-# engine = create_engine(con, executemany_mode='batch')
+
 con_string = f'''postgresql://{params["user"]}:{params["password"]}@{params["host"]}:5432/{params["database"]}'''
 
-engine = create_engine(
-    con,
-    pool_size=5,        # Maximum number of connections in the pool
-    max_overflow=10,    # Maximum number of connections to allow in excess of pool_size
-    pool_timeout=30,    # Maximum number of seconds to wait for a connection to become available
-    pool_recycle=1800   # Number of seconds a connection can persist before being recycled
-)
+# Create SQLAlchemy engine with connection pooling
+if SQLALCHEMY_AVAILABLE and create_engine:
+    engine = create_engine(
+        con,
+        pool_size=5,        # Maximum number of connections in the pool
+        max_overflow=10,    # Maximum number of connections to allow in excess of pool_size
+        pool_timeout=30,    # Maximum number of seconds to wait for a connection to become available
+        pool_recycle=1800   # Number of seconds a connection can persist before being recycled
+    )
+else:
+    engine = None  # type: ignore
 #Useful functions to inject sql queries
 #Inject SQL Procedures
 QUERY_LOG_PATH="logs/queries.log"
 query_logger = setup_logger(QUERY_LOG_PATH,'queries')
 
 def inject_sql_procedure(sql_script, file_name):
-        conn = engine.raw_connection()
-        cur = conn.cursor()
+    """Execute a SQL procedure using raw psycopg2 connection."""
+    if not engine:
+        raise RuntimeError("Database engine not initialized")
+
+    # Get underlying psycopg2 connection from SQLAlchemy
+    with engine.connect() as conn:
+        raw_conn = conn.connection
+        cur = raw_conn.cursor()
         try:
             cur.execute(sql_script)
-            conn.commit()
+            raw_conn.commit()
             query_logger.info(f"::DEDUPLICATING::")
             query_logger.info(f"DEDUP-{sql_script}")
         except Exception as e:
             logging.error(e)
-            logging.error('Something went wrong with the SQL file');
+            logging.error('Something went wrong with the SQL file')
             logging.error(sql_script)
             sys.exit()
-        logging.info('... {0} has successfully run'.format(file_name))
+        finally:
+            cur.close()
+    logging.info('... {0} has successfully run'.format(file_name))
 
 def insert_session(sess):
+    """Insert a session into the database using parameterized query."""
+    if not engine:
+        raise RuntimeError("Database engine not initialized")
+
     # Serialize session dict to JSON
     insertion_data = json.dumps(sess)
     ingested_at = datetime.now()
-    uid = sess.get("uid")                       
-    scriptId = sess.get("script", {}).get("id") 
-    # Connect to PostgreSQL
-    conn = engine.raw_connection()
-    cur = conn.cursor()
+    uid = sess.get("uid")
+    scriptId = sess.get("script", {}).get("id")
 
-    # Parameterized query — safe for any data
-    insertion_query = """
-        INSERT INTO public.sessions (ingested_at, uid, scriptid, data)
-        VALUES (%s, %s, %s, %s)
-    """
-    cur.execute(insertion_query, (ingested_at, uid, scriptId, insertion_data))
-    conn.commit()
-    cur.close()
-    conn.close()
+    # Use context manager for connection
+    with engine.connect() as conn:
+        raw_conn = conn.connection
+        cur = raw_conn.cursor()
+
+        # Parameterized query — safe for any data
+        insertion_query = """
+            INSERT INTO public.sessions (ingested_at, uid, scriptid, data)
+            VALUES (%s, %s, %s, %s)
+        """
+        try:
+            cur.execute(insertion_query, (ingested_at, uid, scriptId, insertion_data))
+            raw_conn.commit()
+        finally:
+            cur.close()
 
 def inject_sql(sql_script, file_name):
+    """Execute SQL commands with automatic transaction management."""
+    if not engine or not text:
+        raise RuntimeError("Database engine not initialized")
+
     if not sql_script.strip():  # skip if empty
         return
 
     sql_commands = str(sql_script).split(';;')
 
     try:
-        # Use engine.begin() for automatic commit/rollback
-      
-        for command in sql_commands:
-            command = command.strip()
-            if not command:
-                continue
-            try:
-                engine.connect().execute(text(command))
-            except Exception as e:
-                logging.error(f"Error executing command in {file_name}")
-                logging.error(f"Error type: {type(e)}")
-                logging.error(f"Full error: {str(e)}")
-                raise
+        # Use context manager for connection
+        with engine.begin() as conn:  # type: ignore
+            for command in sql_commands:
+                command = command.strip()
+                if not command:
+                    continue
+                try:
+                    conn.execute(text(command))
+                except Exception as e:
+                    logging.error(f"Error executing command in {file_name}")
+                    logging.error(f"Error type: {type(e)}")
+                    logging.error(f"Full error: {str(e)}")
+                    raise
 
     except Exception as e:
         logging.error(f"Transaction failed completely for {file_name}")
@@ -132,16 +178,21 @@ def generate_timestamp_conversion_query(table_name, columns):
    
 
 def create_table(df: pd.DataFrame, table_name):
-    # create tables in derived schema
+    """Create tables in derived schema."""
+    if not engine:
+        raise RuntimeError("Database engine not initialized")
+
     try:
-       df.to_sql(table_name, con=engine, schema='derived', if_exists='replace',index=False)
+        df.to_sql(table_name, con=engine, schema='derived', if_exists='replace', index=False)
     except Exception as e:
         logging.error(e)
         raise e
 
 def create_exploded_table(df: pd.DataFrame, table_name):
-    # create tables in derived schema and restrict all columns to Text
-  
+    """Create tables in derived schema and restrict all columns to Text."""
+    if not engine or not TEXT:
+        raise RuntimeError("Database engine not initialized")
+
     try:
         if "How is the baby being fed?.label" in df:
             df.rename(columns={'FeedAsse.label': 'How is the baby being fed?.label'}, inplace=True)
@@ -149,29 +200,32 @@ def create_exploded_table(df: pd.DataFrame, table_name):
         if "How is the baby being fed?.value" in df:
             df.rename(columns={'FeedAsse.value': 'How is the baby being fed?.value'}, inplace=True)
         if "How is the baby being fed" in table_name:
-            table_name="exploded_twenty_8_day_follow_u_FeedAsse.label"
+            table_name = "exploded_twenty_8_day_follow_u_FeedAsse.label"
         if "exploded_daily_review_Checklist" in table_name:
-            table_name= "exploded_daily_review_Surgcheck"
-            
-        df.to_sql(table_name, con=engine, schema='derived', if_exists='append',index=False,dtype={col_name: TEXT for col_name in df})
+            table_name = "exploded_daily_review_Surgcheck"
+
+        df.to_sql(table_name, con=engine, schema='derived', if_exists='append', index=False, dtype={col_name: TEXT for col_name in df})
     except Exception as ex:
         logging.error(f"FAILED DF:\n{df.to_string()}")
         logging.error(f'ERR DF=={ex}')
 
-def append_data(df: pd.DataFrame,table_name):
-    #Add Data To An Existing Table
+def append_data(df: pd.DataFrame, table_name):
+    """Add data to an existing table in batches."""
+    if not engine:
+        raise RuntimeError("Database engine not initialized")
+
     batch_size = 1000
     for i in range(0, len(df), batch_size):
         batch = df.iloc[i:i+batch_size]
-        
+
         # Convert to values you can inspect
         values = batch.replace({pd.NA: None, np.nan: None}).to_dict('records')
-        print(f"Batch {i} sample:", values[0])
-        
+        print(f"Batch {i} sample:", values[0] if values else "No data")
+
         # Insert the batch
         batch.to_sql(table_name, con=engine, schema='derived',
-                if_exists='append', index=False)
-        inject_sql(batch,f"APPENDING {table_name} {batch_size}")
+                     if_exists='append', index=False)
+    logging.info(f"Appended {len(df)} rows to {table_name} in {(len(df) // batch_size) + 1} batches")
 
 # def inject_sql_with_return(sql_script):
 #     conn = engine.raw_connection()
@@ -191,14 +245,19 @@ def append_data(df: pd.DataFrame,table_name):
 
 
 def inject_sql_with_return(sql_script):
+    """Execute SQL and return results as list of tuples."""
+    if not engine or not text:
+        raise RuntimeError("Database engine not initialized")
+
     if not sql_script.strip():  # skip empty commands
         return []
 
     try:
-        # Use engine.begin() for automatic commit/rollback
-        result = engine.connect().execute(text(sql_script))
-        data = list(result.fetchall())  # return list of tuples
-        return data
+        # Use context manager for connection
+        with engine.connect() as conn:  # type: ignore
+            result = conn.execute(text(sql_script))
+            data = list(result.fetchall())  # return list of tuples
+            return data
 
     except Exception as e:
         logging.error(f"Error executing SQL: {e}")
@@ -207,19 +266,24 @@ def inject_sql_with_return(sql_script):
     
 
 def inject_bulk_sql(queries, batch_size=1000):
+    """Execute multiple SQL queries in batches with transaction management."""
+    if not engine or not text:
+        raise RuntimeError("Database engine not initialized")
+
     try:
-        # engine.begin() will commit if successful, rollback if error
-        
+        # Process queries in batches
         for i in range(0, len(queries), batch_size):
             batch = queries[i:i + batch_size]
 
-            for command in batch:
-                try:
-                    engine.connect().execute(text(command))
-                except Exception as e:
-                    logging.error(f"Error executing command: {command}")
-                    logging.error(e)
-                    raise e
+            # Use context manager for each batch
+            with engine.begin() as conn:
+                for command in batch:
+                    try:
+                        conn.execute(text(command))
+                    except Exception as e:
+                        logging.error(f"Error executing command: {command}")
+                        logging.error(e)
+                        raise e
 
         logging.info("########################### DONE BULK PROCESSING ################")
 
@@ -306,13 +370,17 @@ def column_exists(schema, table_name,column_name):
             return False
         
 def run_query_and_return_df(query) -> pd.DataFrame:
+    """Execute query and return results as pandas DataFrame."""
+    if not engine or not text:
+        raise RuntimeError("Database engine not initialized")
+
     try:
         if not isinstance(query, str):
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
         # Use context manager for connection
         with engine.connect() as conn:
-            df = pd.read_sql_query(text(query), conn)     
+            df = pd.read_sql_query(text(query), conn)
         return df
     except Exception as ex:
         logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")
@@ -321,6 +389,10 @@ def run_query_and_return_df(query) -> pd.DataFrame:
 
 
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
+    """Generate and execute UPSERT queries with automatic table/column creation."""
+    if not engine or not sql or not PSYCOPG2_AVAILABLE:
+        raise RuntimeError("Database engine and psycopg2 not initialized")
+
     if df.empty:
         return
 
@@ -328,7 +400,7 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
     try:
         # use engine.begin() for automatic commit/rollback
-        with engine.begin() as conn:
+        with engine.begin() as conn:  # type: ignore
             raw_conn = conn.connection  # underlying psycopg2 connection
             cur = raw_conn.cursor()
 
@@ -363,8 +435,8 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
             # Step 2: Ensure all columns exist
             cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
+                SELECT column_name
+                FROM information_schema.columns
                 WHERE table_schema = %s AND table_name = %s
             """, (schema, table_name))
             existing_cols = {row[0] for row in cur.fetchall()}
@@ -383,7 +455,14 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
             # Step 3: Generate and execute UPSERTs
             for _, row in df.iterrows():
                 columns = list(row.index)
-                values = [row[col] if pd.notnull(row[col]) else None for col in columns]
+                values = []
+                for col in columns:
+                    val = row[col]
+                    # Use explicit scalar check to avoid Series[bool] type issues
+                    if val is None or val is pd.NA or (isinstance(val, float) and np.isnan(val)):
+                        values.append(None)
+                    else:
+                        values.append(val)
 
                 update_cols = [
                     col for col in columns
@@ -415,44 +494,99 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
         raise
 
 
-def generateAndRunUpdateQuery(table:str,df:pd.DataFrame):
+def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
+    """Optimized bulk update using PostgreSQL UPDATE FROM VALUES syntax."""
     try:
-        if(table is not None and df is not None and not df.empty):
+        if table is None or df is None or df.empty:
+            return
 
-            updates = []
-            column_types = {}
+        # OPTIMIZATION 1: Batch fetch all column types in a single query
+        column_types = {}
+        if not df.columns.empty:
+            columns_list = "','".join(df.columns)
+            batch_type_query = f"""
+                SELECT column_name, data_type
+                FROM information_schema.columns
+                WHERE table_schema = 'derived'
+                AND table_name = 'joined_admissions_discharges'
+                AND column_name IN ('{columns_list}')
+            """
+            results = inject_sql_with_return(batch_type_query)
+            column_types = {row[0]: row[1] for row in results} if results else {}
+
+        # Add 'unknown' for columns not found in table
+        for col in df.columns:
+            if col not in column_types:
+                column_types[col] = 'unknown'
+
+        # OPTIMIZATION 2: Use PostgreSQL UPDATE...FROM VALUES for bulk updates
+        # This is much faster than individual UPDATE statements per row
+
+        # Build the values for the UPDATE...FROM VALUES clause
+        values_rows = []
+        for _, row in df.iterrows():
+            row_values = []
+            # Always include WHERE clause columns first
+            uid_val = escape_special_characters(str(row['uid']))
+            facility_val = escape_special_characters(str(row['facility']))
+            unique_key_val = escape_special_characters(str(row['unique_key']))
+
+            row_values.append(f"'{uid_val}'")
+            row_values.append(f"'{facility_val}'")
+            row_values.append(f"'{unique_key_val}'")
+
+            # Add update columns
             for col in df.columns:
-                try:
-                    result = get_table_column_type('joined_admissions_discharges', 'derived', col)
-                    column_types[col] = result[0][0] if result else 'unknown'
-                except (IndexError, TypeError):
-                    column_types[col] = 'unknown'             
-        
-            # Generate UPDATE queries for each row
-            update_queries = []
-            for _, row in df.iterrows():
-                updates = []
-                for col in df.columns:
-                    col_type = column_types[col]
-                    value = row[col]
-                    formatted = format_value(col, value, col_type)
-                    if formatted is not None:
-                        updates.append(formatted)
-                
-                # Join the updates into a single SET clause
-                set_clause = ', '.join(updates)
-                
-                # Add the WHERE condition
-                where_condition = f"WHERE uid = '{row['uid']}' AND facility = '{row['facility']}' AND \"unique_key\" = '{row['unique_key']}'"
-                
-                # Construct the full UPDATE query
-                update_query = f"UPDATE {table} SET {set_clause} {where_condition};;"
-                update_queries.append(update_query)  
-            inject_bulk_sql(update_queries)
+                if col in ['uid', 'facility', 'unique_key']:
+                    continue
+
+                val = row[col]
+                col_type = column_types.get(col, 'unknown')
+
+                # Format value based on type
+                if pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '<NA>', ''}:
+                    row_values.append("NULL")
+                elif 'timestamp' in col_type.lower() or 'date' in col_type.lower():
+                    if isinstance(val, (datetime, pd.Timestamp)):
+                        row_values.append(f"'{val.strftime('%Y-%m-%d %H:%M:%S')}'")
+                    else:
+                        row_values.append("NULL")
+                elif col_type == 'text' or col_type == 'unknown':
+                    row_values.append(f"'{escape_special_characters(str(val))}'")
+                else:
+                    row_values.append(str(val))
+
+            values_rows.append(f"({', '.join(row_values)})")
+
+        if not values_rows:
+            return
+
+        # Build SET clause for all columns except WHERE clause columns
+        update_cols = [col for col in df.columns if col not in ['uid', 'facility', 'unique_key']]
+        set_clauses = [f'"{col}" = v."{col}"' for col in update_cols]
+
+        # Build column list for VALUES clause
+        value_columns = ['uid', 'facility', 'unique_key'] + update_cols
+        columns_str = ', '.join([f'"{col}"' for col in value_columns])
+
+        # Construct the bulk UPDATE query
+        values_str = ',\n'.join(values_rows)
+        update_query = f"""
+            UPDATE {table} AS t
+            SET {', '.join(set_clauses)}
+            FROM (VALUES
+                {values_str}
+            ) AS v({columns_str})
+            WHERE t.uid = v.uid
+            AND t.facility = v.facility
+            AND t."unique_key" = v."unique_key";;
+        """
+
+        inject_sql(update_query, f"BULK UPDATE {table}")
+        logging.info(f"Successfully bulk updated {len(values_rows)} rows in {table}")
 
     except Exception as ex:
-        logging.error(
-            "!!! An error occured whilest JOINING DATA THAT WAS UNJOINED ")
+        logging.error("!!! An error occurred whilst JOINING DATA THAT WAS UNJOINED")
         logging.error(formatError(ex))
 
 def is_date_prefix(s):
@@ -473,64 +607,75 @@ def is_date_prefix(s):
     return False
 
 def generate_postgres_insert(df, schema, table_name):
+    """Optimized bulk insert with vectorized operations where possible."""
     # Ensure we only keep "real" columns (skip weird 1-char column names)
-    df = df[[col for col in df.columns if len(col) > 1]]
+    df = df[[col for col in df.columns if len(col) > 1]].copy()
     if 'transformed' not in df.columns:
-        df['transformed']=False
+        df['transformed'] = False
 
-    values_list = []
-    for _, row in df.iterrows():
-        # Skip invalid rows (no uid or unique_key)
-        if 'uid' not in row or pd.isna(row['uid']) or str(row['uid']).strip().lower() in {'null', 'nan', 'nat', '<na>', ''}:
-            continue
-        if 'unique_key' not in row or pd.isna(row['unique_key']) or str(row['unique_key']).strip().lower() in {'null', 'nan', 'nat', '<na>', ''}:
-            continue
+    # OPTIMIZATION 1: Vectorized filtering of invalid rows
+    # Filter out rows with invalid uid or unique_key
+    if 'uid' in df.columns:
+        df = df[df['uid'].notna()]
+        df = df[~df['uid'].astype(str).str.strip().str.lower().isin(['null', 'nan', 'nat', '<na>', ''])]
+
+    if 'unique_key' in df.columns:
+        df = df[df['unique_key'].notna()]
+        df = df[~df['unique_key'].astype(str).str.strip().str.lower().isin(['null', 'nan', 'nat', '<na>', ''])]
+
+    if df.empty:
+        return
+
+    # OPTIMIZATION 2: Process values more efficiently
+    # Prepare columns list (filter out single-char column names)
+    valid_columns = [col for col in df.columns if len(str(col)) > 1]
+    columns_str = ', '.join([f'"{col}"' for col in valid_columns])
+
+    # Build values rows
+    values_rows = []
+    for idx in df.index:
         row_values = []
-        row_columns = []
-        for key, val in row.items():
-            if len(str(key)) <= 1:  
-                continue  # skip junk columns
-
-            row_columns.append(f'"{key}"')  # keep aligned column name
+        for col in valid_columns:
+            val = df.at[idx, col]
 
             # NULL handling
-            if str(val) in {'NaT', 'None', 'nan', '', '<NA>'}:
+            if pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '', '<NA>'}:
                 row_values.append("NULL")
                 continue
 
             # Handle specific types
-            if key == 'unique_key':
+            if col == 'unique_key':
                 row_values.append(f"'{str(val)}'")
             elif isinstance(val, (list, dict)):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
-                converted = f"'{clean_datetime_string(val)}'"
+                converted = f"'{clean_datetime_string(str(val))}'"
                 row_values.append("NULL" if converted.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted)
-            elif (is_date_prefix(str(val)) and key != 'unique_key'):
-                converted_date_like = f"'{clean_datetime_string(val)}'".replace('.', '')
+            elif is_date_prefix(str(val)) and col != 'unique_key':
+                converted_date_like = f"'{clean_datetime_string(str(val))}'"
                 row_values.append("NULL" if converted_date_like.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted_date_like)
             elif isinstance(val, str):
                 row_values.append(f"'{escape_special_characters(val)}'")
             else:
                 row_values.append("NULL" if str(val) in {'NaT', 'None', 'nan', '', '<NA>'} else str(val))
-        if row_columns and row_values:
-            values_list.append((row_columns, row_values))
-    if values_list:
-        # All rows may not have exactly the same column set (in case of skipping), 
-        # so insert them one batch per unique column set
-        inserts_by_columns = {}
-        for cols, vals in values_list:
-            col_key = tuple(cols)
-            if col_key not in inserts_by_columns:
-                inserts_by_columns[col_key] = []
-            inserts_by_columns[col_key].append(f"({','.join(vals)})")
 
-        for col_set, rows in inserts_by_columns.items():
-            columns = ', '.join(col_set)
-            values = ',\n'.join(rows)
-            insert_query = f'INSERT INTO {schema}."{table_name}" ({columns}) VALUES\n{values};;'
-            inject_sql(insert_query, f"INSERTING INTO {table_name}")
+        if row_values:
+            values_rows.append(f"({', '.join(row_values)})")
+
+    if not values_rows:
+        return
+
+    # OPTIMIZATION 3: Use batch inserts for very large datasets
+    # Split into batches of 1000 rows to avoid query size limits
+    batch_size = 1000
+    for i in range(0, len(values_rows), batch_size):
+        batch = values_rows[i:i + batch_size]
+        values_str = ',\n'.join(batch)
+        insert_query = f'INSERT INTO {schema}."{table_name}" ({columns_str}) VALUES\n{values_str};;'
+        inject_sql(insert_query, f"INSERTING BATCH {i//batch_size + 1} INTO {table_name}")
+
+    logging.info(f"Successfully inserted {len(values_rows)} rows into {schema}.{table_name}")
 
 
 def clean_datetime_string(s:str):
@@ -572,7 +717,7 @@ def format_value(col, value, col_type):
                 clean_value = value.strip().rstrip(",")  # Remove trailing commas
 
                 try:
-                    dt = pd.to_datetime(clean_value, errors='raise', infer_datetime_format=True)
+                    dt = pd.to_datetime(clean_value, errors='raise')
                     return f"\"{col}\" = '{dt.strftime('%Y-%m-%d %H:%M:%S')}'"
                 except ValueError:
                     timestamp_pattern = re.compile(
@@ -607,11 +752,11 @@ def format_value(col, value, col_type):
     elif 'date' in col_type_lower:
         try:
             if isinstance(value, (date, pd.Timestamp)):
-                return f"\"{col}\" = '{value.replace('.','').strftime('%Y-%m-%d')}'"
+                return f"\"{col}\" = '{value.strftime('%Y-%m-%d')}'"
             elif isinstance(value, str):
                 try:
-                    dt = pd.to_datetime(value, errors='raise',format='%Y-%m-%d').tz_localize(None)
-                    return f"\"{col}\" = '{dt.replace('.','').strftime('%Y-%m-%d')}'"
+                    dt = pd.to_datetime(value, errors='raise', format='%Y-%m-%d').tz_localize(None)
+                    return f"\"{col}\" = '{dt.strftime('%Y-%m-%d')}'"
                 except:
                     clean_value = value.split('T')[0].strip()
                     if re.match(r'^\d{4}-\d{2}-\d{2}$', clean_value):
@@ -706,8 +851,8 @@ def reorder_dataframe_columns(df:pd.DataFrame, script:str):
         # Check if column matches any base in desired_order (case-insensitive)
         col_lower = col.lower()
         match_found = any(
-            re.match(f"^{base.lower()}(\.|$)", col_lower)
-            for base in desired_order
+            re.match(rf"^{base.lower()}(\.|$)", col_lower)
+            for base in desired_order or []
         )
         
         if match_found:
@@ -718,10 +863,10 @@ def reorder_dataframe_columns(df:pd.DataFrame, script:str):
     # Sort matched columns based on desired_order priority
     def get_sort_key(col_name):
         col_lower = col_name.lower()
-        for i, base in enumerate(desired_order):
-            if re.match(f"^{base.lower()}(\.|$)", col_lower):
+        for i, base in enumerate(desired_order or []):
+            if re.match(rf"^{base.lower()}(\.|$)", col_lower):
                 return (i, col_name)  # Sort first by order priority, then by name
-        return (len(desired_order), col_name)  # Shouldn't happen for matched cols
+        return (len(desired_order or []), col_name)  # Shouldn't happen for matched cols
     
     ordered_cols_sorted = sorted(ordered_cols, key=get_sort_key)
     
@@ -773,19 +918,30 @@ def generate_label_fix_updates(filtered_records, table_name:str):
 
     return sql_batches
 
-def run_bulky_query(table:str,filtered_records=None):
- # your connection
-    if filtered_records is None: 
-        pass
-    else:
-        conn = engine.raw_connection()
-        cur = conn.cursor()
+def run_bulky_query(table: str, filtered_records=None):
+    """Execute bulk update queries using execute_values for performance."""
+    if not engine or not execute_values or not PSYCOPG2_AVAILABLE:
+        raise RuntimeError("Database engine and psycopg2 not initialized")
 
-        sql_batches = generate_label_fix_updates(filtered_records, table_name=table)
+    if filtered_records is None:
+        return
 
-        for sql, values in sql_batches:
-            execute_values(cur, sql, values)
-        conn.commit()
+    try:
+        with engine.connect() as conn:
+            raw_conn = conn.connection
+            cur = raw_conn.cursor()
+
+            sql_batches = generate_label_fix_updates(filtered_records, table_name=table)
+
+            for sql_query, values in sql_batches:
+                execute_values(cur, sql_query, values)
+
+            raw_conn.commit()
+            cur.close()
+
+    except Exception as ex:
+        logging.error(f"Error in run_bulky_query for table '{table}': {ex}")
+        raise
     
 
 def columns_order (script: str):
