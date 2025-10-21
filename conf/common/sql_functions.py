@@ -14,11 +14,13 @@ from conf.common.format_error import formatError
 from .config import config
 
 # Import handling with proper type checking
+from typing import Optional
+
 if TYPE_CHECKING:
-    from sqlalchemy import Engine  # type: ignore  # noqa: F401
-    from sqlalchemy.engine import Connection  # type: ignore  # noqa: F401
-    from psycopg2 import sql as psycopg2_sql  # type: ignore  # noqa: F401
-    from psycopg2.extras import execute_values as psycopg2_execute_values  # type: ignore  # noqa: F401
+    from sqlalchemy.engine import Engine
+    from sqlalchemy.engine import Connection
+    from psycopg2 import sql as psycopg2_sql
+    from psycopg2.extras import execute_values as psycopg2_execute_values
 
 try:
     from sqlalchemy import create_engine, text
@@ -48,6 +50,11 @@ params["host"] + ':' + '5432' + '/' + params["database"]
 con_string = f'''postgresql://{params["user"]}:{params["password"]}@{params["host"]}:5432/{params["database"]}'''
 
 # Create SQLAlchemy engine with connection pooling
+if TYPE_CHECKING:
+    engine: Optional['Engine'] = None
+else:
+    engine = None
+
 if SQLALCHEMY_AVAILABLE and create_engine:
     engine = create_engine(
         con,
@@ -56,8 +63,6 @@ if SQLALCHEMY_AVAILABLE and create_engine:
         pool_timeout=30,    # Maximum number of seconds to wait for a connection to become available
         pool_recycle=1800   # Number of seconds a connection can persist before being recycled
     )
-else:
-    engine = None  # type: ignore
 #Useful functions to inject sql queries
 #Inject SQL Procedures
 QUERY_LOG_PATH="logs/queries.log"
@@ -69,16 +74,16 @@ def inject_sql_procedure(sql_script, file_name):
         raise RuntimeError("Database engine not initialized")
 
     # Get raw psycopg2 connection directly from pool
-    raw_conn = engine.connect()
+    raw_conn = engine.raw_connection()  # type: ignore[union-attr]
     try:
-        cur = raw_conn.cursor()
+        cur = raw_conn.cursor()  # type: ignore[union-attr]
         try:
             cur.execute(sql_script)
-            raw_conn.commit()
+            raw_conn.commit()  # type: ignore[union-attr]
             query_logger.info(f"::DEDUPLICATING::")
             query_logger.info(f"DEDUP-{sql_script}")
         except Exception as e:
-            raw_conn.rollback()
+            raw_conn.rollback()  # type: ignore[union-attr]
             logging.error(e)
             logging.error('Something went wrong with the SQL file')
             logging.error(sql_script)
@@ -86,7 +91,7 @@ def inject_sql_procedure(sql_script, file_name):
         finally:
             cur.close()
     finally:
-        raw_conn.close()
+        raw_conn.close()  # type: ignore[union-attr]
     logging.info('... {0} has successfully run'.format(file_name))
 
 def insert_session(sess):
@@ -101,9 +106,9 @@ def insert_session(sess):
     scriptId = sess.get("script", {}).get("id")
 
     # Get raw psycopg2 connection for parameterized query
-    raw_conn = engine.raw_connection()
+    raw_conn = engine.raw_connection()  # type: ignore[union-attr]
     try:
-        cur = raw_conn.cursor()
+        cur = raw_conn.cursor()  # type: ignore[union-attr]
         try:
             # Parameterized query — safe for any data
             insertion_query = """
@@ -111,14 +116,14 @@ def insert_session(sess):
                 VALUES (%s, %s, %s, %s)
             """
             cur.execute(insertion_query, (ingested_at, uid, scriptId, insertion_data))
-            raw_conn.commit()
+            raw_conn.commit()  # type: ignore[union-attr]
         except Exception:
-            raw_conn.rollback()
+            raw_conn.rollback()  # type: ignore[union-attr]
             raise
         finally:
             cur.close()
     finally:
-        raw_conn.close()
+        raw_conn.close()  # type: ignore[union-attr]
 
 def inject_sql(sql_script, file_name):
     """Execute SQL commands with automatic transaction management."""
@@ -132,7 +137,7 @@ def inject_sql(sql_script, file_name):
 
     try:
         # Use begin() for automatic transaction management with auto-commit/rollback
-        with engine.connect() as conn:
+        with engine.begin() as conn:  # type: ignore[union-attr]
             for command in sql_commands:
                 command = command.strip()
                 if not command:
@@ -261,9 +266,9 @@ def inject_sql_with_return(sql_script):
 
     try:
         # Use connect() for read operations - no transaction needed
-        with engine.connect() as conn:
+        with engine.connect() as conn:  # type: ignore[union-attr]
             result = conn.execute(text(sql_script))
-            data = list(result.fetchall())  # return list of tuples
+            data = list(result.fetchall())  #  type: ignore[union-attr]
             return data
 
     except Exception as e:
@@ -283,7 +288,7 @@ def inject_bulk_sql(queries, batch_size=1000):
             batch = queries[i:i + batch_size]
 
             # Use begin() for automatic transaction commit/rollback per batch
-            with engine.begin() as conn:
+            with engine.begin() as conn:  # type: ignore[union-attr]
                 for command in batch:
                     try:
                         conn.execute(text(command))
@@ -386,7 +391,7 @@ def run_query_and_return_df(query) -> pd.DataFrame:
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
         # Use connect() for read operations
-        with engine.connect() as conn:
+        with engine.connect() as conn:  # type: ignore[union-attr]
             df = pd.read_sql_query(text(query), conn)
         return df
     except Exception as ex:
@@ -406,9 +411,9 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
     schema = 'derived'
 
     # Get raw psycopg2 connection for complex operations with psycopg2.sql
-    raw_conn = engine.raw_connection()
+    raw_conn = engine.raw_connection()  # type: ignore[union-attr]
     try:
-        cur = raw_conn.cursor()
+        cur = raw_conn.cursor()  # type: ignore[union-attr]
         try:
             # Step 1: Check if table exists
             cur.execute(
@@ -493,9 +498,9 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
                 cur.execute(insert_query, values)
 
-            raw_conn.commit()
+            raw_conn.commit()  # type: ignore[union-attr]
         except Exception:
-            raw_conn.rollback()
+            raw_conn.rollback()  # type: ignore[union-attr]
             raise
         finally:
             cur.close()
@@ -503,7 +508,7 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
         logging.error(f"Error upserting into '{schema}.{table_name}': {ex}")
         raise
     finally:
-        raw_conn.close()
+        raw_conn.close()  # type: ignore[union-attr]
 
 
 def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
@@ -940,18 +945,18 @@ def run_bulky_query(table: str, filtered_records=None):
         return
 
     # Get raw psycopg2 connection for execute_values
-    raw_conn = engine.raw_connection()
+    raw_conn = engine.raw_connection()  # type: ignore[union-attr]
     try:
-        cur = raw_conn.cursor()
+        cur = raw_conn.cursor()  # type: ignore[union-attr]
         try:
             sql_batches = generate_label_fix_updates(filtered_records, table_name=table)
 
             for sql_query, values in sql_batches:
                 execute_values(cur, sql_query, values)
 
-            raw_conn.commit()
+            raw_conn.commit()  # type: ignore[union-attr]
         except Exception:
-            raw_conn.rollback()
+            raw_conn.rollback()  # type: ignore[union-attr]
             raise
         finally:
             cur.close()
@@ -959,7 +964,7 @@ def run_bulky_query(table: str, filtered_records=None):
         logging.error(f"Error in run_bulky_query for table '{table}': {ex}")
         raise
     finally:
-        raw_conn.close()
+        raw_conn.close()  # type: ignore[union-attr]
     
 
 def columns_order (script: str):
