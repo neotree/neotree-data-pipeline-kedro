@@ -1,4 +1,4 @@
-from kedro.pipeline import node
+from kedro.pipeline.node import node
 from .nodes_grouped.data_impotation_nodes.import_from_raw_json import import_json_files
 from .nodes_grouped.step_1_nodes.deduplicate_data import deduplicate_data
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data

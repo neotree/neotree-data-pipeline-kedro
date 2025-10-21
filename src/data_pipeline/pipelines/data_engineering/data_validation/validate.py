@@ -183,14 +183,39 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         logger.error(err_msg)
         errors.append(err_msg)
 
+    # ============================================================================
+    # 2. DROP KEYWORDS VALIDATION (SENSITIVE/UNWANTED COLUMNS)
+    # ============================================================================
+    logger.info(f"\n{'='*80}")
+    logger.info("2. SENSITIVE/UNWANTED COLUMN NAMES CHECK")
+    logger.info("="*80)
+
+    drop_keywords = ['surname', 'firstname', 'dobtob', 'column_name', 'mothcell',
+                     'dob.value', 'dob.label', 'kinaddress', 'kincell', 'kinname']
+
+    found_sensitive_columns = []
+    for col in df.columns:
+        col_lower = col.lower()
+        if col_lower in drop_keywords:
+            found_sensitive_columns.append(col)
+
+    if found_sensitive_columns:
+        logger.error(f"❌ CRITICAL WARNING: Found {len(found_sensitive_columns)} column(s) with sensitive/unwanted names!")
+        logger.error(f"   These columns should be dropped from the dataset:")
+        for col in found_sensitive_columns:
+            logger.error(f"   - {col}")
+        warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
+    else:
+        logger.info("✓ No sensitive/unwanted column names detected")
+
     # Create field lookup dictionary
     field_info = {f['key']: f for f in schema}
 
     # ============================================================================
-    # 2. VALIDATE REQUIRED FIELDS (optional=false)
+    # 3. VALIDATE REQUIRED FIELDS (optional=false)
     # ============================================================================
     logger.info(f"\n{'='*80}")
-    logger.info("2. REQUIRED FIELD VALIDATION")
+    logger.info("3. REQUIRED FIELD VALIDATION")
     logger.info("="*80)
 
     required_fields_checked = 0
@@ -232,10 +257,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     logger.info(f"\nRequired fields summary: {required_fields_checked} checked, {required_field_errors} with errors")
 
     # ============================================================================
-    # 3. VALIDATE VALUE RANGES (minValue, maxValue)
+    # 4. VALIDATE VALUE RANGES (minValue, maxValue)
     # ============================================================================
     logger.info(f"\n{'='*80}")
-    logger.info("3. VALUE RANGE VALIDATION")
+    logger.info("4. VALUE RANGE VALIDATION")
     logger.info("="*80)
 
     range_checks_performed = 0
@@ -291,10 +316,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     logger.info(f"\nRange validation summary: {range_checks_performed} fields checked, {range_violations} with violations")
 
     # ============================================================================
-    # 4. DATA TYPE VALIDATION
+    # 5. DATA TYPE VALIDATION
     # ============================================================================
     logger.info(f"\n{'='*80}")
-    logger.info("4. DATA TYPE VALIDATION")
+    logger.info("5. DATA TYPE VALIDATION")
     logger.info("="*80)
 
     type_checks_performed = 0
@@ -394,14 +419,14 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     logger.info(f"\nData type validation summary: {type_checks_performed} fields checked, {type_errors} with errors")
 
     # ============================================================================
-    # 5. DATA QUALITY CHECKS
+    # 6. DATA QUALITY CHECKS
     # ============================================================================
     logger.info(f"\n{'='*80}")
-    logger.info("5. COMPREHENSIVE DATA QUALITY CHECKS")
+    logger.info("6. COMPREHENSIVE DATA QUALITY CHECKS")
     logger.info("="*80)
 
-    # 5.1 Completeness Check
-    logger.info("\n5.1 Completeness Analysis:")
+    # 6.1 Completeness Check
+    logger.info("\n6.1 Completeness Analysis:")
     total_cells = df.shape[0] * df.shape[1]
     null_cells = df.isnull().sum().sum()
     completeness_pct = ((total_cells - null_cells) / total_cells) * 100
@@ -416,8 +441,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         for col, rate in high_null_cols.head(10).items():
             logger.warning(f"   - {col}: {rate:.1f}% NULL")
 
-    # 5.2 Consistency Checks
-    logger.info("\n5.2 Consistency Checks:")
+    # 6.2 Consistency Checks
+    logger.info("\n6.2 Consistency Checks:")
 
     # Check for inconsistent value-label pairs
     inconsistencies = 0
@@ -437,8 +462,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     else:
         logger.warning(f"   ⚠ Found inconsistencies in {inconsistencies} fields")
 
-    # 5.3 Outlier Detection (for numeric fields)
-    logger.info("\n5.3 Outlier Detection (Numeric Fields):")
+    # 6.3 Outlier Detection (for numeric fields)
+    logger.info("\n6.3 Outlier Detection (Numeric Fields):")
     outlier_fields = 0
 
     for value_col in [col for col in df.columns if col.endswith('.value')]:
@@ -478,8 +503,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     else:
         logger.info(f"   Found potential outliers in {outlier_fields} fields")
 
-    # 5.4 Referential Integrity (if applicable)
-    logger.info("\n5.4 Referential Integrity:")
+    # 6.4 Referential Integrity (if applicable)
+    logger.info("\n6.4 Referential Integrity:")
 
     # Check if UIDs exist across related tables (example check)
     if 'uid' in df.columns:
@@ -493,7 +518,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             logger.info(f"   Average records per UID: {avg_records_per_uid:.2f}")
 
     # ============================================================================
-    # 6. FINAL SUMMARY
+    # 7. FINAL SUMMARY
     # ============================================================================
     logger.info(f"\n{'='*80}")
     logger.info("VALIDATION SUMMARY")

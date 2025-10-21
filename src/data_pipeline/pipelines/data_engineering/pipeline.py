@@ -1,5 +1,5 @@
 
-from kedro.pipeline import Pipeline
+from kedro.pipeline.pipeline import Pipeline
 
 from .nodes import (deduplicate_data_node,
 tidy_data_node,

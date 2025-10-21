@@ -68,9 +68,9 @@ def inject_sql_procedure(sql_script, file_name):
     if not engine:
         raise RuntimeError("Database engine not initialized")
 
-    # Get underlying psycopg2 connection from SQLAlchemy
-    with engine.connect() as conn:
-        raw_conn = conn.connection
+    # Get raw psycopg2 connection directly from pool
+    raw_conn = engine.connect()
+    try:
         cur = raw_conn.cursor()
         try:
             cur.execute(sql_script)
@@ -78,12 +78,15 @@ def inject_sql_procedure(sql_script, file_name):
             query_logger.info(f"::DEDUPLICATING::")
             query_logger.info(f"DEDUP-{sql_script}")
         except Exception as e:
+            raw_conn.rollback()
             logging.error(e)
             logging.error('Something went wrong with the SQL file')
             logging.error(sql_script)
             sys.exit()
         finally:
             cur.close()
+    finally:
+        raw_conn.close()
     logging.info('... {0} has successfully run'.format(file_name))
 
 def insert_session(sess):
@@ -97,21 +100,25 @@ def insert_session(sess):
     uid = sess.get("uid")
     scriptId = sess.get("script", {}).get("id")
 
-    # Use context manager for connection
-    with engine.connect() as conn:
-        raw_conn = conn.connection
+    # Get raw psycopg2 connection for parameterized query
+    raw_conn = engine.raw_connection()
+    try:
         cur = raw_conn.cursor()
-
-        # Parameterized query — safe for any data
-        insertion_query = """
-            INSERT INTO public.sessions (ingested_at, uid, scriptid, data)
-            VALUES (%s, %s, %s, %s)
-        """
         try:
+            # Parameterized query — safe for any data
+            insertion_query = """
+                INSERT INTO public.sessions (ingested_at, uid, scriptid, data)
+                VALUES (%s, %s, %s, %s)
+            """
             cur.execute(insertion_query, (ingested_at, uid, scriptId, insertion_data))
             raw_conn.commit()
+        except Exception:
+            raw_conn.rollback()
+            raise
         finally:
             cur.close()
+    finally:
+        raw_conn.close()
 
 def inject_sql(sql_script, file_name):
     """Execute SQL commands with automatic transaction management."""
@@ -124,8 +131,8 @@ def inject_sql(sql_script, file_name):
     sql_commands = str(sql_script).split(';;')
 
     try:
-        # Use context manager for connection
-        with engine.begin() as conn:  # type: ignore
+        # Use begin() for automatic transaction management with auto-commit/rollback
+        with engine.connect() as conn:
             for command in sql_commands:
                 command = command.strip()
                 if not command:
@@ -253,8 +260,8 @@ def inject_sql_with_return(sql_script):
         return []
 
     try:
-        # Use context manager for connection
-        with engine.connect() as conn:  # type: ignore
+        # Use connect() for read operations - no transaction needed
+        with engine.connect() as conn:
             result = conn.execute(text(sql_script))
             data = list(result.fetchall())  # return list of tuples
             return data
@@ -275,7 +282,7 @@ def inject_bulk_sql(queries, batch_size=1000):
         for i in range(0, len(queries), batch_size):
             batch = queries[i:i + batch_size]
 
-            # Use context manager for each batch
+            # Use begin() for automatic transaction commit/rollback per batch
             with engine.begin() as conn:
                 for command in batch:
                     try:
@@ -378,7 +385,7 @@ def run_query_and_return_df(query) -> pd.DataFrame:
         if not isinstance(query, str):
             logging.warning(f"Query is of type {type(query)}, converting to string")
             query = str(query)
-        # Use context manager for connection
+        # Use connect() for read operations
         with engine.connect() as conn:
             df = pd.read_sql_query(text(query), conn)
         return df
@@ -398,12 +405,11 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
     schema = 'derived'
 
+    # Get raw psycopg2 connection for complex operations with psycopg2.sql
+    raw_conn = engine.raw_connection()
     try:
-        # use engine.begin() for automatic commit/rollback
-        with engine.begin() as conn:  # type: ignore
-            raw_conn = conn.connection  # underlying psycopg2 connection
-            cur = raw_conn.cursor()
-
+        cur = raw_conn.cursor()
+        try:
             # Step 1: Check if table exists
             cur.execute(
                 sql.SQL("SELECT to_regclass(%s)"),
@@ -487,11 +493,17 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
                 cur.execute(insert_query, values)
 
-            cur.close()  # safe to close because conn context manages commit
-
+            raw_conn.commit()
+        except Exception:
+            raw_conn.rollback()
+            raise
+        finally:
+            cur.close()
     except Exception as ex:
         logging.error(f"Error upserting into '{schema}.{table_name}': {ex}")
         raise
+    finally:
+        raw_conn.close()
 
 
 def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
@@ -737,7 +749,6 @@ def format_value(col, value, col_type):
                         if '.' in clean_value:
                             clean_value = clean_value.split('.')[0]
                         clean_value = clean_value.replace('T', ' ')
-                        logging.error(f"I BEEN REDEEMED::::::{clean_value}")
                         return f"\"{col}\" = '{clean_value}'"
                     logging.error(f"I REDEMPTION FAILED I DON'T MATCH::::::{value}")
                     return f"\"{col}\" = NULL"
@@ -774,7 +785,8 @@ def format_value(col, value, col_type):
     
 def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
-    drop_keywords=['surname','firstname','dobtob','column_name']
+    drop_keywords=['surname','firstname','dobtob','column_name','mothcell','dob.value',"dob.label","kinaddress","kincell","kinname"]
+
     try:
         if table_exists(schema,table_name) is False:
             dtype_map = {
@@ -807,6 +819,7 @@ def generate_create_insert_sql(df,schema, table_name):
             ]
         df = df.drop(columns=columns_to_drop)
         df['transformed'] = False  
+
         generate_postgres_insert(df,schema,table_name)
     except Exception as ex:
        logging.info(f"FAILED TO INSERT {formatError(ex)}")
@@ -878,7 +891,7 @@ def reorder_dataframe_columns(df:pd.DataFrame, script:str):
 
 
 def generate_label_fix_updates(filtered_records, table_name:str):
-    if filtered_records is not None:
+    if filtered_records is None:
         return []
 
     groups = defaultdict(list)
@@ -926,22 +939,27 @@ def run_bulky_query(table: str, filtered_records=None):
     if filtered_records is None:
         return
 
+    # Get raw psycopg2 connection for execute_values
+    raw_conn = engine.raw_connection()
     try:
-        with engine.connect() as conn:
-            raw_conn = conn.connection
-            cur = raw_conn.cursor()
-
+        cur = raw_conn.cursor()
+        try:
             sql_batches = generate_label_fix_updates(filtered_records, table_name=table)
 
             for sql_query, values in sql_batches:
                 execute_values(cur, sql_query, values)
 
             raw_conn.commit()
+        except Exception:
+            raw_conn.rollback()
+            raise
+        finally:
             cur.close()
-
     except Exception as ex:
         logging.error(f"Error in run_bulky_query for table '{table}': {ex}")
         raise
+    finally:
+        raw_conn.close()
     
 
 def columns_order (script: str):

@@ -17,7 +17,7 @@ def create_maternal_completeness_summary():
         if mat_completeness_exists:
             maternal_completeness_count = table_data_count('derived','maternity_completeness')
 
-        if (maternal_completeness_count> 0):
+        if (maternal_completeness_count is not None and maternal_completeness_count> 0):
          
             sql_script = summary_maternal_completeness_query()
             inject_sql(sql_script, "create-summary-maternal-completeness")

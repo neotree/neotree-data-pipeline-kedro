@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from conf.base.catalog import params
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 
@@ -24,11 +23,11 @@ def create_columns(table: pd.DataFrame):
                   table['AdmittedFrom.value'].fillna("ER", inplace=True)
                   table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
 
-                  # float("nan") used to make sure nan's are set not a string "nan"
-                  table['EXTERNALSOURCE.label'] = np.where(table['AdmittedFrom.label'].isnull(), table['AdmittedFrom.label'].mask(
-                  pd.isnull, (table['ReferredFrom.label'].mask(pd.isnull, table['ReferredFrom2.label']))),None)
-                  table['EXTERNALSOURCE.value'] = np.where(table['AdmittedFrom.value'].isnull(), table['AdmittedFrom.value'].mask(
-                        pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), None)
+                  # Cascading fallback: AdmittedFrom -> ReferredFrom -> ReferredFrom2
+                  table['EXTERNALSOURCE.label'] = table['AdmittedFrom.label'].fillna(
+                        table['ReferredFrom.label']).fillna(table['ReferredFrom2.label'])
+                  table['EXTERNALSOURCE.value'] = table['AdmittedFrom.value'].fillna(
+                        table['ReferredFrom.value']).fillna(table['ReferredFrom2.value'])
 
             # order of statements matters
                   
