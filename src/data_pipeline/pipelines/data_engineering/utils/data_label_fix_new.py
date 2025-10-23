@@ -2,6 +2,7 @@
 from  conf.common.scripts import get_script
 import logging
 
+@DeprecationWarning
 def bulk_fix_data_labels(script_id):
     entries = get_script(script_id) 
     
@@ -37,7 +38,7 @@ def bulk_fix_data_labels(script_id):
             
     return commands
 
-        
+@DeprecationWarning
 def fix_data_label(key,value,script): 
     try: 
         script_json = get_script(script) 
@@ -60,7 +61,8 @@ def fix_data_label(key,value,script):
     except Exception as ex: 
         logging.error("**********"+str(key)+"-----"+str(value)+"+++++"+str(script))
         return "Undefined"
-        
+    
+@DeprecationWarning      
 def fix_data_value(key,label,script): 
     try:
         script_json = get_script(script)

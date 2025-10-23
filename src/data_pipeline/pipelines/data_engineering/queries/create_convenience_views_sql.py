@@ -8,7 +8,7 @@ def create_convinience_views_query():
             derived.joined_admissions_discharges."DateTimeAdmission.value"::TEXT like 'Unk%%'
             THEN NULL
             ELSE
-            derived.joined_admissions_discharges."DateTimeAdmission.value" 
+            derived.joined_admissions_discharges."DateTimeAdmission.value"::Date
             END AS "AdmissionDateTime",
             derived.joined_admissions_discharges."Readmission.label" AS "Readmitted", 
             derived.joined_admissions_discharges."AdmittedFrom.label" AS "admission_source",

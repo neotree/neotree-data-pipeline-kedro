@@ -1,3 +1,4 @@
+import pandas as pd
 from dateutil.parser import parse
 
 def is_date(value):
@@ -17,14 +18,15 @@ def is_date(value):
 
 def is_date_formatable(value):
     """
-    Return whether the string can formated into a date
-
+    Return whether the string can be formatted into a date
+    
     :param value: str, string to check for date
     """
-    if value is None:
-        return False;
-    else:
-        valid_dashed_date = str(value).count('-') >=2 and len(str(value))>10
-        valid_slashed_date = str(value).count('/') >=2 and len(str(value))>10
-        return valid_dashed_date or valid_slashed_date;
+    if pd.isna(value) or value is None or str(value).strip().lower() in ('none', 'null', ''):
+        return False
+    try:
+        parse(str(value))
+        return True
+    except (ValueError, TypeError, OverflowError):
+        return False
         

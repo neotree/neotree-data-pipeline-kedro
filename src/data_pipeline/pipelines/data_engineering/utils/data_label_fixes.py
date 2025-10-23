@@ -1,18 +1,52 @@
 ## DISCHARGES DATA
-from ast import Return
 import pandas as pd 
+from conf.common.sql_functions import column_exists,inject_sql,get_table_column_type
+import logging
+import re
 
-def format_column_as_numeric(df,fields):
+def format_column_as_numeric(df, fields):
     for field in fields:
-        fld = f'{field}.value'
+        fld = f"{field}.value"
         if fld in df.columns:
-            df[fld] = pd.to_numeric(df[fld], errors='coerce') 
+            def extract_numeric(val):
+                if pd.isna(val):
+                    return None
+                # Convert to string
+                val_str = str(val).strip()
+                # Search for first number (int or float)
+                match = re.search(r'\d+(\.\d+)?', val_str)
+                return float(match.group(0)) if match else None
+            
+            df[fld] = df[fld].apply(extract_numeric)
+    return df
+
 
 def format_column_as_datetime(df,fields):
     for field in fields:
         fld = f'{field}.value'
         if fld in df.columns:
             df[fld] = pd.to_datetime(df[fld], errors='coerce') 
+
+    return df
+
+def convert_false_numbers_to_text(df: pd.DataFrame,schema,table) -> pd.DataFrame:
+    for column in df.columns: 
+        sql_query = None 
+        if pd.api.types.is_numeric_dtype(df[column]):
+            if df[column].apply(lambda x: not isinstance(x, (int, float))).any() :
+                df[column] = df[column].astype(str)
+                if column_exists(schema,table,column):
+                    sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN "{2}" TYPE TEXT;;'''.format(schema,table,column)
+
+        if pd.api.types.is_string_dtype(df[column]):
+            if column_exists(schema,table,column):
+                type = get_table_column_type(table,schema,column)[0][0]
+                if type!='text':
+                    sql_query = '''ALTER TABLE {0}.{1} ALTER COLUMN "{2}" TYPE TEXT;;'''.format(schema,table,column) 
+
+        if sql_query is not None:               
+            inject_sql(sql_query,'''...UPDATING COLUMN '{0}' of TABLE '{1}' '''.format(column,table))              
+    return df
             
 @DeprecationWarning
 def fix_neotree_oucome(value):

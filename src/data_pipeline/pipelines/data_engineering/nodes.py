@@ -1,4 +1,4 @@
-from kedro.pipeline import node
+from kedro.pipeline.node import node
 from .nodes_grouped.data_impotation_nodes.import_from_raw_json import import_json_files
 from .nodes_grouped.step_1_nodes.deduplicate_data import deduplicate_data
 from .nodes_grouped.step_2_nodes.tidy_data import tidy_data
@@ -12,6 +12,7 @@ from .nodes_grouped.step_4_nodes.join_tables import join_tables
 from .nodes_grouped.step_4_nodes.summary_counts import create_summary_counts
 from .nodes_grouped.step_4_nodes.summary_discharge_diagnosis import create_summary_diagnosis
 from .nodes_grouped.step_5_nodes.grant_privileges import grant_privileges
+from .nodes_grouped.step_6_nodes.data_clean_up import clean_data_for_research
 
 
 #A File That is used to create all the nodes that make up the data pipeline
@@ -85,6 +86,11 @@ create_summary_counts_node = node(
 grant_privileges_node = node(
     grant_privileges,inputs = "create_summary_counts_output", outputs = "grant_privileges_output"
 )
+# Create Clean Data Node and Pass Create Convinience Views Output
+clean_derived_data_node = node(
+    clean_data_for_research,inputs = "create_summary_counts_output", outputs = "clean_derived_data_output"
+)
+ 
  
 
 

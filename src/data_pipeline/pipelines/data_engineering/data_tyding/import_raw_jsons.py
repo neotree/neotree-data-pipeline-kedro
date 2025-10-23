@@ -3,7 +3,7 @@ from conf.base.catalog import params
 from pathlib import Path
 import json
 from datetime import datetime
-from conf.common.sql_functions import inject_sql_with_return,inject_sql
+from conf.common.sql_functions import inject_sql_with_return,insert_session
 
 def createAdmissionsAndDischargesFromRawData():
     data = formatRawData()
@@ -21,17 +21,10 @@ def createAdmissionsAndDischargesFromRawData():
             else:
                 distinct_sessions = data["sessions"]
                
-            for sess in distinct_sessions:
-                insertion_data = json.dumps(sess);
-                json_string = insertion_data.replace("'s","s")
-                
-                ingested_at = datetime.now()
-                scriptId = sess["script"]["id"]
-                uid = sess["uid"]
-                insertion_query = '''INSERT INTO public.sessions (ingested_at,uid, scriptid,data) VALUES('{0}','{1}','{2}','{3}');;'''.format(ingested_at,uid,scriptId,json_string)
-                inject_sql(insertion_query,"DATA INSERTION")
+            for sess in distinct_sessions:  
+                insert_session(sess)
     else:
-       logging.warn("Importing JSON Files Skipped Because No Data is Available In The specified Directory") 
+       logging.warning("Importing JSON Files Skipped Because No Data is Available In The specified Directory") 
             
 
 #Restructure All Data To Suit A Format That Is Easy To Read And Export To Dbase
@@ -40,6 +33,7 @@ def formatRawData():
     if(params is not None and params["mode"] is not None and params["mode"]=="import"):
         if 'files_dir' in params:
             files_dir = Path(params['files_dir'])
+        
             if files_dir.exists() and files_dir.is_dir():
                 formatedSessions = []
                 uids = []
@@ -209,13 +203,13 @@ def formatRawData():
                     potential_duplicates = checkDuplicateDatabaseRecord(uids);
                     return dict(sessions=formatedSessions,duplicates=potential_duplicates);        
                 else:
-                    logging.warn("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")
+                    logging.warning("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")
                     return None;  
             else:
-                logging.warn("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")   
+                logging.warning("Importing JSON Files Will Be Skipped Because the specified  'files_dir' in database.ini does not exist")   
             return None;
         else:
-            logging.warn("Importing JSON Files Will Be Skipped Because No 'files_dir' is set in database.ini")
+            logging.warning("Importing JSON Files Will Be Skipped Because No 'files_dir' is set in database.ini")
             return None;
     else:
         return None;
@@ -228,7 +222,7 @@ def checkDuplicateDatabaseRecord(uids):
         query = '''SELECT "uid" as "uid","data"->'script' as "script" from public.sessions where "uid" in ({}) '''.format(str(uids)[1:-1].replace("\"","\'"))
         possible_duplicates = inject_sql_with_return(query);
         for value in possible_duplicates:
-            value_dict = dict(uid=value["uid"],script=value["script"]);
+            value_dict = dict(uid=value[0],script=value[1]);
             pd_list.append(value_dict)
         return pd_list;
     

@@ -1,6 +1,6 @@
 from kedro.extras.datasets.pandas import (
     SQLQueryDataSet,SQLTableDataSet)
-from kedro.io import DataCatalog
+from kedro.io.data_catalog import DataCatalog
 from pathlib import Path
 from  conf.common.config import config
 from conf.common.hospital_config import hospital_conf
@@ -42,51 +42,52 @@ old_scripts = ['admissions','discharges','maternal_outcomes','maternals_dev','vi
 
 ##INITIALISE NEW SCRIPTS
 new_scripts = []
-
+generic_catalog = {}
 if hospital_scripts:
-
-      generic_catalog = {}
      
       #Remove Dev Data From Production Instance:
       #Take Everything (Applies To Dev And Stage Environments)
       additional_where = " "
       #Else Remove All Records That Were Created In App Mode Dev
       if(env=="prod"):
-         additional_where = "  and (\"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\')"
+         additional_where = "  and (((ingested_at <'2022-01-01' OR ingested_at is null) and (\"data\"->>\'app_mode\' is null OR \"data\"->>\'app_mode\'=\'production\')) OR ingested_at>='2022-01-01') "
          
       ###This Assumes One Script Id Per Script, Per Hospital
       processed_scripts = []
       processed_case =[]
       processed_script_names =[] 
+   
       for hospital in hospital_scripts:
-            ids = hospital_scripts[hospital]
-            if 'country' in ids.keys() and 'country' in params.keys():
-               if str(ids['country']).lower() == str(params['country']):
-                  for script in ids.keys():            
-                     if script!='name' and script!='country':
-                        script_id = ids[script]
-                        if script not in processed_script_names: 
-                           processed_scripts.append({script:[script_id]})
-                           script_case = f''', CASE WHEN scriptid='{script_id}' then '{hospital}'  '''
-                           processed_case.append({script:script_case})
-                           
-                           processed_script_names.append(script)
-                        else:
-                           ### APPEND MORE IDS OF THE SAME SCRIPT NAME
-                           for dic in processed_scripts:
-                              for key in dic.keys():
-                                 if(key==script):
-                                    existing_list =  dic[key]
-                                    existing_list.append(script_id)
-                                    dic[key] = existing_list
-                                    break
-                           ##### ADD TO THE CASE CONDITION
-                           for case in processed_case:
-                              for key in case.keys():
-                                 if(key==script):
-                                    existing_case =  case[key]
-                                    existing_case = existing_case+ f''' WHEN scriptid ='{script_id}' THEN '{hospital}' '''
-                                    case[key] = existing_case
+      
+         ids = hospital_scripts[hospital]
+         if 'country' in ids.keys() and 'country' in params.keys():
+            if str(ids['country']).lower() == str(params['country']).lower():
+                  for script in ids.keys():                
+                     if script != 'name' and script != 'country' and script!='allow_multiple':
+                        script_ids = str(ids[script]).split(',')  # Handle multiple script IDs
+                        for script_id in script_ids:
+                              script_case = f", CASE WHEN cs.scriptid='{script_id}' THEN '{hospital}'"
+                              script_id = script_id.strip()
+                              if not script_id:
+                                 continue
+
+                              if script not in processed_script_names: 
+                                 processed_scripts.append({script: [script_id]})
+                                 processed_case.append({script: script_case})
+                                 processed_script_names.append(script)
+                              else:
+                                 # Append to existing script ID list
+                                 for dic in processed_scripts:
+                                    if script in dic:
+                                          dic[script].append(script_id)
+                                          break
+                                 # Add to CASE condition
+                                 for case in processed_case:
+                                    if script in case:
+                                          case[script] += f" WHEN cs.scriptid='{script_id}' THEN '{hospital}'"
+                                          break
+  
+
                                     
       #########CLOSE CASE STATEMENTS
       for case in processed_case:
@@ -102,6 +103,7 @@ if hospital_scripts:
             
             if(type(myIds) is list):
                condition =''
+               script_case=''
                if len(myIds)==1:
                   script_id = myIds[0]
                   condition = f''' = '{script_id}' '''
@@ -118,11 +120,18 @@ if hospital_scripts:
                   case_object = [item for item in processed_case if script_name in item]
                   if case_object:
                      script_case = case_object[0][script_name]  
-                  read_query = read_deduplicated_data_query(script_case,condition,dedup_destination)
+                  read_query = read_deduplicated_data_query(script_case,condition,dedup_destination,script_name)
+                  
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
                                  credentials=dict(con=con),
-                                 save_args = dict(schema='derived',if_exists='replace')
+                                 save_args = dict(schema='derived',if_exists='append',chunksize=1000)
+                                 )
+                  if(env=="demo"):
+                     create_query = SQLTableDataSet(
+                                 table_name=script_name,
+                                 credentials=dict(con=con),
+                                 save_args = dict(schema='derived',if_exists='replace',chunksize=1000)
                                  )
                               #### ADD THE QUERIES TO THE GENERIC CATALOG
                   read_table = f'''read_{script_name}'''
@@ -149,8 +158,8 @@ read_old_smch_admissions = read_old_smch_admissions_query()
 read_old_smch_discharges = read_old_smch_discharges_query()
 read_old_smch_matched_data = read_old_smch_matched_view_query()
 read_new_smch_matched = read_new_smch_matched_query()
-derived_admissions = read_derived_data_query('admissions')
-derived_discharges = read_derived_data_query('discharges')
+derived_admissions = read_derived_data_query('admissions','joined_admissions_discharges')
+derived_discharges = read_derived_data_query('discharges','joined_admissions_discharges')
 
 #DATA CLEANUP QUERIES
 get_duplicate_maternal_data = get_duplicate_maternal_query()
@@ -158,7 +167,6 @@ get_discharges_tofix = get_discharges_tofix_query()
 get_maternal_outcome_to_fix = get_maternal_data_tofix_query()
 get_admissions_data_to_fix = get_admissions_data_tofix_query()
 get_baseline_data_to_fix = get_baseline_data_tofix_query()
-get_script_ids = get_script_ids_query()
 data_with_no_unique_keys = read_data_with_no_unique_key()
 
 #Create A Kedro Data Catalog from which we can easily get a Pandas DataFrame using catalog.load('name_of_dataframe')-
@@ -208,7 +216,7 @@ old_catalog =  {
             sql= read_old_smch_matched_data,
             credentials=dict(con=con)
          ),
-         "no_unique_keys_data":  SQLQueryDataSet(
+         "read_no_unique_keys_data":  SQLQueryDataSet(
             sql= data_with_no_unique_keys,
             credentials=dict(con=con)
          ),
@@ -217,7 +225,7 @@ old_catalog =  {
          "create_joined_admissions_discharges": SQLTableDataSet(
             table_name='joined_admissions_discharges',
             credentials=dict(con=con),
-            save_args = dict(schema='derived',if_exists='replace')
+            save_args = dict(schema='derived',if_exists='append')
          ),
 
          "create_derived_diagnoses": SQLTableDataSet(
@@ -261,10 +269,6 @@ old_catalog =  {
          ),
          "baselines_to_fix": SQLQueryDataSet(
             sql= get_baseline_data_to_fix,
-            credentials=dict(con=con)
-         ),
-         "script_ids": SQLQueryDataSet(
-            sql= get_script_ids,
             credentials=dict(con=con)
          )
         }

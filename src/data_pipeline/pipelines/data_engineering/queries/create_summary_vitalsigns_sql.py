@@ -1,7 +1,10 @@
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 #Query to create summary_vitalsigns table
 def summary_vital_signs_query():
-    return ''' DROP TABLE IF EXISTS derived.summary_vitalsigns;;
-            CREATE TABLE derived.summary_vitalsigns AS 
+    prefix =f''' DROP TABLE IF EXISTS derived.summary_vitalsigns;;
+            CREATE TABLE derived.summary_vitalsigns AS  '''
+  
+    return prefix+ f'''
             SELECT "derived"."vitalsigns"."uid" AS "NeoTreeID",
             derived.vitalsigns."facility" AS "facility",
             derived.vitalsigns."LengthOfStay.value" AS "LengthOfStayInDays",

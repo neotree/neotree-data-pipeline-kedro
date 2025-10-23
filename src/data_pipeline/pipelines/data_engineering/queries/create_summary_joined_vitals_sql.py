@@ -1,8 +1,11 @@
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+
 #Query to create summary day one vitals table
 def summary_joined_vitals_query():
-    return f'''
-                DROP TABLE IF EXISTS derived.summary_joined_vitals;;
-                    CREATE TABLE derived.summary_joined_vitals AS 
+    prefix = f''' DROP TABLE IF EXISTS derived.summary_joined_vitals;;
+                CREATE TABLE derived.summary_joined_vitals AS   '''
+    
+    return prefix+f'''
                     SELECT "derived"."summary_day1_vitals"."Facility Name" AS "Facility Name",
                     "derived"."summary_day1_vitals"."NeoTreeID" AS "NeoTreeID",
                     Date("derived"."summary_day1_vitals"."Date") AS "Date",

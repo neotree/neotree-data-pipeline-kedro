@@ -10,8 +10,15 @@ from data_pipeline.pipelines.data_engineering.queries.create_summary_discharge_d
 #Pass Join Table Output To Create Convenience View From Joined Tables
 def create_summary_diagnosis(join_tables_output):    
     try:
+
+        if env=='demo':
+            return dict(
+            status='Success',
+            message = "Skippable Task"
+            )
+        
         #Test If Previous Node Has Completed Successfully
-        if join_tables_output is not None:
+        elif join_tables_output is not None:
            
             sql_script = summary_discharge_diagnosis_query()
             inject_sql(sql_script, "create-summary-diagnosis")

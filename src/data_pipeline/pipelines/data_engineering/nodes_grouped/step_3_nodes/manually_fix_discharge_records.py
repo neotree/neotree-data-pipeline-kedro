@@ -11,11 +11,15 @@ from data_pipeline.pipelines.data_engineering.queries.discharges_manually_fix_re
 def manually_fix_discharges(tidy_data_output):
     try:
         #Test If Previous Node Has Completed Successfully
-        if tidy_data_output is not None:
-
+        if env=='demo':
+            return dict(
+            status='Success',
+            message = "Skippable Task"
+            )
+        
+        elif tidy_data_output is not None:
             sql_script = manually_fix_discharges_query()
             inject_sql(sql_script, "manually-fix-discharges")
-            #Add Return Value For Kedro Not To Throw Data Error
             return dict(
             status='Success',
             message = "Manual Fixing Of Discharges Complete"

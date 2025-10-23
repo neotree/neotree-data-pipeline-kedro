@@ -11,7 +11,13 @@ from data_pipeline.pipelines.data_engineering.queries.create_summary_counts_sql 
 def create_summary_counts(convinience_views_output):    
     try:
         #Test If Previous Node Has Completed Successfully
-        if convinience_views_output is not None:
+        if env=='demo':
+            return dict(
+            status='Success',
+            message = "Skippable Task"
+            )
+        
+        elif convinience_views_output is not None:
             sql_script = summary_counts_query();
             inject_sql(sql_script, "create-summary-counts")
             #Add Return Value For Kedro Not To Throw Data Error

@@ -15,9 +15,9 @@ def create_summary_admissions():
         if tble_exists:
                 admissions_count = table_data_count('derived','admissions')
 
-        if (admissions_count > 0):
+        if (admissions_count is not None and admissions_count > 0):
             summary_admissions_script = summary_admissions_query()
-
+            
             # Run  Summary Admissions Query
             inject_sql(summary_admissions_script, "create-summary-admissions")
         else:

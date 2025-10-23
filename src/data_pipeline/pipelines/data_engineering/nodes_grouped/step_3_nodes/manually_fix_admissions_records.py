@@ -1,9 +1,11 @@
 import logging
 import sys,os
 sys.path.append(os.getcwd())
-from conf.common.sql_functions import inject_sql
+from conf.common.sql_functions import inject_sql,run_bulky_query,run_query_and_return_df
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import read_label_cleanup_data
 from conf.common.format_error import formatError
 from data_pipeline.pipelines.data_engineering.queries.admissions_manually_fix_records_sql import manually_fix_admissions_query
+from data_pipeline.pipelines.data_engineering.utils.field_info import transform_matching_labels_for_update_queries
 from conf.base.catalog import cron_log_file,cron_time,env
 
 
@@ -11,18 +13,45 @@ from conf.base.catalog import cron_log_file,cron_time,env
 def manually_fix_admissions(tidy_data_output):
     try:
         #Test If Previous Node Has Completed Successfully
-        if tidy_data_output is not None:
-            sql_script = manually_fix_admissions_query()
-            inject_sql(sql_script, "manually-fix-admissions")
-            #Add Return Value For Kedro Not To Throw Data Error
+        if env=='demo':
             return dict(
             status='Success',
-            message = "Manual Fixing Of Admissions Complete"
+            message = "Skippable Task"
             )
+        
+        elif tidy_data_output is not None:
+            try:
+                #FIX OLD DATA 
+                admissions_fix_query = manually_fix_admissions_query()
+                inject_sql(admissions_fix_query,'admissions_fix')
+                current_scripts = ['admissions','discharges','maternal_outcomes'
+                                ,'daily_review','infections','neolab','vitalsigns'
+                                ,'maternity_completeness','baseline'
+                                ,'joined_admissions_discharges','twenty_8_day_follow_up','phc_admissions','phc_discharges']
+                for script in current_scripts:
+                    query = read_label_cleanup_data(script)
+                    if query is not None:
+                        df = run_query_and_return_df(query)
+                        if df is not None:
+                            transformed = transform_matching_labels_for_update_queries(df,script)
+                            if transformed is not None:
+                                inject_sql(f'ALTER TABLE derived.{script} ADD COLUMN IF NOT EXISTS transformed BOOLEAN DEFAULT FALSE;;','create transformed columns')
+                                run_bulky_query(script,transformed) 
+                                query=f'update derived.{script} set transformed=true;;'
+                                inject_sql(query,'set transformed')           
+            
+                return dict(
+                status='Success',
+                message = "Manual Fixing Of Admissions Complete"
+                )
+            except Exception as ex:
+                logging.error(f'LABELS FIX FAILED:: {formatError(ex)}')
         else:
             logging.error(
                 "Manual Fixing Of Admissions Did Not Execute To Completion")
             return None
+        # FIX LABELS
+        
 
     except Exception as e:
         logging.error(

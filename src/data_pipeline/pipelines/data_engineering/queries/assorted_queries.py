@@ -2,58 +2,71 @@ import re
 import logging
 import json
 from psycopg2 import sql
+from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from  conf.common.config import config
+from datetime import datetime
+
+params = config()
+env = params['env']
 
 # TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 
 def escape_special_characters(input_string): 
-    return str(input_string).replace("\\","\\\\").replace("'","''")
+    return str(input_string).replace("\\","\\\\").replace("'","")
 
 def deduplicate_neolab_query(neolab_where):
     return f'''
-            drop table if exists scratch.deduplicated_neolab cascade;;
-            create table scratch.deduplicated_neolab as 
-            (
-            with earliest_neolab as (
+            drop table if exists scratch.deduplicated_neolab cascade;
+
+        create table if not exists scratch.deduplicated_neolab as 
+        (
+        with earliest_neolab as (
             select
             scriptid,
             uid,
             extract(year from ingested_at) as year,
             extract(month from ingested_at) as month,
-            CASE WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
-            THEN "data"->'entries'::text->1->'values'->0->'value'::text->>0
-            ELSE "data"->'entries'->'DateBCT'->'values'->'value'::text->>0  END AS "DateBCT",
-            CASE WHEN "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null 
-            THEN "data"->'entries'::text->2->'values'->0->'value'::text->>0
-            ELSE "data"->'entries'->'DateBCR'->'values'->'value'::text->>0  END AS "DateBCR",
+            CASE 
+                WHEN "data"->'entries'->'DateBCT'->'values'->'value'::text->>0 is null 
+                OR "data"->'entries'->'DateBCR'->'values'->'value'::text->>0 is null
+                THEN NULL
+                ELSE LEFT(
+                COALESCE(
+                    "data"->'entries'->'DateBCT'->'values'->'value'::text->>0,
+                    "data"->'entries'::text->1->'values'->0->'value'::text->>0
+                ), 10
+                )
+            END AS date_key,
             max(id) as id
             from public.clean_sessions
-            where scriptid {neolab_where} -- only pull out neloab data
-            group by 1,2,3,4,5,6
-            )
-            select
+            where scriptid {neolab_where}
+            group by 1,2,3,4,5
+        )
+        select
             earliest_neolab.scriptid,
             earliest_neolab.uid,
             earliest_neolab.id,
             sessions.ingested_at,
             earliest_neolab.year,
             earliest_neolab.month,
-            earliest_neolab."DateBCT",
-            earliest_neolab."DateBCR",
+            earliest_neolab.date_key,
             sessions.unique_key,
-            data
-            from earliest_neolab join clean_sessions sessions
-            on earliest_neolab.id = sessions.id where  sessions.scriptid {neolab_where}
-            );; '''
+            sessions.data
+        from earliest_neolab 
+        join clean_sessions sessions on earliest_neolab.id = sessions.id 
+        where sessions.unique_key is not null 
+        and sessions.scriptid {neolab_where}
+        );; '''
 
 
 def deduplicate_data_query(condition, destination_table):
     if (destination_table == 'public.clean_sessions'):
         return ""
-
+    script_condition=condition
     if "maternity_completeness" in destination_table:
         # special case for malawi -> group on DateAdmission
         return f'''drop table if exists {destination_table} cascade;;
-            create table {destination_table} as 
+            create table if not exists {destination_table} as 
             (
             with earliest_record as (
             select
@@ -82,22 +95,175 @@ def deduplicate_data_query(condition, destination_table):
             on earliest_record.id = sessions.id where sessions.scriptid {condition}
             );;
             '''
+    elif 'daily_review' in destination_table or 'infections' in destination_table:
+        schema, table = destination_table.split('.')
+        exists = table_exists(schema, table)
+
+        if exists:
+            operation = f'''
+            INSERT INTO {schema}."{table}" (
+                scriptid,
+                uid,
+                id,
+                ingested_at,
+                completed_at,
+                data,
+                unique_key,
+                review_number
+            )'''
+            condition = script_condition + f''' AND NOT EXISTS (
+                SELECT 1 FROM {schema}."{table}" ds
+                WHERE cs.uid = ds.uid
+                 AND  CAST(cs.data->>'completed_at' AS date) = ds.completed_at          
+            
+            )'''
+
+            return f"""{operation}
+                (WITH filtered AS (
+                    SELECT
+                        cs.scriptid,
+                        cs.uid,
+                        cs.id,
+                        cs.ingested_at,
+                        CASE when cs.data->'entries'->'TodDate'->'values'->'value'::text->>0 is null
+                        THEN  CAST(cs.data->>'completed_at' AS date)
+                        ELSE CAST(cs.data->'entries'->'TodDate'->'values'->'value'::text->>0 as date)  
+                        END AS completed_date,
+                        cs.data,
+                        cs.unique_key
+                    FROM public.clean_sessions cs
+                    WHERE cs.scriptid {condition}
+                ),
+                numbered_with_prior AS (
+                    SELECT
+                        f.scriptid,
+                        f.uid,
+                        f.id,
+                        f.ingested_at,
+                        f.completed_date AS completed_at,
+                        f.data,
+                        f.unique_key,
+                        f.completed_date,
+                        COALESCE((
+                            SELECT MAX(di.review_number)
+                            FROM {schema}."{table}" di
+                            WHERE di.uid = f.uid
+                        ), 0) AS max_existing_review_number
+                    FROM filtered f
+                ),
+                final_numbering AS (
+                    SELECT
+                        scriptid,
+                        uid,
+                        id,
+                        ingested_at,
+                        completed_at,
+                        data,
+                        unique_key,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY uid
+                            ORDER BY completed_date, id
+                        ) + max_existing_review_number AS review_number
+                    FROM numbered_with_prior
+                )
+                SELECT
+                    scriptid,
+                    uid,
+                    id,
+                    ingested_at,
+                    completed_at,
+                    data,
+                    unique_key,
+                    review_number
+                FROM final_numbering);;"""
+
+        else:
+            operation = f'''CREATE TABLE if not exists {schema}."{table}" AS'''
+            condition = script_condition  # still safe
+            
+            return f"""{operation}
+                (WITH filtered AS (
+                    SELECT
+                        cs.scriptid,
+                        cs.uid,
+                        cs.id,
+                        cs.ingested_at,
+                        CAST(cs.data->>'completed_at' AS date) AS completed_date,
+                        cs.data,
+                        cs.unique_key
+                    FROM public.clean_sessions cs
+                    WHERE cs.scriptid {condition}
+                ),
+                deduplicated AS (
+                    SELECT DISTINCT ON (uid,completed_date)
+                        scriptid,
+                        uid,
+                        id,
+                        ingested_at,
+                        completed_date,
+                        data,
+                        unique_key
+                    FROM filtered
+                    ORDER BY uid, completed_date DESC
+                ),
+                final_numbering AS (
+                    SELECT
+                        scriptid,
+                        uid,
+                        id,
+                        ingested_at,
+                        completed_date AS completed_at,
+                        data,
+                        unique_key,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY uid
+                            ORDER BY completed_date, id
+                        ) AS review_number
+                    FROM deduplicated
+                )
+                SELECT
+                    scriptid,
+                    uid,
+                    id,
+                    ingested_at,
+                    completed_at,
+                    data,
+                    unique_key,
+                    review_number
+                FROM final_numbering);;"""
+                      
     else:
         # all other cases -> group on ingested_at
-        return f'''drop table if exists {destination_table} cascade;;
-            create table {destination_table} as 
+        schema,table = destination_table.split('.')
+        exists= table_exists(schema,table)
+        operation = f''' create table if not exists {destination_table} as '''
+        
+        if(exists):
+            operation= f''' INSERT INTO {schema}."{table}"  (
+                        scriptid,
+                        uid,
+                        id,
+                        ingested_at,
+                        unique_key,
+                        year,
+                        month,
+                        data
+                        )'''
+            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}"  ds where cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
+            
+        return f'''{operation}
             (
             with earliest_record as (
             select
-            scriptid,
-            uid, 
-            unique_key,
-            max(id) as id -- This takes the last upload 
+            cs.scriptid,
+            cs.uid, 
+            cs.unique_key,
+            max(cs.id) as id -- This takes the last upload 
                   -- of the session as the deduplicated record. 
                   -- We could replace with min(id) to take the 
                   -- first uploaded
-            from public.clean_sessions
-            where scriptid {condition} -- only pull out records for the specified script
+            from public.clean_sessions cs
+            where cs.scriptid {condition} and cs.unique_key is not null-- only pull out records for the specified script
             group by 1,2,3
             )
             select
@@ -118,7 +284,7 @@ def deduplicate_data_query(condition, destination_table):
         end as month,
             data
             from earliest_record join clean_sessions sessions
-            on earliest_record.id = sessions.id where sessions.scriptid {condition}
+            on earliest_record.id = sessions.id where sessions.scriptid {script_condition}
             );;
             '''
 
@@ -163,40 +329,247 @@ def deduplicate_baseline_query(condition):
             '''
 
 
-def read_deduplicated_data_query(case_condition, where_condition, source_table):
+def read_deduplicated_data_query(case_condition, where_condition, source_table,destination_table):
     # logging.info(f'source_table={source_table}, where_condition={where_condition}, case_condition={case_condition}')
-    sql = f'''
-            select 
-            uid,
-            ingested_at,
-            "data"->'appVersion' as "appVersion",
-            "data"->'scriptVersion' as "scriptVersion",
-            "data"->'started_at' as "started_at",
-            "data"->'completed_at' as "completed_at",
-            "data"->'entries' as "entries",
-            unique_key
+    condition =''
+    sql=''
+    exists = table_exists('derived',destination_table)
+    if exists and env!='demo':
+       condition= get_dynamic_condition(destination_table)
+    
+    if destination_table == 'daily_review' or destination_table == 'infections':
+        sql = f'''
+      
+        SELECT
+            cs.uid,
+            cs.ingested_at,
+            cs."data"->'appVersion' AS "appVersion",
+            cs."data"->'scriptVersion' AS "scriptVersion",
+            cs."data"->'started_at' AS "started_at",
+            cs.completed_at,
+            cs.review_number,
+            cs."data"->'entries' AS "entries",
+            cs."data"->'entries'->'repeatables' AS "repeatables",
+            cs.unique_key,
+            cs."data"->>'completed_at' as "completed_time"
             {case_condition}
-            from {source_table} where scriptid {where_condition} and uid!='null';;
+        FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs.uid IS NOT NULL AND cs.uid != 'null' AND cs.uid != 'Unknown' AND cs.unique_key IS NOT NULL {condition};;
+        '''
+    elif 'neolab' in destination_table:
+        sql=f'''
+            SELECT
+            cs.uid,
+            cs.ingested_at,
+            cs."data"->'appVersion' AS "appVersion",
+            cs."data"->'scriptVersion' AS "scriptVersion",
+            cs."data"->'started_at' AS "started_at",
+             cs."data"->>'completed_at' as "completed_at",
+            cs."data"->'entries' AS "entries",
+            cs."data"->'entries'->'repeatables' AS "repeatables",
+            cs.unique_key
+            {case_condition}
+            FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs.uid IS NOT NULL;;
+            '''
+    else:
+        sql = f'''
+            select 
+            cs.uid,
+            cs.ingested_at,
+            cs."data"->'appVersion' as "appVersion",
+            cs."data"->'scriptVersion' as "scriptVersion",
+            cs."data"->'started_at' as "started_at",
+            cs."data"->>'completed_at' as "completed_at",
+            cs."data"->'entries' as "entries",
+             cs."data"->'entries'->'repeatables' AS "repeatables",
+            cs.unique_key
+            {case_condition}
+            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='Unkown' and cs.uid is not null and cs.unique_key is not null {condition};;
    
             '''
     return sql
 
+def get_dynamic_condition(destination_table) :
+    if('daily_review' in destination_table or 'infections' in destination_table):
+        return f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where cs.unique_key=ds.unique_key and cs.review_number=ds.review_number and cs.uid=ds.uid and CAST(cs.completed_at AS DATE)=CAST(ds.completed_at AS DATE))'''
+    
+    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid and cs.uid is not null and ds.uid is not null and cs.unique_key is not null and ds.unique_key is not null)'''
 
-def read_derived_data_query(source_table):
-    return f'''
-                select 
-                    *
-                from derived.{source_table} where uid!='null';;
-            '''
+def read_derived_data_query(source_table, destination_table=None):
+    condition = ''
+    if destination_table:
+        exists = table_exists('derived', destination_table.strip())
+        if exists:
+            condition = get_dynamic_condition(destination_table.strip())
+
+    # Clean the source_table to remove extra quotes/braces
+    source_table_clean = str(source_table).strip().strip('"').strip("'").strip("{}")
+
+    query = f'''select * from derived."{source_table_clean}" cs where cs.unique_key is not null and cs.uid is not null {condition};'''
+
+    return query
+
+def read_all_from_derived_table(table:str):
+    if table_exists('derived', table.strip()):
+        return f'select * from derived."{table}";;'
+    return None
+
+def read_label_cleanup_data(table:str):
+    if table_exists('derived', table.strip()):
+        return f'select * from derived."{table}" where transformed is FALSE or transformed is NULL;;'
+    return None
+
+def read_admissions_not_joined():   
+        return f'''SELECT * 
+FROM derived.admissions ad
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM derived.joined_admissions_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key
+);'''
+
+def read_clean_admissions_not_joined():   
+        return f'''SELECT * 
+FROM derived.clean_admissions ad
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM derived.clean_joined_adm_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key
+);'''
+
+
+def read_dicharges_not_joined():
+        return f'''SELECT * 
+FROM derived.discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.admissions ad 
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM derived.joined_admissions_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key
+    )
+)'''
+
+def read_clean_dicharges_not_joined():
+        return f'''SELECT * 
+FROM derived.clean_discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.clean_admissions ad 
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM derived.clean_joined_adm_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key
+    )
+)'''
+
+def admissions_without_discharges():
+     return f'''SELECT * 
+FROM derived.admissions ad 
+WHERE EXISTS (
+    SELECT 1 
+    FROM derived.joined_admissions_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key 
+      AND (
+          j."NeoTreeOutcome.value" IS NULL 
+          OR (
+              j."DateTimeDischarge.value" IS NULL 
+              AND j."DateTimeDeath.value" IS NULL
+          )
+      )
+)
+'''
+def read_clean_admissions_without_discharges():
+     return f'''SELECT * 
+FROM derived.clean_admissions ad 
+WHERE EXISTS (
+    SELECT 1 
+    FROM derived.clean_joined_adm_discharges j 
+    WHERE ad.uid = j.uid 
+      AND ad.unique_key = j.unique_key 
+      AND (
+          j."neotreeoutcome" IS NULL 
+          OR (
+              j."datetimedischarge" IS NULL 
+              AND j."datetimedeath" IS NULL
+          )
+      )
+)
+'''
+
+def discharges_not_matched():
+     return f'''SELECT * 
+FROM derived.discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.admissions ad  
+    WHERE EXISTS (
+        SELECT 1 
+        FROM derived.joined_admissions_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key 
+          AND (
+              j."NeoTreeOutcome.value" IS NULL 
+              OR (
+                  j."DateTimeDischarge.value" IS NULL 
+                  AND j."DateTimeDeath.value" IS NULL
+              )
+          )
+    )
+)'''
+
+
+def clean_discharges_not_matched():
+     return f'''SELECT * 
+FROM derived.clean_discharges 
+WHERE uid IN (
+    SELECT uid 
+    FROM derived.clean_admissions ad  
+    WHERE EXISTS (
+        SELECT 1 
+        FROM derived.clean_joined_adm_discharges j 
+        WHERE ad.uid = j.uid 
+          AND ad.unique_key = j.unique_key 
+          AND (
+              j."neotreeoutcome" IS NULL 
+              OR (
+                  j."datetimedischarge" IS NULL 
+                  AND j."datetimedeath" IS NULL
+              )
+          )
+    )
+)'''
+
+
 
 
 def read_data_with_no_unique_key():
+
     return f'''
-                select 
-                id,
-                "data"->'entries' as "entries",
-                "data"->'appVersion' as "appVersion"
-                from public.clean_sessions where not cleaned;;'''
+           SELECT 
+             id,
+             "data"->'entries' AS "entries",
+            "data"->>'appVersion' AS "appVersion"
+        FROM 
+            public.clean_sessions
+        WHERE scriptid NOT IN('f715e123-3cd0-49ac-8e45-45ab5db72942','588477ee-9274-414c-baa9-dda5951fdf1d','afa5984e-c07d-4025-8150-de25bb37144a') AND
+
+            (cleaned is false and ("unique_key" NOT LIKE '%-%-%' or unique_key is null))
+        AND 
+            (
+                ("data"->'entries'->>'DateTimeAdmission' IS NOT NULL)
+                OR ("data"->'entries'->>'DateAdmission' IS NOT NULL)
+                OR ("data"->'entries'->>'DateTimeDischarge' IS NOT NULL)
+                OR ("data"->'entries'->>'DateDischarge' IS NOT NULL)
+                OR ("data"->'entries'->>'DateDeath' IS NOT NULL)
+                OR ("data"->'entries'->>'DateBCT' IS NOT NULL)
+            )
+            '''
 
 # SPECIAL CASE
 
@@ -204,23 +577,27 @@ def read_data_with_no_unique_key():
 def read_diagnoses_query(admissions_case, adm_where):
     return f'''
             select 
-                uid,
-                ingested_at,
-                "data"->'appVersion' as "appVersion",
-                "data"->'scriptVersion' as "scriptVersion",
-                "data"->'started_at' as "started_at",
-                "data"->'completed_at' as "completed_at",
-                "data"->'diagnoses' as "diagnoses" {admissions_case},
+                cs.uid,
+                cs.ingested_at,
+                cs."data"->'appVersion' as "appVersion",
+                cs."data"->'scriptVersion' as "scriptVersion",
+                cs."data"->'started_at' as "started_at",
+                cs."data"->'completed_at' as "completed_at",
+                cs."data"->'diagnoses' as "diagnoses" {admissions_case},
                 unique_key
-            from scratch.deduplicated_admissions where scriptid {adm_where} and uid!='null';;
+            from scratch.deduplicated_admissions cs 
+            where cs.scriptid {adm_where} and cs.uid!='null' and cs.uid!='Unknown';;
             '''
 
 
 def read_new_smch_admissions_query():
-    return '''
+    return f'''
             select 
                 *,
-                CASE WHEN "DateTimeAdmission.value"::TEXT ='NaT'
+                CASE WHEN ("DateTimeAdmission.value"::TEXT ='NaT'
+                OR "DateTimeAdmission.value"::TEXT='NaN'
+                OR "DateTimeAdmission.value"::TEXT='nan'
+                )
                 THEN NULL
                 ELSE
                 TO_DATE("DateTimeAdmission.value"::TEXT,'YYYY-MM-DD')
@@ -230,21 +607,45 @@ def read_new_smch_admissions_query():
 
 
 def read_new_smch_discharges_query():
-    return '''
-            select 
-                *,
-		  CASE WHEN "DateTimeDischarge.value"::TEXT ='NaT' 
-		  THEN NULL
-		  ELSE  TO_DATE("DateTimeDischarge.value"::TEXT,'YYYY-MM-DD') 
-		  END AS "DateTimeDischarge.value",
-		  CASE WHEN "DateTimeDeath.value"::TEXT = 'NaT' 
-		  THEN NULL
-		  ELSE TO_DATE("DateTimeDeath.value"::TEXT,'YYYY-MM-DD')
-		  END AS "DateTimeDischarge.value"
-            from derived.discharges where
-			("DateTimeDischarge.value">='2021-02-01')
-			or ("DateTimeDeath.value">='2021-02-01') AND facility = 'SMCH' ;;
-            '''
+    return f'''
+            SELECT 
+    *,
+    CASE 
+        WHEN "DateTimeDischarge.value"::TEXT IN ('NaT', 'NaN', 'nan') OR 
+             "DateTimeDischarge.value"::TEXT IS NULL OR
+             "DateTimeDischarge.value"::TEXT = '' OR
+             NOT ("DateTimeDischarge.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$') OR
+             ("DateTimeDischarge.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$' AND 
+              ("DateTimeDischarge.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31') = FALSE)
+        THEN NULL
+        ELSE TO_DATE("DateTimeDischarge.value"::TEXT, 'YYYY-MM-DD') 
+    END AS "DateTimeDischarge.value",
+    
+    CASE 
+        WHEN "DateTimeDeath.value"::TEXT IN ('NaT', 'NaN', 'nan') OR 
+             "DateTimeDeath.value"::TEXT IS NULL OR
+             "DateTimeDeath.value"::TEXT = '' OR
+             NOT ("DateTimeDeath.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$') OR
+             ("DateTimeDeath.value"::TEXT ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND 
+              ("DateTimeDeath.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31') = FALSE)
+        THEN NULL
+        ELSE TO_DATE("DateTimeDeath.value"::TEXT, 'YYYY-MM-DD')
+    END AS "DateTimeDeath.value"
+FROM derived.discharges 
+WHERE facility = 'SMCH' 
+AND (
+    (
+        "DateTimeDischarge.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$' AND 
+        "DateTimeDischarge.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31' AND
+        "DateTimeDischarge.value"::DATE >= '2021-02-01'
+    )
+    OR 
+    (
+        "DateTimeDeath.value"::TEXT ~ '^[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}$' AND 
+        "DateTimeDeath.value"::DATE BETWEEN '0001-01-01' AND '9999-12-31' AND
+        "DateTimeDeath.value"::DATE >= '2021-02-01'
+    )
+);; '''
 
 
 def read_old_smch_admissions_query():
@@ -410,9 +811,20 @@ def insert_sessions_data():
         WHERE NOT EXISTS (
         SELECT 1
         FROM {clean_sessions} cs
-        WHERE cs.id = s.id);;'''
+        WHERE cs.id = s.id)
+        ;;'''
 
 
 def regenerate_unique_key_query(id, unique_key):
-    return f''' UPDATE public.clean_sessions set unique_key='{unique_key}' where id={id};;
- '''
+    
+    formatted= unique_key
+    try: 
+        formatted = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
+    except:
+       formatted= unique_key 
+
+    return f''' UPDATE public.clean_sessions SET cleaned=true, unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}.*';;
+              '''
+
+
+  

@@ -2,6 +2,7 @@ import os, sys
 sys.path.append(os.getcwd())
 from conf.base.catalog import params
 from data_pipeline.pipelines.data_engineering.data_tyding.import_raw_jsons import createAdmissionsAndDischargesFromRawData;
+import logging
 
 mode = None
 if "mode" in params:

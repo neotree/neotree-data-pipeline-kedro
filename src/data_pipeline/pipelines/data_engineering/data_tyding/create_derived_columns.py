@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from conf.base.catalog import params
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 
@@ -18,29 +17,24 @@ def create_columns(table: pd.DataFrame):
     # Create AdmissionSource = IF(ISBLANK(Admissions[AdmittedFrom]); "External Referral"; Admissions[AdmittedFrom])
      #Fix Lost Data From One Of The Published Versions
     try:
-            set_key_to_none(table,'AdmittedFrom.value')
-            set_key_to_none(table,'AdmittedFrom.label')
-            set_key_to_none(table,'ReferredFrom.label')
-            set_key_to_none(table,'ReferredFrom.value')
-            set_key_to_none(table,'ReferredFrom2.label') 
-            set_key_to_none(table,'ReferredFrom2.value')
-            set_key_to_none(table,'AgeCat.label')
-                  
-            table['AdmittedFrom.value'].fillna("ER", inplace=True)
-            table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
+            table = set_key_to_none(table,['AdmittedFrom.value','AdmittedFrom.label','ReferredFrom.label'
+                                           ,'ReferredFrom.value','ReferredFrom2.label','ReferredFrom2.value','AgeCat.label'])
+            if 'AdmittedFrom.value' in table: 
+                  table['AdmittedFrom.value'].fillna("ER", inplace=True)
+                  table['AdmittedFrom.label'].fillna("External Referral", inplace=True)
 
-            # float("nan") used to make sure nan's are set not a string "nan"
-            table['EXTERNALSOURCE.label'] = np.where(table['AdmittedFrom.label'].isnull(), table['AdmittedFrom.label'].mask(
-                  pd.isnull, (table['ReferredFrom.label'].mask(pd.isnull, table['ReferredFrom2.label']))),None)
-            table['EXTERNALSOURCE.value'] = np.where(table['AdmittedFrom.value'].isnull(), table['AdmittedFrom.value'].mask(
-                  pd.isnull, (table['ReferredFrom.value'].mask(pd.isnull, table['ReferredFrom2.value']))), None)
+                  # Cascading fallback: AdmittedFrom -> ReferredFrom -> ReferredFrom2
+                  table['EXTERNALSOURCE.label'] = table['AdmittedFrom.label'].fillna(
+                        table['ReferredFrom.label']).fillna(table['ReferredFrom2.label'])
+                  table['EXTERNALSOURCE.value'] = table['AdmittedFrom.value'].fillna(
+                        table['ReferredFrom.value']).fillna(table['ReferredFrom2.value'])
 
             # order of statements matters
                   
             if('country' in params and str(params['country']).lower()) =='zimbabwe':
                   try:
                         if not table.empty and 'Gestation.value' in table:
-                              table['Gestation.value'] = pd.to_numeric(table['Gestation.value'],downcast='integer', errors='coerce')
+                              table['Gestation.value'] = pd.to_numeric(table['Gestation.value'], errors='coerce')
                               table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = "Unknowwn"
                               table.loc[table['Gestation.value'] >= 42, 'GestGroup.value'] = "42 wks or above"
                               table.loc[table['Gestation.value'] < 42, 'GestGroup.value'] = "37-41 wks"
@@ -52,7 +46,7 @@ def create_columns(table: pd.DataFrame):
             else:
                   if not table.empty  and 'Gestation.value' in table:
                         try:
-                              table['Gestation.value'] = pd.to_numeric(table['Gestation.value'],downcast='integer', errors='coerce')
+                              table['Gestation.value'] = pd.to_numeric(table['Gestation.value'], errors='coerce')
                               table.loc[table['Gestation.value'].isnull(), 'GestGroup.value'] = None
                               table.loc[table['Gestation.value'] >= 37, 'GestGroup.value'] = "Term"
                               table.loc[table['Gestation.value'] < 37, 'GestGroup.value'] = "34-36+6 wks"
@@ -66,7 +60,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             if 'BirthWeight.value' in table:
                   try:
-                        table['BirthWeight.value'] =  pd.to_numeric(table['BirthWeight.value'],downcast='integer', errors='coerce')
+                        table['BirthWeight.value'] =  pd.to_numeric(table['BirthWeight.value'], errors='coerce')
                         table.loc[table['BirthWeight.value'].isnull(), 'BWGroup.value'] = "Unknown"
                         table.loc[table['BirthWeight.value'] >= 4000, 'BWGroup.value'] = "HBW"
                         table.loc[table['BirthWeight.value'] < 4000, 'BWGroup.value'] = "NBW"
@@ -79,7 +73,7 @@ def create_columns(table: pd.DataFrame):
             else:
                   if ('BW.value' in table):
                         try:
-                              table['BW.value'] = pd.to_numeric(table['BW.value'],downcast='integer', errors='coerce')
+                              table['BW.value'] = pd.to_numeric(table['BW.value'], errors='coerce')
                               table.loc[table['BW.value'].isnull() , 'BWGroup.value'] = "Unknown"
                               table.loc[table['BW.value'] >= 4000, 'BWGroup.value'] = "HBW"
                               table.loc[table['BW.value'] < 4000, 'BWGroup.value'] = "NBW"
@@ -93,7 +87,7 @@ def create_columns(table: pd.DataFrame):
             if 'AdmissionWeight.value' in table:
                   try:
 
-                        table['AdmissionWeight.value'] = pd.to_numeric(table['AdmissionWeight.value'],downcast='integer', errors='coerce')
+                        table['AdmissionWeight.value'] = pd.to_numeric(table['AdmissionWeight.value'], errors='coerce')
                         table.loc[table['AdmissionWeight.value'].isnull(), 'AWGroup.value'] = "Unknown"
                         table.loc[table['AdmissionWeight.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                         table.loc[table['AdmissionWeight.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
@@ -106,7 +100,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             elif 'AW.value' in table:
                   try: 
-                        table['AW.value']= pd.to_numeric(table['AdmissionWeight.value'],downcast='integer', errors='coerce')
+                        table['AW.value']= pd.to_numeric(table['AdmissionWeight.value'], errors='coerce')
                         table.loc[table['AW.value'].isnull(), 'AWGroup.value'] = "Unknown"
                         table.loc[table['AW.value'] >= 4000, 'AWGroup.value'] = ">4000g"
                         table.loc[table['AW.value'] < 4000, 'AWGroup.value'] = "2500-4000g"
@@ -124,7 +118,7 @@ def create_columns(table: pd.DataFrame):
             # order of statements matters
             if 'Temperature.value' in table:
                   try:
-                        table['Temperature.value'] = pd.to_numeric(table['Temperature.value'],downcast='integer', errors='coerce')
+                        table['Temperature.value'] = pd.to_numeric(table['Temperature.value'], errors='coerce')
                         table.loc[table['Temperature.value'] >= 41.5, 'TempGroup.value'] = ">41.5"
                         table.loc[table['Temperature.value'] <
                                     41.5, 'TempGroup.value'] = "40.5-41.5"
@@ -220,7 +214,7 @@ def create_columns(table: pd.DataFrame):
                         except:
                               pass
                   if 'BWTDis.value' in table:
-                        table['BWTDis.value'] = pd.to_numeric(table['BWTDis.value'],downcast='integer', errors='coerce')
+                        table['BWTDis.value'] = pd.to_numeric(table['BWTDis.value'], errors='coerce')
                         
             # Create LBWBinary = AND(Admissions[bw-2]<> Blank();(Admissions[bw-2]<2500))
             return table
