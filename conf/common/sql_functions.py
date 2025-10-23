@@ -12,7 +12,7 @@ import numpy as np
 from conf.common.logger import setup_logger
 from conf.common.format_error import formatError
 from .config import config
-
+from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
 # Import handling with proper type checking
 from typing import Optional
 
@@ -623,12 +623,205 @@ def is_date_prefix(s):
             
     return False
 
+def transform_dataframe_with_field_info(df, table_name):
+    """
+    Transform dataframe using field info for data type conversion and label correction.
+
+    Args:
+        df: DataFrame to transform
+        table_name: Script name to load field info from
+
+    Returns:
+        Transformed DataFrame
+    """
+
+    # Load field info using table_name as script
+    schema = load_json_for_comparison(table_name)
+    if not schema:
+        logging.info(f"No field info found for {table_name}, skipping transformation")
+        return df
+
+    # Create field lookup
+    field_info = {f['key']: f for f in schema}
+
+    # Create a copy for transformation
+    transformed_df = df.copy()
+
+    # Columns to exclude from transformation
+    exclude_cols = ['transformed', 'unique_key', 'uid']
+
+    for value_col in [col for col in df.columns if col.endswith('.value')]:
+        base_key = value_col[:-6]
+        label_col = f"{base_key}.label"
+
+        # Skip excluded columns
+        if base_key in exclude_cols:
+            continue
+
+        # Skip if field not in schema
+        if base_key not in field_info:
+            continue
+
+        # Skip if value column doesn't exist (defensive check)
+        if value_col not in transformed_df.columns:
+            continue
+
+        try:
+            field = field_info[base_key]
+            data_type = field.get('dataType', field.get('type', ''))
+            options = field.get('options', [])
+
+            # ====================
+            # 1. DATA TYPE CONVERSION
+            # ====================
+
+            # Convert dates
+            if data_type in ['datetime', 'timestamp', 'date']:
+                for idx in transformed_df.index:
+                    val = transformed_df.at[idx, value_col]
+                    if pd.notna(val) and str(val).strip() not in ['', 'NaT', 'None', 'nan']:
+                        # Try multiple date conversion methods
+                        converted = None
+                        try:
+                            # Method 1: pandas to_datetime
+                            converted = pd.to_datetime(val, errors='coerce')
+                        except:
+                            pass
+
+                        if pd.isna(converted):
+                            try:
+                                # Method 2: Try with different date formats
+                                converted = pd.to_datetime(str(val).strip(), errors='coerce')
+                            except:
+                                pass
+
+                        if pd.notna(converted):
+                            transformed_df.at[idx, value_col] = converted
+                        else:
+                            # Set to None if conversion fails
+                            transformed_df.at[idx, value_col] = None
+
+            # Convert numbers
+            elif data_type in ['number', 'integer', 'float', 'timer']:
+                for idx in transformed_df.index:
+                    val = transformed_df.at[idx, value_col]
+                    if pd.notna(val) and str(val).strip() not in ['', 'NaT', 'None', 'nan']:
+                        try:
+                            # Try to convert to numeric
+                            converted = pd.to_numeric(val, errors='coerce')
+                            if pd.notna(converted):
+                                transformed_df.at[idx, value_col] = converted
+                            else:
+                                transformed_df.at[idx, value_col] = None
+                        except:
+                            transformed_df.at[idx, value_col] = None
+
+            # Handle booleans - maintain values, check against options
+            elif data_type in ['boolean', 'yesno']:
+                if options:
+                    # Get valid values from options
+                    valid_values = [str(opt.get('value', '')).strip() for opt in options]
+                    for idx in transformed_df.index:
+                        val = transformed_df.at[idx, value_col]
+                        if pd.notna(val):
+                            val_str = str(val).strip()
+                            # Keep value if it's in valid options
+                            if val_str not in valid_values:
+                                # Try case-insensitive match
+                                matched = False
+                                for valid_val in valid_values:
+                                    if val_str.lower() == valid_val.lower():
+                                        transformed_df.at[idx, value_col] = valid_val
+                                        matched = True
+                                        break
+                                if not matched:
+                                    transformed_df.at[idx, value_col] = None
+
+            # ====================
+            # 2. LABEL CORRECTION
+            # ====================
+
+            # Only proceed if label column exists AND options are available
+            if label_col in transformed_df.columns and options and len(options) > 0:
+                try:
+                    # Build value to label mapping
+                    value_to_label = {str(opt.get('value', '')).strip(): str(opt.get('valueLabel', '')).strip()
+                                    for opt in options if opt.get('value') is not None}
+
+                    # Skip if no valid mappings
+                    if not value_to_label:
+                        continue
+
+                    field_type = field.get('type', '')
+
+                    # Fix inverted values first (where value and label are swapped)
+                    inverted_mask = (
+                        transformed_df[value_col].isin(value_to_label.values()) &
+                        transformed_df[label_col].isin(value_to_label.keys())
+                    )
+                    if inverted_mask.any():
+                        # Swap value and label
+                        temp_values = transformed_df.loc[inverted_mask, value_col].copy()
+                        transformed_df.loc[inverted_mask, value_col] = transformed_df.loc[inverted_mask, label_col]
+                        transformed_df.loc[inverted_mask, label_col] = temp_values
+
+                    # Set label to None where value is None
+                    null_mask = transformed_df[value_col].isna()
+                    transformed_df.loc[null_mask, label_col] = None
+
+                    # Fix labels based on values
+                    non_null_mask = transformed_df[value_col].notna()
+                    if non_null_mask.any():
+                        if field_type in ('multi_select', 'checklist'):
+                            # Handle multi-select fields
+                            transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col].apply(
+                                lambda x: ','.join([
+                                    value_to_label.get(v.strip(), v.strip())
+                                    for v in str(x).split(',') if v.strip()
+                                ]) if pd.notna(x) else None
+                            )
+                        else:
+                            # Single select fields
+                            for idx in transformed_df[non_null_mask].index:
+                                val_str = str(transformed_df.at[idx, value_col]).strip()
+                                if val_str in value_to_label:
+                                    transformed_df.at[idx, label_col] = value_to_label[val_str]
+                except KeyError as e:
+                    # Log and skip if column doesn't exist
+                    logging.warning(f"Column not found during label correction for {base_key}: {str(e)}")
+                    continue
+                except Exception as e:
+                    # Log other errors but continue processing
+                    logging.warning(f"Error during label correction for {base_key}: {str(e)}")
+                    continue
+
+        except KeyError as e:
+            # Column doesn't exist - skip this field entirely
+            logging.warning(f"Column not found for {base_key}: {str(e)}")
+            continue
+        except Exception as e:
+            # Any other error - log and continue
+            logging.warning(f"Error processing field {base_key}: {str(e)}")
+            continue
+
+    # Mark as transformed
+    transformed_df['transformed'] = True
+
+    return transformed_df
+
+
 def generate_postgres_insert(df, schema, table_name):
-    """Optimized bulk insert with vectorized operations where possible."""
+    """Optimized bulk insert with field-info-based data transformation."""
     # Ensure we only keep "real" columns (skip weird 1-char column names)
     df = df[[col for col in df.columns if len(col) > 1]].copy()
-    if 'transformed' not in df.columns:
-        df['transformed'] = False
+
+    # STEP 1: Transform data using field info
+    try:
+        df = transform_dataframe_with_field_info(df, table_name)
+    except Exception as e:
+        logging.warning(f"Field info transformation failed for {table_name}: {str(e)}, proceeding without transformation")
+        if 'transformed' not in df.columns:
+            df['transformed'] = False
 
     # OPTIMIZATION 1: Vectorized filtering of invalid rows
     # Filter out rows with invalid uid or unique_key
@@ -942,6 +1135,16 @@ def run_bulky_query(table: str, filtered_records=None):
         raise RuntimeError("Database engine and psycopg2 not initialized")
 
     if filtered_records is None:
+        return
+
+    # Convert DataFrame to list of records if needed (defensive check)
+    if isinstance(filtered_records, pd.DataFrame):
+        if filtered_records.empty:
+            return
+        filtered_records = filtered_records.to_dict('records')
+
+    # Handle empty lists
+    if not filtered_records:
         return
 
     # Get raw psycopg2 connection for execute_values

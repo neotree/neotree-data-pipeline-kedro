@@ -196,7 +196,7 @@ def transform_matching_labels_for_update_queries(df, script):
     if 'joined_admissions_discharges' in script:
         json_data = merge_json_files('admissions', 'discharges')
     if not json_data:
-        return pd.DataFrame(columns=['uid', 'unique_key'])  # empty fallback
+        return []  # empty fallback - return empty list, not DataFrame
     
     field_info = {f['key']: f for f in json_data}
     df_transformed = df.copy()
@@ -265,7 +265,7 @@ def transform_matching_labels_for_update_queries(df, script):
 
     # Prepare final output
     if not label_cols_changed:
-        return pd.DataFrame(columns=['uid', 'unique_key'])
+        return []  # No changes - return empty list, not DataFrame
 
     # Find changed rows (including NULL to NULL changes)
     changed_rows = df_transformed[label_cols_changed].ne(df[label_cols_changed]).any(axis=1)

@@ -336,11 +336,13 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
         # Add new columns to database if needed
         add_new_columns_if_needed(adm_df, 'admissions')
 
-        # Final transformations
+        # Validate BEFORE transformation to log raw data issues
+        validate_dataframe_with_ge(adm_df, 'admissions')
+
+        # Final transformations (fixes issues after validation)
         adm_df = finalize_dataframe(adm_df, 'admissions')
 
-        # Validate and save
-        validate_dataframe_with_ge(adm_df, 'admissions')
+        # Save transformed data
         generate_create_insert_sql(adm_df, 'derived', 'admissions')
         deduplicate_table('admissions')
 
@@ -398,11 +400,13 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
         # Add new columns to database if needed
         add_new_columns_if_needed(dis_df, 'discharges')
 
-        # Final transformations
+        # Validate BEFORE transformation to log raw data issues
+        validate_dataframe_with_ge(dis_df, 'discharges')
+
+        # Final transformations (fixes issues after validation)
         dis_df = finalize_dataframe(dis_df, 'discharges')
 
-        # Validate and save
-        validate_dataframe_with_ge(dis_df, 'discharges')
+        # Save transformed data
         generate_create_insert_sql(dis_df, 'derived', 'discharges')
         deduplicate_table('discharges')
 
@@ -450,11 +454,13 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
         # Add new columns to database if needed
         add_new_columns_if_needed(mat_outcomes_df, 'maternal_outcomes')
 
-        # Final transformations
+        # Validate BEFORE transformation to log raw data issues
+        validate_dataframe_with_ge(mat_outcomes_df, 'maternal_outcomes')
+
+        # Final transformations (fixes issues after validation)
         mat_outcomes_df = finalize_dataframe(mat_outcomes_df, 'maternal_outcomes')
 
-        # Validate and save
-        validate_dataframe_with_ge(mat_outcomes_df, 'maternal_outcomes')
+        # Save transformed data
         generate_create_insert_sql(mat_outcomes_df, 'derived', 'maternal_outcomes')
         deduplicate_table('maternal_outcomes')
 
@@ -496,11 +502,13 @@ def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any)
     # Add new columns to database if needed
     add_new_columns_if_needed(vit_signs_df, 'vitalsigns')
 
-    # Final transformations
+    # Validate BEFORE transformation to log raw data issues
+    validate_dataframe_with_ge(vit_signs_df, 'vitalsigns')
+
+    # Final transformations (fixes issues after validation)
     vit_signs_df = finalize_dataframe(vit_signs_df, 'vitalsigns')
 
-    # Validate and save
-    validate_dataframe_with_ge(vit_signs_df, 'vitalsigns')
+    # Save transformed data
     generate_create_insert_sql(vit_signs_df, 'derived', 'vitalsigns')
     deduplicate_table('vitalsigns')
 
@@ -558,12 +566,14 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
         # Filter
         neolab_df = neolab_df[neolab_df['uid'] != 'Unknown']
 
-        # Final transformations
+        # Validate BEFORE transformation to log raw data issues
+        validate_dataframe_with_ge(neolab_df, 'neolab')
+
+        # Final transformations (fixes issues after validation)
         neolab_df = neolab_df.loc[:, ~neolab_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
         neolab_df = transform_matching_labels(neolab_df, 'neolab')
 
-        # Validate and save
-        validate_dataframe_with_ge(neolab_df, 'neolab')
+        # Save transformed data
         generate_create_insert_sql(neolab_df, 'derived', 'neolab')
         deduplicate_table('neolab')
 
@@ -630,12 +640,14 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
         # Add new columns to database if needed
         add_new_columns_if_needed(baseline_df, 'baseline')
 
-        # Final transformations
+        # Validate BEFORE transformation to log raw data issues
+        validate_dataframe_with_ge(baseline_df, 'baseline')
+
+        # Final transformations (fixes issues after validation)
         baseline_df = baseline_df.loc[:, ~baseline_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
         baseline_df = transform_matching_labels(baseline_df, 'baseline')
 
-        # Validate and save
-        validate_dataframe_with_ge(baseline_df, 'baseline')
+        # Save transformed data
         generate_create_insert_sql(baseline_df, 'derived', 'baseline')
         deduplicate_table('baseline')
 

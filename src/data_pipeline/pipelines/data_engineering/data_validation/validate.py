@@ -212,6 +212,56 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     field_info = {f['key']: f for f in schema}
 
     # ============================================================================
+    # 2b. CONFIDENTIAL FIELDS CHECK
+    # ============================================================================
+    logger.info(f"\n{'='*80}")
+    logger.info("2b. CONFIDENTIAL FIELDS CHECK")
+    logger.info("="*80)
+
+    # Check for fields marked as confidential in schema
+    confidential_fields_found = []
+    for field in schema:
+        field_key = field.get('key')
+        is_confidential = field.get('confidential', False)
+
+        if is_confidential:
+            # Check if this field exists in the dataset
+            value_col = f"{field_key}.value"
+            label_col = f"{field_key}.label"
+
+            if value_col in df.columns or label_col in df.columns:
+                field_label = field.get('label', field_key)
+                confidential_fields_found.append({
+                    'key': field_key,
+                    'label': field_label,
+                    'has_value': value_col in df.columns,
+                    'has_label': label_col in df.columns
+                })
+
+    if confidential_fields_found:
+        logger.error(f"❌ CRITICAL ERROR: Found {len(confidential_fields_found)} confidential field(s) in the dataset!")
+        logger.error(f"   These fields are marked as confidential and should NOT be in the dataset:")
+        for field in confidential_fields_found:
+            columns = []
+            if field['has_value']:
+                columns.append(f"{field['key']}.value")
+            if field['has_label']:
+                columns.append(f"{field['key']}.label")
+            logger.error(f"   - {field['key']} ({field['label']}): {', '.join(columns)}")
+
+            # Show sample UIDs with data in confidential fields
+            if 'uid' in df.columns and field['has_value']:
+                value_col = f"{field['key']}.value"
+                non_null_mask = df[value_col].notna()
+                if non_null_mask.sum() > 0:
+                    sample_uids = df.loc[non_null_mask, 'uid'].head(3).tolist()
+                    logger.error(f"      Sample UIDs with data in this field: {sample_uids}")
+
+        errors.append(f"Found {len(confidential_fields_found)} confidential fields in dataset")
+    else:
+        logger.info("✓ No confidential fields detected in dataset")
+
+    # ============================================================================
     # 3. VALIDATE REQUIRED FIELDS (optional=false)
     # ============================================================================
     logger.info(f"\n{'='*80}")
@@ -249,6 +299,13 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             if null_count > 0:
                 null_pct = (null_count / total_count) * 100
                 logger.error(f"❌ ERROR: Required field '{base_key}' has {null_count}/{total_count} ({null_pct:.1f}%) NULL/empty values")
+
+                # Get sample UIDs with null values
+                null_mask = temp_series.isna()
+                if 'uid' in df.columns:
+                    sample_uids = df.loc[null_mask, 'uid'].head(5).tolist()
+                    logger.error(f"   Sample UIDs with NULL values: {sample_uids}")
+
                 errors.append(f"Required field '{base_key}' has {null_count} NULL values")
                 required_field_errors += 1
             else:
@@ -277,7 +334,11 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         max_val = field.get('maxValue')
         data_type = field.get('dataType', field.get('type', ''))
 
-        # Only check if min or max value is specified
+        # Skip validation if both minValue and maxValue are null/None
+        if min_val is None and max_val is None:
+            continue
+
+        # Perform range validation if at least one boundary is specified
         if min_val is not None or max_val is not None:
             range_checks_performed += 1
 
@@ -293,7 +354,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             for idx, val in non_null_values.items():
                 is_valid, error_msg = check_value_range(val, min_val, max_val, data_type)
                 if not is_valid:
-                    out_of_range_values.append((idx, val, error_msg))
+                    uid = df.at[idx, 'uid'] if 'uid' in df.columns else idx
+                    out_of_range_values.append((idx, uid, val, error_msg))
 
             if out_of_range_values:
                 violation_count = len(out_of_range_values)
@@ -303,10 +365,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 logger.error(f"❌ ERROR: Field '{base_key}' has {violation_count}/{total} ({violation_pct:.1f}%) out-of-range values")
                 logger.error(f"   Valid range: [{min_val}, {max_val}]")
 
-                # Show sample violations
+                # Show sample violations with UID and actual value
                 sample_violations = out_of_range_values[:5]
-                for idx, val, err_msg in sample_violations:
-                    logger.error(f"   - Row {idx}: {err_msg}")
+                for idx, uid, val, err_msg in sample_violations:
+                    logger.error(f"   - UID: {uid}, Value: {val}, {err_msg}")
 
                 errors.append(f"Field '{base_key}': {violation_count} out-of-range values")
                 range_violations += 1
@@ -367,6 +429,18 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
                     logger.error(f"❌ ERROR: Field '{base_key}' has {invalid_count} non-numeric values")
+
+                    # Get sample invalid values with UIDs
+                    non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
+                    invalid_mask = non_empty & ~df[value_col].astype(str).str.match(numeric_regex, na=False)
+                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+
+                    if not invalid_samples.empty:
+                        logger.error(f"   Sample invalid values:")
+                        for idx, row in invalid_samples.iterrows():
+                            uid_part = f"UID: {row['uid']}, " if 'uid' in invalid_samples.columns else ""
+                            logger.error(f"   - {uid_part}Value: '{row[value_col]}'")
+
                     type_errors += 1
 
             elif data_type in ['datetime', 'timestamp', 'date']:
@@ -381,11 +455,23 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
                     logger.error(f"❌ ERROR: Field '{base_key}' has {invalid_count} invalid datetime values")
+
+                    # Get sample invalid values with UIDs
+                    non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
+                    invalid_mask = non_empty & ~df[value_col].astype(str).str.match(datetime_regex, na=False)
+                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+
+                    if not invalid_samples.empty:
+                        logger.error(f"   Sample invalid values:")
+                        for idx, row in invalid_samples.iterrows():
+                            uid_part = f"UID: {row['uid']}, " if 'uid' in invalid_samples.columns else ""
+                            logger.error(f"   - {uid_part}Value: '{row[value_col]}'")
+
                     type_errors += 1
 
             elif data_type in ['boolean', 'yesno']:
-                # Validate boolean values
-                pattern = r"^\s*$|^(?i)(true|false|1|0|y|n|yes|no)$"
+                # Validate boolean values (case-insensitive flag at start)
+                pattern = r"(?i)^\s*$|^(true|false|1|0|y|n|yes|no)$"
                 result = validator.expect_column_values_to_match_regex(
                     column=value_col,
                     regex=pattern,
@@ -395,20 +481,84 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
                     logger.error(f"❌ ERROR: Field '{base_key}' has {invalid_count} invalid boolean values")
+
+                    # Get sample invalid values with UIDs
+                    non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
+                    invalid_mask = non_empty & ~df[value_col].astype(str).str.match(pattern, na=False)
+                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+
+                    if not invalid_samples.empty:
+                        logger.error(f"   Sample invalid values:")
+                        for idx, row in invalid_samples.iterrows():
+                            uid_part = f"UID: {row['uid']}, " if 'uid' in invalid_samples.columns else ""
+                            logger.error(f"   - {uid_part}Value: '{row[value_col]}'")
+
                     type_errors += 1
 
-            # Validate label column matches expected label
-            if expected_label is not None and label_col in df.columns:
-                pattern = rf"^\s*$|^(?i){re.escape(expected_label)}$"
-                result = validator.expect_column_values_to_match_regex(
-                    column=label_col,
-                    regex=pattern,
-                    mostly=1.0
-                )
+            # Validate label column matches expected label or valueLabel from options
+            if label_col in df.columns:
+                field_options = field.get('options', [])
 
-                if not result['success']:
-                    invalid_count = result['result'].get('unexpected_count', 0)
-                    logger.warning(f"⚠ WARNING: Field '{base_key}' label mismatch in {invalid_count} rows")
+                # Only validate labels if options array is not empty
+                if field_options and len(field_options) > 0:
+                    # Build a mapping of value -> valueLabel from options
+                    value_to_label = {str(opt.get('value', '')).strip(): str(opt.get('valueLabel', '')).strip()
+                                     for opt in field_options if opt.get('value') is not None}
+
+                    # Check each row's value-label pair
+                    mismatched_rows = []
+                    for idx in df.index:
+                        row_value = df.loc[idx, value_col]
+                        row_label = df.loc[idx, label_col]
+
+                        # Skip if both are null/empty
+                        if (pd.isna(row_value) or str(row_value).strip() == '') and \
+                           (pd.isna(row_label) or str(row_label).strip() == ''):
+                            continue
+
+                        # Skip if value is null/empty
+                        if pd.isna(row_value) or str(row_value).strip() == '':
+                            continue
+
+                        # Get expected label for this value
+                        row_value_str = str(row_value).strip()
+                        expected_label_for_value = value_to_label.get(row_value_str)
+
+                        if expected_label_for_value is not None:
+                            row_label_str = str(row_label).strip() if pd.notna(row_label) else ''
+                            # Case-insensitive comparison
+                            if row_label_str.lower() != expected_label_for_value.lower():
+                                uid = df.loc[idx, 'uid'] if 'uid' in df.columns else idx
+                                mismatched_rows.append({
+                                    'uid': uid,
+                                    'value': row_value_str,
+                                    'actual_label': row_label_str,
+                                    'expected_label': expected_label_for_value
+                                })
+
+                    if mismatched_rows:
+                        mismatch_count = len(mismatched_rows)
+                        logger.error(f"❌ ERROR: Field '{base_key}' has {mismatch_count} label mismatches")
+                        logger.error(f"   Sample mismatches (showing up to 5):")
+                        for mismatch in mismatched_rows[:5]:
+                            logger.error(f"   - UID: {mismatch['uid']}, Value: '{mismatch['value']}', " +
+                                       f"Actual Label: '{mismatch['actual_label']}', Expected: '{mismatch['expected_label']}'")
+                        errors.append(f"Field '{base_key}': {mismatch_count} label mismatches")
+                        type_errors += 1
+                    else:
+                        logger.info(f"✓ Field '{base_key}': All labels match their value options")
+                elif expected_label is not None:
+                    # For fields without options, validate against expected_label (case-insensitive flag at start)
+                    pattern = rf"(?i)^\s*$|^{re.escape(expected_label)}$"
+                    result = validator.expect_column_values_to_match_regex(
+                        column=label_col,
+                        regex=pattern,
+                        mostly=1.0
+                    )
+
+                    if not result['success']:
+                        invalid_count = result['result'].get('unexpected_count', 0)
+                        logger.warning(f"⚠ WARNING: Field '{base_key}' label mismatch in {invalid_count} rows")
 
         except Exception as e:
             err_msg = f"Type validation failed for {base_key}: {str(e)}"
@@ -455,7 +605,15 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             inconsistent_mask = df[value_col].isna() & df[label_col].notna()
             if inconsistent_mask.sum() > 0:
                 inconsistencies += 1
-                logger.warning(f"⚠ WARNING: Field '{base_key}' has {inconsistent_mask.sum()} rows with NULL value but non-NULL label")
+                inconsistent_count = inconsistent_mask.sum()
+                logger.warning(f"⚠ WARNING: Field '{base_key}' has {inconsistent_count} rows with NULL value but non-NULL label")
+
+                # Get sample UIDs with inconsistent data
+                if 'uid' in df.columns:
+                    sample_uids = df.loc[inconsistent_mask, 'uid'].head(5).tolist()
+                    sample_labels = df.loc[inconsistent_mask, label_col].head(5).tolist()
+                    logger.warning(f"   Sample UIDs: {sample_uids}")
+                    logger.warning(f"   Sample labels (should be NULL): {sample_labels}")
 
     if inconsistencies == 0:
         logger.info("   ✓ No value-label inconsistencies found")
