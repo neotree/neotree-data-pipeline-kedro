@@ -236,7 +236,6 @@ def union_views():
                 if col in old_smch_admissions.columns:
                     old_smch_admissions[col] = pd.to_numeric(
                         old_smch_admissions[col],
-                        downcast='integer',
                         errors='coerce'
                     )
 
@@ -303,7 +302,6 @@ def union_views():
                 if col in old_matched_smch_data.columns:
                     old_matched_smch_data[col] = pd.to_numeric(
                         old_matched_smch_data[col],
-                        downcast='integer',
                         errors='coerce'
                     )
 

@@ -242,7 +242,6 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
     if 'Gestation.value' in jn_adm_dis.columns:
         jn_adm_dis['Gestation.value'] = pd.to_numeric(
             jn_adm_dis['Gestation.value'],
-            downcast='integer',
             errors='coerce'
         )
 

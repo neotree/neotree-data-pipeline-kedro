@@ -308,7 +308,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
 
     # Format numeric columns
     if 'AdmissionWeight.value' in adm_df:
-        adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], downcast='integer', errors='coerce')
+        adm_df['AdmissionWeight.value'] = pd.to_numeric(adm_df['AdmissionWeight.value'], errors='coerce')
 
     # Drop unnecessary columns
     for col in ['BW.value', 'BW .value']:
@@ -317,38 +317,39 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
 
     # Create derived columns
     adm_df = create_columns(adm_df)
-    adm_df = adm_df[adm_df['uid'] != 'Unknown']
+    if adm_df is not None and not adm_df.empty:
+        adm_df = adm_df[adm_df['uid'] != 'Unknown']
 
-    # Clean column names
-    adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_", regex=True)
+        # Clean column names
+        adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_", regex=True)
 
-    # Format numeric fields
-    numeric_fields = ['Temperature', 'RR', 'HR', 'Age', 'PAR', 'OFC', 'Apgar1', 'Apgar5', 'Length',
-                      'SatsO2', 'SatsAir', 'BalScore', 'VLNumber', 'Gestation', 'MatAgeYrs',
-                      'BalScoreWks', 'BirthWeight', 'DurationLab', 'BloodSugarmg', 'AntenatalCare',
-                      'BloodSugarmmol', 'AdmissionWeight']
-    adm_df = format_column_as_numeric(adm_df, numeric_fields)
+        # Format numeric fields
+        numeric_fields = ['Temperature', 'RR', 'HR', 'Age', 'PAR', 'OFC', 'Apgar1', 'Apgar5', 'Length',
+                        'SatsO2', 'SatsAir', 'BalScore', 'VLNumber', 'Gestation', 'MatAgeYrs',
+                        'BalScoreWks', 'BirthWeight', 'DurationLab', 'BloodSugarmg', 'AntenatalCare',
+                        'BloodSugarmmol', 'AdmissionWeight']
+        adm_df = format_column_as_numeric(adm_df, numeric_fields)
 
-    if 'MatAgeYrs' in adm_df:
-        adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
+        if 'MatAgeYrs' in adm_df:
+            adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
 
-    # Add new columns to database if needed
-    add_new_columns_if_needed(adm_df, 'admissions')
+        # Add new columns to database if needed
+        add_new_columns_if_needed(adm_df, 'admissions')
 
-    # Final transformations
-    adm_df = finalize_dataframe(adm_df, 'admissions')
+        # Final transformations
+        adm_df = finalize_dataframe(adm_df, 'admissions')
 
-    # Validate and save
-    validate_dataframe_with_ge(adm_df, 'admissions')
-    generate_create_insert_sql(adm_df, 'derived', 'admissions')
-    deduplicate_table('admissions')
+        # Validate and save
+        validate_dataframe_with_ge(adm_df, 'admissions')
+        generate_create_insert_sql(adm_df, 'derived', 'admissions')
+        deduplicate_table('admissions')
 
-    logging.info("Creating MCL count tables for Admissions")
-    explode_column(adm_df, adm_mcl, "")
-    generate_timestamp_conversion_query('derived.admissions', ['completed_at', 'started_at'])
+        logging.info("Creating MCL count tables for Admissions")
+        explode_column(adm_df, adm_mcl, "")
+        generate_timestamp_conversion_query('derived.admissions', ['completed_at', 'started_at'])
 
-    # Process repeatables
-    process_repeatables(adm_raw, "admissions")
+        # Process repeatables
+        process_repeatables(adm_raw, "admissions")
 
 
 def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, dis_mcl: Any) -> None:
@@ -391,25 +392,26 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
 
     # Create derived columns and filter
     dis_df = create_columns(dis_df)
-    dis_df = dis_df[dis_df['uid'] != 'Unknown']
+    if dis_df is not None and not dis_df.empty:
+        dis_df = dis_df[dis_df['uid'] != 'Unknown']
 
-    # Add new columns to database if needed
-    add_new_columns_if_needed(dis_df, 'discharges')
+        # Add new columns to database if needed
+        add_new_columns_if_needed(dis_df, 'discharges')
 
-    # Final transformations
-    dis_df = finalize_dataframe(dis_df, 'discharges')
+        # Final transformations
+        dis_df = finalize_dataframe(dis_df, 'discharges')
 
-    # Validate and save
-    validate_dataframe_with_ge(dis_df, 'discharges')
-    generate_create_insert_sql(dis_df, 'derived', 'discharges')
-    deduplicate_table('discharges')
+        # Validate and save
+        validate_dataframe_with_ge(dis_df, 'discharges')
+        generate_create_insert_sql(dis_df, 'derived', 'discharges')
+        deduplicate_table('discharges')
 
-    logging.info("Creating MCL count tables for Discharge")
-    explode_column(dis_df, dis_mcl, "disc_")
-    generate_timestamp_conversion_query('derived.discharges', ['completed_at', 'started_at'])
+        logging.info("Creating MCL count tables for Discharge")
+        explode_column(dis_df, dis_mcl, "disc_")
+        generate_timestamp_conversion_query('derived.discharges', ['completed_at', 'started_at'])
 
-    # Process repeatables
-    process_repeatables(dis_raw, "discharges")
+        # Process repeatables
+        process_repeatables(dis_raw, "discharges")
 
 
 def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outcomes_new_entries: Any, mat_outcomes_mcl: Any) -> pd.DataFrame:
@@ -442,26 +444,27 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
 
     # Create derived columns and filter
     mat_outcomes_df = create_columns(mat_outcomes_df)
-    mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown']
+    if mat_outcomes_df is not None and mat_outcomes_df.empty:
+        mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown']
 
-    # Add new columns to database if needed
-    add_new_columns_if_needed(mat_outcomes_df, 'maternal_outcomes')
+        # Add new columns to database if needed
+        add_new_columns_if_needed(mat_outcomes_df, 'maternal_outcomes')
 
-    # Final transformations
-    mat_outcomes_df = finalize_dataframe(mat_outcomes_df, 'maternal_outcomes')
+        # Final transformations
+        mat_outcomes_df = finalize_dataframe(mat_outcomes_df, 'maternal_outcomes')
 
-    # Validate and save
-    validate_dataframe_with_ge(mat_outcomes_df, 'maternal_outcomes')
-    generate_create_insert_sql(mat_outcomes_df, 'derived', 'maternal_outcomes')
-    deduplicate_table('maternal_outcomes')
+        # Validate and save
+        validate_dataframe_with_ge(mat_outcomes_df, 'maternal_outcomes')
+        generate_create_insert_sql(mat_outcomes_df, 'derived', 'maternal_outcomes')
+        deduplicate_table('maternal_outcomes')
 
-    logging.info("Creating MCL count tables for Maternal Outcomes")
-    explode_column(mat_outcomes_df, mat_outcomes_mcl, "mat_")
+        logging.info("Creating MCL count tables for Maternal Outcomes")
+        explode_column(mat_outcomes_df, mat_outcomes_mcl, "mat_")
 
-    # Process repeatables
-    process_repeatables(mat_outcomes_raw, "maternal_outcomes")
+        # Process repeatables
+        process_repeatables(mat_outcomes_raw, "maternal_outcomes")
 
-    return mat_outcomes_df
+    return mat_outcomes_df or pd.DataFrame()
 
 
 def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any) -> None:
@@ -545,27 +548,27 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
 
     # Create derived columns
     neolab_df = create_columns(neolab_df)
+    if  neolab_df is not None and not neolab_df.empty:
+        # Set index and sort
+        if  "uid" in neolab_df:
+            neolab_df.set_index(['uid'])
+            if "episode" in neolab_df:
+                neolab_df.sort_values(by=['uid', 'episode'])
 
-    # Set index and sort
-    if "uid" in neolab_df:
-        neolab_df.set_index(['uid'])
-        if "episode" in neolab_df:
-            neolab_df.sort_values(by=['uid', 'episode'])
+        # Filter
+        neolab_df = neolab_df[neolab_df['uid'] != 'Unknown']
 
-    # Filter
-    neolab_df = neolab_df[neolab_df['uid'] != 'Unknown']
+        # Final transformations
+        neolab_df = neolab_df.loc[:, ~neolab_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+        neolab_df = transform_matching_labels(neolab_df, 'neolab')
 
-    # Final transformations
-    neolab_df = neolab_df.loc[:, ~neolab_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
-    neolab_df = transform_matching_labels(neolab_df, 'neolab')
+        # Validate and save
+        validate_dataframe_with_ge(neolab_df, 'neolab')
+        generate_create_insert_sql(neolab_df, 'derived', 'neolab')
+        deduplicate_table('neolab')
 
-    # Validate and save
-    validate_dataframe_with_ge(neolab_df, 'neolab')
-    generate_create_insert_sql(neolab_df, 'derived', 'neolab')
-    deduplicate_table('neolab')
-
-    # Process repeatables
-    process_repeatables(neolab_raw, "neolab")
+        # Process repeatables
+        process_repeatables(neolab_raw, "neolab")
 
 
 def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> None:
@@ -589,11 +592,11 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
 
     # Format numeric columns
     if 'AdmissionWeight.value' in baseline_df:
-        baseline_df['AdmissionWeight.value'] = pd.to_numeric(baseline_df['AdmissionWeight.value'], downcast='integer', errors='coerce')
+        baseline_df['AdmissionWeight.value'] = pd.to_numeric(baseline_df['AdmissionWeight.value'], errors='coerce')
     if 'BirthWeight.value' in baseline_df:
-        baseline_df['BirthWeight.value'] = pd.to_numeric(baseline_df['BirthWeight.value'], downcast='integer', errors='coerce')
+        baseline_df['BirthWeight.value'] = pd.to_numeric(baseline_df['BirthWeight.value'], errors='coerce')
     if 'Temperature.value' in baseline_df:
-        baseline_df['Temperature.value'] = pd.to_numeric(baseline_df['Temperature.value'], downcast='integer', errors='coerce')
+        baseline_df['Temperature.value'] = pd.to_numeric(baseline_df['Temperature.value'], errors='coerce')
 
     # Calculate length of stay and life using vectorized function
     baseline_df = process_baseline_dates(baseline_df)
@@ -616,26 +619,28 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
     # Create derived columns
     baseline_df = create_columns(baseline_df)
 
-    if 'Gestation.value' in baseline_df:
-        baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'], errors='coerce')
+    if baseline_df is not None and not baseline_df.empty:
 
-    # Filter
-    baseline_df = baseline_df[baseline_df['uid'] != 'Unknown']
+        if 'Gestation.value' in baseline_df:
+            baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'], errors='coerce')
 
-    # Add new columns to database if needed
-    add_new_columns_if_needed(baseline_df, 'baseline')
+        # Filter
+        baseline_df = baseline_df[baseline_df['uid'] != 'Unknown']
 
-    # Final transformations
-    baseline_df = baseline_df.loc[:, ~baseline_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
-    baseline_df = transform_matching_labels(baseline_df, 'baseline')
+        # Add new columns to database if needed
+        add_new_columns_if_needed(baseline_df, 'baseline')
 
-    # Validate and save
-    validate_dataframe_with_ge(baseline_df, 'baseline')
-    generate_create_insert_sql(baseline_df, 'derived', 'baseline')
-    deduplicate_table('baseline')
+        # Final transformations
+        baseline_df = baseline_df.loc[:, ~baseline_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+        baseline_df = transform_matching_labels(baseline_df, 'baseline')
 
-    logging.info("Creating MCL count tables for Baseline")
-    explode_column(baseline_df, baseline_mcl, "bsl_")
+        # Validate and save
+        validate_dataframe_with_ge(baseline_df, 'baseline')
+        generate_create_insert_sql(baseline_df, 'derived', 'baseline')
+        deduplicate_table('baseline')
+
+        logging.info("Creating MCL count tables for Baseline")
+        explode_column(baseline_df, baseline_mcl, "bsl_")
 
 
 def tidy_tables():
