@@ -8,11 +8,11 @@ from conf.common.sql_functions import create_exploded_table
 def explode_column(df, mcl,db):
 
     for c in mcl:
-        # loop to explode all mcl columns in list 
-        
+        # loop to explode all mcl columns in list
+
         parent_column = None
         column = None
-        if str(c).endswith('Oth'): 
+        if str(c).endswith('Oth'):
             column = (c + '.value')
             #Parent Column To Be Used For Appending Data To An Existing Table Rather Than Creating A New Table
             parent_column = (str(c).replace("Oth","")+'.label');
@@ -21,6 +21,10 @@ def explode_column(df, mcl,db):
             column = (c + '.label')
             parent_column = column
         if parent_column is not None and column is not None:
+            # Check if column exists before trying to access it
+            if column not in df.columns:
+                logging.warning(f"Column '{column}' not found in dataframe, skipping explode operation")
+                continue
             mcl_column = df[[column]] 
             mcl_column_exp = mcl_column.explode(column)
             mcl_column_exp['uid'] = df['uid']

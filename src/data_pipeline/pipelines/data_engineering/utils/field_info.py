@@ -188,8 +188,8 @@ def transform_matching_labels(df, script):
             value_to_label = {opt['value']: opt['valueLabel'] for opt in options}
             
             inverted_mask = (transformed_df[value_col].isin(value_to_label.values()) & transformed_df[label_col].isin(value_to_label.keys()))
-            # Fix inverted rows FIRST
-            if options and inverted_mask.any():
+            # Fix inverted rows FIRST (only for select field types)
+            if options and inverted_mask.any() and field_type in ('single_select_option', 'dropdown', 'multi_select_option'):
                 transformed_df.loc[inverted_mask, [value_col, label_col]] = transformed_df.loc[inverted_mask, [label_col, value_col]].values
 
             non_null_mask = (transformed_df[value_col].notna()) & (transformed_df[label_col] == json_label)
