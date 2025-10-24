@@ -197,13 +197,13 @@ def transform_matching_labels(df, script):
             if field_type in ('multi_select', 'checklist'):
                 transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col].apply(
                     lambda x: ','.join([
-                        value_to_label.get(v.strip(), v.strip()) 
+                        value_to_label.get(v.strip(), v.strip())
                         for v in str(x).split(',') if v.strip()
                     ]) if pd.notna(x) else x
                 )
-            if non_null_mask.any():
+            elif non_null_mask.any():
                 if options:
-                    
+
                     transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col].map(value_to_label)
                 else:
                     transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col]

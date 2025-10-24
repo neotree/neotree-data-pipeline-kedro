@@ -25,7 +25,7 @@ from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_k
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table, count_table_columns, fix_column_limit_error
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge, begin_validation_run, finalize_validation
 
 
@@ -149,12 +149,38 @@ def apply_key_mappings(df: pd.DataFrame, mappings: List[Tuple[str, str, str]]) -
 
 
 def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> None:
-    """Add new columns to database table if they don't exist."""
+    """
+    Add new columns to database table if they don't exist.
+
+    Proactively checks column limit and rebuilds table if approaching PostgreSQL's 1600 limit.
+    This prevents column limit errors by reclaiming dropped columns before adding new ones.
+    """
     if table_exists(schema, table_name):
+        # PROACTIVE COLUMN LIMIT CHECK
+        # Check current column usage and rebuild if > 1200 to prevent hitting the 1600 limit
+        col_info = count_table_columns(table_name, schema)
+
+        if col_info['total'] > 1200:
+            logging.warning(f"Table {schema}.{table_name} has {col_info['total']} columns (> 1200 threshold)")
+            logging.warning(f"  Active: {col_info['active']}, Dropped: {col_info['dropped']}")
+
+            if col_info['dropped'] > 0:
+                logging.info(f"Proactively rebuilding {schema}.{table_name} to reclaim {col_info['dropped']} dropped columns")
+                rebuild_success = fix_column_limit_error(table_name, schema, auto_rebuild=True)
+
+                if rebuild_success:
+                    logging.info(f"✓ Successfully reclaimed {col_info['dropped']} column slots in {schema}.{table_name}")
+                else:
+                    logging.warning(f"⚠ Rebuild of {schema}.{table_name} did not complete successfully")
+            else:
+                logging.warning(f"⚠ No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
+
+        # Now proceed with adding new columns
         existing_cols = pd.DataFrame(get_table_column_names(table_name, schema))
         new_columns = set(df.columns) - set(existing_cols.columns)
 
         if new_columns:
+            logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
             column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
             if column_pairs:
                 create_new_columns(table_name, schema, column_pairs)
@@ -752,15 +778,8 @@ def tidy_tables():
                 latest_mat_outcomes_df = latest_mat_outcomes_df.reset_index(drop=True)
                 mat_completeness_df = pd.concat([latest_mat_outcomes_df, previous_mat_outcomes_df], axis=0, ignore_index=True)
 
-            # Add new columns if needed
-            if table_exists('derived', 'maternity_completeness'):
-                cols = pd.DataFrame(get_table_column_names('maternity_completeness', 'derived'), columns=["column_name"])
-                new_columns = set(mat_completeness_df.columns) - set(cols.columns)
-
-                if new_columns:
-                    column_pairs = [(col, str(mat_completeness_df[col].dtype)) for col in new_columns]
-                    if column_pairs:
-                        create_new_columns('maternity_completeness', 'derived', column_pairs)
+            # Add new columns if needed (with proactive column limit check)
+            add_new_columns_if_needed(mat_completeness_df, 'maternity_completeness')
 
             # Final transformations and save
             mat_completeness_df = mat_completeness_df.loc[:, ~mat_completeness_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]

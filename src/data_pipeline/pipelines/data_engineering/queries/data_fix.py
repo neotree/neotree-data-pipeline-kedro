@@ -1,3 +1,32 @@
+"""
+Data Fix Utilities for PostgreSQL Database Maintenance
+
+Available Functions:
+--------------------
+1. deduplicate_table(table) - Remove duplicate rows
+2. drop_confidential_columns(table) - Drop sensitive columns
+3. update_mat_age(source, dest) - Fix maternal age values
+4. datesfix(source, dest) - Fix null date values
+5. count_table_columns(table, schema) - Count active/dropped columns
+6. rebuild_table_dry_run(table, schema) - Preview rebuild without executing
+7. rebuild_table_to_remove_dropped_columns(table, schema) - Reclaim dropped columns
+8. fix_column_limit_error(table, schema, auto_rebuild) - Diagnose/fix 1600 column limit
+
+Quick Start Examples:
+--------------------
+# Check if table has dropped columns
+from data_pipeline.pipelines.data_engineering.queries.data_fix import count_table_columns
+count_table_columns('joined_admissions_discharges')
+
+# Preview what rebuild would do (no changes)
+from data_pipeline.pipelines.data_engineering.queries.data_fix import rebuild_table_dry_run
+rebuild_table_dry_run('joined_admissions_discharges')
+
+# Actually rebuild table to reclaim space
+from data_pipeline.pipelines.data_engineering.queries.data_fix import fix_column_limit_error
+fix_column_limit_error('joined_admissions_discharges', auto_rebuild=True)
+"""
+
 import logging
 from conf.common.sql_functions import inject_sql_procedure, inject_sql_with_return
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
@@ -596,4 +625,389 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
                 logging.info(f"No null dates found to fix in {dest_table}")
     except Exception as e:
         logging.error(f"Error fixing dates to clean table: {e}")
+
+
+def count_table_columns(table_name: str, schema: str = 'derived') -> dict:
+    """
+    Count total columns in a table, including dropped (ghost) columns.
+
+    Args:
+        table_name: Name of the table
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Dict with 'active', 'dropped', and 'total' column counts
+    """
+    query = f"""
+        SELECT
+            COUNT(*) FILTER (WHERE NOT attisdropped) AS active_columns,
+            COUNT(*) FILTER (WHERE attisdropped) AS dropped_columns,
+            COUNT(*) AS total_columns
+        FROM pg_attribute
+        WHERE attrelid = '{schema}.{table_name}'::regclass
+        AND attnum > 0;
+    """
+
+    try:
+        result = inject_sql_with_return(query)
+        if result and result[0]:
+            active, dropped, total = result[0]
+            logging.info(f"Table {schema}.{table_name}: {active} active, {dropped} dropped, {total} total columns")
+
+            if total >= 1500:
+                logging.warning(f"⚠ Table {schema}.{table_name} is approaching the 1600 column limit!")
+
+            return {
+                'active': active,
+                'dropped': dropped,
+                'total': total
+            }
+    except Exception as e:
+        logging.error(f"Error counting columns for {schema}.{table_name}: {e}")
+
+    return {'active': 0, 'dropped': 0, 'total': 0}
+
+
+def rebuild_table_dry_run(table_name: str, schema: str = 'derived'):
+    """
+    Dry run: Report what would happen during a rebuild WITHOUT actually rebuilding.
+
+    Shows:
+    - Current column counts (active, dropped, total)
+    - Row count
+    - Estimated space savings
+    - What actions would be taken
+
+    Args:
+        table_name: Name of the table to analyze
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Dict with analysis results
+    """
+    logging.info(f"=== DRY RUN: Rebuild Analysis for {schema}.{table_name} ===")
+
+    # Check if table exists
+    if not table_exists(schema, table_name):
+        logging.error(f"Table {schema}.{table_name} does not exist")
+        return {'error': 'Table not found', 'can_rebuild': False}
+
+    # Get column counts
+    col_info = count_table_columns(table_name, schema)
+
+    # Get row count
+    row_count_query = f"SELECT COUNT(*) FROM {schema}.{table_name};"
+    row_count_result = inject_sql_with_return(row_count_query)
+    row_count = row_count_result[0][0] if row_count_result else 0
+
+    # Calculate potential savings
+    percent_used = (col_info['total'] / 1600) * 100
+    slots_after_rebuild = col_info['active']
+    slots_reclaimed = col_info['dropped']
+    slots_available_after = 1600 - col_info['active']
+
+    # Build report
+    logging.info("")
+    logging.info("="*60)
+    logging.info("CURRENT STATE:")
+    logging.info("="*60)
+    logging.info(f"Table: {schema}.{table_name}")
+    logging.info(f"Rows: {row_count:,}")
+    logging.info(f"Active columns: {col_info['active']}")
+    logging.info(f"Dropped (ghost) columns: {col_info['dropped']}")
+    logging.info(f"Total columns: {col_info['total']}/1600 ({percent_used:.1f}%)")
+
+    if col_info['dropped'] == 0:
+        logging.info("")
+        logging.info("✓ No dropped columns found - rebuild not necessary")
+        return {
+            'can_rebuild': False,
+            'reason': 'No dropped columns',
+            'current': col_info,
+            'row_count': row_count
+        }
+
+    logging.info("")
+    logging.info("="*60)
+    logging.info("AFTER REBUILD (PROJECTED):")
+    logging.info("="*60)
+    logging.info(f"Active columns: {slots_after_rebuild}")
+    logging.info(f"Dropped columns: 0")
+    logging.info(f"Total columns: {slots_after_rebuild}/1600 ({(slots_after_rebuild/1600)*100:.1f}%)")
+    logging.info(f"Available slots: {slots_available_after}")
+
+    logging.info("")
+    logging.info("="*60)
+    logging.info("ACTIONS THAT WOULD BE TAKEN:")
+    logging.info("="*60)
+    logging.info(f"1. Count original rows: {row_count:,}")
+    logging.info(f"2. Create table {schema}.{table_name}_rebuild with {col_info['active']} columns")
+    logging.info(f"3. Copy all {row_count:,} rows to rebuild table")
+    logging.info(f"4. Verify row count matches ({row_count:,} rows)")
+    logging.info(f"5. Rename {table_name} to {table_name}_backup")
+    logging.info(f"6. Rename {table_name}_rebuild to {table_name}")
+    logging.info(f"7. Drop {table_name}_backup")
+    logging.info(f"8. Verify final state")
+
+    logging.info("")
+    logging.info("="*60)
+    logging.info("BENEFITS:")
+    logging.info("="*60)
+    logging.info(f"✓ Reclaim {slots_reclaimed} column slots")
+    logging.info(f"✓ Free up space from dropped columns")
+    logging.info(f"✓ Available capacity: {slots_available_after}/1600 slots")
+
+    if col_info['total'] >= 1500:
+        logging.warning("")
+        logging.warning("⚠ WARNING: Table is approaching 1600 column limit!")
+        logging.warning("   Rebuild is STRONGLY recommended")
+
+    logging.info("")
+    logging.info("="*60)
+    logging.info("TO EXECUTE ACTUAL REBUILD:")
+    logging.info("="*60)
+    logging.info(f"rebuild_table_to_remove_dropped_columns('{table_name}', '{schema}')")
+    logging.info("")
+    logging.info("OR with auto-rebuild:")
+    logging.info(f"fix_column_limit_error('{table_name}', '{schema}', auto_rebuild=True)")
+    logging.info("="*60)
+
+    return {
+        'can_rebuild': True,
+        'reason': f'{slots_reclaimed} dropped columns to reclaim',
+        'current': col_info,
+        'row_count': row_count,
+        'after_rebuild': {
+            'active': slots_after_rebuild,
+            'dropped': 0,
+            'total': slots_after_rebuild,
+            'available': slots_available_after
+        },
+        'slots_reclaimed': slots_reclaimed,
+        'recommended': col_info['total'] >= 1500
+    }
+
+
+def rebuild_table_to_remove_dropped_columns(table_name: str, schema: str = 'derived'):
+    """
+    Rebuild a table to physically remove dropped (ghost) columns and reclaim space.
+
+    This is necessary when approaching the 1600 column limit in PostgreSQL.
+    Dropped columns still count toward the limit until the table is rebuilt.
+
+    SECURITY FEATURES:
+    - Transaction-based with automatic rollback on failure
+    - Validates row count before and after
+    - Keeps backup table if validation fails
+    - Verifies column counts after rebuild
+
+    Args:
+        table_name: Name of the table to rebuild
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        True if rebuild successful, False otherwise
+    """
+    logging.info(f"Starting rebuild of {schema}.{table_name} to remove dropped columns")
+
+    # Check if table exists
+    if not table_exists(schema, table_name):
+        logging.error(f"Table {schema}.{table_name} does not exist")
+        return False
+
+    # Get column counts BEFORE rebuild
+    col_info_before = count_table_columns(table_name, schema)
+
+    if col_info_before['dropped'] == 0:
+        logging.info(f"No dropped columns found in {schema}.{table_name} - rebuild not necessary")
+        return True
+
+    logging.info(f"Found {col_info_before['dropped']} dropped columns to remove from {schema}.{table_name}")
+
+    # Get row count BEFORE rebuild for validation
+    row_count_query = f"SELECT COUNT(*) FROM {schema}.{table_name};"
+    row_count_result = inject_sql_with_return(row_count_query)
+    original_row_count = row_count_result[0][0] if row_count_result else 0
+    logging.info(f"Original table has {original_row_count} rows")
+
+    # Rebuild with comprehensive safety measures
+    rebuild_query = f"""
+        DO $$
+        DECLARE
+            original_row_count BIGINT;
+            rebuild_row_count BIGINT;
+            backup_exists BOOLEAN := FALSE;
+        BEGIN
+            -- Step 1: Count original rows
+            SELECT COUNT(*) INTO original_row_count FROM {schema}.{table_name};
+            RAISE NOTICE 'Original table has % rows', original_row_count;
+
+            -- Step 2: Check if backup already exists (safety check)
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = '{schema}'
+                AND table_name = '{table_name}_backup'
+            ) INTO backup_exists;
+
+            IF backup_exists THEN
+                RAISE EXCEPTION 'Backup table {schema}.{table_name}_backup already exists. Please remove it first.';
+            END IF;
+
+            -- Step 3: Create rebuild table with only active columns
+            RAISE NOTICE 'Creating rebuild table...';
+            CREATE TABLE {schema}.{table_name}_rebuild AS
+            SELECT * FROM {schema}.{table_name};
+
+            -- Step 4: Verify row count in rebuild table
+            SELECT COUNT(*) INTO rebuild_row_count FROM {schema}.{table_name}_rebuild;
+            RAISE NOTICE 'Rebuild table has % rows', rebuild_row_count;
+
+            IF rebuild_row_count != original_row_count THEN
+                RAISE EXCEPTION 'Row count mismatch! Original: %, Rebuild: %', original_row_count, rebuild_row_count;
+            END IF;
+
+            -- Step 5: Rename original to backup (safety measure)
+            RAISE NOTICE 'Renaming original to backup...';
+            ALTER TABLE {schema}.{table_name}
+            RENAME TO {table_name}_backup;
+
+            -- Step 6: Rename rebuild to original name
+            RAISE NOTICE 'Activating rebuild table...';
+            ALTER TABLE {schema}.{table_name}_rebuild
+            RENAME TO {table_name};
+
+            -- Step 7: Drop backup (only after successful rename)
+            RAISE NOTICE 'Dropping backup table...';
+            DROP TABLE {schema}.{table_name}_backup;
+
+            RAISE NOTICE '✓ Successfully rebuilt table {schema}.{table_name}';
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Comprehensive rollback
+                RAISE WARNING 'Error during rebuild: %', SQLERRM;
+
+                -- Try to restore from backup if it exists
+                IF EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_schema = '{schema}'
+                    AND table_name = '{table_name}_backup'
+                ) THEN
+                    -- If new table exists, drop it
+                    DROP TABLE IF EXISTS {schema}.{table_name};
+
+                    -- Restore from backup
+                    ALTER TABLE {schema}.{table_name}_backup
+                    RENAME TO {table_name};
+
+                    RAISE NOTICE 'Restored original table from backup';
+                END IF;
+
+                -- Clean up rebuild table if it exists
+                DROP TABLE IF EXISTS {schema}.{table_name}_rebuild;
+
+                -- Re-raise the exception
+                RAISE EXCEPTION 'Failed to rebuild table: %', SQLERRM;
+        END $$;
+    """
+
+    try:
+        logging.info("Executing rebuild with transaction safety...")
+        inject_sql_procedure(rebuild_query, f"REBUILD TABLE {schema}.{table_name}")
+
+        # Verify the rebuild
+        logging.info("Verifying rebuild...")
+
+        # Check row count AFTER rebuild
+        row_count_after_result = inject_sql_with_return(row_count_query)
+        new_row_count = row_count_after_result[0][0] if row_count_after_result else 0
+
+        if new_row_count != original_row_count:
+            logging.error(f"❌ Row count mismatch! Before: {original_row_count}, After: {new_row_count}")
+            return False
+
+        # Check column counts AFTER rebuild
+        col_info_after = count_table_columns(table_name, schema)
+
+        logging.info(f"✓ Rebuild complete and verified")
+        logging.info(f"  Rows: {new_row_count} (unchanged)")
+        logging.info(f"  Active columns: {col_info_after['active']}")
+        logging.info(f"  Dropped columns: {col_info_after['dropped']}")
+        logging.info(f"  Reclaimed {col_info_before['dropped']} column slots")
+
+        if col_info_after['dropped'] > 0:
+            logging.warning(f"⚠ Still have {col_info_after['dropped']} dropped columns after rebuild")
+
+        return True
+
+    except Exception as e:
+        logging.error(f"❌ Error rebuilding table {schema}.{table_name}: {e}")
+        logging.error(f"   Original table should be intact")
+        return False
+
+
+def fix_column_limit_error(table_name: str, schema: str = 'derived', auto_rebuild: bool = False):
+    """
+    Diagnose and optionally fix PostgreSQL's 1600 column limit error.
+
+    When you see: "tables can have at most 1600 columns"
+    This function:
+    1. Checks current column usage
+    2. Identifies dropped columns taking up space
+    3. Optionally rebuilds the table to reclaim space
+
+    Args:
+        table_name: Name of the table
+        schema: Schema name (default: 'derived')
+        auto_rebuild: If True, automatically rebuild if dropped columns exist
+
+    Returns:
+        True if issue resolved, False otherwise
+    """
+    logging.info(f"Diagnosing column limit issue for {schema}.{table_name}")
+
+    col_info = count_table_columns(table_name, schema)
+
+    if col_info['total'] == 0:
+        logging.error(f"Table {schema}.{table_name} not found or has no columns")
+        return False
+
+    # Report status
+    percent_used = (col_info['total'] / 1600) * 100
+    logging.info(f"Column usage: {col_info['total']}/1600 ({percent_used:.1f}%)")
+    logging.info(f"  - Active columns: {col_info['active']}")
+    logging.info(f"  - Dropped columns (ghost): {col_info['dropped']}")
+
+    if col_info['total'] < 1600:
+        logging.info("✓ Table is below the 1600 column limit")
+        if col_info['dropped'] > 0:
+            logging.info(f"  However, {col_info['dropped']} dropped columns can be reclaimed")
+
+    # Provide recommendations
+    if col_info['dropped'] > 0:
+        logging.info("\n" + "="*60)
+        logging.info("RECOMMENDATIONS:")
+        logging.info("="*60)
+        logging.info(f"1. You have {col_info['dropped']} dropped columns counting toward the limit")
+        logging.info(f"2. Rebuilding the table will reclaim {col_info['dropped']} column slots")
+        logging.info(f"3. After rebuild, you'll have {1600 - col_info['active']} slots available")
+
+        if auto_rebuild:
+            logging.info("\nAuto-rebuild enabled - proceeding with table rebuild...")
+            return rebuild_table_to_remove_dropped_columns(table_name, schema)
+        else:
+            logging.info(f"\nTo see detailed analysis WITHOUT rebuilding:")
+            logging.info(f"  rebuild_table_dry_run('{table_name}', '{schema}')")
+            logging.info(f"\nTo fix manually:")
+            logging.info(f"  rebuild_table_to_remove_dropped_columns('{table_name}', '{schema}')")
+            logging.info("\nOr enable auto-rebuild:")
+            logging.info(f"  fix_column_limit_error('{table_name}', '{schema}', auto_rebuild=True)")
+    else:
+        logging.warning("No dropped columns found - the table genuinely has too many columns")
+        logging.warning("Consider:")
+        logging.warning("  1. Normalizing the schema (split into multiple related tables)")
+        logging.warning("  2. Moving rarely-used columns to a separate table")
+        logging.warning("  3. Using JSONB for semi-structured data")
+
+    return col_info['dropped'] > 0
 

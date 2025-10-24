@@ -145,21 +145,15 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         logger.warning(f"##### SCHEMA FOR SCRIPT {script} NOT FOUND - SKIPPING VALIDATION")
         return
 
-    logger.info(f"\n{'='*80}")
-    logger.info(f"VALIDATING SCRIPT: {script.upper()}")
-    logger.info(f"{'='*80}\n")
-    logger.info(f"Total rows in dataset: {len(df)}")
-    logger.info(f"Total columns: {len(df.columns)}\n")
+    logger.info(f"\n{'='*60}")
+    logger.info(f"VALIDATING: {script.upper()} | Rows: {len(df)} | Cols: {len(df.columns)}")
+    logger.info(f"{'='*60}")
 
     # Create validator
     validator = context.sources.pandas_default.read_dataframe(df)
 
-    # ============================================================================
     # 1. VALIDATE UID COLUMN (CRITICAL)
-    # ============================================================================
-    logger.info("="*80)
-    logger.info("1. UID VALIDATION")
-    logger.info("="*80)
+    logger.info("\n[1] UID VALIDATION")
 
     try:
         if 'uid' in df.columns:
@@ -170,25 +164,20 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             if not duplicate_uids.empty:
                 dup_count = len(duplicate_uids)
                 unique_dup = duplicate_uids['uid'].nunique()
-                logger.error(f"❌ ERROR: Found {dup_count} duplicate UID entries ({unique_dup} unique UIDs)")
-                logger.error(f"   Sample duplicate UIDs: {duplicate_uids['uid'].unique()[:5].tolist()}")
+                logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {duplicate_uids['uid'].unique()[:3].tolist()}")
                 errors.append(f"Duplicate UIDs found: {dup_count} rows")
             else:
-                logger.info("✓ UID column: All values are unique and non-null")
+                logger.info("✓ All UIDs unique and non-null")
         else:
-            logger.error("❌ ERROR: UID column is missing from dataset")
+            logger.error("❌ UID column missing from dataset")
             errors.append("UID column missing")
     except Exception as e:
         err_msg = f"Error validating 'uid' column: {str(e)}\n{traceback.format_exc()}"
         logger.error(err_msg)
         errors.append(err_msg)
 
-    # ============================================================================
     # 2. DROP KEYWORDS VALIDATION (SENSITIVE/UNWANTED COLUMNS)
-    # ============================================================================
-    logger.info(f"\n{'='*80}")
-    logger.info("2. SENSITIVE/UNWANTED COLUMN NAMES CHECK")
-    logger.info("="*80)
+    logger.info("\n[2] SENSITIVE/UNWANTED COLUMNS")
 
     drop_keywords = ['surname', 'firstname', 'dobtob', 'column_name', 'mothcell',
                      'dob.value', 'dob.label', 'kinaddress', 'kincell', 'kinname']
@@ -200,23 +189,16 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             found_sensitive_columns.append(col)
 
     if found_sensitive_columns:
-        logger.error(f"❌ CRITICAL WARNING: Found {len(found_sensitive_columns)} column(s) with sensitive/unwanted names!")
-        logger.error(f"   These columns should be dropped from the dataset:")
-        for col in found_sensitive_columns:
-            logger.error(f"   - {col}")
+        logger.error(f"❌ {len(found_sensitive_columns)} sensitive column(s): {', '.join(found_sensitive_columns)}")
         warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
     else:
-        logger.info("✓ No sensitive/unwanted column names detected")
+        logger.info("✓ No sensitive columns detected")
 
     # Create field lookup dictionary
     field_info = {f['key']: f for f in schema}
 
-    # ============================================================================
     # 2b. CONFIDENTIAL FIELDS CHECK
-    # ============================================================================
-    logger.info(f"\n{'='*80}")
-    logger.info("2b. CONFIDENTIAL FIELDS CHECK")
-    logger.info("="*80)
+    logger.info("\n[2b] CONFIDENTIAL FIELDS")
 
     # Check for fields marked as confidential in schema
     confidential_fields_found = []
@@ -239,34 +221,33 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 })
 
     if confidential_fields_found:
-        logger.error(f"❌ CRITICAL ERROR: Found {len(confidential_fields_found)} confidential field(s) in the dataset!")
-        logger.error(f"   These fields are marked as confidential and should NOT be in the dataset:")
-        for field in confidential_fields_found:
+        logger.error(f"❌ {len(confidential_fields_found)} confidential field(s) found:")
+        for field in confidential_fields_found[:3]:  # Show max 3
             columns = []
             if field['has_value']:
                 columns.append(f"{field['key']}.value")
             if field['has_label']:
                 columns.append(f"{field['key']}.label")
-            logger.error(f"   - {field['key']} ({field['label']}): {', '.join(columns)}")
 
-            # Show sample UIDs with data in confidential fields
+            # Show sample UIDs with data
+            sample_info = ""
             if 'uid' in df.columns and field['has_value']:
                 value_col = f"{field['key']}.value"
                 non_null_mask = df[value_col].notna()
                 if non_null_mask.sum() > 0:
-                    sample_uids = df.loc[non_null_mask, 'uid'].head(3).tolist()
-                    logger.error(f"      Sample UIDs with data in this field: {sample_uids}")
+                    sample_uids = df.loc[non_null_mask, 'uid'].head(2).tolist()
+                    sample_info = f" | UIDs: {sample_uids}"
 
+            logger.error(f"   {field['key']} ({field['label']}): {', '.join(columns)}{sample_info}")
+
+        if len(confidential_fields_found) > 3:
+            logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
         errors.append(f"Found {len(confidential_fields_found)} confidential fields in dataset")
     else:
-        logger.info("✓ No confidential fields detected in dataset")
+        logger.info("✓ No confidential fields")
 
-    # ============================================================================
     # 3. VALIDATE REQUIRED FIELDS (optional=false)
-    # ============================================================================
-    logger.info(f"\n{'='*80}")
-    logger.info("3. REQUIRED FIELD VALIDATION")
-    logger.info("="*80)
+    logger.info("\n[3] REQUIRED FIELDS")
 
     required_fields_checked = 0
     required_field_errors = 0
@@ -298,27 +279,19 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
             if null_count > 0:
                 null_pct = (null_count / total_count) * 100
-                logger.error(f"❌ ERROR: Required field '{base_key}' has {null_count}/{total_count} ({null_pct:.1f}%) NULL/empty values")
-
-                # Get sample UIDs with null values
                 null_mask = temp_series.isna()
-                if 'uid' in df.columns:
-                    sample_uids = df.loc[null_mask, 'uid'].head(5).tolist()
-                    logger.error(f"   Sample UIDs with NULL values: {sample_uids}")
-
+                sample_uids = df.loc[null_mask, 'uid'].head(2).tolist() if 'uid' in df.columns else []
+                logger.error(f"❌ '{base_key}': {null_count}/{total_count} ({null_pct:.1f}%) NULL | UIDs: {sample_uids}")
                 errors.append(f"Required field '{base_key}' has {null_count} NULL values")
                 required_field_errors += 1
-            else:
-                logger.info(f"✓ Required field '{base_key}': All values present")
 
-    logger.info(f"\nRequired fields summary: {required_fields_checked} checked, {required_field_errors} with errors")
+    if required_field_errors == 0 and required_fields_checked > 0:
+        logger.info(f"✓ All {required_fields_checked} required fields populated")
+    elif required_fields_checked > 0:
+        logger.info(f"Summary: {required_fields_checked} checked, {required_field_errors} with errors")
 
-    # ============================================================================
     # 4. VALIDATE VALUE RANGES (minValue, maxValue)
-    # ============================================================================
-    logger.info(f"\n{'='*80}")
-    logger.info("4. VALUE RANGE VALIDATION")
-    logger.info("="*80)
+    logger.info("\n[4] VALUE RANGES")
 
     range_checks_performed = 0
     range_violations = 0
@@ -362,27 +335,21 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 total = len(non_null_values)
                 violation_pct = (violation_count / total) * 100
 
-                logger.error(f"❌ ERROR: Field '{base_key}' has {violation_count}/{total} ({violation_pct:.1f}%) out-of-range values")
-                logger.error(f"   Valid range: [{min_val}, {max_val}]")
+                # Show sample violations
+                sample_violations = out_of_range_values[:2]
+                samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in sample_violations])
 
-                # Show sample violations with UID and actual value
-                sample_violations = out_of_range_values[:5]
-                for idx, uid, val, err_msg in sample_violations:
-                    logger.error(f"   - UID: {uid}, Value: {val}, {err_msg}")
-
+                logger.error(f"❌ '{base_key}': {violation_count}/{total} ({violation_pct:.1f}%) out of [{min_val}, {max_val}] | {samples_str}")
                 errors.append(f"Field '{base_key}': {violation_count} out-of-range values")
                 range_violations += 1
-            else:
-                logger.info(f"✓ Field '{base_key}': All values within range [{min_val}, {max_val}]")
 
-    logger.info(f"\nRange validation summary: {range_checks_performed} fields checked, {range_violations} with violations")
+    if range_violations == 0 and range_checks_performed > 0:
+        logger.info(f"✓ All {range_checks_performed} range-validated fields valid")
+    elif range_checks_performed > 0:
+        logger.info(f"Summary: {range_checks_performed} checked, {range_violations} with violations")
 
-    # ============================================================================
     # 5. DATA TYPE VALIDATION
-    # ============================================================================
-    logger.info(f"\n{'='*80}")
-    logger.info("5. DATA TYPE VALIDATION")
-    logger.info("="*80)
+    logger.info("\n[5] DATA TYPES")
 
     type_checks_performed = 0
     type_errors = 0
@@ -428,19 +395,21 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
-                    logger.error(f"❌ ERROR: Field '{base_key}' has {invalid_count} non-numeric values")
 
                     # Get sample invalid values with UIDs
                     non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                     invalid_mask = non_empty & ~df[value_col].astype(str).str.match(numeric_regex, na=False)
-                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
 
+                    samples_str = ""
                     if not invalid_samples.empty:
-                        logger.error(f"   Sample invalid values:")
+                        samples_list = []
                         for idx, row in invalid_samples.iterrows():
-                            uid_part = f"UID: {row['uid']}, " if 'uid' in invalid_samples.columns else ""
-                            logger.error(f"   - {uid_part}Value: '{row[value_col]}'")
+                            uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
+                            samples_list.append(uid_val)
+                        samples_str = f" | Samples: {samples_list}"
 
+                    logger.error(f"❌ '{base_key}': {invalid_count} non-numeric values{samples_str}")
                     type_errors += 1
 
             elif data_type in ['datetime', 'timestamp', 'date']:
@@ -454,19 +423,21 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
-                    logger.error(f"❌ ERROR: Field '{base_key}' has {invalid_count} invalid datetime values")
 
                     # Get sample invalid values with UIDs
                     non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                     invalid_mask = non_empty & ~df[value_col].astype(str).str.match(datetime_regex, na=False)
-                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
 
+                    samples_str = ""
                     if not invalid_samples.empty:
-                        logger.error(f"   Sample invalid values:")
+                        samples_list = []
                         for idx, row in invalid_samples.iterrows():
-                            uid_part = f"UID: {row['uid']}, " if 'uid' in invalid_samples.columns else ""
-                            logger.error(f"   - {uid_part}Value: '{row[value_col]}'")
+                            uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
+                            samples_list.append(uid_val)
+                        samples_str = f" | Samples: {samples_list}"
 
+                    logger.error(f"❌ '{base_key}': {invalid_count} invalid datetime values{samples_str}")
                     type_errors += 1
 
             elif data_type in ['boolean', 'yesno']:
@@ -480,19 +451,21 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
-                    logger.error(f"❌ ERROR: Field '{base_key}' has {invalid_count} invalid boolean values")
 
                     # Get sample invalid values with UIDs
                     non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                     invalid_mask = non_empty & ~df[value_col].astype(str).str.match(pattern, na=False)
-                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
 
+                    samples_str = ""
                     if not invalid_samples.empty:
-                        logger.error(f"   Sample invalid values:")
+                        samples_list = []
                         for idx, row in invalid_samples.iterrows():
-                            uid_part = f"UID: {row['uid']}, " if 'uid' in invalid_samples.columns else ""
-                            logger.error(f"   - {uid_part}Value: '{row[value_col]}'")
+                            uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
+                            samples_list.append(uid_val)
+                        samples_str = f" | Samples: {samples_list}"
 
+                    logger.error(f"❌ '{base_key}': {invalid_count} invalid boolean values{samples_str}")
                     type_errors += 1
 
             # Validate label column matches expected label or valueLabel from options
@@ -538,15 +511,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
                     if mismatched_rows:
                         mismatch_count = len(mismatched_rows)
-                        logger.error(f"❌ ERROR: Field '{base_key}' has {mismatch_count} label mismatches")
-                        logger.error(f"   Sample mismatches (showing up to 5):")
-                        for mismatch in mismatched_rows[:5]:
-                            logger.error(f"   - UID: {mismatch['uid']}, Value: '{mismatch['value']}', " +
-                                       f"Actual Label: '{mismatch['actual_label']}', Expected: '{mismatch['expected_label']}'")
+                        samples = [f"{m['uid']}:val={m['value']}/lbl={m['actual_label']}" for m in mismatched_rows[:2]]
+                        logger.error(f"❌ '{base_key}': {mismatch_count} label mismatches | {samples}")
                         errors.append(f"Field '{base_key}': {mismatch_count} label mismatches")
                         type_errors += 1
-                    else:
-                        logger.info(f"✓ Field '{base_key}': All labels match their value options")
                 elif expected_label is not None:
                     # For fields without options, validate against expected_label (case-insensitive flag at start)
                     pattern = rf"(?i)^\s*$|^{re.escape(expected_label)}$"
@@ -566,67 +534,53 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             errors.append(err_msg)
             type_errors += 1
 
-    logger.info(f"\nData type validation summary: {type_checks_performed} fields checked, {type_errors} with errors")
+    if type_errors == 0 and type_checks_performed > 0:
+        logger.info(f"✓ All {type_checks_performed} data types valid")
+    elif type_checks_performed > 0:
+        logger.info(f"Summary: {type_checks_performed} checked, {type_errors} with errors")
 
-    # ============================================================================
     # 6. DATA QUALITY CHECKS
-    # ============================================================================
-    logger.info(f"\n{'='*80}")
-    logger.info("6. COMPREHENSIVE DATA QUALITY CHECKS")
-    logger.info("="*80)
+    logger.info("\n[6] DATA QUALITY")
 
     # 6.1 Completeness Check
-    logger.info("\n6.1 Completeness Analysis:")
     total_cells = df.shape[0] * df.shape[1]
     null_cells = df.isnull().sum().sum()
     completeness_pct = ((total_cells - null_cells) / total_cells) * 100
-    logger.info(f"   Overall completeness: {completeness_pct:.2f}%")
-    logger.info(f"   Total cells: {total_cells}, Null cells: {null_cells}")
+    logger.info(f"   Completeness: {completeness_pct:.2f}% ({total_cells - null_cells}/{total_cells} cells)")
 
     # Show columns with high NULL rates
     null_rates = (df.isnull().sum() / len(df)) * 100
     high_null_cols = null_rates[null_rates > 50].sort_values(ascending=False)
     if not high_null_cols.empty:
-        logger.warning(f"⚠ WARNING: {len(high_null_cols)} columns have >50% NULL values:")
-        for col, rate in high_null_cols.head(10).items():
-            logger.warning(f"   - {col}: {rate:.1f}% NULL")
+        logger.warning(f"⚠ {len(high_null_cols)} columns >50% NULL:")
+        for col, rate in high_null_cols.head(5).items():
+            logger.warning(f"   {col}: {rate:.1f}%")
+        if len(high_null_cols) > 5:
+            logger.warning(f"   ... and {len(high_null_cols) - 5} more")
 
-    # 6.2 Consistency Checks
-    logger.info("\n6.2 Consistency Checks:")
-
-    # Check for inconsistent value-label pairs
+    # 6.2 Consistency Checks (value-label pairs)
     inconsistencies = 0
     for value_col in [col for col in df.columns if col.endswith('.value')]:
         base_key = value_col[:-6]
         label_col = f"{base_key}.label"
 
         if label_col in df.columns:
-            # Find rows where value is null but label is not (inconsistent)
             inconsistent_mask = df[value_col].isna() & df[label_col].notna()
             if inconsistent_mask.sum() > 0:
                 inconsistencies += 1
                 inconsistent_count = inconsistent_mask.sum()
-                logger.warning(f"⚠ WARNING: Field '{base_key}' has {inconsistent_count} rows with NULL value but non-NULL label")
-
-                # Get sample UIDs with inconsistent data
-                if 'uid' in df.columns:
-                    sample_uids = df.loc[inconsistent_mask, 'uid'].head(5).tolist()
-                    sample_labels = df.loc[inconsistent_mask, label_col].head(5).tolist()
-                    logger.warning(f"   Sample UIDs: {sample_uids}")
-                    logger.warning(f"   Sample labels (should be NULL): {sample_labels}")
+                sample_uids = df.loc[inconsistent_mask, 'uid'].head(2).tolist() if 'uid' in df.columns else []
+                logger.warning(f"⚠ '{base_key}': {inconsistent_count} NULL value but non-NULL label | UIDs: {sample_uids}")
 
     if inconsistencies == 0:
-        logger.info("   ✓ No value-label inconsistencies found")
+        logger.info("   ✓ No value-label inconsistencies")
     else:
-        logger.warning(f"   ⚠ Found inconsistencies in {inconsistencies} fields")
+        logger.warning(f"   ⚠ {inconsistencies} fields with inconsistencies")
 
     # 6.3 Outlier Detection (for numeric fields)
-    logger.info("\n6.3 Outlier Detection (Numeric Fields):")
     outlier_fields = 0
-
     for value_col in [col for col in df.columns if col.endswith('.value')]:
         base_key = value_col[:-6]
-
         if base_key not in field_info:
             continue
 
@@ -636,78 +590,57 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         if data_type in ['number', 'integer', 'float', 'timer']:
             try:
                 numeric_values = pd.to_numeric(df[value_col], errors='coerce').dropna()
-
-                if len(numeric_values) > 10:  # Only check if we have enough data
+                if len(numeric_values) > 10:
                     Q1 = numeric_values.quantile(0.25)
                     Q3 = numeric_values.quantile(0.75)
                     IQR = Q3 - Q1
                     lower_bound = Q1 - 3 * IQR
                     upper_bound = Q3 + 3 * IQR
-
                     outliers = numeric_values[(numeric_values < lower_bound) | (numeric_values > upper_bound)]
 
                     if len(outliers) > 0:
                         outlier_pct = (len(outliers) / len(numeric_values)) * 100
-                        if outlier_pct > 5:  # Only report if >5% are outliers
-                            logger.warning(f"⚠ WARNING: Field '{base_key}' has {len(outliers)} ({outlier_pct:.1f}%) potential outliers")
-                            logger.warning(f"   Expected range: [{lower_bound:.2f}, {upper_bound:.2f}]")
-                            logger.warning(f"   Outlier examples: {outliers.head().tolist()}")
+                        if outlier_pct > 5:
+                            logger.warning(f"⚠ '{base_key}': {len(outliers)} ({outlier_pct:.1f}%) outliers | Range: [{lower_bound:.2f}, {upper_bound:.2f}]")
                             outlier_fields += 1
-            except Exception as e:
-                pass  # Skip fields that can't be converted to numeric
+            except Exception:
+                pass
 
     if outlier_fields == 0:
-        logger.info("   ✓ No significant outliers detected")
+        logger.info("   ✓ No significant outliers")
     else:
-        logger.info(f"   Found potential outliers in {outlier_fields} fields")
+        logger.info(f"   {outlier_fields} fields with outliers")
 
-    # 6.4 Referential Integrity (if applicable)
-    logger.info("\n6.4 Referential Integrity:")
-
-    # Check if UIDs exist across related tables (example check)
+    # 6.4 Referential Integrity
     if 'uid' in df.columns:
         unique_uids = df['uid'].nunique()
         total_rows = len(df)
-        logger.info(f"   Unique UIDs: {unique_uids}")
-        logger.info(f"   Total rows: {total_rows}")
+        avg_records_per_uid = total_rows / unique_uids if unique_uids > 0 else 0
+        logger.info(f"   UIDs: {unique_uids} unique | {total_rows} total rows | Avg: {avg_records_per_uid:.2f} records/UID")
 
-        if unique_uids < total_rows:
-            avg_records_per_uid = total_rows / unique_uids
-            logger.info(f"   Average records per UID: {avg_records_per_uid:.2f}")
-
-    # ============================================================================
     # 7. FINAL SUMMARY
-    # ============================================================================
-    logger.info(f"\n{'='*80}")
-    logger.info("VALIDATION SUMMARY")
-    logger.info("="*80)
-    logger.info(f"Script: {script}")
-    logger.info(f"Total Rows: {len(df)}")
-    logger.info(f"Total Columns: {len(df.columns)}")
-    logger.info(f"")
-    logger.info(f"Validation Results:")
-    logger.info(f"  - Errors: {len(errors)}")
-    logger.info(f"  - Warnings: {len(warnings)}")
-    logger.info(f"")
+    logger.info(f"\n{'='*60}")
+    logger.info(f"SUMMARY: {script} | Rows: {len(df)} | Cols: {len(df.columns)}")
+    logger.info(f"Results: {len(errors)} errors, {len(warnings)} warnings")
+    logger.info(f"{'='*60}")
 
     if errors:
-        logger.error(f"❌ VALIDATION FAILED - {len(errors)} ERRORS FOUND")
-        logger.error("\nError Summary:")
-        for i, error in enumerate(errors[:10], 1):  # Show first 10 errors
+        logger.error(f"❌ VALIDATION FAILED - {len(errors)} ERRORS")
+        for i, error in enumerate(errors[:5], 1):  # Show first 5 errors
             logger.error(f"  {i}. {error}")
-        if len(errors) > 10:
-            logger.error(f"  ... and {len(errors) - 10} more errors")
+        if len(errors) > 5:
+            logger.error(f"  ... and {len(errors) - 5} more")
     else:
-        logger.info("✓ VALIDATION PASSED - NO ERRORS")
+        logger.info("✓ VALIDATION PASSED")
 
     if warnings:
-        logger.warning(f"\n⚠ {len(warnings)} WARNINGS:")
-        for i, warning in enumerate(warnings[:10], 1):  # Show first 10 warnings
+        logger.warning(f"⚠ {len(warnings)} WARNINGS:")
+        for i, warning in enumerate(warnings[:5], 1):  # Show first 5 warnings
             logger.warning(f"  {i}. {warning}")
-        if len(warnings) > 10:
-            logger.warning(f"  ... and {len(warnings) - 10} more warnings")
+        if len(warnings) > 5:
+            logger.warning(f"  ... and {len(warnings) - 5} more")
 
-    logger.info(f"\n{'='*80}\n")
+    logger.info(f"{'='*60}\n")
 
 
 def not_90_percent_similar_to_label(x, reference_value):

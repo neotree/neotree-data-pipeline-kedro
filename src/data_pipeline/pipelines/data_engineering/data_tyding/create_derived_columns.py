@@ -67,7 +67,9 @@ def create_columns(table: pd.DataFrame):
                         table.loc[table['BirthWeight.value'] < 2500, 'BWGroup.value'] = "LBW"
                         table.loc[table['BirthWeight.value'] < 1500, 'BWGroup.value'] = "VLBW"
                         table.loc[table['BirthWeight.value'] < 1000, 'BWGroup.value'] = "ELBW"
-                        table['BirthWeightCategory'] =table['BWGroup.value']
+                        # Fixed: Use proper .value suffix to avoid redundant columns
+                        table['BirthWeightCategory.value'] = table['BWGroup.value']
+                        table['BirthWeightCategory.label'] = "Birth Weight Category"
                   except:
                         pass
             else:
@@ -179,38 +181,45 @@ def create_columns(table: pd.DataFrame):
                   except:
                         pass
 
-            if 'BirthWeight.value' in table: 
+            if 'BirthWeight.value' in table:
                   try:
-                        
-                        table['LBWBinary'] = ((table['BirthWeight.value'] > 0) & (table['BirthWeight.value'] < 2500)) 
+                        # Fixed: Use proper .value suffix to avoid redundant columns
+                        table['LBWBinary.value'] = ((table['BirthWeight.value'] > 0) & (table['BirthWeight.value'] < 2500))
+                        table['LBWBinary.label'] = "Low Birth Weight Binary"
 
                         table['<28wks/1kg.value'] = ((table['BirthWeight.value'] > 0) &
                                                 ((table['BirthWeight.value'] < 1000) |
                                                  (isinstance(table['Gestation.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
-                        
-                        
+                        table['<28wks/1kg.label'] = "<28 weeks or <1kg"
+
                   except:
-                        
+
                         pass
 
             else:
                   if 'BW.value' in table:
                         try:
-                              table['LBWBinary'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500)) 
+                              # Fixed: Use proper .value suffix to avoid redundant columns
+                              table['LBWBinary.value'] = ((table['BW.value'] > 0) & (table['BW.value'] < 2500))
+                              table['LBWBinary.label'] = "Low Birth Weight Binary"
 
                               table['<28wks/1kg.value'] = ((table['BW.value'] > 0) &
                                                 ((table['BW.value'] < 1000) |
                                                  (isinstance(table['Gestation.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
-                  
+                              table['<28wks/1kg.label'] = "<28 weeks or <1kg"
+
                         except:
                               pass
                   if 'Bw.value' in table:
                         try:
-                              table['LBWBinary'] = ((table['Bw.value'] > 0) & (table['Bw.value'] < 2500)) 
+                              # Fixed: Use proper .value suffix to avoid redundant columns
+                              table['LBWBinary.value'] = ((table['Bw.value'] > 0) & (table['Bw.value'] < 2500))
+                              table['LBWBinary.label'] = "Low Birth Weight Binary"
 
                               table['<28wks/1kg.value'] = ((table['Bw.value'] > 0) &
                                                 ((table['Bw.value'] < 1000) |
                                                  (isinstance(table['Gestation.value'], (int, float, complex)) & (table['Gestation.value'] < 28))))
+                              table['<28wks/1kg.label'] = "<28 weeks or <1kg"
                         except:
                               pass
                   if 'BWTDis.value' in table:
