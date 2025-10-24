@@ -1143,8 +1143,20 @@ def run_bulky_query(table: str, filtered_records=None):
             return
         filtered_records = filtered_records.to_dict('records')
 
+    # Defensive check: ensure filtered_records is a list
+    if not isinstance(filtered_records, list):
+        logging.error(f"Error in run_bulky_query: filtered_records should be a list, got {type(filtered_records)}")
+        return
+
     # Handle empty lists
     if not filtered_records:
+        return
+
+    # Defensive check: ensure all items in the list are dictionaries
+    if not all(isinstance(item, dict) for item in filtered_records):
+        logging.error(f"Error in run_bulky_query: filtered_records should contain only dictionaries")
+        invalid_items = [type(item) for item in filtered_records if not isinstance(item, dict)]
+        logging.error(f"Found invalid item types: {invalid_items}")
         return
 
     # Get raw psycopg2 connection for execute_values

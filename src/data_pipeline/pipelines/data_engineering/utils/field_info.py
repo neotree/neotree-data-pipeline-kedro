@@ -121,17 +121,37 @@ def load_json_for_comparison(filename):
 def merge_json_files(file1_path, file2_path):
     file_path1= f'conf/local/scripts/{file1_path}.json'
     file_path2= f'conf/local/scripts/{file2_path}.json'
-    if os.path.exists(file_path1) and  os.path.exists(file2_path):
+
+    # Fix: Check the correct file path variable
+    if os.path.exists(file_path1) and os.path.exists(file_path2):
         with open(file_path1, 'r') as f1, open(file_path2, 'r') as f2:
             data1 = json.load(f1)
             data2 = json.load(f2)
 
-        merged = dict(data1)
-        for k, v in data2.items():
-            if k not in merged:
-                merged[k] = v
+        # Handle case where data is a list (expected format) or dict
+        if isinstance(data1, list) and isinstance(data2, list):
+            # Convert lists to dicts using 'key' field
+            dict1 = {item['key']: item for item in data1 if isinstance(item, dict) and 'key' in item}
+            dict2 = {item['key']: item for item in data2 if isinstance(item, dict) and 'key' in item}
 
-        return merged
+            # Merge dictionaries
+            merged = dict1.copy()
+            for k, v in dict2.items():
+                if k not in merged:
+                    merged[k] = v
+
+            # Convert back to list format
+            return list(merged.values())
+        elif isinstance(data1, dict) and isinstance(data2, dict):
+            # Handle dict format
+            merged = data1.copy()
+            for k, v in data2.items():
+                if k not in merged:
+                    merged[k] = v
+            return merged
+        else:
+            logging.warning(f"Unexpected data format in merge_json_files: {type(data1)}, {type(data2)}")
+            return None
     return None
 
 
@@ -197,8 +217,21 @@ def transform_matching_labels_for_update_queries(df, script):
         json_data = merge_json_files('admissions', 'discharges')
     if not json_data:
         return []  # empty fallback - return empty list, not DataFrame
-    
-    field_info = {f['key']: f for f in json_data}
+
+    # Defensive check: ensure json_data is a list or dict
+    if not isinstance(json_data, (list, dict)):
+        logging.warning(f"Unexpected json_data type for script '{script}': {type(json_data)}")
+        return []
+
+    # Handle both list and dict formats
+    if isinstance(json_data, list):
+        field_info = {f['key']: f for f in json_data if isinstance(f, dict) and 'key' in f}
+    else:
+        field_info = json_data
+
+    if not field_info:
+        return []
+
     df_transformed = df.copy()
     label_cols_changed = []
 
