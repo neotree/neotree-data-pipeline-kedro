@@ -449,6 +449,12 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
         where_conditions.append(f'd.{dest_col_quoted} IS NULL')
         columns_fixed.append(dest_col)
 
+    # Build source column IS NOT NULL conditions (avoiding f-string escape issues)
+    source_not_null_conditions = []
+    for _, sc, _ in column_mappings:
+        sc_quoted = f'"{sc}"' if '.' in sc or ' ' in sc else sc
+        source_not_null_conditions.append(f's.{sc_quoted} IS NOT NULL')
+
     update_query = f"""
         WITH updated AS (
             UPDATE derived."{dest_table}" d
@@ -457,7 +463,7 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
             WHERE d.uid = s.uid
             AND d.unique_key = s.unique_key
             AND ({' OR '.join(where_conditions)})
-            AND ({' OR '.join([f's.{("\"" + sc + "\"" if "." in sc or " " in sc else sc)} IS NOT NULL' for _, sc, _ in column_mappings])})
+            AND ({' OR '.join(source_not_null_conditions)})
             RETURNING d.uid
         )
         SELECT COUNT(*) as updated_count,
@@ -554,6 +560,12 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
         where_conditions.append(f'd.{dest_col_quoted} IS NULL')
         columns_fixed.append(f'{dest_col} <- {source_col}')
 
+    # Build source column IS NOT NULL conditions (avoiding f-string escape issues)
+    source_not_null_conditions_clean = []
+    for _, sc, _ in column_mappings:
+        sc_quoted = f'"{sc}"' if '.' in sc or ' ' in sc else sc
+        source_not_null_conditions_clean.append(f's.{sc_quoted} IS NOT NULL')
+
     update_query = f"""
         WITH updated AS (
             UPDATE derived."{dest_table}" d
@@ -562,7 +574,7 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
             WHERE d.uid = s.uid
             AND d.unique_key = s.unique_key
             AND ({' OR '.join(where_conditions)})
-            AND ({' OR '.join([f's.{("\"" + sc + "\"" if "." in sc or " " in sc else sc)} IS NOT NULL' for _, sc, _ in column_mappings])})
+            AND ({' OR '.join(source_not_null_conditions_clean)})
             RETURNING d.uid
         )
         SELECT COUNT(*) as updated_count,

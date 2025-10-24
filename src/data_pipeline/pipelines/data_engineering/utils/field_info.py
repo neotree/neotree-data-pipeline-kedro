@@ -1,6 +1,6 @@
 import json
 import os
-from conf.base.catalog import params,hospital_conf
+from conf.base.catalog import hospital_conf
 from conf.common.scripts import get_raw_json
 import pandas as pd
 import logging
