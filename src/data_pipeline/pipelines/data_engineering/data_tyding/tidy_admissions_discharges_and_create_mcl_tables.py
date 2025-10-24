@@ -474,7 +474,7 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
 
     # Create derived columns and filter
     mat_outcomes_df = create_columns(mat_outcomes_df)
-    if mat_outcomes_df is not None and mat_outcomes_df.empty:
+    if mat_outcomes_df is not None and not mat_outcomes_df.empty:
         mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown']
 
         # Add new columns to database if needed

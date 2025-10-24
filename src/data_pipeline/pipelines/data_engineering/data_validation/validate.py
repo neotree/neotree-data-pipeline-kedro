@@ -143,6 +143,9 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     Comprehensive validation using Great Expectations with schema-based rules.
     Optimized to minimize redundant dataframe iterations.
 
+    NEW: Supports scriptId-based validation - splits dataframe by scriptId
+    and validates each subset against its corresponding metadata.
+
     Validates:
     - Required fields (optional=false)
     - Value ranges (minValue, maxValue)
@@ -150,12 +153,12 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     - Data quality metrics
     """
     context = gx.get_context()
-    errors = []
-    warnings = []
     logger = setup_logger(log_file_path)
-    schema = load_json_for_comparison(script)
 
-    if not schema:
+    # Load metadata (could be new format {scriptId: [fields]} or legacy [fields])
+    metadata = load_json_for_comparison(script)
+
+    if not metadata:
         logger.warning(f"##### SCHEMA FOR SCRIPT {script} NOT FOUND - SKIPPING VALIDATION")
         return
 
@@ -163,8 +166,99 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     logger.info(f"VALIDATING: {script.upper()} | Rows: {len(df)} | Cols: {len(df.columns)}")
     logger.info(f"{'='*60}")
 
+    # Check if we have new scriptId-based structure and scriptId column
+    if isinstance(metadata, dict) and 'scriptid' in df.columns:
+        # NEW FORMAT: Split by scriptId and validate each subset
+        logger.info(f"\nUsing scriptId-based validation")
+
+        # Get unique scriptIds from dataframe
+        unique_script_ids = df['scriptid'].dropna().unique()
+        logger.info(f"Found {len(unique_script_ids)} unique scriptid(s): {unique_script_ids.tolist()}")
+
+        # Validate each scriptId subset
+        for script_id in unique_script_ids:
+            script_id_str = str(script_id)
+            subset_df = df[df['scriptid'] == script_id].copy()
+            schema = metadata.get(script_id_str)
+
+            if not schema:
+                logger.warning(f"\n⚠ No metadata found for scriptid: {script_id_str} ({len(subset_df)} rows) - SKIPPING")
+                continue
+
+            logger.info(f"\n{'─'*60}")
+            logger.info(f"Validating scriptid: {script_id_str} | {len(subset_df)} rows")
+            logger.info(f"{'─'*60}")
+
+            # Call the validation logic for this subset
+            _validate_subset(subset_df, schema, script_id_str, logger, context)
+
+        # Handle rows with NULL scriptId
+        null_script_id_df = df[df['scriptid'].isna()]
+        if not null_script_id_df.empty:
+            logger.warning(f"\n⚠ {len(null_script_id_df)} rows have NULL scriptid - SKIPPING VALIDATION")
+            if 'uid' in null_script_id_df.columns:
+                sample_uids = null_script_id_df['uid'].dropna().head(3).tolist()
+                logger.warning(f"   Sample UIDs: {sample_uids}")
+
+        logger.info(f"\n{'='*60}")
+        logger.info(f"COMPLETED: {script.upper()} | All scriptIds validated")
+        logger.info(f"{'='*60}\n")
+        return
+
+    # LEGACY FORMAT or no scriptId column: Use existing validation
+    if isinstance(metadata, dict):
+        # Check if this is a flat field dict (legacy converted) or scriptId-based dict
+        # Legacy converted format will have 'key' in the dict values
+        first_key = next(iter(metadata.keys()))
+        first_value = metadata[first_key]
+
+        if isinstance(first_value, dict) and 'key' in first_value:
+            # This is a legacy format converted to dict {fieldKey: field}
+            logger.info(f"Using legacy validation format (converted from array)")
+            schema = metadata
+        else:
+            # This is scriptId-based format but no scriptId column
+            logger.warning(f"No scriptId column in dataframe - using first available schema")
+            if len(metadata) == 1:
+                schema = list(metadata.values())[0]
+                logger.info(f"Using single available schema: {list(metadata.keys())[0]}")
+            else:
+                logger.warning(f"Multiple schemas available but no scriptId column - using first schema")
+                schema = list(metadata.values())[0]
+    else:
+        logger.error(f"Unexpected metadata type: {type(metadata)}")
+        return
+
+    # Call validation logic for entire dataframe (legacy)
+    _validate_subset(df, schema, script, logger, context)
+
+
+def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, context):
+    """
+    Validate a single dataframe subset against its schema.
+
+    This function contains the core validation logic extracted from validate_dataframe_with_ge.
+    It can be called for the entire dataframe (legacy) or for scriptId subsets (new).
+
+    Args:
+        df: DataFrame to validate
+        schema: Dict of {fieldKey: field} or list of field definitions (legacy)
+        script_or_id: Script name or scriptId for logging
+        logger: Logger instance
+        context: Great Expectations context
+    """
+    errors = []
+    warnings = []
+
     # Create validator
     validator = context.sources.pandas_default.read_dataframe(df)
+
+    # Create field lookup dictionary
+    # Handle both dict (new format) and list (legacy format)
+    if isinstance(schema, dict):
+        field_info = schema
+    else:
+        field_info = {f['key']: f for f in schema}
 
     # 1. VALIDATE UID COLUMN (CRITICAL)
     logger.info("\n[1] UID VALIDATION")
@@ -208,15 +302,14 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     else:
         logger.info("✓ No sensitive columns detected")
 
-    # Create field lookup dictionary
-    field_info = {f['key']: f for f in schema}
-
     # 2b. CONFIDENTIAL FIELDS CHECK
     logger.info("\n[2b] CONFIDENTIAL FIELDS")
 
     # Check for fields marked as confidential in schema
     confidential_fields_found = []
-    for field in schema:
+    # Handle both dict and list formats
+    schema_fields = field_info.values() if isinstance(field_info, dict) else schema
+    for field in schema_fields:
         field_key = field.get('key')
         is_confidential = field.get('confidential', False)
 
@@ -637,7 +730,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
     # 7. FINAL SUMMARY
     logger.info(f"\n{'='*60}")
-    logger.info(f"SUMMARY: {script} | Rows: {len(df)} | Cols: {len(df.columns)}")
+    logger.info(f"SUMMARY: {script_or_id} | Rows: {len(df)} | Cols: {len(df.columns)}")
     logger.info(f"Results: {len(errors)} errors, {len(warnings)} warnings")
     logger.info(f"{'='*60}")
 

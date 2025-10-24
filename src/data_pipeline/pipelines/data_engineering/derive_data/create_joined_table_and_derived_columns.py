@@ -24,18 +24,44 @@ from conf.common.sql_functions import (
 )
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.data_validation.validate import reset_log
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table, count_table_columns, fix_column_limit_error
 
 
 def add_missing_columns(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> None:
-    """Add any new columns from dataframe to existing table."""
+    """
+    Add any new columns from dataframe to existing table.
+
+    Proactively checks column limit and rebuilds table if approaching PostgreSQL's 1600 limit.
+    This prevents column limit errors by reclaiming dropped columns before adding new ones.
+    """
     if not table_exists(schema, table_name):
         return
 
+    # PROACTIVE COLUMN LIMIT CHECK
+    # Check current column usage and rebuild if > 1200 to prevent hitting the 1600 limit
+    col_info = count_table_columns(table_name, schema)
+
+    if col_info['total'] > 1200:
+        logging.warning(f"Table {schema}.{table_name} has {col_info['total']} columns (> 1200 threshold)")
+        logging.warning(f"  Active: {col_info['active']}, Dropped: {col_info['dropped']}")
+
+        if col_info['dropped'] > 0:
+            logging.info(f"Proactively rebuilding {schema}.{table_name} to reclaim {col_info['dropped']} dropped columns")
+            rebuild_success = fix_column_limit_error(table_name, schema, auto_rebuild=True)
+
+            if rebuild_success:
+                logging.info(f"✓ Successfully reclaimed {col_info['dropped']} column slots in {schema}.{table_name}")
+            else:
+                logging.warning(f"⚠ Rebuild of {schema}.{table_name} did not complete successfully")
+        else:
+            logging.warning(f"⚠ No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
+
+    # Now proceed with adding new columns
     adm_cols = pd.DataFrame(get_table_column_names(table_name, schema))
     new_columns = set(df.columns) - set(adm_cols.columns)
 
     if new_columns:
+        logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
         column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
         if column_pairs:
             create_new_columns(table_name, schema, column_pairs)

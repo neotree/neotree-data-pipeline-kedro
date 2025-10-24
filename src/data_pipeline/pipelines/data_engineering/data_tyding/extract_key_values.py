@@ -29,6 +29,8 @@ def get_key_values(data_raw):
             ingested_at =None
             if 'appVersion' in row:
                 app_version = row['appVersion']
+            if 'scriptid' in row:
+                script_version = row['scriptid']
             if(app_version!=None and app_version!=''):
                 #Remove any Other Characters that are non-numeric
                 app_version = int(''.join(d for d in app_version if d.isdigit()))
@@ -52,18 +54,12 @@ def get_key_values(data_raw):
             if 'started_at' in row:
                 new_entry['started_at'] = row['started_at']
 
-            if 'started_at' in row:
-                new_entry['started_at'] = row['started_at']
-
             if 'completed_at' in row:
                 new_entry['completed_at'] = row['completed_at']
 
             if 'completed_time' in row:
                 new_entry['completed_time'] = row['completed_time']
-                
-            if 'unique_key' in row:
-                new_entry['unique_key'] = row['unique_key']
-            
+
             if 'ingested_at' in row:
                 new_entry['ingested_at'] = row['ingested_at']
                 new_entry['ingested_at'] = pd.to_datetime(row['ingested_at'], format='%Y-%m-%dT%H:%M:%S').tz_localize(None)
@@ -73,25 +69,37 @@ def get_key_values(data_raw):
 
         # iterate through key, value and add to dict
             for c in row['entries']:
-                 
+                # Initialize k and v to avoid unbound variable errors
+                k = None
+                v = None
+
                 #RECORDS FORMATTED WITH NEW FORMAT, CONTAINS THE jsonFormat Key and C is the Key
-                if('key' not in c) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)): 
-                    try:            
-                        k, v, mcl = restructure_new_format(c,row['entries'][c], mcl)
-                    #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
-                        if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
-                            new_entry['uid'] = v.value;
-                    except Exception:
-                        logging.info("RESTRUCTURING ERROR ON RECORD WITH UID"+str(row['uid']))
+                if('key' not in c) or (app_version!='' and app_version!=None and (app_version>454 or int(str(app_version)[:1])>=5)):
+                    try:
+                        # Check if row['entries'][c] is not None before processing
+                        entry_data = row['entries'][c]
+                        if entry_data is not None:
+                            k, v, mcl = restructure_new_format(c, entry_data, mcl)
+                        #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
+                            if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
+                                if hasattr(v, 'value'):
+                                    new_entry['uid'] = v.value
+                                else:
+                                    new_entry['uid'] = v
+                    except Exception as e:
+                        logging.info("RESTRUCTURING ERROR "+str(e))
 
             #ELSE USE THE OLD FORMAT
                 else:
                     k, v, mcl = restructure(c, mcl)
-                        
+
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
-                if((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
-                        new_entry['uid'] = v.value;
-                if k is not None:
+                if k is not None and ((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
+                    if hasattr(v, 'value'):
+                        new_entry['uid'] = v.value
+                    else:
+                        new_entry['uid'] = v
+                if k is not None and v is not None:
                     if (k=='completed_at' and 'completed_at' not in new_entry) or k!='completed_at':
                         new_entry[k] = v
         

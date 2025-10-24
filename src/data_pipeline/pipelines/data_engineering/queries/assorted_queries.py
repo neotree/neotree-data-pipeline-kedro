@@ -343,6 +343,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
         SELECT
             cs.uid,
             cs.ingested_at,
+            cs.scriptid,
             cs."data"->'appVersion' AS "appVersion",
             cs."data"->'scriptVersion' AS "scriptVersion",
             cs."data"->'started_at' AS "started_at",
@@ -359,6 +360,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
         sql=f'''
             SELECT
             cs.uid,
+            cs.scriptid,
             cs.ingested_at,
             cs."data"->'appVersion' AS "appVersion",
             cs."data"->'scriptVersion' AS "scriptVersion",
@@ -374,6 +376,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
         sql = f'''
             select 
             cs.uid,
+            cs.scriptid,
             cs.ingested_at,
             cs."data"->'appVersion' as "appVersion",
             cs."data"->'scriptVersion' as "scriptVersion",
