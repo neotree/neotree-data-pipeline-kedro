@@ -187,12 +187,20 @@ def transform_matching_labels(df, script):
             options = field.get('options', [])
             value_to_label = {opt['value']: opt['valueLabel'] for opt in options}
             
-            inverted_mask = (transformed_df[value_col].isin(value_to_label.values()) & transformed_df[label_col].isin(value_to_label.keys()))
-            # Fix inverted rows FIRST (only for select field types)
-            if options and inverted_mask.any() and field_type in ('single_select_option', 'dropdown', 'multi_select_option'):
-                transformed_df.loc[inverted_mask, [value_col, label_col]] = transformed_df.loc[inverted_mask, [label_col, value_col]].values
+            try:
+                inverted_mask = (transformed_df[value_col].isin(value_to_label.values()) & transformed_df[label_col].isin(value_to_label.keys()))
+                # Fix inverted rows FIRST (only for select field types)
+                if options and inverted_mask.any() and field_type in ('single_select_option', 'dropdown', 'multi_select_option'):
+                    # Safely swap values using temporary column to avoid KeyError
+                    temp_vals = transformed_df.loc[inverted_mask, value_col].copy()
+                    transformed_df.loc[inverted_mask, value_col] = transformed_df.loc[inverted_mask, label_col]
+                    transformed_df.loc[inverted_mask, label_col] = temp_vals
 
-            non_null_mask = (transformed_df[value_col].notna()) & (transformed_df[label_col] == json_label)
+                non_null_mask = (transformed_df[value_col].notna()) & (transformed_df[label_col] == json_label)
+            except KeyError as e:
+                # Skip this field if columns don't exist (defensive check)
+                logging.warning(f"Column access error for field {base_key}: {str(e)}")
+                continue
             
             if field_type in ('multi_select', 'checklist'):
                 transformed_df.loc[non_null_mask, label_col] = transformed_df.loc[non_null_mask, value_col].apply(

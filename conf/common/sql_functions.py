@@ -566,6 +566,16 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
                 elif 'timestamp' in col_type.lower() or 'date' in col_type.lower():
                     if isinstance(val, (datetime, pd.Timestamp)):
                         row_values.append(f"'{val.strftime('%Y-%m-%d %H:%M:%S')}'")
+                    elif isinstance(val, str):
+                        # Try to parse string timestamps
+                        try:
+                            parsed_date = pd.to_datetime(val, errors='coerce')
+                            if pd.notna(parsed_date):
+                                row_values.append(f"'{parsed_date.strftime('%Y-%m-%d %H:%M:%S')}'")
+                            else:
+                                row_values.append("NULL")
+                        except Exception:
+                            row_values.append("NULL")
                     else:
                         row_values.append("NULL")
                 elif col_type == 'text' or col_type == 'unknown':
