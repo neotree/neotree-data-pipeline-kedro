@@ -61,25 +61,28 @@ def convert_column_to_date(df: pd.DataFrame,column):
 def convert_to_date(value, format_str):
     if value is None or pd.isna(value):
         return None
-        
+
     clean_value = str(value).strip().rstrip(",")
-    
+
     try:
-        # Return datetime object, NOT formatted string
-        return pd.to_datetime(clean_value, errors='raise', infer_datetime_format=True)
-        
+        # FIX: Removed infer_datetime_format parameter which was causing dates to be set to null
+        # Use pandas default date parsing with coerce to handle various formats gracefully
+        result = pd.to_datetime(clean_value, errors='coerce')
+        # Return None if parsing failed (results in NaT)
+        return result if pd.notna(result) else None
+
     except (ValueError, TypeError):
         # Enhanced regex pattern that includes time for textual formats
         timestamp_pattern = re.compile(
             r'^('
-            r'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}'                       
-            r'(?:\.\d+)?'                                                   
-            r'(?:Z|[+-]\d{2}:?\d{2})?'                                       
-            r'|'                                                             
+            r'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}'
+            r'(?:\.\d+)?'
+            r'(?:Z|[+-]\d{2}:?\d{2})?'
+            r'|'
             r'\d{1,2}[ -](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[ ,-]*\d{4}'
             r'(?:[ T]\d{1,2}:\d{2}(?::\d{2})?)?'  # Added optional time part
-            r'|'                                                             
-            r'\d{1,2}[/-]\d{1,2}[/-]\d{4}'                                  
+            r'|'
+            r'\d{1,2}[/-]\d{1,2}[/-]\d{4}'
             r')$',
             re.IGNORECASE
         )
@@ -87,12 +90,14 @@ def convert_to_date(value, format_str):
         if re.fullmatch(timestamp_pattern, clean_value):
             try:
                 # Return datetime object, NOT formatted string
-                return pd.to_datetime(clean_value, errors='raise')
+                result = pd.to_datetime(clean_value, errors='coerce')
+                return result if pd.notna(result) else None
             except:
                 # Basic cleaning for known patterns
                 if '.' in clean_value:
                     clean_value = clean_value.split('.')[0]
                 clean_value = clean_value.replace('T', ' ')
-                return pd.to_datetime(clean_value, errors='coerce')
-                
+                result = pd.to_datetime(clean_value, errors='coerce')
+                return result if pd.notna(result) else None
+
         return None

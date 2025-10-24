@@ -27,7 +27,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
     read_clean_admissions_without_discharges,
     clean_discharges_not_matched
 )
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table,datesfix_batch
 
 # This file calls the query to grant privileges to users on the generated tables
 cron_log = open(cron_log_file, "a+")
@@ -86,13 +86,11 @@ def process_single_script(script: str, hospital_scripts: Dict) -> None:
         return
 
     merged_script_data = collect_script_data(hospital_scripts, script)
-    logging.info(f"@@@..TR-@@--{bool(merged_script_data)}")
 
     if merged_script_data is None or not bool(merged_script_data):
         return
 
     query = read_derived_data_query(script, f'clean_{script}')
-    logging.info(f"KWERY..TR-@@--{query}")
     new_data_df = run_query_and_return_df(query)
 
     if new_data_df is None or new_data_df.empty:
@@ -199,6 +197,9 @@ def clean_data_for_research(create_summary_counts_output):
         # Process unmatched discharges
         process_unmatched_discharges()
 
+        #Clean Dirty Dates
+        clean_all_dates()
+
         return dict(status='Success', message="Data Cleanup Complete")
 
     except Exception as e:
@@ -258,3 +259,40 @@ def createCleanJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.D
     add_columns_if_needed(jn_adm_dis, 'clean_joined_adm_discharges')
 
     return jn_adm_dis
+
+def clean_all_dates():
+    datesfix_batch([
+      ('public.clean_sessions', 'admissions'),
+      ('public.clean_sessions', 'discharges'),
+      ('public.clean_sessions', 'maternal_outcomes'),
+      ('public.clean_sessions', 'vitalsigns'),
+      ('public.clean_sessions', 'neolab'),
+      ('public.clean_sessions', 'baseline'),
+      ('public.clean_sessions', 'infections'),
+      ('public.clean_sessions', 'daily_review'),
+      ('public.clean_sessions', 'twenty_8_day_follow_up'),
+      ('public.clean_sessions', 'maternity_completeness'),
+      ('public.clean_sessions','dhis2_maternal_outcomes'),
+      ('public.clean_sessions','phc_discharges'),
+      ('public.clean_sessions','phc_admissions'),
+      ('derived.admissions','joined_admissions_discharges'),
+      ('discharges','joined_admissions_discharges'),
+      ('derived.admissions', 'clean_admissions'),
+      ('derived.discharges', 'clean_discharges'),
+      ('derived.joined_admissions_discharges','clean_joined_adm_discharges'),
+      ('derived.maternal_outcomes', 'clean_maternal_outcomes'),
+      ('derived.vitalsigns', 'clean_vitalsigns'),
+      ('derived.neolab', 'clean_neolab'),
+      ('derived.baseline', 'clean_baseline'),
+      ('derived.infections', 'clean_infections'),
+      ('derived.daily_review', 'clean_daily_review'),
+      ('derived.twenty_8_day_follow_up', 'clean_twenty_8_day_follow_up'),
+      ('derived.maternity_completeness', 'clean_maternity_completeness'),
+      ('derived.dhis2_maternal_outcomes','clean_dhis2_maternal_outcomes'),
+      ('phc_admissions','clean_phc_admissions'),
+      ('phc_discharges','clean_phc_discharges')
+  ])
+
+   
+
+    
