@@ -5,15 +5,25 @@ Available Functions:
 --------------------
 1. deduplicate_table(table) - Remove duplicate rows
 2. drop_confidential_columns(table) - Drop sensitive columns
-3. update_mat_age(source, dest) - Fix maternal age values
-4. datesfix(source, dest) - Fix null date values
-5. count_table_columns(table, schema) - Count active/dropped columns
-6. rebuild_table_dry_run(table, schema) - Preview rebuild without executing
-7. rebuild_table_to_remove_dropped_columns(table, schema) - Reclaim dropped columns
-8. fix_column_limit_error(table, schema, auto_rebuild) - Diagnose/fix 1600 column limit
+3. drop_single_letter_columns(table) - Drop all single-letter column names
+4. drop_single_letter_columns_all_tables(schema) - Drop single-letter columns from all tables in schema
+5. update_mat_age(source, dest) - Fix maternal age values
+6. datesfix(source, dest) - Fix null date values
+7. count_table_columns(table, schema) - Count active/dropped columns
+8. rebuild_table_dry_run(table, schema) - Preview rebuild without executing
+9. rebuild_table_to_remove_dropped_columns(table, schema) - Reclaim dropped columns
+10. fix_column_limit_error(table, schema, auto_rebuild) - Diagnose/fix 1600 column limit
 
 Quick Start Examples:
 --------------------
+# Drop single-letter columns from a specific table
+from data_pipeline.pipelines.data_engineering.queries.data_fix import drop_single_letter_columns
+drop_single_letter_columns('admissions')
+
+# Drop single-letter columns from ALL tables in derived schema
+from data_pipeline.pipelines.data_engineering.queries.data_fix import drop_single_letter_columns_all_tables
+drop_single_letter_columns_all_tables('derived')
+
 # Check if table has dropped columns
 from data_pipeline.pipelines.data_engineering.queries.data_fix import count_table_columns
 count_table_columns('joined_admissions_discharges')
@@ -85,7 +95,7 @@ def deduplicate_derived_tables(table: str):
     inject_sql_procedure(query,f"DEDUPLICATE DERIVED {table}")
 
 def drop_confidential_columns(table_name):
-   
+
     query = f'''DO $$
             DECLARE
                 cols text;
@@ -111,6 +121,143 @@ def drop_confidential_columns(table_name):
             END $$;
             '''
     inject_sql_procedure(query,f"DROP CONFIDENTIAL COLS {table_name}")
+
+
+def drop_single_letter_columns(table_name: str, schema: str = 'derived'):
+    """
+    Drop all single-letter column names from a specific table.
+
+    Single-letter columns are often artifacts or unintended columns
+    that should not exist in production tables.
+
+    Args:
+        table_name: Name of the table to clean
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Number of columns dropped
+    """
+    if not table_exists(schema, table_name):
+        logging.error(f"Table {schema}.{table_name} does not exist")
+        return 0
+
+    # First, get the list of single-letter columns
+    check_query = f"""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = '{schema}'
+        AND table_name = '{table_name}'
+        AND LENGTH(column_name) = 1;
+    """
+
+    result = inject_sql_with_return(check_query)
+
+    if not result or len(result) == 0:
+        logging.info(f"No single-letter columns found in {schema}.{table_name}")
+        return 0
+
+    single_letter_cols = [row[0] for row in result]
+    logging.info(f"Found {len(single_letter_cols)} single-letter columns in {schema}.{table_name}: {single_letter_cols}")
+
+    # Build and execute DROP query
+    query = f'''DO $$
+            DECLARE
+                cols text;
+                sql  text;
+            BEGIN
+                -- Find all single-letter column names and build DROP clause
+                SELECT string_agg(format('DROP COLUMN IF EXISTS %I', column_name), ', ')
+                INTO cols
+                FROM information_schema.columns
+                WHERE table_schema = '{schema}'
+                AND table_name = '{table_name}'
+                AND LENGTH(column_name) = 1;
+
+                -- Only run if we found matching columns
+                IF cols IS NOT NULL THEN
+                    sql := format('ALTER TABLE %I.%I %s;', '{schema}', '{table_name}', cols);
+                    EXECUTE sql;
+                    RAISE NOTICE 'Dropped single-letter columns: %', cols;
+                END IF;
+            END $$;
+            '''
+
+    inject_sql_procedure(query, f"DROP SINGLE-LETTER COLS {schema}.{table_name}")
+    logging.info(f"✓ Dropped {len(single_letter_cols)} single-letter columns from {schema}.{table_name}")
+
+    return len(single_letter_cols)
+
+
+def drop_single_letter_columns_all_tables(schema: str = 'derived'):
+    """
+    Drop all single-letter column names from ALL tables in a schema.
+
+    This is a cleanup procedure to remove unwanted single-letter columns
+    that may have been inadvertently created across multiple tables.
+
+    Args:
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Dict with summary of columns dropped per table
+    """
+    logging.info(f"Starting cleanup of single-letter columns from all tables in schema '{schema}'")
+
+    # Get all tables in the schema
+    tables_query = f"""
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = '{schema}'
+        AND table_type = 'BASE TABLE'
+        ORDER BY table_name;
+    """
+
+    tables_result = inject_sql_with_return(tables_query)
+
+    if not tables_result or len(tables_result) == 0:
+        logging.warning(f"No tables found in schema '{schema}'")
+        return {}
+
+    tables = [row[0] for row in tables_result]
+    logging.info(f"Found {len(tables)} tables in schema '{schema}'")
+
+    # Process each table
+    summary = {}
+    total_cols_dropped = 0
+    tables_affected = 0
+
+    for table_name in tables:
+        try:
+            cols_dropped = drop_single_letter_columns(table_name, schema)
+            if cols_dropped > 0:
+                summary[table_name] = cols_dropped
+                total_cols_dropped += cols_dropped
+                tables_affected += 1
+        except Exception as e:
+            logging.error(f"Error processing table {schema}.{table_name}: {e}")
+            summary[table_name] = f"ERROR: {str(e)}"
+
+    # Report summary
+    logging.info("")
+    logging.info("="*60)
+    logging.info("CLEANUP SUMMARY:")
+    logging.info("="*60)
+    logging.info(f"Total tables scanned: {len(tables)}")
+    logging.info(f"Tables with single-letter columns: {tables_affected}")
+    logging.info(f"Total single-letter columns dropped: {total_cols_dropped}")
+
+    if tables_affected > 0:
+        logging.info("")
+        logging.info("Tables affected:")
+        for table, count in summary.items():
+            if isinstance(count, int):
+                logging.info(f"  - {table}: {count} columns dropped")
+            else:
+                logging.error(f"  - {table}: {count}")
+
+    logging.info("="*60)
+
+    return summary
 
 
 def update_mat_age(source_table: str, dest_table: str):

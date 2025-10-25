@@ -6,7 +6,7 @@ import pandas as pd
 import logging
 
 
-def process_and_save_field_info(script, json_data):
+def process_and_save_field_info(script, json_data, script_id_to_use=None):
     """
     Process and save field metadata organized by scriptid.
 
@@ -26,6 +26,8 @@ def process_and_save_field_info(script, json_data):
     Args:
         script: Script name (e.g., 'admissions')
         json_data: Raw JSON from API containing script metadata
+        script_id_to_use: Optional script ID to use as key (overrides extraction from json_data).
+                          This is the OLD Firebase ID that database records are tied to.
     """
     # Ensure directory exists
     os.makedirs('conf/local/scripts', exist_ok=True)
@@ -45,19 +47,25 @@ def process_and_save_field_info(script, json_data):
 
     # Process screens from the input data
     for script_entry in json_data.get('data', []):
-        # Extract scriptid from the script entry
-        script_id = script_entry.get('scriptid') or script_entry.get('_id', 'unknown')
+        # Use the passed script_id if provided (this is the OLD Firebase ID from database),
+        # otherwise extract from the returned data (which would be the NEW UUID from API)
+        if script_id_to_use:
+            script_id = str(script_id_to_use).strip()
+        else:
+            # Extract scriptid from the script entry
+            # Prefer _id (Firebase ID) over scriptid, and handle None/empty strings
+            script_id = script_entry.get('_id') or script_entry.get('scriptid') or 'unknown'
 
-        # Initialize storage for this scriptid as a dict
-        if script_id not in all_scripts:
-            all_scripts[script_id] = {}
+            # Additional check to ensure we don't use empty strings
+            if not script_id or str(script_id).strip() == '':
+                script_id = 'unknown'
+            else:
+                script_id = str(script_id).strip()
 
+        # ALWAYS replace the metadata for this scriptid with fresh data from API
+        # This ensures we get the latest schema and don't accumulate stale data
+        all_scripts[script_id] = {}
         result = all_scripts[script_id]
-
-        # Convert list to dict if needed
-        if isinstance(result, list):
-            result = {item['key']: item for item in result}
-            all_scripts[script_id] = result
 
         for screen in script_entry.get('screens', []):
             if "fields" not in screen:
@@ -73,7 +81,7 @@ def process_and_save_field_info(script, json_data):
                 max_value = field.get("maxValue")
                 confidential = field.get("confidential", False)
 
-                # Initialize if doesn't exist
+                # Initialize field if it doesn't exist yet
                 if key not in result:
                     result[key] = {
                         "key": key,
@@ -86,26 +94,14 @@ def process_and_save_field_info(script, json_data):
                         "confidential": confidential,
                         "options": []
                     }
-                else:
-                    # Update optional, minValue, maxValue if they exist in new field
-                    # (keep the most restrictive: required over optional)
-                    if not optional:  # If new field is required, mark as required
-                        result[key]["optional"] = False
-                    if min_value is not None:
-                        result[key]["minValue"] = min_value
-                    if max_value is not None:
-                        result[key]["maxValue"] = max_value
-                    if data_type and not result[key].get("dataType"):
-                        result[key]["dataType"] = data_type
-                    if confidential:
-                        result[key]["confidential"] = True
 
-                # Add options if they exist
+                # Add option if it exists (fields can have multiple option entries in the API response)
                 if "value" in field and "valueLabel" in field:
                     value = field["value"]
                     value_label = field["valueLabel"]
 
                     if value and value_label:
+                        # Prevent duplicate options
                         if not any(opt["value"] == value and opt["valueLabel"] == value_label
                                  for opt in result[key]["options"]):
                             result[key]["options"].append({
@@ -138,7 +134,9 @@ def update_fields_info(script: str):
                 continue
 
             script_json = get_raw_json(script_id)
-            process_and_save_field_info(script,script_json)
+            # Pass the original script_id (old Firebase ID) to use as the metadata key
+            # This ensures database records with scriptid = old Firebase ID can find their metadata
+            process_and_save_field_info(script, script_json, script_id_to_use=script_id)
 
 
 def load_json_for_comparison(filename, script_id=None):

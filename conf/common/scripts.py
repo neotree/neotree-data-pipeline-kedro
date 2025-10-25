@@ -256,10 +256,13 @@ def process_dataframe_with_types(
             new_key = base_key.lower()
 
             if suffix == 'value':
+                # First extract actual values from JSON objects if present
+                extracted_values = processed_df[col].apply(extract_value_from_json)
+
                 if data_type in ['dropdown', 'single_select_option', 'period']:
-                    columns_to_process[new_key] = processed_df[col].astype(str)
+                    columns_to_process[new_key] = extracted_values.astype(str)
                 elif data_type == 'multi_select_option':
-                    columns_to_process[new_key] = df[col].astype(str).apply(clean_to_jsonb_array)  
+                    columns_to_process[new_key] = extracted_values.astype(str).apply(clean_to_jsonb_array)
 
                 elif data_type == 'boolean':
                     bool_map = {
@@ -267,22 +270,25 @@ def process_dataframe_with_types(
                         'n': False, 'no': False, 'false': False, '0': False, False: False
                     }
                     columns_to_process[new_key] = (
-                        processed_df[col].astype(str).str.strip().str.lower().map(bool_map).fillna(False)
+                        extracted_values.astype(str).str.strip().str.lower().map(bool_map).fillna(False)
                     )
                 elif data_type in ['number', 'integer', 'float']:
-                    columns_to_process[new_key] = pd.to_numeric(processed_df[col], errors='coerce')
+                    columns_to_process[new_key] = pd.to_numeric(extracted_values, errors='coerce')
                 elif data_type in ['datetime', 'timestamp', 'date']:
-                    columns_to_process[new_key] = pd.to_datetime(processed_df[col], errors='coerce')
+                    columns_to_process[new_key] = pd.to_datetime(extracted_values, errors='coerce')
                 else:
-                    columns_to_process[new_key] = processed_df[col].astype(str)
+                    columns_to_process[new_key] = extracted_values.astype(str)
                 columns_to_drop.add(col)
 
             elif suffix == 'label' and data_type in ['dropdown', 'single_select_option','multi_select_option']:
+                # Extract label from JSON objects if present (use 'label' field or fallback to 'value')
+                extracted_labels = processed_df[col].apply(lambda v: extract_label_from_json(v))
+
                 label_key = f"{new_key}_label"
                 if data_type == 'multi_select_option':
-                    columns_to_process[label_key] = processed_df[col].astype(str).apply(clean_to_jsonb_array) 
+                    columns_to_process[label_key] = extracted_labels.astype(str).apply(clean_to_jsonb_array)
                 else:
-                    columns_to_process[label_key] = processed_df[col].astype(str)
+                    columns_to_process[label_key] = extracted_labels.astype(str)
                 columns_to_drop.add(col)
 
             ### DROP COLUMN NAMES WITH NONE AS COLUMN NAME
@@ -297,8 +303,56 @@ def process_dataframe_with_types(
     return pd.DataFrame(columns_to_process)
 
 def clean_to_jsonb_array(val):
- 
+
     if isinstance(val, str) and val.startswith("{") and val.endswith("}"):
         inner = val[1:-1]
         return f"[{','.join(x.strip() for x in inner.split(','))}]"
+    return val
+
+def extract_value_from_json(val):
+    """
+    Extract the 'value' field from JSON objects like {"label": "Yes", "value": "Yes"}.
+    Returns the raw value if not a JSON object.
+    """
+    if pd.isna(val):
+        return val
+
+    val_str = str(val).strip()
+
+    # Check if it looks like a JSON object
+    if val_str.startswith('{"') and '"value"' in val_str:
+        try:
+            # Try to parse as JSON
+            json_obj = json.loads(val_str)
+            if isinstance(json_obj, dict) and 'value' in json_obj:
+                return json_obj['value']
+        except (json.JSONDecodeError, ValueError):
+            # Not valid JSON, return as-is
+            pass
+
+    return val
+
+def extract_label_from_json(val):
+    """
+    Extract the 'label' field from JSON objects like {"label": "Yes", "value": "Yes"}.
+    Falls back to 'value' field if 'label' doesn't exist.
+    Returns the raw value if not a JSON object.
+    """
+    if pd.isna(val):
+        return val
+
+    val_str = str(val).strip()
+
+    # Check if it looks like a JSON object
+    if val_str.startswith('{"') and ('"label"' in val_str or '"value"' in val_str):
+        try:
+            # Try to parse as JSON
+            json_obj = json.loads(val_str)
+            if isinstance(json_obj, dict):
+                # Prefer 'label', fallback to 'value'
+                return json_obj.get('label', json_obj.get('value'))
+        except (json.JSONDecodeError, ValueError):
+            # Not valid JSON, return as-is
+            pass
+
     return val

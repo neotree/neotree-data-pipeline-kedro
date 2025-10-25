@@ -278,7 +278,8 @@ def process_baseline_dates(baseline_df: pd.DataFrame) -> pd.DataFrame:
 
 def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, adm_mcl: Any) -> None:
     """Process admissions dataframe with all transformations and save to database."""
-    adm_df = pd.DataFrame(adm_new_entries) if isinstance(adm_new_entries, list) else pd.json_normalize(adm_new_entries)
+    # Always use json_normalize to flatten nested dictionaries into .value and .label columns
+    adm_df = pd.json_normalize(adm_new_entries)
 
     if adm_df.empty:
         return

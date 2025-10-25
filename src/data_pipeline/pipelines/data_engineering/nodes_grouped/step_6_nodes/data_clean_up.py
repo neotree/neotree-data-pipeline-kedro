@@ -27,7 +27,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
     read_clean_admissions_without_discharges,
     clean_discharges_not_matched
 )
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table,datesfix_batch
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table,datesfix_batch,drop_single_letter_columns_all_tables
 
 # This file calls the query to grant privileges to users on the generated tables
 cron_log = open(cron_log_file, "a+")
@@ -199,6 +199,8 @@ def clean_data_for_research(create_summary_counts_output):
 
         #Clean Dirty Dates
         clean_all_dates()
+        #Remove All Singe Letter Cols
+        drop_single_letter_columns_all_tables()
 
         return dict(status='Success', message="Data Cleanup Complete")
 
