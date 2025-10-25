@@ -30,7 +30,7 @@ def get_key_values(data_raw):
             if 'appVersion' in row:
                 app_version = row['appVersion']
             if 'scriptid' in row:
-                script_version = row['scriptid']
+                new_entry['scriptid']=row['scriptid']
             if(app_version!=None and app_version!=''):
                 #Remove any Other Characters that are non-numeric
                 app_version = int(''.join(d for d in app_version if d.isdigit()))

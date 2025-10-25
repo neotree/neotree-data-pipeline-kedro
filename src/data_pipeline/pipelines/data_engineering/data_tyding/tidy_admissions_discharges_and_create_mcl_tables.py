@@ -496,7 +496,10 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
         # Process repeatables
         process_repeatables(mat_outcomes_raw, "maternal_outcomes")
 
-    return mat_outcomes_df or pd.DataFrame()
+    # Return DataFrame, checking if it exists and is not empty
+    if mat_outcomes_df is not None and not mat_outcomes_df.empty:
+        return mat_outcomes_df
+    return pd.DataFrame()
 
 
 def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any) -> None:

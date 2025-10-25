@@ -590,7 +590,16 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
 
         # Build SET clause for all columns except WHERE clause columns
         update_cols = [col for col in df.columns if col not in ['uid', 'facility', 'unique_key']]
-        set_clauses = [f'"{col}" = v."{col}"' for col in update_cols]
+
+        # Build SET clause with proper type casting for timestamps
+        set_clauses = []
+        for col in update_cols:
+            col_type = column_types.get(col, 'unknown')
+            if 'timestamp' in col_type.lower() or 'date' in col_type.lower():
+                # Cast to timestamp for date/timestamp columns
+                set_clauses.append(f'"{col}" = v."{col}"::TIMESTAMP')
+            else:
+                set_clauses.append(f'"{col}" = v."{col}"')
 
         # Build column list for VALUES clause
         value_columns = ['uid', 'facility', 'unique_key'] + update_cols

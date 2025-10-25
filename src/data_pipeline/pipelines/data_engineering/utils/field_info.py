@@ -355,7 +355,9 @@ def _transform_subset(df, field_info):
                     transformed_df.loc[inverted_mask, value_col] = transformed_df.loc[inverted_mask, label_col]
                     transformed_df.loc[inverted_mask, label_col] = temp_vals
 
-                non_null_mask = (transformed_df[value_col].notna()) & (transformed_df[label_col] == json_label)
+                # Skip transformation for "oth" or "other" values (keep actual value, don't convert to label)
+                oth_mask = transformed_df[value_col].astype(str).str.lower().isin(['oth', 'other'])
+                non_null_mask = (transformed_df[value_col].notna()) & (transformed_df[label_col] == json_label) & ~oth_mask
             except KeyError as e:
                 # Skip this field if columns don't exist (defensive check)
                 logging.warning(f"Column access error for field {base_key}: {str(e)}")
@@ -500,10 +502,14 @@ def _transform_for_update_queries_subset(df, field_info):
         null_value_mask = df[value_col].isna()
         df_transformed.loc[null_value_mask, label_col] = None
 
+        # Skip transformation for "oth" or "other" values (keep actual value, don't convert to label)
+        oth_mask = df[value_col].astype(str).str.lower().isin(['oth', 'other'])
+
         # Build mask of rows to process (including cases where value is NULL but label isn't)
+        # Exclude "oth" and "other" values from transformation
         process_mask = (
-            # Cases where value exists and label matches expected
-            (df[value_col].notna() & (df[label_col] == expected_label)) | (
+            # Cases where value exists and label matches expected (but not "oth"/"other")
+            (df[value_col].notna() & (df[label_col] == expected_label) & ~oth_mask) | (
             # OR cases where value is NULL but label is not NULL (the problematic cases)
             (df[value_col].isna() & df[label_col].notna())
         ))

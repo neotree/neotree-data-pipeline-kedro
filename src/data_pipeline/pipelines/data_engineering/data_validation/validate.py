@@ -406,7 +406,11 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 })
 
         # --- VALUE RANGE VALIDATION ---
-        if min_val is not None or max_val is not None:
+        # Skip validation if both min and max are None or empty
+        has_min = min_val is not None and str(min_val).strip() != ''
+        has_max = max_val is not None and str(max_val).strip() != ''
+
+        if has_min or has_max:
             non_null_mask = df[value_col].notna()
             non_null_values = df.loc[non_null_mask, value_col]
 
@@ -453,15 +457,20 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
 
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
-                    non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
-                    invalid_mask = non_empty & ~df[value_col].astype(str).str.match(numeric_regex, na=False)
-                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
+                    try:
+                        non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
+                        invalid_mask = non_empty & ~df[value_col].astype(str).str.match(numeric_regex, na=False)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
 
-                    samples_list = []
-                    if not invalid_samples.empty:
-                        for idx, row in invalid_samples.iterrows():
-                            uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
-                            samples_list.append(uid_val)
+                        samples_list = []
+                        if not invalid_samples.empty:
+                            for idx, row in invalid_samples.iterrows():
+                                uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
+                                samples_list.append(uid_val)
+                    except (ValueError, TypeError) as mask_error:
+                        # Handle array comparison errors
+                        samples_list = []
+                        logging.warning(f"Could not extract samples for {base_key}: {str(mask_error)}")
 
                     type_results.append({
                         'base_key': base_key,
@@ -471,7 +480,8 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                     })
 
             elif data_type in ['datetime', 'timestamp', 'date']:
-                datetime_regex = r"^\s*$|^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?)?$"
+                # Allow dates with or without seconds: YYYY-MM-DD HH:MM or YYYY-MM-DD HH:MM:SS
+                datetime_regex = r"^\s*$|^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$"
                 result = validator.expect_column_values_to_match_regex(
                     column=value_col,
                     regex=datetime_regex,
@@ -480,15 +490,20 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
 
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
-                    non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
-                    invalid_mask = non_empty & ~df[value_col].astype(str).str.match(datetime_regex, na=False)
-                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
+                    try:
+                        non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
+                        invalid_mask = non_empty & ~df[value_col].astype(str).str.match(datetime_regex, na=False)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
 
-                    samples_list = []
-                    if not invalid_samples.empty:
-                        for idx, row in invalid_samples.iterrows():
-                            uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
-                            samples_list.append(uid_val)
+                        samples_list = []
+                        if not invalid_samples.empty:
+                            for idx, row in invalid_samples.iterrows():
+                                uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
+                                samples_list.append(uid_val)
+                    except (ValueError, TypeError) as mask_error:
+                        # Handle array comparison errors
+                        samples_list = []
+                        logging.warning(f"Could not extract samples for {base_key}: {str(mask_error)}")
 
                     type_results.append({
                         'base_key': base_key,
@@ -507,15 +522,20 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
 
                 if not result['success']:
                     invalid_count = result['result'].get('unexpected_count', 0)
-                    non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
-                    invalid_mask = non_empty & ~df[value_col].astype(str).str.match(pattern, na=False)
-                    invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
+                    try:
+                        non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
+                        invalid_mask = non_empty & ~df[value_col].astype(str).str.match(pattern, na=False)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
 
-                    samples_list = []
-                    if not invalid_samples.empty:
-                        for idx, row in invalid_samples.iterrows():
-                            uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
-                            samples_list.append(uid_val)
+                        samples_list = []
+                        if not invalid_samples.empty:
+                            for idx, row in invalid_samples.iterrows():
+                                uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
+                                samples_list.append(uid_val)
+                    except (ValueError, TypeError) as mask_error:
+                        # Handle array comparison errors
+                        samples_list = []
+                        logging.warning(f"Could not extract samples for {base_key}: {str(mask_error)}")
 
                     type_results.append({
                         'base_key': base_key,
@@ -617,7 +637,10 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
             errors.append(f"Field '{result['base_key']}': {violation_count} out-of-range values")
         logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
     else:
-        range_count = sum(1 for f in field_info.values() if f.get('minValue') is not None or f.get('maxValue') is not None)
+        # Count fields with actual (non-empty) min or max values
+        range_count = sum(1 for f in field_info.values()
+                         if (f.get('minValue') is not None and str(f.get('minValue')).strip() != '') or
+                            (f.get('maxValue') is not None and str(f.get('maxValue')).strip() != ''))
         if range_count > 0:
             logger.info(f"✓ All {range_count} range-validated fields valid")
 
