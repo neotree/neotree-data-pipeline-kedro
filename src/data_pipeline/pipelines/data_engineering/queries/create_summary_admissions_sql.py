@@ -1,7 +1,51 @@
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from conf.common.sql_functions import get_table_column_names
+import logging
+
+def get_available_columns(schema='derived', table='admissions'):
+    """Get set of available column names from the admissions table."""
+    try:
+        columns_result = get_table_column_names(table, schema)
+        return {row[0] for row in columns_result}
+    except Exception as e:
+        logging.warning(f"Could not fetch columns from {schema}.{table}: {e}")
+        return set()
+
+def build_column_select(source_col, target_col, available_cols, is_case_statement=False):
+    """
+    Build a column select statement that handles missing columns gracefully.
+
+    Args:
+        source_col: The source column name (e.g., "ChestAusc.label")
+        target_col: The target alias (e.g., "Chest Auscultation")
+        available_cols: Set of available column names in the source table
+        is_case_statement: If True, this is part of a CASE statement (return empty string if missing)
+
+    Returns:
+        SQL string for column selection, or NULL AS alias if column doesn't exist
+    """
+    # For CASE statements, just return empty if column doesn't exist
+    if is_case_statement:
+        return source_col if source_col.strip('"') in available_cols else 'NULL'
+
+    # For regular columns
+    base_col = source_col.strip('"')
+    if base_col in available_cols:
+        return f'"{base_col}" AS "{target_col}"'
+    else:
+        logging.debug(f"Column {base_col} not found, using NULL for {target_col}")
+        return f'NULL AS "{target_col}"'
 
 #Query to create summary_maternala_completeness table
 def summary_admissions_query():
+  # Get available columns dynamically
+  available_cols = get_available_columns('derived', 'admissions')
+  logging.info(f"Found {len(available_cols)} columns in derived.admissions")
+
+  # Helper to build column select
+  def col(source, target, is_case=False):
+    return build_column_select(source, target, available_cols, is_case)
+
   prefix = f'''  DROP TABLE IF EXISTS derived.summary_admissions;;
                 CREATE TABLE derived.summary_admissions AS  '''
   where = ''
@@ -72,7 +116,7 @@ def summary_admissions_query():
                     "BirthWeight.value" END AS "Birth Weight",
                     "BWGroup.value" AS "Birth Weight Group",
                     "<28wks/1kg.value" AS "<28wks/1kg",
-                    "LBWBinary" AS "Low Birth Weight?",
+                    {col("LBWBinary", "Low Birth Weight?")},
                     "OFC.value" AS "Head Circumference (cm)",
                     "AdmReason.label" AS "Admission Reason",
                     "AdmReasonOth.label" AS "Other admission reason",
@@ -203,8 +247,8 @@ def summary_admissions_query():
                     "CRT.label" AS "Cardiovascular exam",
                     "Femorals.label" AS "Femorals",
                     "HypoSxYN.label" AS "HypoSxYN",
-                    "ChestAusc" AS "Chest Ausc",
-                    "RespSR" AS "Respiratory Support",
+                    {col("ChestAusc", "Chest Ausc")},
+                    {col("RespSR", "Respiratory Support")},
                     "RISKCovid.label" AS "RISK for Covid?",
                     "EXTERNALSOURCE.label" AS "External Source",
                     "MatSymptoms.label" AS "Mothers Symptoms",
@@ -223,8 +267,8 @@ def summary_admissions_query():
                     "DOBYN.value" AS "DOBYN.value",
                     "AgeEst.label" AS "Age Estimated",
                     "Age.value" AS "Age",
-                    CASE WHEN "AgeCat.label" is null THEN
-                    "AgeCategory"
-                    ELSE "AgeCat.label" END AS "Age Category",
+                    CASE WHEN {col("AgeCat.label", "temp", is_case=True)} is null THEN
+                    {col("AgeCategory", "temp", is_case=True)}
+                    ELSE {col("AgeCat.label", "temp", is_case=True)} END AS "Age Category",
                     "BirthWeight.value" AS "BirthWeight"
                 FROM "derived"."admissions" {where} ;; '''
