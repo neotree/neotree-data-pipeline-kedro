@@ -53,7 +53,7 @@ def summary_discharges_query():
     get_column_or_null(existing_columns, "uid", "Neotree_ID"),
     get_column_or_null(existing_columns, "started_at", "Started_at",
       """CASE
-                        WHEN pg_typeof("started_at")::text LIKE '%timestamp%' THEN "started_at"
+                        WHEN pg_typeof("started_at")::text LIKE '%timestamp%' THEN "started_at"::timestamp without time zone
                         WHEN "started_at"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("started_at"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "started_at"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
@@ -62,7 +62,7 @@ def summary_discharges_query():
                   END AS "Started_at" """ if "started_at" in existing_columns else None),
     get_column_or_null(existing_columns, "completed_at", "Completed_at",
       """CASE
-                        WHEN pg_typeof("completed_at")::text LIKE '%timestamp%' THEN "completed_at"
+                        WHEN pg_typeof("completed_at")::text LIKE '%timestamp%' THEN "completed_at"::timestamp without time zone
                         WHEN "completed_at"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("completed_at"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "completed_at"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
@@ -72,7 +72,7 @@ def summary_discharges_query():
     get_column_or_null(existing_columns, "time_spent", "Time Spent"),
     get_column_or_null(existing_columns, "DateAdmissionDC.value", "DateAdmissionDC",
       """CASE
-                        WHEN pg_typeof("DateAdmissionDC.value")::text LIKE '%timestamp%' THEN "DateAdmissionDC.value"
+                        WHEN pg_typeof("DateAdmissionDC.value")::text LIKE '%timestamp%' THEN "DateAdmissionDC.value"::timestamp without time zone
                         WHEN "DateAdmissionDC.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("DateAdmissionDC.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "DateAdmissionDC.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
@@ -81,7 +81,7 @@ def summary_discharges_query():
                   END AS "DateAdmissionDC" """ if "DateAdmissionDC.value" in existing_columns else None),
     get_column_or_null(existing_columns, "DateTimeDischarge.value", "DateTime of Discharge",
       """CASE
-                        WHEN pg_typeof("DateTimeDischarge.value")::text LIKE '%timestamp%' THEN "DateTimeDischarge.value"
+                        WHEN pg_typeof("DateTimeDischarge.value")::text LIKE '%timestamp%' THEN "DateTimeDischarge.value"::timestamp without time zone
                         WHEN "DateTimeDischarge.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("DateTimeDischarge.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "DateTimeDischarge.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
@@ -97,7 +97,7 @@ def summary_discharges_query():
     get_column_or_null(existing_columns, "ModeDeliveryDC.label", "Mode of Delivery DC"),
     get_column_or_null(existing_columns, "DateDischVitals.value", "Date Discharge Vitals taken",
       """CASE
-                        WHEN pg_typeof("DateDischVitals.value")::text LIKE '%timestamp%' THEN "DateDischVitals.value"
+                        WHEN pg_typeof("DateDischVitals.value")::text LIKE '%timestamp%' THEN "DateDischVitals.value"::timestamp without time zone
                         WHEN "DateDischVitals.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("DateDischVitals.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "DateDischVitals.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
@@ -113,7 +113,7 @@ def summary_discharges_query():
     get_column_or_null(existing_columns, "DischWeight.value", "Discharge Weight (g)"),
     get_column_or_null(existing_columns, "DateDischWeight.value", "Date of Discharge Weight",
       """CASE
-                        WHEN pg_typeof("DateDischWeight.value")::text LIKE '%timestamp%' THEN "DateDischWeight.value"
+                        WHEN pg_typeof("DateDischWeight.value")::text LIKE '%timestamp%' THEN "DateDischWeight.value"::timestamp without time zone
                         WHEN "DateDischWeight.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("DateDischWeight.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "DateDischWeight.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
@@ -127,7 +127,7 @@ def summary_discharges_query():
     get_column_or_null(existing_columns, "RESPSUP.label", "Respiratory Support"),
     get_column_or_null(existing_columns, "DateWeaned.value", "Date Weaned off the support",
       """CASE
-                        WHEN pg_typeof("DateWeaned.value")::text LIKE '%timestamp%' THEN "DateWeaned.value"
+                        WHEN pg_typeof("DateWeaned.value")::text LIKE '%timestamp%' THEN "DateWeaned.value"::timestamp without time zone
                         WHEN "DateWeaned.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("DateWeaned.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "DateWeaned.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
@@ -146,7 +146,7 @@ def summary_discharges_query():
     get_column_or_null(existing_columns, "OtherProbsOth.label", "Other Problems (additional)"),
     get_column_or_null(existing_columns, "DateTimeDeath.value", "DateTime of Death",
       """CASE
-                        WHEN pg_typeof("DateTimeDeath.value")::text LIKE '%timestamp%' THEN "DateTimeDeath.value"
+                        WHEN pg_typeof("DateTimeDeath.value")::text LIKE '%timestamp%' THEN "DateTimeDeath.value"::timestamp without time zone
                         WHEN "DateTimeDeath.value"::text ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                         to_timestamp("DateTimeDeath.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                         WHEN "DateTimeDeath.value"::text ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN

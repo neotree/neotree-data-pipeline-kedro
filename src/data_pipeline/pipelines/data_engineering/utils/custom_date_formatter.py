@@ -68,6 +68,9 @@ def convert_to_date(value, format_str):
         # FIX: Removed infer_datetime_format parameter which was causing dates to be set to null
         # Use pandas default date parsing with coerce to handle various formats gracefully
         result = pd.to_datetime(clean_value, errors='coerce')
+        # Remove timezone information to avoid "Tz-aware datetime.datetime cannot be converted to datetime64" error
+        if pd.notna(result) and hasattr(result, 'tz') and result.tz is not None:
+            result = result.tz_localize(None)
         # Return None if parsing failed (results in NaT)
         return result if pd.notna(result) else None
 
@@ -91,6 +94,9 @@ def convert_to_date(value, format_str):
             try:
                 # Return datetime object, NOT formatted string
                 result = pd.to_datetime(clean_value, errors='coerce')
+                # Remove timezone information to avoid "Tz-aware datetime.datetime cannot be converted to datetime64" error
+                if pd.notna(result) and hasattr(result, 'tz') and result.tz is not None:
+                    result = result.tz_localize(None)
                 return result if pd.notna(result) else None
             except:
                 # Basic cleaning for known patterns
@@ -98,6 +104,9 @@ def convert_to_date(value, format_str):
                     clean_value = clean_value.split('.')[0]
                 clean_value = clean_value.replace('T', ' ')
                 result = pd.to_datetime(clean_value, errors='coerce')
+                # Remove timezone information to avoid "Tz-aware datetime.datetime cannot be converted to datetime64" error
+                if pd.notna(result) and hasattr(result, 'tz') and result.tz is not None:
+                    result = result.tz_localize(None)
                 return result if pd.notna(result) else None
 
         return None
