@@ -1149,8 +1149,11 @@ def reorder_dataframe_columns(df:pd.DataFrame, script:str):
     return df[final_columns]
 
 
-def generate_label_fix_updates(filtered_records, table_name:str):
-    if filtered_records is None:
+from collections import defaultdict
+
+def generate_label_fix_updates(filtered_records, table_name: str):
+    """Generate batched SQL UPDATE statements with proper quoting for complex column names."""
+    if not filtered_records:
         return []
 
     groups = defaultdict(list)
@@ -1165,30 +1168,36 @@ def generate_label_fix_updates(filtered_records, table_name:str):
         update_cols = list(update_columns)
         value_columns = ['uid', 'unique_key'] + update_cols
         rows = groups[update_columns]
-
         values = [
             tuple(row.get(col) for col in value_columns)
             for row in rows
         ]
 
         alias = 'v'
-        set_clause = ", ".join([
-            f"{col} = {alias}.{col}" for col in update_cols
-        ])
-        columns_str = ", ".join(value_columns)
 
+        quoted_update_cols = [f'"{col}"' for col in update_cols]
+        quoted_value_columns = [f'"{col}"' for col in value_columns]
+
+        set_clause = ", ".join([
+            f'{quoted_update_cols[i]} = {alias}.{quoted_update_cols[i]}'
+            for i in range(len(update_cols))
+        ])
+
+        columns_str = ", ".join(quoted_value_columns)
         sql = f"""
-            UPDATE derived."{table_name}" AS t SET
-                {set_clause}
+            UPDATE derived."{table_name}" AS t
+            SET {set_clause}
             FROM (
                 VALUES %s
             ) AS {alias}({columns_str})
-            WHERE t.uid = {alias}.uid AND t.unique_key = {alias}.unique_key
+            WHERE t."uid" = {alias}."uid"
+              AND t."unique_key" = {alias}."unique_key"
         """
 
-        sql_batches.append((sql, values))
+        sql_batches.append((sql.strip(), values))
 
     return sql_batches
+
 
 def run_bulky_query(table: str, filtered_records=None):
     """Execute bulk update queries using execute_values for performance."""

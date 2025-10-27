@@ -595,7 +595,7 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
 
         # Filter
         neolab_df = neolab_df[neolab_df['uid'] != 'Unknown']
-
+        add_new_columns_if_needed(neolab_df, 'neolab')
         # Validate BEFORE transformation to log raw data issues
         validate_dataframe_with_ge(neolab_df, 'neolab')
 
