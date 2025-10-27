@@ -512,7 +512,8 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
 
 def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
-    """Optimized bulk update using PostgreSQL UPDATE FROM VALUES syntax."""
+    """Optimized bulk update using PostgreSQL UPDATE FROM VALUES syntax, 
+    with handling for boolean and numeric types."""
     try:
         if table is None or df is None or df.empty:
             return
@@ -536,13 +537,17 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
             if col not in column_types:
                 column_types[col] = 'unknown'
 
-        # OPTIMIZATION 2: Use PostgreSQL UPDATE...FROM VALUES for bulk updates
-        # This is much faster than individual UPDATE statements per row
+        # ✅ Boolean mapping
+        bool_map = {
+            'y': True, 'yes': True, 'true': True, '1': True, True: True,
+            'n': False, 'no': False, 'false': False, '0': False, False: False
+        }
 
-        # Build the values for the UPDATE...FROM VALUES clause
+        # OPTIMIZATION 2: Use PostgreSQL UPDATE...FROM VALUES for bulk updates
         values_rows = []
         for _, row in df.iterrows():
             row_values = []
+
             # Always include WHERE clause columns first
             uid_val = escape_special_characters(str(row['uid']))
             facility_val = escape_special_characters(str(row['facility']))
@@ -558,16 +563,43 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
                     continue
 
                 val = row[col]
-                col_type = column_types.get(col, 'unknown')
+                col_type = column_types.get(col, 'unknown').lower()
 
-                # Format value based on type
-                if pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '<NA>', ''}:
+                # NULL handling (universal)
+                if pd.isna(val) or str(val).strip().lower() in {'nat', 'none', 'nan', '<na>', ''}:
                     row_values.append("NULL")
-                elif 'timestamp' in col_type.lower() or 'date' in col_type.lower():
+                    continue
+
+                #  Boolean handling
+                if 'bool' in col_type:
+                    val_str = str(val).strip().lower()
+                    mapped = bool_map.get(val_str, None)
+                    if mapped is None:
+                        # Try direct type check fallback
+                        mapped = bool_map.get(val, None)
+                    if mapped is None:
+                        row_values.append("NULL")
+                    else:
+                        row_values.append('TRUE' if mapped else 'FALSE')
+                    continue
+
+                # Numeric handling
+                elif any(t in col_type for t in ['int', 'numeric', 'double', 'real', 'float', 'decimal']):
+                    try:
+                        num_val = float(val)
+                        if np.isnan(num_val):
+                            row_values.append("NULL")
+                        else:
+                            row_values.append(str(num_val))
+                    except Exception:
+                        row_values.append("NULL")
+                    continue
+
+                # timestamp/date handling
+                elif 'timestamp' in col_type or 'date' in col_type:
                     if isinstance(val, (datetime, pd.Timestamp)):
                         row_values.append(f"'{val.strftime('%Y-%m-%d %H:%M:%S')}'")
                     elif isinstance(val, str):
-                        # Try to parse string timestamps
                         try:
                             parsed_date = pd.to_datetime(val, errors='coerce')
                             if pd.notna(parsed_date):
@@ -578,10 +610,16 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
                             row_values.append("NULL")
                     else:
                         row_values.append("NULL")
+                    continue
+
+                # Existing text/unknown handling
                 elif col_type == 'text' or col_type == 'unknown':
                     row_values.append(f"'{escape_special_characters(str(val))}'")
+                    continue
+
+                # Default fallback
                 else:
-                    row_values.append(str(val))
+                    row_values.append(f"'{escape_special_characters(str(val))}'")
 
             values_rows.append(f"({', '.join(row_values)})")
 
@@ -591,21 +629,21 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
         # Build SET clause for all columns except WHERE clause columns
         update_cols = [col for col in df.columns if col not in ['uid', 'facility', 'unique_key']]
 
-        # Build SET clause with proper type casting for timestamps
         set_clauses = []
         for col in update_cols:
-            col_type = column_types.get(col, 'unknown')
-            if 'timestamp' in col_type.lower() or 'date' in col_type.lower():
-                # Cast to timestamp for date/timestamp columns
+            col_type = column_types.get(col, 'unknown').lower()
+            if 'timestamp' in col_type or 'date' in col_type:
                 set_clauses.append(f'"{col}" = v."{col}"::TIMESTAMP')
+            elif 'bool' in col_type:
+                set_clauses.append(f'"{col}" = v."{col}"::BOOLEAN')
+            elif any(t in col_type for t in ['int', 'numeric', 'double', 'real', 'float', 'decimal']):
+                set_clauses.append(f'"{col}" = v."{col}"::NUMERIC')
             else:
                 set_clauses.append(f'"{col}" = v."{col}"')
 
-        # Build column list for VALUES clause
         value_columns = ['uid', 'facility', 'unique_key'] + update_cols
         columns_str = ', '.join([f'"{col}"' for col in value_columns])
 
-        # Construct the bulk UPDATE query
         values_str = ',\n'.join(values_rows)
         update_query = f"""
             UPDATE {table} AS t
@@ -856,6 +894,7 @@ def generate_postgres_insert(df, schema, table_name):
         return
     
     logging.info("::::::::---ADMISSION DATA FRAME IS NOT NULL")
+    
     # OPTIMIZATION 2: Process values more efficiently
     # Prepare columns list (filter out single-char column names)
     valid_columns = [col for col in df.columns if len(str(col)) > 1]
@@ -868,8 +907,10 @@ def generate_postgres_insert(df, schema, table_name):
         for col in valid_columns:
             val = df.at[idx, col]
 
-            # NULL handling
-            if pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '', '<NA>'}:
+            # ✅ NULL handling (safe for arrays/lists)
+            if not isinstance(val, (list, dict)) and (
+                pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '', '<NA>'}
+            ):
                 row_values.append("NULL")
                 continue
 
@@ -897,7 +938,6 @@ def generate_postgres_insert(df, schema, table_name):
         return
 
     # OPTIMIZATION 3: Use batch inserts for very large datasets
-    # Split into batches of 1000 rows to avoid query size limits
     batch_size = 1000
     for i in range(0, len(values_rows), batch_size):
         batch = values_rows[i:i + batch_size]
@@ -906,6 +946,7 @@ def generate_postgres_insert(df, schema, table_name):
         inject_sql(insert_query, f"INSERTING BATCH {i//batch_size + 1} INTO {table_name}")
 
     logging.info(f"Successfully inserted {len(values_rows)} rows into {schema}.{table_name}")
+
 
 
 def clean_datetime_string(s:str):
