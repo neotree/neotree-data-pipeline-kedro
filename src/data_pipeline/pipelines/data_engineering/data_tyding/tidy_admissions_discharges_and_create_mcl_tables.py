@@ -368,7 +368,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
 
         # Final transformations (fixes issues after validation)
         adm_df = finalize_dataframe(adm_df, 'admissions')
-
+        logging.info(f"WORKING ON ADMISSSIONSSSSSSSSSS::{len(adm_df)}")
         # Save transformed data
         generate_create_insert_sql(adm_df, 'derived', 'admissions')
         deduplicate_table('admissions')

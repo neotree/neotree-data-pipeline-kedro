@@ -854,7 +854,8 @@ def generate_postgres_insert(df, schema, table_name):
 
     if df.empty:
         return
-
+    
+    logging.info("::::::::---ADMISSION DATA FRAME IS NOT NULL")
     # OPTIMIZATION 2: Process values more efficiently
     # Prepare columns list (filter out single-char column names)
     valid_columns = [col for col in df.columns if len(str(col)) > 1]
