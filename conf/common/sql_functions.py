@@ -361,7 +361,7 @@ def create_new_columns(table_name,schema,columns):
             else:
                 sql_type = "TEXT" 
             
-            alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "{column}" {sql_type};;'
+            alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN IF NOT EXISTS "{column}" {sql_type};;'
             inject_sql(alter_query,f'ADD {column} ON  "{schema}"."{table_name}"')
 
 
@@ -1166,6 +1166,12 @@ def generate_label_fix_updates(filtered_records, table_name: str):
 
     for update_columns in groups:
         update_cols = list(update_columns)
+
+        # Skip if there are no columns to update (only uid and unique_key present)
+        if not update_cols:
+            logging.warning(f"Skipping batch with no update columns for table '{table_name}'")
+            continue
+
         value_columns = ['uid', 'unique_key'] + update_cols
         rows = groups[update_columns]
         values = [

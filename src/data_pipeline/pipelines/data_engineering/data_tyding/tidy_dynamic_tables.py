@@ -190,7 +190,7 @@ def process_single_script(script: str) -> None:
 
         # Calculate time spent
         script_df = calculate_time_spent_dynamic(script_df)
-
+        script_df['transformed']= False
         # Format datetime columns
         script_df = format_datetime_columns(script_df)
 
