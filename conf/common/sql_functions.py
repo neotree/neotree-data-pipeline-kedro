@@ -521,12 +521,21 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
         # OPTIMIZATION 1: Batch fetch all column types in a single query
         column_types = {}
         if not df.columns.empty:
+            # Extract table name from parameter (handles both "schema.table" and "table" formats)
+            if '.' in table:
+                schema, table_name = table.rsplit('.', 1)
+                # Remove quotes if present
+                table_name = table_name.strip('"')
+            else:
+                schema = 'derived'
+                table_name = table.strip('"')
+
             columns_list = "','".join(df.columns)
             batch_type_query = f"""
                 SELECT column_name, data_type
                 FROM information_schema.columns
-                WHERE table_schema = 'derived'
-                AND table_name = 'joined_admissions_discharges'
+                WHERE table_schema = '{schema}'
+                AND table_name = '{table_name}'
                 AND column_name IN ('{columns_list}')
             """
             results = inject_sql_with_return(batch_type_query)

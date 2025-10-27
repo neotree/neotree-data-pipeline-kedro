@@ -70,6 +70,92 @@ def categorize_age(hours: int) -> str:
         return 'Infant (> 3 days old)'
 
 
+def filter_columns_optimized(df: pd.DataFrame, is_old_dataset: bool = False, max_columns: int = 1550) -> pd.DataFrame:
+    """
+    Filter columns based on optimization rules:
+    1. Drop single-letter columns
+    2. Keep only columns with .value/.label extension (or key columns or old dataset columns)
+    3. Limit to max_columns, prioritizing key columns
+
+    Args:
+        df: DataFrame to filter
+        is_old_dataset: If True, preserves all columns (old dataset doesn't follow .value/.label convention)
+        max_columns: Maximum number of columns to keep
+
+    Returns:
+        Filtered DataFrame
+    """
+    if df.empty:
+        return df
+
+    # Define key columns that must always be preserved
+    key_columns = [
+        'uid', 'unique_key', 'facility', 'created_at', 'form_id', 'review_number',
+        'Age.value', 'AgeCategory', 'scriptId', 'ingested_at', 'script_type',
+        'DateTimeAdmission.value', 'DateTimeDischarge.value', 'EndScriptDatetime.value'
+    ]
+
+    columns_to_keep = []
+    columns_to_drop = []
+
+    for col in df.columns:
+        col_str = str(col)
+
+        # Rule 1: Drop single-letter columns
+        if len(col_str) == 1:
+            columns_to_drop.append(col)
+            continue
+
+        # Rule 2: Keep key columns
+        if col in key_columns:
+            columns_to_keep.append(col)
+            continue
+
+        # Rule 3: For old datasets, keep all remaining columns (they don't follow .value/.label convention)
+        if is_old_dataset:
+            columns_to_keep.append(col)
+            continue
+
+        # Rule 4: For new datasets, keep only columns with .value or .label extension
+        if col_str.endswith('.value') or col_str.endswith('.label'):
+            columns_to_keep.append(col)
+        else:
+            columns_to_drop.append(col)
+
+    # Log dropped columns for debugging
+    if columns_to_drop:
+        logging.info(f"Dropping {len(columns_to_drop)} columns (single-letter or no .value/.label extension)")
+        logging.debug(f"Dropped columns sample: {columns_to_drop[:10]}")
+
+    # Apply initial filter
+    df_filtered = df[columns_to_keep].copy()
+
+    # Rule 5: If still over max_columns, prioritize key columns and drop extras
+    if len(columns_to_keep) > max_columns:
+        logging.warning(f"DataFrame has {len(columns_to_keep)} columns, exceeding limit of {max_columns}")
+
+        # Separate key columns from other columns
+        present_key_cols = [col for col in key_columns if col in columns_to_keep]
+        other_cols = [col for col in columns_to_keep if col not in key_columns]
+
+        # Calculate how many other columns we can keep
+        available_slots = max_columns - len(present_key_cols)
+
+        if available_slots > 0:
+            # Keep key columns + as many other columns as possible
+            final_columns = present_key_cols + other_cols[:available_slots]
+            logging.warning(f"Reduced to {len(final_columns)} columns (kept all {len(present_key_cols)} key columns + {available_slots} others)")
+        else:
+            # Only keep key columns if we're at/over limit
+            final_columns = present_key_cols[:max_columns]
+            logging.warning(f"Reduced to {len(final_columns)} key columns only")
+
+        df_filtered = df_filtered[final_columns].copy()
+
+    logging.info(f"Column filtering complete: {len(df.columns)} → {len(df_filtered.columns)} columns")
+    return df_filtered
+
+
 def process_age_column_vectorized(df: pd.DataFrame, age_col: str = 'AgeB.value') -> pd.DataFrame:
     """
     Process age column using vectorized operations.
@@ -317,12 +403,25 @@ def union_views():
         # SAVE OLD NEW ADMISSIONS
         try:
             if old_smch_admissions is not None and not new_smch_admissions.empty and not old_smch_admissions.empty:
+                logging.info(f"Processing admissions union: new={len(new_smch_admissions)} rows, old={len(old_smch_admissions)} rows")
+
+                # Apply column filtering
+                new_smch_admissions = filter_columns_optimized(new_smch_admissions, is_old_dataset=False)
+                old_smch_admissions = filter_columns_optimized(old_smch_admissions, is_old_dataset=True)
+
                 new_smch_admissions.reset_index(drop=True, inplace=True)
                 old_smch_admissions.reset_index(drop=True, inplace=True)
-                combined_adm_df = pd.concat([new_smch_admissions], axis=0, ignore_index=True)
+
+                combined_adm_df = pd.concat([new_smch_admissions, old_smch_admissions], axis=0, ignore_index=True)
+
+                # Final check: ensure combined DF doesn't exceed column limit
+                if len(combined_adm_df.columns) > 1550:
+                    logging.warning(f"Combined admissions has {len(combined_adm_df.columns)} columns, applying final filter")
+                    combined_adm_df = filter_columns_optimized(combined_adm_df, is_old_dataset=False, max_columns=1550)
+
                 if not combined_adm_df.empty:
                     catalog.save('create_derived_old_new_admissions_view', combined_adm_df)
-                    logging.info("Added old admissions")
+                    logging.info(f"Saved combined admissions: {len(combined_adm_df)} rows, {len(combined_adm_df.columns)} columns")
         except Exception as e:
             logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED ADMISSIONS")
             logging.error(formatError(e))
@@ -330,17 +429,32 @@ def union_views():
         # SAVE OLD NEW DISCHARGES
         try:
             if old_smch_discharges is not None and not new_smch_discharges.empty and not old_smch_discharges.empty:
+                logging.info(f"Processing discharges union: new={len(new_smch_discharges)} rows, old={len(old_smch_discharges)} rows")
+
+                # Apply column filtering
+                new_smch_discharges = filter_columns_optimized(new_smch_discharges, is_old_dataset=False)
+                old_smch_discharges = filter_columns_optimized(old_smch_discharges, is_old_dataset=True)
+
                 new_smch_discharges.reset_index(drop=True, inplace=True)
                 old_smch_discharges.reset_index(drop=True, inplace=True)
-                combined_dis_df = pd.concat([new_smch_discharges], axis=0, ignore_index=True)
+
+                combined_dis_df = pd.concat([new_smch_discharges, old_smch_discharges], axis=0, ignore_index=True)
+
+                # Final check: ensure combined DF doesn't exceed column limit
+                if len(combined_dis_df.columns) > 1550:
+                    logging.warning(f"Combined discharges has {len(combined_dis_df.columns)} columns, applying final filter")
+                    combined_dis_df = filter_columns_optimized(combined_dis_df, is_old_dataset=False, max_columns=1550)
+
                 if not combined_dis_df is None and not combined_dis_df.empty:
                     combined_dis_df = format_date_without_timezone(combined_dis_df, ['DateTimeDischarge.value'])
 
                     if combined_dis_df is not None and not combined_dis_df.empty:
                         catalog.save('create_derived_old_new_discharges_view', combined_dis_df)
+                        logging.info(f"Saved combined discharges: {len(combined_dis_df)} rows, {len(combined_dis_df.columns)} columns")
 
+                        # Note: SQL insert now uses filtered columns from old_new_matched_dis_col
                         query = insert_old_adm_query("DERIVED.old_new_discharges_view", "derived.old_smch_discharges", old_new_matched_dis_col)
-                        logging.info("Adding old discharges")
+                        logging.info("Adding old discharges via SQL")
                         inject_sql(f'{query};;', "Adding old smch discharges")
                         logging.info("Added old discharges")
         except Exception as e:
@@ -350,14 +464,29 @@ def union_views():
         # SAVE MATCHED DATA
         try:
             if old_matched_smch_data is not None and not new_smch_matched_data.empty and not old_matched_smch_data.empty:
+                logging.info(f"Processing matched data union: new={len(new_smch_matched_data)} rows, old={len(old_matched_smch_data)} rows")
+
                 # Correct UID column to suit the lower case uid in new_smch_matched_data
                 if 'UID' in old_matched_smch_data.columns:
-                    old_matched_smch_data.reset_index(drop=True, inplace=True)
-                    new_smch_matched_data.reset_index(drop=True, inplace=True)
                     old_matched_smch_data = old_matched_smch_data.rename(columns={'UID': 'uid'})
+
+                # Apply column filtering
+                new_smch_matched_data = filter_columns_optimized(new_smch_matched_data, is_old_dataset=False)
+                old_matched_smch_data = filter_columns_optimized(old_matched_smch_data, is_old_dataset=True)
+
+                old_matched_smch_data.reset_index(drop=True, inplace=True)
+                new_smch_matched_data.reset_index(drop=True, inplace=True)
+
                 combined_matched_df = pd.concat([new_smch_matched_data, old_matched_smch_data], axis=0).reset_index(drop=True)
+
+                # Final check: ensure combined DF doesn't exceed column limit
+                if len(combined_matched_df.columns) > 1550:
+                    logging.warning(f"Combined matched data has {len(combined_matched_df.columns)} columns, applying final filter")
+                    combined_matched_df = filter_columns_optimized(combined_matched_df, is_old_dataset=False, max_columns=1550)
+
                 if not combined_matched_df.empty:
                     catalog.save('create_derived_old_new_matched_view', combined_matched_df)
+                    logging.info(f"Saved combined matched data: {len(combined_matched_df)} rows, {len(combined_matched_df.columns)} columns")
         except Exception as e:
             logging.error("*******AN EXCEPTIONS HAPPENED WHILEST CONCATENATING COMBINED MATCHED")
             logging.error(formatError(e))

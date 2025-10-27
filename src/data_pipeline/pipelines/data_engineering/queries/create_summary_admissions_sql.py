@@ -6,7 +6,18 @@ def summary_admissions_query():
                 CREATE TABLE derived.summary_admissions AS  '''
   where = ''
   if(table_exists('derived','summary_admissions')):
-    prefix=f'''INSERT INTO "derived"."summary_admissions" (
+    # Ensure all columns exist before INSERT (handles schema evolution)
+    prefix=f'''
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "Manual Heart Rate" TEXT;;
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "MatComorbidities" TEXT;;
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "MatComorbidities.value" TEXT;;
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "DOBYN.value" TEXT;;
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "Age Estimated" TEXT;;
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "Age" TEXT;;
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "Age Category" TEXT;;
+    ALTER TABLE "derived"."summary_admissions" ADD COLUMN IF NOT EXISTS "BirthWeight" TEXT;;
+
+    INSERT INTO "derived"."summary_admissions" (
     "Facility Name","NeoTree_ID","DateTime Admission","Re-admission?","Gender","Baby Cry Triage","Further Triage",
     "Danger Signs1","Danger Signs2","Respiratory Rate","Saturation in Air","Heart Rate","Oxygen Saturation",
     "Temperature","Temperature Group","TempThermia","Blood Sugar mmol","Blood Sugar mg","Admission Weight","Admission Weight Group",

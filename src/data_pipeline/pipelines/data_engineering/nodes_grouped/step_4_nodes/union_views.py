@@ -7,7 +7,8 @@ def create_union_views(joined_tables_output):
     try:
         # Test If Previous Node Has Completed Successfully
         if joined_tables_output is not None:
-            union_views()
+            
+            # union_views()
             # Add Return Value For Kedro Not To Throw Data Error
             return dict(
                 status='Success',
