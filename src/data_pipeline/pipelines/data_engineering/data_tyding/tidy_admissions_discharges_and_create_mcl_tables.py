@@ -105,8 +105,8 @@ def process_age_column_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     # Handle datetime-format ages
     mask_datetime = df['Age.value'].astype(str).str.contains('T', na=False) & (df['Age.value'].astype(str).str.len() > 10)
     if mask_datetime.any() and "DateTimeAdmission.value" in df.columns:
-        admission_dates = pd.to_datetime(df.loc[mask_datetime, 'DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', utc=True, errors='coerce')
-        birth_dates = pd.to_datetime(df.loc[mask_datetime, 'Age.value'], format='%Y-%m-%dT%H:%M:%S', utc=True, errors='coerce')
+        admission_dates = pd.to_datetime(df.loc[mask_datetime, 'DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None)
+        birth_dates = pd.to_datetime(df.loc[mask_datetime, 'Age.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None)
 
         # Fix bug where DOB > admission date
         mask_fix = admission_dates < birth_dates
@@ -559,10 +559,10 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
     # Calculate BCReturnTime
     if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and
         neolab_df['DateBCR.value'].notna().any() and neolab_df['DateBCT.value'].notna().any()):
-        # Calculate timedelta and convert to hours
+        # Calculate timedelta and convert to hours (remove timezone to avoid conversion issues)
         timedelta_result = (
-            pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S', utc=True, errors='coerce') -
-            pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S', utc=True, errors='coerce')
+            pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None) -
+            pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None)
         )
         # Convert to hours by dividing total_seconds by 3600
         neolab_df['BCReturnTime'] = timedelta_result.dt.total_seconds() / 3600

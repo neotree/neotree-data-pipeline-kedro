@@ -774,6 +774,14 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
     source_cols_result = inject_sql_with_return(source_cols_query)
     source_cols = {row[0] for row in source_cols_result} if source_cols_result else set()
 
+    # Create a mapping of base column names (without .value/.label) to full column names
+    source_cols_base_map = {}
+    for col in source_cols:
+        # Extract base name for .value columns
+        if col.endswith('.value'):
+            base_name = col[:-6]  # Remove '.value'
+            source_cols_base_map[base_name.lower()] = col
+
     # Build column mappings
     column_mappings = []
     for col_info in date_columns:
@@ -786,15 +794,29 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
         else:
             date_format = 'YYYY-MM-DD'
 
-        # Find matching source column
+        # Find matching source column using 3-tier strategy:
+        # 1. Exact match (e.g., "MyColumn.value" -> "MyColumn.value")
+        # 2. Lowercase match (e.g., "mycolumn" -> "MyColumn")
+        # 3. Map to .value extension ONLY if no exact/lowercase match
+        #    (e.g., "mycolumn" -> "MyColumn.value" when "MyColumn" doesn't exist)
         source_col = None
+
+        # Strategy 1: Exact match
         if dest_col in source_cols:
             source_col = dest_col
+        # Strategy 2: Lowercase match
         else:
             for sc in source_cols:
                 if sc.lower() == dest_col.lower():
                     source_col = sc
                     break
+
+        # Strategy 3: Map to .value extension (only when no exact/lowercase match found)
+        if not source_col:
+            dest_col_lower = dest_col.lower()
+            if dest_col_lower in source_cols_base_map:
+                source_col = source_cols_base_map[dest_col_lower]
+                logging.debug(f"Mapped '{dest_col}' -> '{source_col}' (via .value extension)")
 
         if source_col:
             column_mappings.append((dest_col, source_col, date_format))

@@ -19,14 +19,18 @@ def build_column_select(source_col, target_col, available_cols, is_case_statemen
         source_col: The source column name (e.g., "ChestAusc.label")
         target_col: The target alias (e.g., "Chest Auscultation")
         available_cols: Set of available column names in the source table
-        is_case_statement: If True, this is part of a CASE statement (return empty string if missing)
+        is_case_statement: If True, this is part of a CASE statement (return quoted column or NULL)
 
     Returns:
         SQL string for column selection, or NULL AS alias if column doesn't exist
     """
-    # For CASE statements, just return empty if column doesn't exist
+    # For CASE statements, return quoted column name or NULL
     if is_case_statement:
-        return source_col if source_col.strip('"') in available_cols else 'NULL'
+        base_col = source_col.strip('"')
+        if base_col in available_cols:
+            return f'"{base_col}"'  # Return quoted column name for CASE statements
+        else:
+            return 'NULL'
 
     # For regular columns
     base_col = source_col.strip('"')
