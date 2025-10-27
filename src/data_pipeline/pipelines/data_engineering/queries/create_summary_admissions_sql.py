@@ -82,7 +82,7 @@ def summary_admissions_query():
     "Suck Reflex","Fontanelle","Tone","Level of Conciousness","Fits, Seizures or convulsions","Respiration","Thompson Score",
     "Posture","Moro reflex","Grasp reflex","Reason for CS","Other Reason for CS","Length of Resusitation","Length of Resusitation (Known)",
     "Meconium Thick or Thin","Cardiovascular exam","Femorals","HypoSxYN","Chest Ausc","Respiratory Support","RISK for Covid?","External Source",
-    "Mothers Symptoms","Mother Cellphone number","Mothers Diagnosis","Mother Oxygen saturations","is mother present?","Other Ethnicity",
+    "Mothers Symptoms","Mothers Diagnosis","Mother Oxygen saturations","is mother present?","Other Ethnicity",
     "Manual Heart Rate","MatComorbidities","MatComorbidities.value","DOBYN.value","Age Estimated","Age","Age Category","BirthWeight")   '''
     where=f''' WHERE NOT EXISTS ( SELECT 1  FROM derived.summary_admissions  WHERE "NeoTree_ID" IN (select uid from derived.admissions))'''
 
@@ -252,7 +252,6 @@ def summary_admissions_query():
                     "RISKCovid.label" AS "RISK for Covid?",
                     "EXTERNALSOURCE.label" AS "External Source",
                     "MatSymptoms.label" AS "Mothers Symptoms",
-                    "MothCell.value" AS "Mother Cellphone number",
                     "MothersDiagnosis.label" AS "Mothers Diagnosis",
                     CASE
                     WHEN "MotherSatsO2.value" ~ '^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$'
