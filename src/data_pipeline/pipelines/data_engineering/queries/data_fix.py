@@ -40,6 +40,7 @@ fix_column_limit_error('joined_admissions_discharges', auto_rebuild=True)
 import logging
 from conf.common.sql_functions import inject_sql_procedure, inject_sql_with_return
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
+from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
 import re
 
 
@@ -321,6 +322,155 @@ def update_mat_age(source_table: str, dest_table: str):
         inject_sql_procedure(query, f"FIX MATERNAL AGE {dest_table}")
 
 
+def _is_actually_date_column(column_name: str, data_type: str, table_name: str) -> bool:
+    """
+    Intelligently determine if a column is actually a date column.
+
+    Uses multiple heuristics:
+    1. Check data_type (timestamp, date, time columns are always dates)
+    2. For TEXT columns with "date" in name: sample actual data to verify
+    3. Use field metadata if available to validate data type
+
+    Args:
+        column_name: Name of the column
+        data_type: PostgreSQL data type
+        table_name: Table name (for metadata lookup and sampling)
+
+    Returns:
+        True if column is a date column, False otherwise
+    """
+    # Priority 1: Check PostgreSQL data type (most reliable)
+    data_type_lower = data_type.lower()
+    if any(dt in data_type_lower for dt in ['timestamp', 'date']):
+        return True
+
+    if 'time' in data_type_lower and 'date' not in data_type_lower:
+        # Could be 'time' type (time without date), which we might want
+        return True
+
+    # Priority 2: For TEXT columns that contain "date", sample actual data
+    column_lower = column_name.lower()
+    if 'text' in data_type_lower or 'character' in data_type_lower:
+        if 'date' in column_lower:
+            # Sample 3 non-null values from the actual data
+            try:
+                column_quoted = f'"{column_name}"' if '.' in column_name or ' ' in column_name else column_name
+                sample_query = f"""
+                    SELECT {column_quoted}
+                    FROM derived."{table_name}"
+                    WHERE {column_quoted} IS NOT NULL
+                    AND {column_quoted} != ''
+                    LIMIT 3;
+                """
+
+                sample_result = inject_sql_with_return(sample_query)
+
+                if sample_result and len(sample_result) > 0:
+                    # Check if samples look like dates
+                    date_like_count = 0
+                    for row in sample_result:
+                        value = str(row[0]).strip()
+                        if _looks_like_date(value):
+                            date_like_count += 1
+
+                    # If at least 2 out of 3 samples look like dates, include it
+                    if date_like_count >= min(2, len(sample_result)):
+                        logging.debug(f"Including '{column_name}' - {date_like_count}/{len(sample_result)} samples are date-like")
+                        return True
+                    else:
+                        logging.debug(f"Excluding '{column_name}' - only {date_like_count}/{len(sample_result)} samples are date-like")
+                        return False
+                else:
+                    # No data to sample, check metadata or exclude
+                    logging.debug(f"No data to sample for '{column_name}'")
+            except Exception as e:
+                logging.debug(f"Error sampling data for '{column_name}': {e}")
+                # Fall through to metadata check
+
+    # Priority 3: Use field metadata if available
+    try:
+        # Try to load metadata for this table
+        metadata = load_json_for_comparison(table_name)
+        if metadata:
+            # Extract base field key from column name
+            base_key = column_name
+            if column_name.endswith('.value') or column_name.endswith('.label'):
+                base_key = column_name.rsplit('.', 1)[0]
+
+            # Handle both dict and list metadata formats
+            field_info = {}
+            if isinstance(metadata, dict):
+                # Could be {scriptId: [fields]} or {fieldKey: field}
+                first_value = next(iter(metadata.values()), None)
+                if isinstance(first_value, list):
+                    # scriptId format - use first script's fields
+                    field_info = {f['key']: f for f in first_value}
+                elif isinstance(first_value, dict) and 'key' in first_value:
+                    # Already a field dict
+                    field_info = metadata
+            else:
+                # List format
+                field_info = {f['key']: f for f in metadata}
+
+            # Check if field exists in metadata
+            if base_key in field_info:
+                field = field_info[base_key]
+                data_type_meta = field.get('dataType', field.get('type', ''))
+
+                # If metadata says it's a date field, trust it
+                if data_type_meta in ['datetime', 'timestamp', 'date']:
+                    return True
+
+                # If metadata says it's NOT a date field, trust it
+                if data_type_meta and data_type_meta not in ['datetime', 'timestamp', 'date']:
+                    logging.debug(f"Excluding '{column_name}' - metadata indicates type '{data_type_meta}', not a date")
+                    return False
+    except Exception as e:
+        # Metadata not available or error loading - continue with other checks
+        logging.debug(f"Could not load metadata for {table_name}: {e}")
+        pass
+
+    # If none of the above, exclude it
+    logging.debug(f"Excluding '{column_name}' - insufficient evidence it's a date column")
+    return False
+
+
+def _looks_like_date(value: str) -> bool:
+    """
+    Check if a string value looks like a date.
+
+    Checks for common date patterns:
+    - ISO format: 2023-01-15, 2023-01-15 14:30:00
+    - Slash format: 01/15/2023, 15/01/2023
+    - Timestamps: 1673784000
+
+    Args:
+        value: String value to check
+
+    Returns:
+        True if value looks like a date, False otherwise
+    """
+    if not value or len(value) < 8:  # Minimum date length
+        return False
+
+    # Common date patterns
+    date_patterns = [
+        r'^\d{4}-\d{1,2}-\d{1,2}',           # YYYY-MM-DD or YYYY-M-D
+        r'^\d{1,2}/\d{1,2}/\d{4}',           # MM/DD/YYYY or DD/MM/YYYY
+        r'^\d{4}/\d{1,2}/\d{1,2}',           # YYYY/MM/DD
+        r'^\d{1,2}-\d{1,2}-\d{4}',           # DD-MM-YYYY or MM-DD-YYYY
+        r'^\d{10,13}$',                      # Unix timestamp (10-13 digits)
+        r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}',   # ISO 8601 with time
+        r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}',   # YYYY-MM-DD HH:MM
+    ]
+
+    for pattern in date_patterns:
+        if re.match(pattern, value):
+            return True
+
+    return False
+
+
 def datesfix(source_table: str, dest_table: str):
     """
     Fix null date values in destination table by pulling data from source table.
@@ -362,8 +512,8 @@ def datesfix(source_table: str, dest_table: str):
         logging.error(f"Source table {source_schema}.{source_name} does not exist")
         return
 
-    # Get all date columns from destination table
-    # A date column is either: data_type contains 'date'/'time' OR column_name contains 'date'
+    # Get all POTENTIAL date columns from destination table
+    # Cast a wide net first, then filter intelligently
     date_columns_query = f"""
         SELECT column_name, data_type
         FROM information_schema.columns
@@ -380,18 +530,40 @@ def datesfix(source_table: str, dest_table: str):
     date_columns_result = inject_sql_with_return(date_columns_query)
 
     if not date_columns_result or len(date_columns_result) == 0:
-        logging.info(f"No date columns found in derived.{dest_table}")
+        logging.info(f"No potential date columns found in derived.{dest_table}")
         return
 
-    logging.info(f"Found {len(date_columns_result)} date columns in derived.{dest_table}")
+    # Intelligently filter to actual date columns
+    actual_date_columns = []
+    excluded_columns = []
+
+    for col_info in date_columns_result:
+        column_name = col_info[0]
+        data_type = col_info[1]
+
+        if _is_actually_date_column(column_name, data_type, dest_table):
+            actual_date_columns.append(col_info)
+        else:
+            excluded_columns.append(column_name)
+
+    # Log what was excluded
+    if excluded_columns:
+        logging.info(f"Excluded {len(excluded_columns)} non-date columns: {', '.join(excluded_columns[:5])}" +
+                    (f"... and {len(excluded_columns) - 5} more" if len(excluded_columns) > 5 else ""))
+
+    if not actual_date_columns:
+        logging.info(f"No actual date columns found in derived.{dest_table} (after filtering)")
+        return
+
+    logging.info(f"Found {len(actual_date_columns)} actual date columns in derived.{dest_table}")
 
     # Process based on source table type
     if source_schema == 'public' and 'clean_sessions' in source_name:
-        _fix_dates_from_clean_sessions(source_table, dest_table, date_columns_result)
+        _fix_dates_from_clean_sessions(source_table, dest_table, actual_date_columns)
     elif source_schema == 'derived' and 'clean' not in source_name:
-        _fix_dates_from_derived_direct(source_table, dest_table, date_columns_result)
+        _fix_dates_from_derived_direct(source_table, dest_table, actual_date_columns)
     elif 'clean' in dest_table.lower():
-        _fix_dates_to_clean_table(source_table, dest_table, date_columns_result)
+        _fix_dates_to_clean_table(source_table, dest_table, actual_date_columns)
     else:
         logging.warning(f"No matching strategy for source={source_table}, dest={dest_table}")
 
@@ -432,6 +604,25 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
     Uses batched updates for efficiency.
     """
     logging.info(f"Fixing dates from clean_sessions to derived.{dest_table}")
+
+    # Validate that source table has the 'data' column (required for clean_sessions)
+    source_schema, source_name = source_table.split('.', 1) if '.' in source_table else ('public', source_table)
+
+    data_column_check = f"""
+        SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = '{source_schema}'
+            AND table_name = '{source_name}'
+            AND column_name = 'data'
+        );
+    """
+
+    data_column_exists_result = inject_sql_with_return(data_column_check)
+    if not data_column_exists_result or not data_column_exists_result[0][0]:
+        logging.error(f"Source table {source_table} does not have a 'data' column - cannot extract from clean_sessions format")
+        logging.info(f"Skipping date fix for {dest_table} from {source_table}")
+        return
 
     is_clean_dest = 'clean' in dest_table.lower()
 

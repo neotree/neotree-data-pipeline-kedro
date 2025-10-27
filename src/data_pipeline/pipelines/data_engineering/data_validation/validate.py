@@ -263,19 +263,37 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     # 1. VALIDATE UID COLUMN (CRITICAL)
     logger.info("\n[1] UID VALIDATION")
 
+    # Scripts that allow multiple UIDs (e.g., review/follow-up scripts where multiple records per patient are expected)
+    SCRIPTS_ALLOWING_MULTIPLE_UIDS = [
+        'daily_review',
+        'infections',
+        'neolab'
+    ]
+
     try:
         if 'uid' in df.columns:
             validator.expect_column_values_to_not_be_null(column="uid")
 
-            # Check for duplicate UIDs
-            duplicate_uids = df[df.duplicated(subset=['uid'], keep=False)]
-            if not duplicate_uids.empty:
-                dup_count = len(duplicate_uids)
-                unique_dup = duplicate_uids['uid'].nunique()
-                logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {duplicate_uids['uid'].unique()[:3].tolist()}")
-                errors.append(f"Duplicate UIDs found: {dup_count} rows")
+            # Determine if this script allows multiple UIDs
+            script_name_lower = str(script_or_id).lower()
+            allows_multiple_uids = any(allowed_script in script_name_lower for allowed_script in SCRIPTS_ALLOWING_MULTIPLE_UIDS)
+
+            # Check for duplicate UIDs (only if script doesn't allow multiple UIDs)
+            if not allows_multiple_uids:
+                duplicate_uids = df[df.duplicated(subset=['uid'], keep=False)]
+                if not duplicate_uids.empty:
+                    dup_count = len(duplicate_uids)
+                    unique_dup = duplicate_uids['uid'].nunique()
+                    logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {duplicate_uids['uid'].unique()[:3].tolist()}")
+                    errors.append(f"Duplicate UIDs found: {dup_count} rows")
+                else:
+                    logger.info("✓ All UIDs unique and non-null")
             else:
-                logger.info("✓ All UIDs unique and non-null")
+                # For scripts allowing multiple UIDs, just report stats
+                unique_uids = df['uid'].nunique()
+                total_rows = len(df)
+                avg_records = total_rows / unique_uids if unique_uids > 0 else 0
+                logger.info(f"✓ UIDs validated (multiple entries allowed) | {unique_uids} unique UIDs | {total_rows} total rows | Avg: {avg_records:.2f} records/UID")
         else:
             logger.error("❌ UID column missing from dataset")
             errors.append("UID column missing")
