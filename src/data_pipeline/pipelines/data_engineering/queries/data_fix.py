@@ -558,11 +558,23 @@ def datesfix(source_table: str, dest_table: str):
     logging.info(f"Found {len(actual_date_columns)} actual date columns in derived.{dest_table}")
 
     # Process based on source table type
-    if source_schema == 'public' and 'clean_sessions' in source_name:
+    is_dest_clean = 'clean' in dest_table.lower()
+
+    # Check for invalid mapping: public -> clean table
+    if source_schema == 'public' and is_dest_clean:
+        logging.error(f"Cannot map from public table ({source_table}) to clean table (derived.{dest_table})")
+        logging.error("Public tables can only map to non-clean derived tables")
+        return
+
+    # Route to appropriate fix function based on source and destination types
+    if source_schema == 'public' and 'clean_sessions' in source_name and not is_dest_clean:
+        # Public clean_sessions -> Derived (not clean)
         _fix_dates_from_clean_sessions(source_table, dest_table, actual_date_columns)
-    elif source_schema == 'derived' and 'clean' not in source_name:
+    elif source_schema == 'derived' and 'clean' not in source_name and not is_dest_clean:
+        # Derived (not clean) -> Derived (not clean)
         _fix_dates_from_derived_direct(source_table, dest_table, actual_date_columns)
-    elif 'clean' in dest_table.lower():
+    elif source_schema == 'derived' and is_dest_clean:
+        # Derived -> Derived clean table
         _fix_dates_to_clean_table(source_table, dest_table, actual_date_columns)
     else:
         logging.warning(f"No matching strategy for source={source_table}, dest={dest_table}")
@@ -670,8 +682,9 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                 f"TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}') AS \"{variable_name}_label\""
             )
 
+            # Check if destination is NULL and extracted value from subquery is NOT NULL
             where_conditions.append(
-                f"(d.\"{value_col}\" IS NULL AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != '')"
+                f"(d.\"{value_col}\" IS NULL AND s.\"{variable_name}_date\" IS NOT NULL)"
             )
 
         if set_clauses:
@@ -774,15 +787,9 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
     source_cols_result = inject_sql_with_return(source_cols_query)
     source_cols = {row[0] for row in source_cols_result} if source_cols_result else set()
 
-    # Create a mapping of base column names (without .value/.label) to full column names
-    source_cols_base_map = {}
-    for col in source_cols:
-        # Extract base name for .value columns
-        if col.endswith('.value'):
-            base_name = col[:-6]  # Remove '.value'
-            source_cols_base_map[base_name.lower()] = col
-
     # Build column mappings
+    # For derived to derived (non-clean): use EXACT matching only
+    # Columns should match directly: VariableName.value -> VariableName.value
     column_mappings = []
     for col_info in date_columns:
         dest_col = col_info[0]
@@ -794,29 +801,14 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
         else:
             date_format = 'YYYY-MM-DD'
 
-        # Find matching source column using 3-tier strategy:
-        # 1. Exact match (e.g., "MyColumn.value" -> "MyColumn.value")
-        # 2. Lowercase match (e.g., "mycolumn" -> "MyColumn")
-        # 3. Map to .value extension ONLY if no exact/lowercase match
-        #    (e.g., "mycolumn" -> "MyColumn.value" when "MyColumn" doesn't exist)
+        # For derived to derived (non-clean): ONLY exact match
+        # e.g., "DateField.value" in dest -> "DateField.value" in source
         source_col = None
-
-        # Strategy 1: Exact match
         if dest_col in source_cols:
             source_col = dest_col
-        # Strategy 2: Lowercase match
+            logging.debug(f"Exact match: '{dest_col}' -> '{source_col}'")
         else:
-            for sc in source_cols:
-                if sc.lower() == dest_col.lower():
-                    source_col = sc
-                    break
-
-        # Strategy 3: Map to .value extension (only when no exact/lowercase match found)
-        if not source_col:
-            dest_col_lower = dest_col.lower()
-            if dest_col_lower in source_cols_base_map:
-                source_col = source_cols_base_map[dest_col_lower]
-                logging.debug(f"Mapped '{dest_col}' -> '{source_col}' (via .value extension)")
+            logging.debug(f"No exact match found for '{dest_col}' in source table")
 
         if source_col:
             column_mappings.append((dest_col, source_col, date_format))
@@ -896,15 +888,24 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
     """
 
     source_cols_result = inject_sql_with_return(source_cols_query)
-    source_cols = {row[0]: row[0] for row in source_cols_result} if source_cols_result else {}
+    source_cols = [row[0] for row in source_cols_result] if source_cols_result else []
 
-    # Create lowercase mapping for source columns
-    source_cols_lower = {}
+    # Create mappings for source columns:
+    # 1. Map columns with .value suffix: "VariableName.value" -> {"variablename": "VariableName.value"}
+    # 2. Map columns without .value suffix: "VariableName" -> {"variablename": "VariableName"}
+    source_cols_with_value = {}  # Priority 1: columns with .value
+    source_cols_without_value = {}  # Priority 2: columns without .value
+
     for col in source_cols:
-        base_col = re.sub(r'\.(value|label)$', '', col, flags=re.IGNORECASE)
-        source_cols_lower[base_col.lower()] = col
+        if col.endswith('.value'):
+            base_col = col[:-6]  # Remove '.value'
+            source_cols_with_value[base_col.lower()] = col
+        else:
+            source_cols_without_value[col.lower()] = col
 
     # Build column mappings
+    # For derived to clean: Priority 1 is VariableName.value -> variablename
+    #                      Priority 2 is VariableName -> variablename
     column_mappings = []
     for col_info in date_columns:
         dest_col = col_info[0]
@@ -916,18 +917,20 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
         else:
             date_format = 'YYYY-MM-DD'
 
-        # Find matching source column
+        # Find matching source column with correct priority
         source_col = None
-        if dest_col in source_cols:
-            source_col = dest_col
+        dest_col_lower = dest_col.lower()
+
+        # Priority 1: Look for "VariableName.value" in source (case-insensitive)
+        if dest_col_lower in source_cols_with_value:
+            source_col = source_cols_with_value[dest_col_lower]
+            logging.debug(f"Priority 1 match: '{dest_col}' <- '{source_col}' (with .value)")
+        # Priority 2: Look for exact match "VariableName" (case-insensitive, no .value)
+        elif dest_col_lower in source_cols_without_value:
+            source_col = source_cols_without_value[dest_col_lower]
+            logging.debug(f"Priority 2 match: '{dest_col}' <- '{source_col}' (exact match)")
         else:
-            dest_col_lower = dest_col.lower()
-            if dest_col_lower in source_cols_lower:
-                source_col = source_cols_lower[dest_col_lower]
-            else:
-                potential_source = f"{dest_col}.value"
-                if potential_source in source_cols:
-                    source_col = potential_source
+            logging.debug(f"No matching column found for '{dest_col}' in source table")
 
         if source_col:
             column_mappings.append((dest_col, source_col, date_format))
