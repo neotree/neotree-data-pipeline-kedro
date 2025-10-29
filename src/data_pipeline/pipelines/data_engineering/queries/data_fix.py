@@ -613,7 +613,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
     Fix dates when source is public.clean_sessions
     Extract from: data -> 'entries' -> 'VariableName' -> 'values' -> 'value' ->> 0
     Format: timestamps as 'YYYY-MM-DD HH:MI', dates as 'YYYY-MM-DD'
-    Uses batched updates for efficiency.
+    Processes each column separately for easier error isolation.
     """
     logging.info(f"Fixing dates from clean_sessions to derived.{dest_table}")
 
@@ -636,12 +636,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
         logging.info(f"Skipping date fix for {dest_table} from {source_table}")
         return
 
-    is_clean_dest = 'clean' in dest_table.lower()
-
-    # Group columns by variable name for .value/.label pairs
-    value_label_pairs = {}
-    standalone_cols = []
-
+    # Process each date column separately
     for col_info in date_columns:
         dest_col = col_info[0]
         data_type = col_info[1].lower()
@@ -652,104 +647,73 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
         else:
             date_format = 'YYYY-MM-DD'
 
-        if dest_col.endswith('.value') and not is_clean_dest:
+        # Extract variable name from destination column
+        # For "VariableName.value" or "VariableName.label", extract "VariableName"
+        # For "variablename" (clean tables), use as-is
+        if dest_col.endswith('.value') or dest_col.endswith('.label'):
             variable_name = dest_col.rsplit('.', 1)[0]
-            if variable_name not in value_label_pairs:
-                value_label_pairs[variable_name] = {'format': date_format, 'value_col': dest_col}
-        elif dest_col.endswith('.label'):
-            continue  # Skip labels, handled with values
         else:
-            standalone_cols.append((dest_col, date_format))
+            variable_name = dest_col
 
-    # Build batched update for .value/.label pairs
-    if value_label_pairs:
-        set_clauses = []
-        subquery_selects = []
-        where_conditions = []
+        # Skip .label columns, they will be handled with their .value counterparts
+        if dest_col.endswith('.label'):
+            continue
 
-        for variable_name, info in value_label_pairs.items():
-            value_col = info['value_col']
+        # Build update query for this specific column
+        # For .value columns, also update the corresponding .label column
+        if dest_col.endswith('.value'):
             label_col = f"{variable_name}.label"
-            date_format = info['format']
 
-            set_clauses.append(f'"{value_col}" = s."{variable_name}_date"')
-            set_clauses.append(f'"{label_col}" = s."{variable_name}_label"')
-
-            subquery_selects.append(
-                f"TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}')::timestamp AS \"{variable_name}_date\""
-            )
-            subquery_selects.append(
-                f"TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}') AS \"{variable_name}_label\""
-            )
-
-            # Check if destination is NULL and extracted value from subquery is NOT NULL
-            where_conditions.append(
-                f"(d.\"{value_col}\" IS NULL AND s.\"{variable_name}_date\" IS NOT NULL)"
-            )
-
-        if set_clauses:
             update_query = f"""
                 WITH updated AS (
                     UPDATE derived."{dest_table}" d
-                    SET {', '.join(set_clauses)}
+                    SET "{dest_col}" = s.date_val,
+                        "{label_col}" = s.label_val
                     FROM (
                         SELECT
                             s.uid,
                             s.data ->> 'unique_key' as unique_key,
-                            {', '.join(subquery_selects)}
+                            TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}')::timestamp AS date_val,
+                            TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}') AS label_val
                         FROM {source_table} s
+                        WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
+                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
                     ) s
                     WHERE d.uid = s.uid
                     AND d.unique_key = s.unique_key
-                    AND ({' OR '.join(where_conditions)})
-                    RETURNING d.uid, d.unique_key
+                    AND d."{dest_col}" IS NULL
+                    AND s.date_val IS NOT NULL
+                    RETURNING d.uid
                 )
                 SELECT COUNT(*) as updated_count,
                        ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
                 FROM (SELECT uid FROM updated LIMIT 5) sampled;
             """
-
-            try:
-                result = inject_sql_with_return(update_query)
-                if result and result[0]:
-                    count = result[0][0] if result[0][0] else 0
-                    sample_uids = result[0][1] if len(result[0]) > 1 and result[0][1] else []
-
-                    columns_fixed = list(value_label_pairs.keys())
-                    logging.info(f"✓ Fixed {count} records in {dest_table}")
-                    logging.info(f"  Columns: {', '.join(columns_fixed)}")
-                    logging.info(f"  Sample UIDs: {sample_uids[:5] if sample_uids else 'None'}")
-            except Exception as e:
-                logging.error(f"Error fixing .value/.label pairs: {e}")
-
-    # Handle standalone columns (clean tables)
-    for dest_col, date_format in standalone_cols:
-        variable_name = dest_col
-
-        update_query = f"""
-            WITH updated AS (
-                UPDATE derived."{dest_table}" d
-                SET "{dest_col}" = TO_CHAR(s.date_val::timestamp, '{date_format}')::timestamp
-                FROM (
-                    SELECT
-                        s.uid,
-                        s.data ->> 'unique_key' as unique_key,
-                        s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 as date_val
-                    FROM {source_table} s
-                    WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
-                    AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
-                ) s
-                WHERE d.uid = s.uid
-                AND d.unique_key = s.unique_key
-                AND d."{dest_col}" IS NULL
-                AND s.date_val IS NOT NULL
-                AND s.date_val != ''
-                RETURNING d.uid
-            )
-            SELECT COUNT(*) as updated_count,
-                   ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
-            FROM (SELECT uid FROM updated LIMIT 5) sampled;
-        """
+        else:
+            # Standalone column (clean tables or columns without .value suffix)
+            update_query = f"""
+                WITH updated AS (
+                    UPDATE derived."{dest_table}" d
+                    SET "{dest_col}" = s.date_val
+                    FROM (
+                        SELECT
+                            s.uid,
+                            s.data ->> 'unique_key' as unique_key,
+                            TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}')::timestamp AS date_val
+                        FROM {source_table} s
+                        WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
+                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
+                    ) s
+                    WHERE d.uid = s.uid
+                    AND d.unique_key = s.unique_key
+                    AND d."{dest_col}" IS NULL
+                    AND s.date_val IS NOT NULL
+                    RETURNING d.uid
+                )
+                SELECT COUNT(*) as updated_count,
+                       ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
+                FROM (SELECT uid FROM updated LIMIT 5) sampled;
+            """
 
         try:
             result = inject_sql_with_return(update_query)
@@ -758,19 +722,22 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                 sample_uids = result[0][1] if len(result[0]) > 1 and result[0][1] else []
 
                 if count > 0:
-                    logging.info(f"✓ Fixed {count} records in {dest_table}")
-                    logging.info(f"  Column: {dest_col}")
+                    logging.info(f"✓ Fixed {count} records in {dest_table}.{dest_col}")
+                    logging.info(f"  Variable: {variable_name}")
                     logging.info(f"  Sample UIDs: {sample_uids[:5] if sample_uids else 'None'}")
+                else:
+                    logging.debug(f"No null dates found for {dest_table}.{dest_col}")
         except Exception as e:
-            logging.error(f"Error fixing {dest_col}: {e}")
+            logging.error(f"Error fixing {dest_col} (variable: {variable_name}): {e}")
+            # Continue with next column even if this one fails
 
 
 def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_columns):
     """
     Fix dates when source is a derived table without 'clean' in name
-    Direct column mapping
+    Direct column mapping - EXACT match only
     Format: timestamps as 'YYYY-MM-DD HH:MI', dates as 'YYYY-MM-DD'
-    Uses batched updates for efficiency.
+    Processes each column separately for easier error isolation.
     """
     logging.info(f"Fixing dates from {source_table} to derived.{dest_table} using direct mapping")
 
@@ -787,10 +754,10 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
     source_cols_result = inject_sql_with_return(source_cols_query)
     source_cols = {row[0] for row in source_cols_result} if source_cols_result else set()
 
-    # Build column mappings
-    # For derived to derived (non-clean): use EXACT matching only
-    # Columns should match directly: VariableName.value -> VariableName.value
-    column_mappings = []
+    # Process each date column separately
+    columns_processed = 0
+    columns_fixed = 0
+
     for col_info in date_columns:
         dest_col = col_info[0]
         data_type = col_info[1].lower()
@@ -803,77 +770,64 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
 
         # For derived to derived (non-clean): ONLY exact match
         # e.g., "DateField.value" in dest -> "DateField.value" in source
-        source_col = None
-        if dest_col in source_cols:
-            source_col = dest_col
-            logging.debug(f"Exact match: '{dest_col}' -> '{source_col}'")
-        else:
+        if dest_col not in source_cols:
             logging.debug(f"No exact match found for '{dest_col}' in source table")
+            continue
 
-        if source_col:
-            column_mappings.append((dest_col, source_col, date_format))
+        source_col = dest_col
+        logging.debug(f"Exact match: '{dest_col}' -> '{source_col}'")
 
-    if not column_mappings:
-        logging.warning(f"No matching columns found between {source_table} and {dest_table}")
-        return
-
-    # Build single batched update query
-    set_clauses = []
-    where_conditions = []
-    columns_fixed = []
-
-    for dest_col, source_col, date_format in column_mappings:
+        # Quote column names if they contain dots or spaces
         dest_col_quoted = f'"{dest_col}"' if '.' in dest_col or ' ' in dest_col else dest_col
         source_col_quoted = f'"{source_col}"' if '.' in source_col or ' ' in source_col else source_col
 
-        set_clauses.append(f'{dest_col_quoted} = TO_CHAR(s.{source_col_quoted}::timestamp, \'{date_format}\')::timestamp')
-        where_conditions.append(f'd.{dest_col_quoted} IS NULL')
-        columns_fixed.append(dest_col)
+        # Build individual update query
+        update_query = f"""
+            WITH updated AS (
+                UPDATE derived."{dest_table}" d
+                SET {dest_col_quoted} = TO_CHAR(s.{source_col_quoted}::timestamp, '{date_format}')::timestamp
+                FROM {source_schema}."{source_name}" s
+                WHERE d.uid = s.uid
+                AND d.unique_key = s.unique_key
+                AND d.{dest_col_quoted} IS NULL
+                AND s.{source_col_quoted} IS NOT NULL
+                RETURNING d.uid
+            )
+            SELECT COUNT(*) as updated_count,
+                   ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
+            FROM (SELECT uid FROM updated LIMIT 5) sampled;
+        """
 
-    # Build source column IS NOT NULL conditions (avoiding f-string escape issues)
-    source_not_null_conditions = []
-    for _, sc, _ in column_mappings:
-        sc_quoted = f'"{sc}"' if '.' in sc or ' ' in sc else sc
-        source_not_null_conditions.append(f's.{sc_quoted} IS NOT NULL')
+        try:
+            result = inject_sql_with_return(update_query)
+            if result and result[0]:
+                count = result[0][0] if result[0][0] else 0
+                sample_uids = result[0][1] if len(result[0]) > 1 and result[0][1] else []
 
-    update_query = f"""
-        WITH updated AS (
-            UPDATE derived."{dest_table}" d
-            SET {', '.join(set_clauses)}
-            FROM {source_schema}."{source_name}" s
-            WHERE d.uid = s.uid
-            AND d.unique_key = s.unique_key
-            AND ({' OR '.join(where_conditions)})
-            AND ({' OR '.join(source_not_null_conditions)})
-            RETURNING d.uid
-        )
-        SELECT COUNT(*) as updated_count,
-               ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
-        FROM (SELECT uid FROM updated LIMIT 5) sampled;
-    """
+                columns_processed += 1
+                if count > 0:
+                    columns_fixed += 1
+                    logging.info(f"✓ Fixed {count} records in {dest_table}.{dest_col}")
+                    logging.info(f"  Sample UIDs: {sample_uids[:5] if sample_uids else 'None'}")
+                else:
+                    logging.debug(f"No null dates found for {dest_table}.{dest_col}")
+        except Exception as e:
+            logging.error(f"Error fixing {dest_col}: {e}")
+            # Continue with next column
 
-    try:
-        result = inject_sql_with_return(update_query)
-        if result and result[0]:
-            count = result[0][0] if result[0][0] else 0
-            sample_uids = result[0][1] if len(result[0]) > 1 and result[0][1] else []
-
-            if count > 0:
-                logging.info(f"✓ Fixed {count} records in {dest_table}")
-                logging.info(f"  Columns: {', '.join(columns_fixed)}")
-                logging.info(f"  Sample UIDs: {sample_uids[:5] if sample_uids else 'None'}")
-            else:
-                logging.info(f"No null dates found to fix in {dest_table}")
-    except Exception as e:
-        logging.error(f"Error fixing dates from {source_table}: {e}")
+    if columns_processed == 0:
+        logging.warning(f"No matching columns found between {source_table} and {dest_table}")
+    else:
+        logging.info(f"Processed {columns_processed} columns, fixed {columns_fixed} columns with data")
 
 
 def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
     """
     Fix dates when destination table has 'clean' in name
-    Try direct mapping first, then lowercase mapping (VariableName.value -> variablename)
+    Priority 1: VariableName.value -> variablename (case-insensitive)
+    Priority 2: VariableName -> variablename (case-insensitive)
     Format: timestamps as 'YYYY-MM-DD HH:MI', dates as 'YYYY-MM-DD'
-    Uses batched updates for efficiency.
+    Processes each column separately for easier error isolation.
     """
     logging.info(f"Fixing dates from {source_table} to clean table derived.{dest_table}")
 
@@ -903,10 +857,10 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
         else:
             source_cols_without_value[col.lower()] = col
 
-    # Build column mappings
-    # For derived to clean: Priority 1 is VariableName.value -> variablename
-    #                      Priority 2 is VariableName -> variablename
-    column_mappings = []
+    # Process each date column separately
+    columns_processed = 0
+    columns_fixed = 0
+
     for col_info in date_columns:
         dest_col = col_info[0]
         data_type = col_info[1].lower()
@@ -931,63 +885,51 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
             logging.debug(f"Priority 2 match: '{dest_col}' <- '{source_col}' (exact match)")
         else:
             logging.debug(f"No matching column found for '{dest_col}' in source table")
+            continue
 
-        if source_col:
-            column_mappings.append((dest_col, source_col, date_format))
-
-    if not column_mappings:
-        logging.warning(f"No matching columns found between {source_table} and {dest_table}")
-        return
-
-    # Build single batched update query
-    set_clauses = []
-    where_conditions = []
-    columns_fixed = []
-
-    for dest_col, source_col, date_format in column_mappings:
+        # Quote column names if they contain dots or spaces
         dest_col_quoted = f'"{dest_col}"' if '.' in dest_col or ' ' in dest_col else dest_col
         source_col_quoted = f'"{source_col}"' if '.' in source_col or ' ' in source_col else source_col
 
-        set_clauses.append(f'{dest_col_quoted} = TO_CHAR(s.{source_col_quoted}::timestamp, \'{date_format}\')::timestamp')
-        where_conditions.append(f'd.{dest_col_quoted} IS NULL')
-        columns_fixed.append(f'{dest_col} <- {source_col}')
+        # Build individual update query
+        update_query = f"""
+            WITH updated AS (
+                UPDATE derived."{dest_table}" d
+                SET {dest_col_quoted} = TO_CHAR(s.{source_col_quoted}::timestamp, '{date_format}')::timestamp
+                FROM {source_schema}."{source_name}" s
+                WHERE d.uid = s.uid
+                AND d.unique_key = s.unique_key
+                AND d.{dest_col_quoted} IS NULL
+                AND s.{source_col_quoted} IS NOT NULL
+                RETURNING d.uid
+            )
+            SELECT COUNT(*) as updated_count,
+                   ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
+            FROM (SELECT uid FROM updated LIMIT 5) sampled;
+        """
 
-    # Build source column IS NOT NULL conditions (avoiding f-string escape issues)
-    source_not_null_conditions_clean = []
-    for _, sc, _ in column_mappings:
-        sc_quoted = f'"{sc}"' if '.' in sc or ' ' in sc else sc
-        source_not_null_conditions_clean.append(f's.{sc_quoted} IS NOT NULL')
+        try:
+            result = inject_sql_with_return(update_query)
+            if result and result[0]:
+                count = result[0][0] if result[0][0] else 0
+                sample_uids = result[0][1] if len(result[0]) > 1 and result[0][1] else []
 
-    update_query = f"""
-        WITH updated AS (
-            UPDATE derived."{dest_table}" d
-            SET {', '.join(set_clauses)}
-            FROM {source_schema}."{source_name}" s
-            WHERE d.uid = s.uid
-            AND d.unique_key = s.unique_key
-            AND ({' OR '.join(where_conditions)})
-            AND ({' OR '.join(source_not_null_conditions_clean)})
-            RETURNING d.uid
-        )
-        SELECT COUNT(*) as updated_count,
-               ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
-        FROM (SELECT uid FROM updated LIMIT 5) sampled;
-    """
+                columns_processed += 1
+                if count > 0:
+                    columns_fixed += 1
+                    logging.info(f"✓ Fixed {count} records in {dest_table}.{dest_col}")
+                    logging.info(f"  Mapping: {dest_col} <- {source_col}")
+                    logging.info(f"  Sample UIDs: {sample_uids[:5] if sample_uids else 'None'}")
+                else:
+                    logging.debug(f"No null dates found for {dest_table}.{dest_col}")
+        except Exception as e:
+            logging.error(f"Error fixing {dest_col} <- {source_col}: {e}")
+            # Continue with next column
 
-    try:
-        result = inject_sql_with_return(update_query)
-        if result and result[0]:
-            count = result[0][0] if result[0][0] else 0
-            sample_uids = result[0][1] if len(result[0]) > 1 and result[0][1] else []
-
-            if count > 0:
-                logging.info(f"✓ Fixed {count} records in {dest_table}")
-                logging.info(f"  Mappings: {', '.join(columns_fixed)}")
-                logging.info(f"  Sample UIDs: {sample_uids[:5] if sample_uids else 'None'}")
-            else:
-                logging.info(f"No null dates found to fix in {dest_table}")
-    except Exception as e:
-        logging.error(f"Error fixing dates to clean table: {e}")
+    if columns_processed == 0:
+        logging.warning(f"No matching columns found between {source_table} and {dest_table}")
+    else:
+        logging.info(f"Processed {columns_processed} columns, fixed {columns_fixed} columns with data")
 
 
 def count_table_columns(table_name: str, schema: str = 'derived') -> dict:
