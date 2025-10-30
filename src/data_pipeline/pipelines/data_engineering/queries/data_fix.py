@@ -610,6 +610,58 @@ def datesfix_batch(table_pairs: list):
     logging.info(f"Batch date fix completed for {total_tables} tables")
 
 
+def _ensure_label_columns_are_text(dest_table: str, date_columns):
+    """
+    Ensure that .label columns are of type TEXT before updating them.
+
+    When fixing dates, we update both .value (timestamp) and .label (text) columns.
+    If .label column is not text type, we need to convert it first to avoid type errors.
+
+    Args:
+        dest_table: Destination table name
+        date_columns: List of date column info tuples (column_name, data_type)
+    """
+    # Find all .value columns that need .label conversion
+    value_columns = [col[0] for col in date_columns if col[0].endswith('.value')]
+
+    if not value_columns:
+        return  # No .value columns to process
+
+    # Check each corresponding .label column
+    for value_col in value_columns:
+        variable_name = value_col.rsplit('.', 1)[0]
+        label_col = f"{variable_name}.label"
+
+        # Check if .label column exists and its type
+        type_check_query = f"""
+            SELECT data_type
+            FROM information_schema.columns
+            WHERE table_schema = 'derived'
+            AND table_name = '{dest_table}'
+            AND column_name = '{label_col}';
+        """
+
+        try:
+            result = inject_sql_with_return(type_check_query)
+            if result and result[0]:
+                current_type = result[0][0].lower()
+
+                # If not text/character type, convert it
+                if 'text' not in current_type and 'character' not in current_type:
+                    logging.info(f"Converting {dest_table}.{label_col} from {current_type} to TEXT")
+
+                    convert_query = f"""
+                        ALTER TABLE derived."{dest_table}"
+                        ALTER COLUMN "{label_col}" TYPE TEXT USING "{label_col}"::TEXT;
+                    """
+
+                    inject_sql_procedure(convert_query, f"CONVERT {dest_table}.{label_col} TO TEXT")
+                    logging.info(f"✓ Converted {dest_table}.{label_col} to TEXT")
+        except Exception as e:
+            logging.warning(f"Could not check/convert {label_col}: {e}")
+            # Continue - the column might not exist, which is okay
+
+
 def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_columns):
     """
     Fix dates when source is public.clean_sessions
@@ -618,6 +670,9 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
     Processes each column separately for easier error isolation.
     """
     logging.info(f"Fixing dates from clean_sessions to derived.{dest_table}")
+
+    # Ensure .label columns are TEXT type before we start fixing
+    _ensure_label_columns_are_text(dest_table, date_columns)
 
     # Validate that source table has the 'data' column (required for clean_sessions)
     source_schema, source_name = source_table.split('.', 1) if '.' in source_table else ('public', source_table)
