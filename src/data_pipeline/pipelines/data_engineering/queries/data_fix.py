@@ -354,12 +354,14 @@ def _is_actually_date_column(column_name: str, data_type: str, table_name: str) 
         if 'date' in column_lower:
             # Sample 3 non-null values from the actual data
             try:
-                column_quoted = f'"{column_name}"' if '.' in column_name or ' ' in column_name else column_name
+                # Always quote column names to handle mixed-case and special characters
+                column_quoted = f'"{column_name}"'
                 sample_query = f"""
                     SELECT {column_quoted}
                     FROM derived."{table_name}"
                     WHERE {column_quoted} IS NOT NULL
                     AND {column_quoted} != ''
+                    AND {column_quoted} != 'None'
                     LIMIT 3;
                 """
 
@@ -678,6 +680,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                         FROM {source_table} s
                         WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
                         AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
+                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != 'None'
                     ) s
                     WHERE d.uid = s.uid
                     AND d.unique_key = s.unique_key
@@ -703,6 +706,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                         FROM {source_table} s
                         WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
                         AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
+                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != 'None'
                     ) s
                     WHERE d.uid = s.uid
                     AND d.unique_key = s.unique_key
@@ -791,6 +795,8 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
                 AND d.unique_key = s.unique_key
                 AND d.{dest_col_quoted} IS NULL
                 AND s.{source_col_quoted} IS NOT NULL
+                AND s.{source_col_quoted}::text != ''
+                AND s.{source_col_quoted}::text != 'None'
                 RETURNING d.uid
             )
             SELECT COUNT(*) as updated_count,
@@ -901,6 +907,8 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
                 AND d.unique_key = s.unique_key
                 AND d.{dest_col_quoted} IS NULL
                 AND s.{source_col_quoted} IS NOT NULL
+                AND s.{source_col_quoted}::text != ''
+                AND s.{source_col_quoted}::text != 'None'
                 RETURNING d.uid
             )
             SELECT COUNT(*) as updated_count,
