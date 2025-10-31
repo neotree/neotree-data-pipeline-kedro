@@ -496,9 +496,9 @@ def datesfix(source_table: str, dest_table: str):
         source_schema = 'derived'
         source_name = source_table
 
-    # Check if both tables exist
+    # Check if destination table exists
     if not table_exists('derived', dest_table):
-        logging.error(f"Destination table derived.{dest_table} does not exist")
+        logging.warning(f"Destination table derived.{dest_table} does not exist - skipping (this is expected in some environments)")
         return
 
     # Check source table existence
@@ -511,7 +511,7 @@ def datesfix(source_table: str, dest_table: str):
     """
     source_exists_result = inject_sql_with_return(source_exists_query)
     if not source_exists_result or not source_exists_result[0][0]:
-        logging.error(f"Source table {source_schema}.{source_name} does not exist")
+        logging.warning(f"Source table {source_schema}.{source_name} does not exist - skipping (this is expected in some environments)")
         return
 
     # Get all POTENTIAL date columns from destination table
@@ -604,7 +604,7 @@ def datesfix_batch(table_pairs: list):
         try:
             datesfix(source_table, dest_table)
         except Exception as e:
-            logging.error(f"Failed to fix dates for {dest_table}: {e}")
+            logging.warning(f"Could not fix dates for {dest_table}: {e} (this may be expected in some environments)")
             continue
 
     logging.info(f"Batch date fix completed for {total_tables} tables")
@@ -689,8 +689,8 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
 
     data_column_exists_result = inject_sql_with_return(data_column_check)
     if not data_column_exists_result or not data_column_exists_result[0][0]:
-        logging.error(f"Source table {source_table} does not have a 'data' column - cannot extract from clean_sessions format")
-        logging.info(f"Skipping date fix for {dest_table} from {source_table}")
+        logging.warning(f"Source table {source_table} does not have a 'data' column - cannot extract from clean_sessions format")
+        logging.info(f"Skipping date fix for {dest_table} from {source_table} (this is expected in some environments)")
         return
 
     # Process each date column separately
@@ -736,6 +736,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                         WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
                         AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
                         AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != 'None'
+                        AND LOWER(s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0) != 'nan'
                     ) s
                     WHERE d.uid = s.uid
                     AND d.unique_key = s.unique_key
@@ -762,6 +763,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                         WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
                         AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
                         AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != 'None'
+                        AND LOWER(s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0) != 'nan'
                     ) s
                     WHERE d.uid = s.uid
                     AND d.unique_key = s.unique_key
@@ -787,7 +789,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                 else:
                     logging.debug(f"No null dates found for {dest_table}.{dest_col}")
         except Exception as e:
-            logging.error(f"Error fixing {dest_col} (variable: {variable_name}): {e}")
+            logging.warning(f"Could not fix {dest_col} (variable: {variable_name}): {e} - may have invalid date values")
             # Continue with next column even if this one fails
 
 
@@ -852,6 +854,7 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
                 AND s.{source_col_quoted} IS NOT NULL
                 AND s.{source_col_quoted}::text != ''
                 AND s.{source_col_quoted}::text != 'None'
+                AND LOWER(s.{source_col_quoted}::text) != 'nan'
                 RETURNING d.uid
             )
             SELECT COUNT(*) as updated_count,
@@ -873,7 +876,7 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
                 else:
                     logging.debug(f"No null dates found for {dest_table}.{dest_col}")
         except Exception as e:
-            logging.error(f"Error fixing {dest_col}: {e}")
+            logging.warning(f"Could not fix {dest_col}: {e} - may have invalid date values")
             # Continue with next column
 
     if columns_processed == 0:
@@ -964,6 +967,7 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
                 AND s.{source_col_quoted} IS NOT NULL
                 AND s.{source_col_quoted}::text != ''
                 AND s.{source_col_quoted}::text != 'None'
+                AND LOWER(s.{source_col_quoted}::text) != 'nan'
                 RETURNING d.uid
             )
             SELECT COUNT(*) as updated_count,
@@ -986,7 +990,7 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
                 else:
                     logging.debug(f"No null dates found for {dest_table}.{dest_col}")
         except Exception as e:
-            logging.error(f"Error fixing {dest_col} <- {source_col}: {e}")
+            logging.warning(f"Could not fix {dest_col} <- {source_col}: {e} - may have invalid date values")
             # Continue with next column
 
     if columns_processed == 0:
