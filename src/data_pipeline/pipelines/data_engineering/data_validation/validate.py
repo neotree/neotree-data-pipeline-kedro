@@ -302,9 +302,10 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         logger.error(err_msg)
         errors.append(err_msg)
 
-    # 2. DROP KEYWORDS VALIDATION (SENSITIVE/UNWANTED COLUMNS)
-    logger.info("\n[2] SENSITIVE/UNWANTED COLUMNS")
+    # 2. SENSITIVE/CONFIDENTIAL DATA CHECK
+    logger.info("\n[2] SENSITIVE/CONFIDENTIAL DATA")
 
+    # Known sensitive keywords (static list)
     drop_keywords = ['surname', 'firstname', 'dobtob', 'column_name', 'mothcell',
                      'dob.value', 'dob.label', 'kinaddress', 'kincell', 'kinname']
 
@@ -314,16 +315,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         if col_lower in drop_keywords:
             found_sensitive_columns.append(col)
 
-    if found_sensitive_columns:
-        logger.error(f"❌ {len(found_sensitive_columns)} sensitive column(s): {', '.join(found_sensitive_columns)}")
-        warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
-    else:
-        logger.info("✓ No sensitive columns detected")
-
-    # 2b. CONFIDENTIAL FIELDS CHECK
-    logger.info("\n[2b] CONFIDENTIAL FIELDS")
-
-    # Check for fields marked as confidential in schema
+    # Check for fields marked as confidential in schema (dynamic)
     confidential_fields_found = []
     # Handle both dict and list formats
     schema_fields = field_info.values() if isinstance(field_info, dict) else schema
@@ -345,8 +337,15 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                     'has_label': label_col in df.columns
                 })
 
+    # Report both known keywords and schema-based confidential fields together
+    total_sensitive = len(found_sensitive_columns) + len(confidential_fields_found)
+
+    if found_sensitive_columns:
+        logger.error(f"❌ {len(found_sensitive_columns)} known sensitive column(s): {', '.join(found_sensitive_columns)}")
+        warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
+
     if confidential_fields_found:
-        logger.error(f"❌ {len(confidential_fields_found)} confidential field(s) found:")
+        logger.error(f"❌ {len(confidential_fields_found)} schema-based confidential field(s):")
         for field in confidential_fields_found[:3]:  # Show max 3
             columns = []
             if field['has_value']:
@@ -368,8 +367,9 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         if len(confidential_fields_found) > 3:
             logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
         errors.append(f"Found {len(confidential_fields_found)} confidential fields in dataset")
-    else:
-        logger.info("✓ No confidential fields")
+
+    if total_sensitive == 0:
+        logger.info("✓ No sensitive/confidential data detected")
 
     # ============================================================================
     # OPTIMIZED COMBINED VALIDATION LOOP
@@ -414,13 +414,25 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
             if null_count > 0:
                 null_pct = (null_count / len(df)) * 100
                 null_mask = temp_series.isna()
-                sample_uids = get_safe_sample_uids(df, null_mask, 2)
+
+                # Special handling: if the field being checked is 'uid', we can't show UIDs as samples
+                # Instead, show unique_key or row indices
+                if base_key.lower() == 'uid':
+                    if 'unique_key' in df.columns:
+                        sample_identifiers = df.loc[null_mask, 'unique_key'].head(2).tolist()
+                    else:
+                        # Fallback to row indices
+                        sample_identifiers = df[null_mask].head(2).index.tolist()
+                else:
+                    sample_identifiers = get_safe_sample_uids(df, null_mask, 2)
+
                 required_results.append({
                     'base_key': base_key,
                     'null_count': null_count,
                     'total_count': len(df),
                     'null_pct': null_pct,
-                    'sample_uids': sample_uids
+                    'sample_identifiers': sample_identifiers,
+                    'is_uid_field': base_key.lower() == 'uid'
                 })
 
         # --- VALUE RANGE VALIDATION ---
@@ -635,7 +647,13 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     logger.info("\n[3] REQUIRED FIELDS")
     if required_results:
         for result in required_results:
-            logger.error(f"❌ '{result['base_key']}': {result['null_count']}/{result['total_count']} ({result['null_pct']:.1f}%) NULL | UIDs: {result['sample_uids']}")
+            # Determine the label for sample identifiers
+            if result.get('is_uid_field', False):
+                identifier_label = "unique_keys" if 'unique_key' in df.columns else "Row indices"
+            else:
+                identifier_label = "UIDs"
+
+            logger.error(f"❌ '{result['base_key']}': {result['null_count']}/{result['total_count']} ({result['null_pct']:.1f}%) NULL | {identifier_label}: {result['sample_identifiers']}")
             errors.append(f"Required field '{result['base_key']}' has {result['null_count']} NULL values")
         logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
     else:
@@ -719,8 +737,20 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 if inconsistent_mask.sum() > 0:
                     inconsistencies += 1
                     inconsistent_count = inconsistent_mask.sum()
-                    sample_uids = get_safe_sample_uids(df, inconsistent_mask, 2)
-                    logger.error(f"❌ '{base_key}': {inconsistent_count} NULL value but non-NULL label | UIDs: {sample_uids}")
+
+                    # Special handling for UID field
+                    if base_key.lower() == 'uid':
+                        if 'unique_key' in df.columns:
+                            sample_identifiers = df.loc[inconsistent_mask, 'unique_key'].head(2).tolist()
+                            identifier_label = "unique_keys"
+                        else:
+                            sample_identifiers = df[inconsistent_mask].head(2).index.tolist()
+                            identifier_label = "Row indices"
+                    else:
+                        sample_identifiers = get_safe_sample_uids(df, inconsistent_mask, 2)
+                        identifier_label = "UIDs"
+
+                    logger.error(f"❌ '{base_key}': {inconsistent_count} NULL value but non-NULL label | {identifier_label}: {sample_identifiers}")
                     errors.append(f"Required field '{base_key}' has {inconsistent_count} NULL values with non-NULL labels")
 
     if inconsistencies == 0:
