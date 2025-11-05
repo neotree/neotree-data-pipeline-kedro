@@ -722,59 +722,106 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
             label_col = f"{variable_name}.label"
 
             update_query = f"""
-                WITH updated AS (
+                WITH cleaned AS (
+                    SELECT
+                        s.uid,
+                        s.data ->> 'unique_key' AS unique_key,
+                        TRIM(s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value') AS raw_val
+                    FROM {source_table} s
+                    WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value' IS NOT NULL
+                    AND s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value' NOT IN ('', 'None')
+                    AND LOWER(s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value') != 'nan'
+                ),
+                parsed AS (
+                    SELECT
+                        uid,
+                        unique_key,
+                        raw_val,
+                        CASE
+                            WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
+                                THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
+                            WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
+                                THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
+                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
+                                THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
+                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
+                                THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
+                            WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                                THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
+                            ELSE NULL
+                        END AS date_val
+                    FROM cleaned
+                ),
+                formatted AS (
+                    SELECT
+                        uid,
+                        unique_key,
+                        date_val,
+                        TO_CHAR(date_val, '{date_format}') AS label_val
+                    FROM parsed
+                    WHERE date_val IS NOT NULL
+                ),
+                updated AS (
                     UPDATE derived."{dest_table}" d
-                    SET "{dest_col}" = s.date_val,
-                        "{label_col}" = s.label_val
-                    FROM (
-                        SELECT
-                            s.uid,
-                            s.data ->> 'unique_key' as unique_key,
-                            TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}')::timestamp AS date_val,
-                            TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}') AS label_val
-                        FROM {source_table} s
-                        WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
-                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
-                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != 'None'
-                        AND LOWER(s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0) != 'nan'
-                    ) s
-                    WHERE d.uid = s.uid
-                    AND d.unique_key = s.unique_key
+                    SET "{dest_col}" = f.date_val,
+                        "{label_col}" = f.label_val
+                    FROM formatted f
+                    WHERE d.uid = f.uid
+                    AND d.unique_key = f.unique_key
                     AND d."{dest_col}" IS NULL
-                    AND s.date_val IS NOT NULL
                     RETURNING d.uid
                 )
-                SELECT COUNT(*) as updated_count,
-                       ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
+                SELECT COUNT(*) AS updated_count,
+                    ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
                 FROM (SELECT uid FROM updated LIMIT 5) sampled;
             """
         else:
-            # Standalone column (clean tables or columns without .value suffix)
-            update_query = f"""
-                WITH updated AS (
-                    UPDATE derived."{dest_table}" d
-                    SET "{dest_col}" = s.date_val
-                    FROM (
+                # Standalone column (no .value suffix)
+                update_query = f"""
+                    WITH cleaned AS (
                         SELECT
                             s.uid,
-                            s.data ->> 'unique_key' as unique_key,
-                            TO_CHAR((s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0)::timestamp, '{date_format}')::timestamp AS date_val
+                            s.data ->> 'unique_key' AS unique_key,
+                            TRIM(s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value') AS raw_val
                         FROM {source_table} s
-                        WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 IS NOT NULL
-                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != ''
-                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0 != 'None'
-                        AND LOWER(s.data -> 'entries' -> '{variable_name}' -> 'values' -> 'value' ->> 0) != 'nan'
-                    ) s
-                    WHERE d.uid = s.uid
-                    AND d.unique_key = s.unique_key
-                    AND d."{dest_col}" IS NULL
-                    AND s.date_val IS NOT NULL
-                    RETURNING d.uid
-                )
-                SELECT COUNT(*) as updated_count,
-                       ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
-                FROM (SELECT uid FROM updated LIMIT 5) sampled;
-            """
+                        WHERE s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value' IS NOT NULL
+                        AND s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value' NOT IN ('', 'None')
+                        AND LOWER(s.data -> 'entries' -> '{variable_name}' -> 'values' ->> 'value') != 'nan'
+                    ),
+                    parsed AS (
+                        SELECT
+                            uid,
+                            unique_key,
+                            raw_val,
+                            CASE
+                                WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
+                                    THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
+                                WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
+                                    THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
+                                WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
+                                    THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
+                                WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
+                                    THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
+                                WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                                    THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
+                                ELSE NULL
+                            END AS date_val
+                        FROM cleaned
+                    ),
+                    updated AS (
+                        UPDATE derived."{dest_table}" d
+                        SET "{dest_col}" = p.date_val
+                        FROM parsed p
+                        WHERE d.uid = p.uid
+                        AND d.unique_key = p.unique_key
+                        AND d."{dest_col}" IS NULL
+                        AND p.date_val IS NOT NULL
+                        RETURNING d.uid
+                    )
+                    SELECT COUNT(*) AS updated_count,
+                        ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
+                    FROM (SELECT uid FROM updated LIMIT 5) sampled;
+                """
 
         try:
             result = inject_sql_with_return(update_query)
@@ -844,23 +891,51 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
 
         # Build individual update query
         update_query = f"""
-            WITH updated AS (
-                UPDATE derived."{dest_table}" d
-                SET {dest_col_quoted} = TO_CHAR(s.{source_col_quoted}::timestamp, '{date_format}')::timestamp
+            WITH cleaned AS (
+                SELECT
+                    s.uid,
+                    s.unique_key,
+                    TRIM(s.{source_col_quoted}::text) AS raw_val
                 FROM {source_schema}."{source_name}" s
-                WHERE d.uid = s.uid
-                AND d.unique_key = s.unique_key
-                AND d.{dest_col_quoted} IS NULL
-                AND s.{source_col_quoted} IS NOT NULL
-                AND s.{source_col_quoted}::text != ''
-                AND s.{source_col_quoted}::text != 'None'
+                WHERE s.{source_col_quoted} IS NOT NULL
+                AND s.{source_col_quoted}::text NOT IN ('', 'None')
                 AND LOWER(s.{source_col_quoted}::text) != 'nan'
+            ),
+            parsed AS (
+                SELECT
+                    uid,
+                    unique_key,
+                    raw_val,
+                    CASE
+                        WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
+                            THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
+                        WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
+                            THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
+                        WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
+                            THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
+                        WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
+                            THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
+                        WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                            THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
+                        ELSE NULL
+                    END AS date_val
+                FROM cleaned
+            ),
+            updated AS (
+                UPDATE derived."{dest_table}" d
+                SET {dest_col_quoted} = TO_CHAR(p.date_val, '{date_format}')::timestamp
+                FROM parsed p
+                WHERE d.uid = p.uid
+                AND d.unique_key = p.unique_key
+                AND d.{dest_col_quoted} IS NULL
+                AND p.date_val IS NOT NULL
                 RETURNING d.uid
             )
-            SELECT COUNT(*) as updated_count,
-                   ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
+            SELECT COUNT(*) AS updated_count,
+                ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
             FROM (SELECT uid FROM updated LIMIT 5) sampled;
         """
+
 
         try:
             result = inject_sql_with_return(update_query)
