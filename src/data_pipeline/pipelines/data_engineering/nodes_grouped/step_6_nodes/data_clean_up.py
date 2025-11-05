@@ -72,10 +72,23 @@ def add_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = 'deri
         return
 
     cols = pd.DataFrame(get_table_column_names(table_name, schema), columns=["column_name"])
-    new_columns = set(df.columns) - set(cols.columns)
+    new_columns = set(df.columns) - set(cols['column_name'])
 
     if new_columns:
-        column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
+        column_pairs = []
+        for col in new_columns:
+            try:
+                # Get dtype for the column
+                col_data = df[col]
+                if hasattr(col_data, 'dtype'):
+                    column_pairs.append((col, str(col_data.dtype)))
+                else:
+                    # Fallback to object type if dtype not available
+                    column_pairs.append((col, 'object'))
+            except Exception as e:
+                logging.warning(f"Could not determine dtype for column '{col}': {e}")
+                column_pairs.append((col, 'object'))
+
         if column_pairs:
             create_new_columns(table_name, schema, column_pairs)
 
