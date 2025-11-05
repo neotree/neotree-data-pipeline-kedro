@@ -1125,7 +1125,15 @@ def generate_create_insert_sql(df,schema, table_name):
         # STEP 2: Add 'transformed' column BEFORE table creation
         df['transformed'] = False
 
-        # STEP 3: Create table only if it doesn't exist (using filtered columns INCLUDING 'transformed')
+        # STEP 3: Ensure 'transformed' column exists in table (for existing tables from old runs)
+        if table_exists(schema,table_name) is True:
+            # Check if 'transformed' column exists in the existing table
+            if not column_exists(schema, table_name, 'transformed'):
+                logging.info(f"Adding missing 'transformed' column to existing table {schema}.{table_name}")
+                alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN "transformed" BOOLEAN DEFAULT FALSE;;'
+                inject_sql(alter_query, f"ADD transformed TO {table_name}")
+
+        # STEP 4: Create table only if it doesn't exist (using filtered columns INCLUDING 'transformed')
         if table_exists(schema,table_name) is False:
             dtype_map = {
                 'int64': 'INTEGER',

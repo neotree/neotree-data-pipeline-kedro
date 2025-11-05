@@ -21,7 +21,7 @@ from data_pipeline.pipelines.data_engineering.utils.field_info import update_fie
 from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
 
 
-def safe_load(catalog, dataset_name: str) -> pd.DataFrame:
+def safe_load(dataset_name: str) -> pd.DataFrame:
     """Safely load a dataset from catalog, returning empty DataFrame on failure."""
     try:
         return catalog.load(dataset_name)
@@ -157,7 +157,7 @@ def process_single_script(script: str) -> None:
     catalog_query = f'read_{script}'
 
     # Load raw data
-    script_raw = safe_load(catalog, catalog_query)
+    script_raw = safe_load(catalog_query)
     if script_raw.empty:
         logging.warning(f"No data loaded for script: {script}")
         return

@@ -30,7 +30,7 @@ from data_pipeline.pipelines.data_engineering.data_validation.validate import va
 
 
 
-def safe_load(catalog, dataset_name: str) -> pd.DataFrame:
+def safe_load(dataset_name: str) -> pd.DataFrame:
     """Safely load a dataset from catalog, returning empty DataFrame on failure."""
     try:
         return catalog.load(dataset_name)
@@ -299,12 +299,22 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
 
     # Calculate age from admission date and DOB if Age is missing
     if "DateTimeAdmission.value" in adm_df.columns and "DOBTOB.value" in adm_df.columns:
+        # Convert to datetime and remove timezone info to avoid tz-naive/tz-aware errors
+        admission_dt = pd.to_datetime(adm_df["DateTimeAdmission.value"], errors='coerce')
+        dob_dt = pd.to_datetime(adm_df["DOBTOB.value"], errors='coerce')
+
+        # Remove timezone info if present
+        if hasattr(admission_dt.dt, 'tz') and admission_dt.dt.tz is not None:
+            admission_dt = admission_dt.dt.tz_localize(None)
+        if hasattr(dob_dt.dt, 'tz') and dob_dt.dt.tz is not None:
+            dob_dt = dob_dt.dt.tz_localize(None)
+
+        # Calculate age in hours
         adm_df.loc[
             adm_df["Age.value"].isna() & adm_df["DateTimeAdmission.value"].notna() & adm_df["DOBTOB.value"].notna(),
             "Age.value"
         ] = (
-            (pd.to_datetime(adm_df["DateTimeAdmission.value"]) - pd.to_datetime(adm_df["DOBTOB.value"]))
-            .dt.total_seconds() / 3600
+            (admission_dt - dob_dt).dt.total_seconds() / 3600
         )
 
     # Calculate time spent
@@ -699,14 +709,14 @@ def tidy_tables():
 
     try:
         # Load all datasets from catalog
-        adm_raw = safe_load(catalog, 'read_admissions')
-        dis_raw = safe_load(catalog, 'read_discharges')
-        mat_outcomes_raw = safe_load(catalog, 'read_maternal_outcomes')
-        vit_signs_raw = safe_load(catalog, 'read_vitalsigns')
-        neolab_raw = safe_load(catalog, 'read_neolab')
-        baseline_raw = safe_load(catalog, 'read_baseline')
-        diagnoses_raw = safe_load(catalog, 'read_diagnoses_data')
-        mat_completeness_raw = safe_load(catalog, 'read_maternity_completeness')
+        adm_raw = safe_load('read_admissions')
+        dis_raw = safe_load('read_discharges')
+        mat_outcomes_raw = safe_load('read_maternal_outcomes')
+        vit_signs_raw = safe_load('read_vitalsigns')
+        neolab_raw = safe_load('read_neolab')
+        baseline_raw = safe_load('read_baseline')
+        diagnoses_raw = safe_load('read_diagnoses_data')
+        mat_completeness_raw = safe_load('read_maternity_completeness')
 
     except Exception as e:
         logging.error("!!! An error occurred fetching the data")
