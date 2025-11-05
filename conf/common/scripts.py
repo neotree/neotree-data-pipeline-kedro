@@ -224,22 +224,25 @@ def merge_two_script_outputs(
 
 
 def process_dataframe_with_types(
-    df: pd.DataFrame, 
+    df: pd.DataFrame,
     merged_data: Dict[str, Dict[str, str]]
 ) -> pd.DataFrame:
     """
     Process dataframe columns using metadata from merged_data.
     Handles .value and .label suffixes and preserves base columns (no dot).
-    
+
+    IMPORTANT: Maintains consistent column ordering to prevent data misalignment.
+
     Args:
         df: Input dataframe
         merged_data: Dictionary {key: {'dataType': type}}
-        
+
     Returns:
         Processed dataframe with renamed and type-coerced columns
     """
     processed_df = df.copy()
-    columns_to_process = {}
+    columns_to_process = OrderedDict()  # Use OrderedDict to maintain insertion order
+    column_order = []  # Track order explicitly for final DataFrame
     columns_to_drop = set()
 
     for col in processed_df.columns:
@@ -249,7 +252,7 @@ def process_dataframe_with_types(
             #DROP ANY OTHER INTERNAL UID COLUMNS IN FAVOR OF THE OFFICIAL UID Column
             if 'uid' in base_key.lower() :
                 columns_to_drop.add(col)
-                continue              
+                continue
             if not meta:
                 continue  # skip if key not in metadata
             data_type = (meta.get('dataType') or '').lower()
@@ -275,9 +278,17 @@ def process_dataframe_with_types(
                 elif data_type in ['number', 'integer', 'float']:
                     columns_to_process[new_key] = pd.to_numeric(extracted_values, errors='coerce')
                 elif data_type in ['datetime', 'timestamp', 'date']:
-                    columns_to_process[new_key] = pd.to_datetime(extracted_values, errors='coerce')
+                    # Normalize timezone to avoid tz-naive/tz-aware errors
+                    dt_series = pd.to_datetime(extracted_values, errors='coerce')
+                    if hasattr(dt_series.dt, 'tz') and dt_series.dt.tz is not None:
+                        dt_series = dt_series.dt.tz_localize(None)
+                    columns_to_process[new_key] = dt_series
                 else:
                     columns_to_process[new_key] = extracted_values.astype(str)
+
+                # Track column order
+                if new_key not in column_order:
+                    column_order.append(new_key)
                 columns_to_drop.add(col)
 
             elif suffix == 'label' and data_type in ['dropdown', 'single_select_option','multi_select_option']:
@@ -289,18 +300,35 @@ def process_dataframe_with_types(
                     columns_to_process[label_key] = extracted_labels.astype(str).apply(clean_to_jsonb_array)
                 else:
                     columns_to_process[label_key] = extracted_labels.astype(str)
+
+                # Track column order
+                if label_key not in column_order:
+                    column_order.append(label_key)
                 columns_to_drop.add(col)
 
             ### DROP COLUMN NAMES WITH NONE AS COLUMN NAME
             if 'none' in str(col).lower():
                 columns_to_drop.add(col)
-            
+
         else:
             # If it's a base column and not marked for drop, include it
             if col not in columns_to_drop:
-                columns_to_process[col.lower().strip()] = processed_df[col]
+                normalized_col = col.lower().strip()
+                columns_to_process[normalized_col] = processed_df[col]
+                # Track column order
+                if normalized_col not in column_order:
+                    column_order.append(normalized_col)
 
-    return pd.DataFrame(columns_to_process)
+    # Create DataFrame with explicit column ordering
+    result_df = pd.DataFrame(columns_to_process)
+
+    # Reorder columns to match column_order (ensures consistency)
+    existing_cols = [col for col in column_order if col in result_df.columns]
+    result_df = result_df[existing_cols]
+
+    logging.info(f"Processed {len(df.columns)} input columns → {len(result_df.columns)} output columns")
+
+    return result_df
 
 def clean_to_jsonb_array(val):
 

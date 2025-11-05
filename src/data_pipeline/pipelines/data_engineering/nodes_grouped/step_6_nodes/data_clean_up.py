@@ -102,13 +102,13 @@ def process_single_script(script: str, hospital_scripts: Dict) -> None:
         return
 
     # Clean column names
-    cleaned_df.columns = cleaned_df.columns.str.replace(r"[()-]", "_", regex=True)
+    new_data_df.columns = new_data_df.columns.str.replace(r"[()-]", "_", regex=True)
 
     # Add new columns if needed
-    add_columns_if_needed(cleaned_df, f'clean_{script}')
+    add_columns_if_needed(new_data_df, f'clean_{script}')
 
     # Save and deduplicate
-    generate_create_insert_sql(cleaned_df, 'derived', f'clean_{script}')
+    generate_create_insert_sql(new_data_df, 'derived', f'clean_{script}')
     deduplicate_table(f'clean_{script}')
 
 

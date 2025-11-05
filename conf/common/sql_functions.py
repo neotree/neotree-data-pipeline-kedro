@@ -956,7 +956,7 @@ def generate_postgres_insert(df, schema, table_name):
         for col in valid_columns:
             val = df.at[idx, col]
 
-            # ✅ NULL handling (safe for arrays/lists)
+            # NULL handling (safe for arrays/lists)
             if not isinstance(val, (list, dict)) and (
                 pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '', '<NA>'}
             ):
