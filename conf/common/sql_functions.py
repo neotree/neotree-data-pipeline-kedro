@@ -140,7 +140,7 @@ def inject_sql(sql_script, file_name):
     try:
         cur = raw_conn.cursor()  # type: ignore[union-attr]
         try:
-            for command in sql_commands:
+            for idx, command in enumerate(sql_commands):
                 command = command.strip()
                 if not command:
                     continue
@@ -149,8 +149,22 @@ def inject_sql(sql_script, file_name):
                     raw_conn.commit()  # type: ignore[union-attr]  # Commit after each successful command
                 except Exception as e:
                     logging.error(f"Error executing command in {file_name}")
+                    logging.error(f"Command {idx + 1}/{len(sql_commands)}")
                     logging.error(f"Error type: {type(e)}")
                     logging.error(f"Full error: {str(e)}")
+
+                    # Log the problematic SQL (truncated to avoid huge logs)
+                    if len(command) > 500:
+                        logging.error(f"Failed SQL (first 500 chars): {command[:500]}...")
+                        # Try to extract the VALUES line that failed
+                        lines = command.split('\n')
+                        for i, line in enumerate(lines):
+                            if 'VALUES' in line.upper() and i + 1 < len(lines):
+                                logging.error(f"First VALUES line: {lines[i+1][:200]}")
+                                break
+                    else:
+                        logging.error(f"Failed SQL: {command}")
+
                     logging.error(f"Note: Previously executed commands were already committed")
                     raise
         finally:
@@ -917,7 +931,22 @@ def generate_postgres_insert(df, schema, table_name):
     valid_columns = list(df.columns)
     columns_str = ', '.join([f'"{col}"' for col in valid_columns])
 
-    logging.info(f"Inserting with {len(valid_columns)} columns: {', '.join(valid_columns[:5])}..." if len(valid_columns) > 5 else f"Inserting with columns: {', '.join(valid_columns)}")
+    logging.info(f"Inserting into {schema}.{table_name} with {len(valid_columns)} columns: {', '.join(valid_columns[:5])}..." if len(valid_columns) > 5 else f"Inserting with columns: {', '.join(valid_columns)}")
+
+    # Verify table structure matches dataframe columns
+    try:
+        table_cols = get_table_column_names(table_name, schema)
+        table_col_names = [col[0] for col in table_cols] if table_cols else []
+        missing_in_table = set(valid_columns) - set(table_col_names)
+        missing_in_df = set(table_col_names) - set(valid_columns)
+
+        if missing_in_table:
+            logging.error(f"CRITICAL: DataFrame has columns not in table: {missing_in_table}")
+            raise ValueError(f"Column mismatch: DataFrame has {len(valid_columns)} columns but table structure doesn't match")
+        if missing_in_df:
+            logging.warning(f"Table has extra columns not in DataFrame: {missing_in_df}")
+    except Exception as e:
+        logging.warning(f"Could not verify table structure: {e}")
 
     # Build values rows - MUST iterate in the same order as valid_columns
     values_rows = []
@@ -941,6 +970,9 @@ def generate_postgres_insert(df, schema, table_name):
                 json_val = json.dumps(val)
                 row_values.append(f"'{escape_special_characters(json_val)}'")
             elif isinstance(val, (pd.Timestamp, pd.Timedelta)):
+                # Handle timezone-aware timestamps by converting to naive
+                if isinstance(val, pd.Timestamp) and val.tz is not None:
+                    val = val.tz_localize(None)  # Remove timezone info
                 converted = f"'{clean_datetime_string(str(val))}'"
                 row_values.append("NULL" if converted.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted)
             elif is_date_prefix(str(val)) and col != 'unique_key':
@@ -974,6 +1006,10 @@ def clean_datetime_string(s:str):
         dt = pd.to_datetime(s, errors='coerce')
         if pd.isna(dt):
             return s  # or return None
+
+        # Handle timezone-aware datetime by converting to naive
+        if hasattr(dt, 'tz') and dt.tz is not None:
+            dt = dt.tz_localize(None)
 
         # If time component is zero or missing
         if dt.time() == pd.Timestamp.min.time():
@@ -1086,7 +1122,10 @@ def generate_create_insert_sql(df,schema, table_name):
 
         logging.info(f"Column filtering: {original_columns} -> {len(df.columns)} columns for {table_name}")
 
-        # STEP 2: Create table only if it doesn't exist (using filtered columns)
+        # STEP 2: Add 'transformed' column BEFORE table creation
+        df['transformed'] = False
+
+        # STEP 3: Create table only if it doesn't exist (using filtered columns INCLUDING 'transformed')
         if table_exists(schema,table_name) is False:
             dtype_map = {
                 'int64': 'INTEGER',
@@ -1113,8 +1152,7 @@ def generate_create_insert_sql(df,schema, table_name):
 
             inject_sql(create_stmt,f"CREATING {table_name}")
 
-        # STEP 3: Mark for transformation and insert
-        df['transformed'] = False
+        # STEP 4: Insert data
         generate_postgres_insert(df,schema,table_name)
     except Exception as ex:
        logging.info(f"FAILED TO INSERT {formatError(ex)}")
