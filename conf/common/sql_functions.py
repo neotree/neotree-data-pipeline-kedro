@@ -135,24 +135,28 @@ def inject_sql(sql_script, file_name):
 
     sql_commands = str(sql_script).split(';;')
 
+    # Use raw psycopg2 connection to commit after each command
+    raw_conn = engine.raw_connection()  # type: ignore[union-attr]
     try:
-        # Use begin() for automatic transaction management with auto-commit/rollback
-        with engine.begin() as conn:  # type: ignore[union-attr]
+        cur = raw_conn.cursor()  # type: ignore[union-attr]
+        try:
             for command in sql_commands:
                 command = command.strip()
                 if not command:
                     continue
                 try:
-                    conn.execute(text(command))
+                    cur.execute(command)
+                    raw_conn.commit()  # type: ignore[union-attr]  # Commit after each successful command
                 except Exception as e:
                     logging.error(f"Error executing command in {file_name}")
                     logging.error(f"Error type: {type(e)}")
                     logging.error(f"Full error: {str(e)}")
+                    logging.error(f"Note: Previously executed commands were already committed")
                     raise
-
-    except Exception as e:
-        logging.error(f"Transaction failed completely for {file_name}")
-        raise
+        finally:
+            cur.close()
+    finally:
+        raw_conn.close()  # type: ignore[union-attr]
 
 def generate_timestamp_conversion_query(table_name, columns):
     """
@@ -546,7 +550,7 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
             if col not in column_types:
                 column_types[col] = 'unknown'
 
-        # ✅ Boolean mapping
+        # Boolean mapping
         bool_map = {
             'y': True, 'yes': True, 'true': True, '1': True, True: True,
             'n': False, 'no': False, 'false': False, '0': False, False: False
@@ -877,9 +881,13 @@ def transform_dataframe_with_field_info(df, table_name):
 
 
 def generate_postgres_insert(df, schema, table_name):
-    """Optimized bulk insert with field-info-based data transformation."""
-    # Ensure we only keep "real" columns (skip weird 1-char column names)
-    df = df[[col for col in df.columns if len(col) > 1]].copy()
+    """Optimized bulk insert with field-info-based data transformation.
+
+    IMPORTANT: Column order is preserved to ensure data integrity.
+    The INSERT statement columns and values are built in the same order from df.columns.
+    """
+    # Make a copy to avoid modifying the original dataframe
+    df = df.copy()
 
     # STEP 1: Transform data using field info
     try:
@@ -901,18 +909,21 @@ def generate_postgres_insert(df, schema, table_name):
 
     if df.empty:
         return
-    
+
     logging.info("::::::::---ADMISSION DATA FRAME IS NOT NULL")
-    
-    # OPTIMIZATION 2: Process values more efficiently
-    # Prepare columns list (filter out single-char column names)
-    valid_columns = [col for col in df.columns if len(str(col)) > 1]
+
+    # OPTIMIZATION 2: Build column list and ensure consistent ordering
+    # Store the exact column order that will be used for both column names and values
+    valid_columns = list(df.columns)
     columns_str = ', '.join([f'"{col}"' for col in valid_columns])
 
-    # Build values rows
+    logging.info(f"Inserting with {len(valid_columns)} columns: {', '.join(valid_columns[:5])}..." if len(valid_columns) > 5 else f"Inserting with columns: {', '.join(valid_columns)}")
+
+    # Build values rows - MUST iterate in the same order as valid_columns
     values_rows = []
     for idx in df.index:
         row_values = []
+        # Iterate through columns in the EXACT same order as valid_columns
         for col in valid_columns:
             val = df.at[idx, col]
 
@@ -1056,6 +1067,26 @@ def generate_create_insert_sql(df,schema, table_name):
     drop_keywords=['surname','firstname','dobtob','column_name','mothcell','dob.value',"dob.label","kinaddress","kincell","kinname"]
 
     try:
+        original_columns = len(df.columns)
+
+        # STEP 1: Filter columns BEFORE any table operations
+        # Remove single-character columns
+        single_char_cols = [col for col in df.columns if len(col) <= 1]
+        if single_char_cols:
+            logging.info(f"Removing {len(single_char_cols)} single-character columns: {single_char_cols}")
+        df = df[[col for col in df.columns if len(col) > 1]].copy()
+
+        # Remove confidential columns
+        columns_to_drop = df.columns[
+                df.columns.str.lower().str.contains('|'.join([kw.lower() for kw in drop_keywords]))
+            ]
+        if len(columns_to_drop) > 0:
+            logging.info(f"Removing {len(columns_to_drop)} confidential columns: {list(columns_to_drop)}")
+        df = df.drop(columns=columns_to_drop)
+
+        logging.info(f"Column filtering: {original_columns} -> {len(df.columns)} columns for {table_name}")
+
+        # STEP 2: Create table only if it doesn't exist (using filtered columns)
         if table_exists(schema,table_name) is False:
             dtype_map = {
                 'int64': 'INTEGER',
@@ -1079,15 +1110,11 @@ def generate_create_insert_sql(df,schema, table_name):
                 create_cols.append(f'"{col}" {pg_type}')
 
             create_stmt = f'CREATE TABLE IF NOT EXISTS {schema}."{table_name}" ({",".join(create_cols)});;'
-            
-            inject_sql(create_stmt,f"CREATING {table_name}")
-        #DROP CONFIDENTIAL COLUMNS
-        columns_to_drop = df.columns[
-                df.columns.str.lower().str.contains('|'.join([kw.lower() for kw in drop_keywords]))
-            ]
-        df = df.drop(columns=columns_to_drop)
-        df['transformed'] = False  
 
+            inject_sql(create_stmt,f"CREATING {table_name}")
+
+        # STEP 3: Mark for transformation and insert
+        df['transformed'] = False
         generate_postgres_insert(df,schema,table_name)
     except Exception as ex:
        logging.info(f"FAILED TO INSERT {formatError(ex)}")
