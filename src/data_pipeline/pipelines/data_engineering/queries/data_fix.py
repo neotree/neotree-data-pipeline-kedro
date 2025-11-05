@@ -1032,24 +1032,55 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
 
         # Build individual update query
         update_query = f"""
-            WITH updated AS (
-                UPDATE derived."{dest_table}" d
-                SET {dest_col_quoted} = TO_CHAR(s.{source_col_quoted}::timestamp, '{date_format}')::timestamp
-                FROM {source_schema}."{source_name}" s
-                WHERE d.uid = s.uid
-                AND d.unique_key = s.unique_key
-                AND d.{dest_col_quoted} IS NULL
-                AND s.{source_col_quoted} IS NOT NULL
-                AND s.{source_col_quoted}::text != ''
-                AND s.{source_col_quoted}::text != 'None'
-                AND LOWER(s.{source_col_quoted}::text) != 'nan'
-                RETURNING d.uid
-            )
-            SELECT COUNT(*) as updated_count,
-                   ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
-            FROM (SELECT uid FROM updated LIMIT 5) sampled;
-        """
-
+                WITH cleaned AS (
+                    SELECT
+                        s.uid,
+                        s.unique_key,
+                        TRIM(s.{source_col_quoted}::text) AS raw_val
+                    FROM {source_schema}."{source_name}" s
+                    WHERE s.{source_col_quoted} IS NOT NULL
+                    AND s.{source_col_quoted}::text NOT IN ('', 'None')
+                    AND LOWER(s.{source_col_quoted}::text) != 'nan'
+                ),
+                parsed AS (
+                    SELECT
+                        uid,
+                        unique_key,
+                        raw_val,
+                        CASE
+                            -- ISO-like formats: 2025-07-19 or 2025/07/19
+                            WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
+                                THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
+                            -- 19 July 2025
+                            WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
+                                THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
+                            -- 2025 July 19
+                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
+                                THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
+                            -- 2025 July,19 or 2025 July, 19
+                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
+                                THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
+                            -- 19-Jul-2025 or 19 Jul 2025
+                            WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                                THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
+                            ELSE NULL
+                        END AS date_val
+                    FROM cleaned
+                ),
+                updated AS (
+                    UPDATE derived."{dest_table}" d
+                    SET {dest_col_quoted} = TO_CHAR(p.date_val, '{date_format}')::timestamp
+                    FROM parsed p
+                    WHERE d.uid = p.uid
+                    AND d.unique_key = p.unique_key
+                    AND d.{dest_col_quoted} IS NULL
+                    AND p.date_val IS NOT NULL
+                    RETURNING d.uid
+                )
+                SELECT COUNT(*) AS updated_count,
+                    ARRAY_AGG(DISTINCT uid ORDER BY uid) FILTER (WHERE uid IS NOT NULL) AS sample_uids
+                FROM (SELECT uid FROM updated LIMIT 5) sampled;
+            """
         try:
             result = inject_sql_with_return(update_query)
             if result and result[0]:
