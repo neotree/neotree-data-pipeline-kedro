@@ -2,7 +2,7 @@ import logging
 import sys
 import json
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Dict
 from collections import defaultdict
 from datetime import datetime, date
 
@@ -13,8 +13,6 @@ from conf.common.logger import setup_logger
 from conf.common.format_error import formatError
 from .config import config
 from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
-# Import handling with proper type checking
-from typing import Optional
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -1385,3 +1383,72 @@ def columns_order (script: str):
     "MediGIveType",
     "Termpre"
 ]
+
+def store_field_metadata(table_name: str, merged_data: Dict[str, Dict[str, str]]) -> None:
+    """
+    Store field metadata for a clean_* table to be used during SQL normalization.
+
+    This metadata is used by normalize_clean_tables.sql to determine which fields
+    should have _label columns (only dropdown, single_select_option, period).
+
+    Args:
+        table_name: Name of the clean_* table (e.g., 'clean_admissions')
+        merged_data: Dictionary {field_key: {'key': key, 'dataType': type}}
+    """
+    if not engine:
+        raise RuntimeError("Database engine not initialized")
+
+    if not merged_data or not isinstance(merged_data, dict):
+        logging.warning(f"No valid metadata to store for {table_name}")
+        return
+
+    # Create metadata table if it doesn't exist
+    create_metadata_table_query = """
+        CREATE TABLE IF NOT EXISTS derived.field_metadata (
+            table_name TEXT NOT NULL,
+            column_name TEXT NOT NULL,
+            data_type TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (table_name, column_name)
+        );;
+    """
+    inject_sql(create_metadata_table_query, "CREATE field_metadata table")
+
+    # Delete existing metadata for this table
+    delete_query = f"DELETE FROM derived.field_metadata WHERE table_name = '{table_name}';;"
+    inject_sql(delete_query, f"DELETE old metadata for {table_name}")
+
+    # Build insert values
+    values_rows = []
+    for key, meta in merged_data.items():
+        if not isinstance(meta, dict):
+            continue
+
+        data_type = meta.get('dataType', '').lower()
+        if not data_type:
+            continue
+
+        # Store lowercase column name
+        column_name = key.lower()
+        escaped_table = escape_special_characters(table_name)
+        escaped_column = escape_special_characters(column_name)
+        escaped_type = escape_special_characters(data_type)
+
+        values_rows.append(f"('{escaped_table}', '{escaped_column}', '{escaped_type}', CURRENT_TIMESTAMP)")
+
+    if not values_rows:
+        logging.warning(f"No valid metadata rows to insert for {table_name}")
+        return
+
+    # Insert new metadata in batches
+    batch_size = 500
+    for i in range(0, len(values_rows), batch_size):
+        batch = values_rows[i:i + batch_size]
+        values_str = ',\n'.join(batch)
+        insert_query = f"""
+            INSERT INTO derived.field_metadata (table_name, column_name, data_type, updated_at)
+            VALUES {values_str};;
+        """
+        inject_sql(insert_query, f"INSERT metadata batch {i//batch_size + 1} for {table_name}")
+
+    logging.info(f"Stored metadata for {len(values_rows)} fields in {table_name}")

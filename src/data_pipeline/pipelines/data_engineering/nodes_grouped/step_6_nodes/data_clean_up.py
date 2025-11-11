@@ -16,7 +16,8 @@ from conf.common.sql_functions import (
     get_table_column_names,
     create_new_columns,
     table_exists,
-    generateAndRunUpdateQuery
+    generateAndRunUpdateQuery,
+    store_field_metadata
 )
 from conf.base.catalog import cron_log_file, cron_time, env
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
@@ -114,15 +115,20 @@ def process_single_script(script: str, hospital_scripts: Dict) -> None:
     if cleaned_df is None or cleaned_df.empty:
         return
 
-    # Clean column names
-    new_data_df.columns = new_data_df.columns.str.replace(r"[()-]", "_", regex=True)
+    # Clean column names (use cleaned_df instead of new_data_df)
+    cleaned_df.columns = cleaned_df.columns.str.replace(r"[()-]", "_", regex=True)
 
     # Add new columns if needed
-    add_columns_if_needed(new_data_df, f'clean_{script}')
+    add_columns_if_needed(cleaned_df, f'clean_{script}')
 
     # Save and deduplicate
-    generate_create_insert_sql(new_data_df, 'derived', f'clean_{script}')
+    generate_create_insert_sql(cleaned_df, 'derived', f'clean_{script}')
     deduplicate_table(f'clean_{script}')
+
+    # Store field metadata for this clean_* table
+    # This metadata will be used by normalize_clean_tables.sql to determine
+    # which columns should have _label columns
+    store_field_metadata(f'clean_{script}', merged_script_data)
 
 
 def get_admission_discharge_queries() -> tuple:

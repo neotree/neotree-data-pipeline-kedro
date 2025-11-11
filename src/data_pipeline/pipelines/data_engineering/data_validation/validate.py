@@ -449,7 +449,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 for idx, val in non_null_values.items():
                     is_valid, error_msg = check_value_range(val, min_val, max_val, data_type)
                     if not is_valid:
-                        uid = df.at[idx, 'uid'] if 'uid' in df.columns else idx
+                        uid = df.loc[idx, 'uid'] if 'uid' in df.columns else idx
                         out_of_range_values.append((idx, uid, val, error_msg))
 
                 if out_of_range_values:

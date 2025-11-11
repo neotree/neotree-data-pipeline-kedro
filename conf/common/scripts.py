@@ -291,7 +291,7 @@ def process_dataframe_with_types(
                     column_order.append(new_key)
                 columns_to_drop.add(col)
 
-            elif suffix == 'label' and data_type in ['dropdown', 'single_select_option','multi_select_option']:
+            elif suffix == 'label' and data_type in ['dropdown', 'single_select_option', 'period', 'multi_select_option']:
                 # Extract label from JSON objects if present (use 'label' field or fallback to 'value')
                 extracted_labels = processed_df[col].apply(lambda v: extract_label_from_json(v))
 
