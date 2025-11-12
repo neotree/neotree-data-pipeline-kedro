@@ -112,12 +112,43 @@ def format_datetime_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_new_columns_if_needed(df: pd.DataFrame, script_name: str) -> None:
-    """Add new columns to database table if they don't exist."""
+    """
+    Add new columns to database table if they don't exist.
+
+    Proactively checks column limit and rebuilds table if approaching PostgreSQL's 1600 limit.
+    This prevents column limit errors by reclaiming dropped columns before adding new ones.
+    """
     if table_exists('derived', script_name):
+        # PROACTIVE COLUMN LIMIT CHECK
+        # Import here to avoid circular dependency
+        from data_pipeline.pipelines.data_engineering.queries.data_fix import count_table_columns, fix_column_limit_error
+
+        # Check current column usage and rebuild if > 1200 to prevent hitting the 1600 limit
+        col_info = count_table_columns(script_name, 'derived')
+
+        if col_info['total'] > 1200:
+            logging.warning(f"Table derived.{script_name} has {col_info['total']} columns (> 1200 threshold)")
+            logging.warning(f"  Active: {col_info['active']}, Dropped: {col_info['dropped']}")
+
+            if col_info['dropped'] > 0:
+                logging.info(f"Proactively rebuilding derived.{script_name} to reclaim {col_info['dropped']} dropped columns")
+                rebuild_success = fix_column_limit_error(script_name, 'derived', auto_rebuild=True)
+
+                if rebuild_success:
+                    logging.info(f"Successfully reclaimed {col_info['dropped']} column slots in derived.{script_name}")
+                else:
+                    logging.warning(f"Rebuild of derived.{script_name} did not complete successfully")
+            else:
+                logging.warning(f"No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
+
+        # Now proceed with adding new columns
         cols = pd.DataFrame(get_table_column_names(script_name, 'derived'), columns=["column_name"])
-        new_columns = set(df.columns) - set(cols.columns)
+        # Fixed: Compare with actual column names from the table, not the DataFrame column headers
+        existing_columns = set(cols["column_name"].values) if not cols.empty else set()
+        new_columns = set(df.columns) - existing_columns
 
         if new_columns:
+            logging.info(f"Adding {len(new_columns)} new columns to {script_name}: {new_columns}")
             column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
             if column_pairs:
                 create_new_columns(script_name, 'derived', column_pairs)

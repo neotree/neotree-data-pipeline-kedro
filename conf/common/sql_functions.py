@@ -931,7 +931,7 @@ def generate_postgres_insert(df, schema, table_name):
 
     logging.info(f"Inserting into {schema}.{table_name} with {len(valid_columns)} columns: {', '.join(valid_columns[:5])}..." if len(valid_columns) > 5 else f"Inserting with columns: {', '.join(valid_columns)}")
 
-    # Verify table structure matches dataframe columns
+    # Verify table structure matches dataframe columns and create missing columns dynamically
     try:
         table_cols = get_table_column_names(table_name, schema)
         table_col_names = [col[0] for col in table_cols] if table_cols else []
@@ -939,12 +939,17 @@ def generate_postgres_insert(df, schema, table_name):
         missing_in_df = set(table_col_names) - set(valid_columns)
 
         if missing_in_table:
-            logging.error(f"CRITICAL: DataFrame has columns not in table: {missing_in_table}")
-            raise ValueError(f"Column mismatch: DataFrame has {len(valid_columns)} columns but table structure doesn't match")
+            logging.warning(f"DataFrame has {len(missing_in_table)} columns not in table: {missing_in_table}")
+            logging.info(f"Creating missing columns dynamically for table {schema}.{table_name}")
+            # Create missing columns dynamically
+            column_pairs = [(col, str(df[col].dtype)) for col in missing_in_table]
+            if column_pairs:
+                create_new_columns(table_name, schema, column_pairs)
+                logging.info(f"Successfully created {len(column_pairs)} missing columns")
         if missing_in_df:
             logging.warning(f"Table has extra columns not in DataFrame: {missing_in_df}")
     except Exception as e:
-        logging.warning(f"Could not verify table structure: {e}")
+        logging.warning(f"Could not verify/update table structure: {e}")
 
     # Build values rows - MUST iterate in the same order as valid_columns
     values_rows = []

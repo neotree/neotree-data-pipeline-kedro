@@ -169,11 +169,11 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
                 rebuild_success = fix_column_limit_error(table_name, schema, auto_rebuild=True)
 
                 if rebuild_success:
-                    logging.info(f"✓ Successfully reclaimed {col_info['dropped']} column slots in {schema}.{table_name}")
+                    logging.info(f"Successfully reclaimed {col_info['dropped']} column slots in {schema}.{table_name}")
                 else:
-                    logging.warning(f"⚠ Rebuild of {schema}.{table_name} did not complete successfully")
+                    logging.warning(f"Rebuild of {schema}.{table_name} did not complete successfully")
             else:
-                logging.warning(f"⚠ No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
+                logging.warning(f"No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
 
         # Now proceed with adding new columns
         existing_cols = pd.DataFrame(get_table_column_names(table_name, schema))
