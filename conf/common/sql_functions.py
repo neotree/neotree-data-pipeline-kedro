@@ -1429,12 +1429,17 @@ def store_field_metadata(table_name: str, merged_data: Dict[str, Dict[str, str]]
         if not isinstance(meta, dict):
             continue
 
-        data_type = meta.get('dataType', '').lower()
+        # Handle None values for dataType - use empty string as default
+        data_type_value = meta.get('dataType', '') or ''
+        data_type = data_type_value.lower() if data_type_value else ''
         if not data_type:
             continue
 
         # Store lowercase column name
-        column_name = key.lower()
+        column_name = key.lower() if key else ''
+        if not column_name:
+            continue
+
         escaped_table = escape_special_characters(table_name)
         escaped_column = escape_special_characters(column_name)
         escaped_type = escape_special_characters(data_type)

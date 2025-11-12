@@ -354,7 +354,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs.unique_key,
             cs."data"->>'completed_at' as "completed_time"
             {case_condition}
-        FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs.uid IS NOT NULL AND cs.uid != 'null' AND cs.uid != 'Unknown' AND cs.unique_key IS NOT NULL {condition};;
+        FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs."data"->>'completed_at' is NOT NULL AND cs.uid IS NOT NULL AND cs.uid != 'null' AND cs.uid != 'Unknown' AND cs.unique_key IS NOT NULL {condition};;
         '''
     elif 'neolab' in destination_table:
         sql=f'''
@@ -370,7 +370,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             cs."data"->'entries'->'repeatables' AS "repeatables",
             cs.unique_key
             {case_condition}
-            FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs.uid IS NOT NULL;;
+            FROM {source_table} cs WHERE cs.scriptid {where_condition} AND cs."data"->>'completed_at' is NOT NULL AND cs.uid IS NOT NULL;;
             '''
     else:
         sql = f'''
@@ -386,7 +386,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
              cs."data"->'entries'->'repeatables' AS "repeatables",
             cs.unique_key
             {case_condition}
-            from {source_table} cs where cs.scriptid {where_condition} and cs.uid!='Unkown' and cs.uid is not null and cs.unique_key is not null {condition};;
+            from {source_table} cs where cs.scriptid {where_condition} AND cs."data"->>'completed_at' and cs.uid!='Unkown' and cs.uid is not null and cs.unique_key is not null {condition};;
    
             '''
     return sql
