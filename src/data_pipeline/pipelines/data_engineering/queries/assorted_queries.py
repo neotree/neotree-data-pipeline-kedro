@@ -406,10 +406,11 @@ def read_derived_data_query(source_table, destination_table=None):
 
     # Clean the source_table to remove extra quotes/braces
     source_table_clean = str(source_table).strip().strip('"').strip("'").strip("{}")
+    if table_exists('derived',source_table_clean):
+        query = f'''select * from derived."{source_table_clean}" cs where cs.unique_key is not null and cs.uid is not null {condition};'''
 
-    query = f'''select * from derived."{source_table_clean}" cs where cs.unique_key is not null and cs.uid is not null {condition};'''
-
-    return query
+        return query
+    return None
 
 def read_all_from_derived_table(table:str):
     if table_exists('derived', table.strip()):

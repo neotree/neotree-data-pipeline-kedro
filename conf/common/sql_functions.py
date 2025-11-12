@@ -363,22 +363,108 @@ def insert_old_adm_query(target_table, source_table, columns):
     
     return insert_select_statement
     
+def get_expected_sql_type(col_type):
+    """Map pandas dtype to PostgreSQL type."""
+    if col_type == "object":
+        return "TEXT"
+    elif "float" in col_type:
+        return "DOUBLE PRECISION"
+    elif "int" in col_type:
+        return "INTEGER"
+    elif "datetime" in col_type or "date" in col_type:
+        return "TIMESTAMP"
+    else:
+        return "TEXT"
+
+
+def normalize_pg_type(pg_type):
+    """Normalize PostgreSQL type names for comparison."""
+    pg_type = pg_type.lower().strip()
+    # Map variations to canonical types
+    type_map = {
+        'character varying': 'text',
+        'varchar': 'text',
+        'double precision': 'double precision',
+        'timestamp without time zone': 'timestamp',
+        'timestamp with time zone': 'timestamp',
+        'integer': 'integer',
+        'bigint': 'integer',
+        'smallint': 'integer',
+        'boolean': 'boolean',
+        'bool': 'boolean'
+    }
+    return type_map.get(pg_type, pg_type)
+
+
+def verify_and_fix_column_type(table_name, schema, column, expected_type):
+    """Verify column type matches expected type, and fix if needed."""
+    try:
+        # Get current column type from database
+        current_type_result = get_table_column_type(table_name, schema, column)
+
+        if not current_type_result or len(current_type_result) == 0:
+            return  # Column doesn't exist, will be created
+
+        current_pg_type = current_type_result[0][0]
+        normalized_current = normalize_pg_type(current_pg_type)
+        normalized_expected = normalize_pg_type(expected_type)
+
+        # Check if types match
+        if normalized_current != normalized_expected:
+            logging.warning(f"Column type mismatch for {schema}.{table_name}.{column}: "
+                          f"DB has {current_pg_type}, expected {expected_type}")
+            logging.info(f"Altering column {column} from {current_pg_type} to {expected_type}")
+
+            # Use USING clause to handle type conversion
+            if expected_type.upper() == "TEXT":
+                # Convert to TEXT safely
+                alter_query = f'''
+                    ALTER TABLE "{schema}"."{table_name}"
+                    ALTER COLUMN "{column}" TYPE TEXT USING "{column}"::TEXT;;
+                '''
+            elif "INTEGER" in expected_type.upper():
+                alter_query = f'''
+                    ALTER TABLE "{schema}"."{table_name}"
+                    ALTER COLUMN "{column}" TYPE {expected_type} USING
+                    CASE
+                        WHEN "{column}"::TEXT ~ '^\d+$' THEN "{column}"::TEXT::{expected_type}
+                        ELSE NULL
+                    END;;
+                '''
+            elif "DOUBLE PRECISION" in expected_type.upper():
+                alter_query = f'''
+                    ALTER TABLE "{schema}"."{table_name}"
+                    ALTER COLUMN "{column}" TYPE {expected_type} USING
+                    CASE
+                        WHEN "{column}"::TEXT ~ '^\d+\.?\d*$' THEN "{column}"::TEXT::{expected_type}
+                        ELSE NULL
+                    END;;
+                '''
+            else:
+                # Generic conversion
+                alter_query = f'''
+                    ALTER TABLE "{schema}"."{table_name}"
+                    ALTER COLUMN "{column}" TYPE {expected_type} USING "{column}"::{expected_type};;
+                '''
+
+            inject_sql(alter_query, f'ALTER {column} TYPE TO {expected_type} ON "{schema}"."{table_name}"')
+            logging.info(f"Successfully altered {column} to {expected_type}")
+
+    except Exception as e:
+        logging.warning(f"Could not verify/fix column type for {column}: {e}")
+
+
 def create_new_columns(table_name,schema,columns):
     for column,col_type in columns:
+        expected_sql_type = get_expected_sql_type(col_type)
+
         if not column_exists(schema,table_name,column):
-            if col_type == "object":
-                sql_type = "TEXT"
-            elif "float" in col_type:
-                sql_type = "DOUBLE PRECISION"
-            elif "int" in col_type:
-                sql_type = "INTEGER"
-            elif "datetime" in col_type or "date" in col_type:
-                sql_type = "TIMESTAMP"
-            else:
-                sql_type = "TEXT" 
-            
-            alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN IF NOT EXISTS "{column}" {sql_type};;'
+            # Column doesn't exist - create it
+            alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN IF NOT EXISTS "{column}" {expected_sql_type};;'
             inject_sql(alter_query,f'ADD {column} ON  "{schema}"."{table_name}"')
+        else:
+            # Column exists - verify and fix type if needed
+            verify_and_fix_column_type(table_name, schema, column, expected_sql_type)
 
 
 def column_exists(schema, table_name,column_name):
