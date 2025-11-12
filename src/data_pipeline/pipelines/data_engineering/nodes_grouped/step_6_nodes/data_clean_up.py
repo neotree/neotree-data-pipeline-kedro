@@ -68,14 +68,43 @@ def collect_script_data(hospital_scripts: Dict, script: str) -> Optional[Any]:
 
 
 def add_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> None:
-    """Add new columns to table if they don't exist."""
+    """
+    Add new columns to table if they don't exist.
+
+    Proactively checks column limit and rebuilds table if approaching PostgreSQL's 1600 limit.
+    This prevents column limit errors by reclaiming dropped columns before adding new ones.
+    """
     if not table_exists(schema, table_name):
         return
 
+    # PROACTIVE COLUMN LIMIT CHECK
+    # Import here to avoid circular dependency
+    from data_pipeline.pipelines.data_engineering.queries.data_fix import count_table_columns, fix_column_limit_error
+
+    # Check current column usage and rebuild if > 1200 to prevent hitting the 1600 limit
+    col_info = count_table_columns(table_name, schema)
+
+    if col_info['total'] > 1200:
+        logging.warning(f"Table {schema}.{table_name} has {col_info['total']} columns (> 1200 threshold)")
+        logging.warning(f"  Active: {col_info['active']}, Dropped: {col_info['dropped']}")
+
+        if col_info['dropped'] > 0:
+            logging.info(f"Proactively rebuilding {schema}.{table_name} to reclaim {col_info['dropped']} dropped columns")
+            rebuild_success = fix_column_limit_error(table_name, schema, auto_rebuild=True)
+
+            if rebuild_success:
+                logging.info(f"Successfully reclaimed {col_info['dropped']} column slots in {schema}.{table_name}")
+            else:
+                logging.warning(f"Rebuild of {schema}.{table_name} did not complete successfully")
+        else:
+            logging.warning(f"No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
+
+    # Now proceed with adding new columns
     cols = pd.DataFrame(get_table_column_names(table_name, schema), columns=["column_name"])
     new_columns = set(df.columns) - set(cols['column_name'])
 
     if new_columns:
+        logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
         column_pairs = []
         for col in new_columns:
             try:
