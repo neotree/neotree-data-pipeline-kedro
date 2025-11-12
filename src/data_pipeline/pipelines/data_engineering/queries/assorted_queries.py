@@ -386,7 +386,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
              cs."data"->'entries'->'repeatables' AS "repeatables",
             cs.unique_key
             {case_condition}
-            from {source_table} cs where cs.scriptid {where_condition} AND cs."data"->>'completed_at' and cs.uid!='Unkown' and cs.uid is not null and cs.unique_key is not null {condition};;
+            from {source_table} cs where cs.scriptid {where_condition} AND cs."data"->>'completed_at' is NOT NUll and cs.uid!='Unkown' and cs.uid is not null and cs.unique_key is not null {condition};;
    
             '''
     return sql

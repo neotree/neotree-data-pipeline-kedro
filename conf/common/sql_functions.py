@@ -1079,12 +1079,73 @@ def generate_postgres_insert(df, schema, table_name):
         return
 
     # OPTIMIZATION 3: Use batch inserts for very large datasets
+    # Get column types to detect potential type mismatches
+    column_types = {}
+    try:
+        table_cols_with_types = get_table_columns(table_name, schema)
+        column_types = {col[0]: col[1] for col in table_cols_with_types} if table_cols_with_types else {}
+    except Exception as e:
+        logging.warning(f"Could not fetch column types for validation: {e}")
+
     batch_size = 1000
     for i in range(0, len(values_rows), batch_size):
         batch = values_rows[i:i + batch_size]
         values_str = ',\n'.join(batch)
         insert_query = f'INSERT INTO {schema}."{table_name}" ({columns_str}) VALUES\n{values_str};;'
-        inject_sql(insert_query, f"INSERTING BATCH {i//batch_size + 1} INTO {table_name}")
+
+        try:
+            inject_sql(insert_query, f"INSERTING BATCH {i//batch_size + 1} INTO {table_name}")
+        except Exception as insert_error:
+            # Log detailed information about the failed insert
+            error_msg = str(insert_error)
+
+            # Check if it's a boolean type error
+            if 'boolean' in error_msg.lower() and 'invalid input syntax' in error_msg.lower():
+                logging.error(f"=== BOOLEAN TYPE ERROR DETECTED ===")
+                logging.error(f"Table: {schema}.{table_name}")
+                logging.error(f"Error: {error_msg}")
+
+                # Extract the invalid value from error message dynamically
+                import re
+                match = re.search(r'invalid input syntax for type boolean: "([^"]+)"', error_msg)
+                invalid_value = match.group(1) if match else None
+
+                if invalid_value:
+                    logging.error(f"Invalid value for boolean column: '{invalid_value}'")
+
+                    # Find which column(s) are boolean
+                    boolean_columns = [col for col, dtype in column_types.items() if 'bool' in dtype.lower()]
+                    logging.error(f"Boolean columns in table: {boolean_columns}")
+
+                    # Check dataframe for columns with this problematic value
+                    logging.error(f"Searching DataFrame for value '{invalid_value}' in boolean columns...")
+                    for col in boolean_columns:
+                        if col in df.columns:
+                            # Convert to string for comparison
+                            col_str = df[col].astype(str).str.strip()
+                            has_invalid = (col_str == invalid_value).any()
+                            if has_invalid:
+                                count = (col_str == invalid_value).sum()
+                                logging.error(f"*** FOUND: Column '{col}' has {count} occurrences of '{invalid_value}' ***")
+                                # Show sample values
+                                sample_vals = df[col].dropna().astype(str).unique()[:20]
+                                logging.error(f"Sample values in '{col}': {list(sample_vals)}")
+                                # Show the DataFrame dtype for this column
+                                logging.error(f"DataFrame dtype for '{col}': {df[col].dtype}")
+                else:
+                    # If we couldn't extract the value, still show boolean columns
+                    boolean_columns = [col for col, dtype in column_types.items() if 'bool' in dtype.lower()]
+                    logging.error(f"Boolean columns in table: {boolean_columns}")
+                    # Show all unique values in boolean columns
+                    for col in boolean_columns:
+                        if col in df.columns:
+                            sample_vals = df[col].dropna().astype(str).unique()[:20]
+                            logging.error(f"All values in boolean column '{col}': {list(sample_vals)}")
+
+                logging.error(f"=== END BOOLEAN ERROR DETAILS ===")
+
+            # Re-raise the exception after logging
+            raise
 
     logging.info(f"Successfully inserted {len(values_rows)} rows into {schema}.{table_name}")
 
