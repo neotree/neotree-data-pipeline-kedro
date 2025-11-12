@@ -1129,7 +1129,7 @@ def generate_create_insert_sql(df,schema, table_name):
         df['transformed'] = False
 
         # STEP 3: Ensure 'transformed' column exists in table (for existing tables from old runs)
-        if table_exists(schema,table_name) is True:
+        if table_exists(schema,table_name):
             # Check if 'transformed' column exists in the existing table
             if not column_exists(schema, table_name, 'transformed'):
                 logging.info(f"Adding missing 'transformed' column to existing table {schema}.{table_name}")
@@ -1137,7 +1137,7 @@ def generate_create_insert_sql(df,schema, table_name):
                 inject_sql(alter_query, f"ADD transformed TO {table_name}")
 
         # STEP 4: Create table only if it doesn't exist (using filtered columns INCLUDING 'transformed')
-        if table_exists(schema,table_name) is False:
+        if not table_exists(schema,table_name):
             dtype_map = {
                 'int64': 'INTEGER',
                 'float64': 'DOUBLE PRECISION',
@@ -1171,6 +1171,7 @@ def generate_create_insert_sql(df,schema, table_name):
 
 def escape_special_characters(input_string): 
     return str(input_string).replace("\\","\\\\").replace("'","")
+
 
 def table_exists(schema, table_name):
     query = f''' SELECT EXISTS (
