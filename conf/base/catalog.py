@@ -14,7 +14,7 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (g
                             read_old_smch_matched_view_query,read_new_smch_matched_query,get_duplicate_maternal_query,
                             get_discharges_tofix_query,get_maternal_data_tofix_query,get_admissions_data_tofix_query,
                             get_baseline_data_tofix_query,deduplicate_data_query,read_derived_data_query,read_diagnoses_query,
-                            deduplicate_baseline_query,get_script_ids_query,read_data_with_no_unique_key)
+                            deduplicate_baseline_query,get_script_ids_query,read_data_with_no_unique_key, read_drugs_query,read_fluids_query)
 
 params = config()
 con = 'postgresql+psycopg2://' + \
@@ -151,6 +151,21 @@ if hospital_scripts:
                                           credentials=dict(con=con)
                                           )}
                                           ) 
+                     drugs_query = read_drugs_query(script_case,condition)
+                     if drugs_query is not None:
+                        generic_catalog.update({"read_drugs_data": SQLQueryDataSet(
+                                          sql= drugs_query,
+                                          credentials=dict(con=con)
+                                          )}
+                                          ) 
+                     fluids_query = read_fluids_query(script_case,condition)
+                     if fluids_query is not None:
+                        generic_catalog.update({"read_fluids_data": SQLQueryDataSet(
+                                          sql= fluids_query,
+                                          credentials=dict(con=con)
+                                          )}
+                                          ) 
+                     
  #### FOR LEGACY DATA                                   
 read_new_smch_admissions = read_new_smch_admissions_query()
 read_new_smch_discharges = read_new_smch_discharges_query()
@@ -270,6 +285,16 @@ old_catalog =  {
          "baselines_to_fix": SQLQueryDataSet(
             sql= get_baseline_data_to_fix,
             credentials=dict(con=con)
+         ),
+          "create_derived_fluids": SQLTableDataSet(
+            table_name="fluids",
+            credentials=dict(con=con),
+            save_args = dict(schema="derived",if_exists="replace")
+         ),
+          "create_derived_drugs": SQLTableDataSet(
+            table_name="drugs",
+            credentials=dict(con=con),
+            save_args = dict(schema="derived",if_exists="replace")
          )
         }
 old_catalog.update(generic_catalog)   

@@ -4,7 +4,11 @@ from typing import List, Tuple, Any
 
 # Import created modules
 from conf.common.format_error import formatError
-from .extract_key_values import get_key_values, get_diagnoses_key_values, format_repeatables_to_rows
+from .extract_key_values import (get_key_values, 
+                                 get_diagnoses_key_values,
+                                   format_repeatables_to_rows,
+                                   get_drugs_key_values,
+                                   get_fluids_key_values)
 from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.common.sql_functions import (
@@ -717,6 +721,8 @@ def tidy_tables():
         baseline_raw = safe_load('read_baseline')
         diagnoses_raw = safe_load('read_diagnoses_data')
         mat_completeness_raw = safe_load('read_maternity_completeness')
+        fluids_raw = safe_load('read_fluids_data')
+        drugs_raw = safe_load('read_drugs_data')
 
     except Exception as e:
         logging.error("!!! An error occurred fetching the data")
@@ -733,6 +739,8 @@ def tidy_tables():
         diagnoses_new_entries = get_diagnoses_key_values(diagnoses_raw)
         mat_completeness_new_entries, mat_completeness_mcl = get_key_values(mat_completeness_raw)
         neolab_new_entries, neolab_mcl = get_key_values(neolab_raw)
+        drugs_new_entries = get_drugs_key_values(drugs_raw)
+        fluids_new_entries = get_fluids_key_values(fluids_raw)
 
     except Exception as e:
         logging.error("!!! An error occurred extracting keys")
@@ -774,6 +782,23 @@ def tidy_tables():
             if 'uid' in diagnoses_df:
                 diagnoses_df = diagnoses_df[diagnoses_df['uid'] != 'Unknown']
             catalog.save('create_derived_diagnoses', diagnoses_df)
+
+        #Process Fluids
+        logging.info("Processing fluids data")
+        fluids_df = pd.json_normalize(fluids_new_entries)
+        if not fluids_df.empty:
+            if 'uid' in fluids_df:
+                fluids_df = fluids_df[fluids_df['uid'] != 'Unknown']
+            catalog.save('create_derived_fluids', fluids_df)
+
+         #Process Drugs
+        logging.info("Processing drugs data")
+        drugs_df = pd.json_normalize(drugs_new_entries)
+        if not drugs_df.empty:
+            if 'uid' in drugs_df:
+                drugs_df = drugs_df[drugs_df['uid'] != 'Unknown']
+            catalog.save('create_derived_drugs', drugs_df)
+
 
         # Process maternity completeness
         logging.info("Processing maternity completeness data")

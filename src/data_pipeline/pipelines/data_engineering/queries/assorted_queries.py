@@ -594,6 +594,38 @@ def read_diagnoses_query(admissions_case, adm_where):
             '''
 
 
+def read_drugs_query(admissions_case, adm_where):
+    return f'''
+            select 
+                cs.uid,
+                cs.ingested_at,
+                cs."data"->'appVersion' as "appVersion",
+                cs."data"->'scriptVersion' as "scriptVersion",
+                cs."data"->'started_at' as "started_at",
+                cs."data"->'completed_at' as "completed_at",
+                cs."data"->'drugs' as "drugs" {admissions_case},
+                unique_key
+            from scratch.deduplicated_admissions cs 
+            where cs.scriptid {adm_where} and cs.uid!='null' and cs.uid!='Unknown';;
+            '''
+
+def read_fluids_query(admissions_case, adm_where):
+    return f'''
+            select 
+                cs.uid,
+                cs.ingested_at,
+                cs."data"->'appVersion' as "appVersion",
+                cs."data"->'scriptVersion' as "scriptVersion",
+                cs."data"->'started_at' as "started_at",
+                cs."data"->'completed_at' as "completed_at",
+                cs."data"->'fluids' as "fluids" {admissions_case},
+                unique_key
+            from scratch.deduplicated_admissions cs 
+            where cs.scriptid {adm_where} and cs.uid!='null' and cs.uid!='Unknown';;
+            '''
+
+
+
 def read_new_smch_admissions_query():
     return f'''
             select 

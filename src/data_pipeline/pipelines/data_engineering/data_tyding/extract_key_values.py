@@ -156,6 +156,97 @@ def get_diagnoses_key_values(data_raw):
                     data_new.append(new_entry)
     return data_new
 
+def get_fluids_key_values(data_raw):
+    # Will store the final list of uid, ingested_at & reformed key-value pairs
+    data_new = []
+   
+    for index, row in data_raw.iterrows():
+        if "fluids" in row:
+            
+            # add uid and ingested_at first
+            
+
+            #Convert List to dictionary
+            if row['fluids'] is not None and len(row['fluids'])> 0:
+                parent_keys=reduce(lambda a, b: {**a, **b}, row['fluids'])
+                
+                # iterate through parent keys
+                for parent_key in parent_keys:
+                    new_entry = {}
+                    values = parent_keys[parent_key]
+                    new_entry['fluids']=parent_key
+                    app_version = None
+                    if 'appVersion' in row:
+                        app_version = row['appVersion']
+                    if(app_version!=None and app_version!=''):
+                #   Remove any Other Characters that are non-numeric
+                        app_version = int(''.join(d for d in app_version if d.isdigit()))
+                    new_entry['appVersion'] = app_version
+                    if 'facility' in row:
+                        new_entry['facility'] = row['facility']
+            
+                    new_entry['uid'] = row['uid']
+
+                    if 'ingested_at_admission' in row:
+                        new_entry['ingested_at'] = row['ingested_at_admission']
+
+                    if 'ingested_at' in row:
+                        new_entry['ingested_at'] = row['ingested_at']
+                    
+                    
+                    # iterate through child/inner keys
+                    for child_key in values:
+                        k, v = restructure_array(child_key,values[child_key])
+                        new_entry[k] = v
+                     # for each row add all the keys & values to a list
+                    data_new.append(new_entry)
+    return data_new
+
+def get_drugs_key_values(data_raw):
+    # Will store the final list of uid, ingested_at & reformed key-value pairs
+    data_new = []
+   
+    for index, row in data_raw.iterrows():
+        if "drugs" in row:
+            
+            # add uid and ingested_at first
+            
+
+            #Convert List to dictionary
+            if row['drugs'] is not None and len(row['drugs'])> 0:
+                parent_keys=reduce(lambda a, b: {**a, **b}, row['drugs'])
+                
+                # iterate through parent keys
+                for parent_key in parent_keys:
+                    new_entry = {}
+                    values = parent_keys[parent_key]
+                    new_entry['drugs']=parent_key
+                    app_version = None
+                    if 'appVersion' in row:
+                        app_version = row['appVersion']
+                    if(app_version!=None and app_version!=''):
+                #   Remove any Other Characters that are non-numeric
+                        app_version = int(''.join(d for d in app_version if d.isdigit()))
+                    new_entry['appVersion'] = app_version
+                    if 'facility' in row:
+                        new_entry['facility'] = row['facility']
+            
+                    new_entry['uid'] = row['uid']
+
+                    if 'ingested_at_admission' in row:
+                        new_entry['ingested_at'] = row['ingested_at_admission']
+
+                    if 'ingested_at' in row:
+                        new_entry['ingested_at'] = row['ingested_at']
+                    
+                    
+                    # iterate through child/inner keys
+                    for child_key in values:
+                        k, v = restructure_array(child_key,values[child_key])
+                        new_entry[k] = v
+                     # for each row add all the keys & values to a list
+                    data_new.append(new_entry)
+    return data_new
 
 def sanitize_key(key: str) -> str:
     return re.sub(r'\W+', '_', key).strip('_')
