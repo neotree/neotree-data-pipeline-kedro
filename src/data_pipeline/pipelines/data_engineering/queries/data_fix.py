@@ -589,7 +589,7 @@ def datesfix_batch(table_pairs: list):
     logging.info(f"Batch date fix completed for {total_tables} tables")
 
 
-def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
+def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived', min_valid_percent: float = 90.0):
     """
     Fix data types for date columns by converting them to TIMESTAMP.
 
@@ -601,15 +601,22 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
     - Short formats: 19/07/25, 07/19/25
     - Unix timestamps: 1721395200
 
+    IMPORTANT: Validates data before conversion
+    - Samples data to check for valid dates
+    - Skips columns with too many invalid values (< min_valid_percent)
+    - Logs warnings instead of crashing
+
     Checks if table exists, then for each column in the list:
     1. Verifies the column exists
-    2. Intelligently parses various date formats
-    3. Alters the column type to TIMESTAMP
+    2. Samples data to validate it contains dates
+    3. Intelligently parses various date formats
+    4. Alters the column type to TIMESTAMP
 
     Args:
         table_name: Name of the table
         columns: List of column names to convert to TIMESTAMP
         schema: Schema name (default: 'derived')
+        min_valid_percent: Minimum percentage of valid date values required (default: 90.0)
 
     Returns:
         Number of columns successfully converted
@@ -624,6 +631,7 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
     logging.info(f"Table {schema}.{table_name} exists")
 
     converted_count = 0
+    skipped_count = 0
 
     for column_name in columns:
         # Check if column exists
@@ -641,10 +649,62 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
             result = inject_sql_with_return(column_check_query)
 
             if result and result[0][0]:
-                logging.info(f"Column '{column_name}' exists, converting to TIMESTAMP")
+                logging.info(f"Column '{column_name}' exists, validating data...")
 
                 # Quote column name to handle special characters like dots
                 column_quoted = f'"{column_name}"' if '.' in column_name or ' ' in column_name else column_name
+
+                # VALIDATION: Sample data to check if it contains valid dates
+                sample_query = f"""
+                    WITH total_count AS (
+                        SELECT COUNT(*) as total
+                        FROM {schema}."{table_name}"
+                        WHERE {column_quoted} IS NOT NULL
+                        AND TRIM({column_quoted}::TEXT) != ''
+                        AND LOWER(TRIM({column_quoted}::TEXT)) NOT IN ('nan', 'none', 'nat', '<na>')
+                    ),
+                    sample_data AS (
+                        SELECT {column_quoted}::TEXT as value
+                        FROM {schema}."{table_name}"
+                        WHERE {column_quoted} IS NOT NULL
+                        AND TRIM({column_quoted}::TEXT) != ''
+                        AND LOWER(TRIM({column_quoted}::TEXT)) NOT IN ('nan', 'none', 'nat', '<na>')
+                        LIMIT 100
+                    )
+                    SELECT
+                        (SELECT total FROM total_count) as total_rows,
+                        value
+                    FROM sample_data;
+                """
+
+                sample_result = inject_sql_with_return(sample_query)
+
+                if not sample_result or len(sample_result) == 0:
+                    logging.warning(f"Column '{column_name}' has no non-null data - skipping")
+                    skipped_count += 1
+                    continue
+
+                # Check if sampled values look like dates
+                total_rows = sample_result[0][0] if sample_result[0][0] else 0
+                sample_values = [row[1] for row in sample_result if len(row) > 1]
+
+                if not sample_values:
+                    logging.warning(f"Column '{column_name}' has no valid sample data - skipping")
+                    skipped_count += 1
+                    continue
+
+                date_like_count = sum(1 for val in sample_values if _looks_like_date(str(val)))
+                percent_valid = (date_like_count / len(sample_values)) * 100 if sample_values else 0
+
+                logging.info(f"Column '{column_name}' validation: {date_like_count}/{len(sample_values)} samples look like dates ({percent_valid:.1f}%)")
+
+                if percent_valid < min_valid_percent:
+                    logging.warning(f"⚠ SKIPPING '{column_name}' - only {percent_valid:.1f}% of samples are valid dates (< {min_valid_percent}% threshold)")
+                    logging.warning(f"  Sample invalid values: {[val for val in sample_values if not _looks_like_date(str(val))][:5]}")
+                    skipped_count += 1
+                    continue
+
+                logging.info(f"✓ Column '{column_name}' passed validation, converting to TIMESTAMP")
 
                 # Convert column to TIMESTAMP with intelligent date format parsing
                 # This handles various date formats to prevent data loss
@@ -743,10 +803,21 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
             else:
                 logging.warning(f"Column '{column_name}' does not exist in {schema}.{table_name}")
         except Exception as e:
-            logging.error(f"Error converting column '{column_name}': {e}")
+            logging.error(f"Error processing column '{column_name}': {e}")
+            skipped_count += 1
             # Continue with next column
 
-    logging.info(f"Completed: {converted_count}/{len(columns)} columns converted to TIMESTAMP")
+    # Final summary
+    logging.info("")
+    logging.info("="*60)
+    logging.info(f"DATE TYPE FIX SUMMARY for {schema}.{table_name}")
+    logging.info("="*60)
+    logging.info(f"Total columns requested: {len(columns)}")
+    logging.info(f"✓ Successfully converted: {converted_count}")
+    logging.info(f"⚠ Skipped (invalid data): {skipped_count}")
+    logging.info(f"✗ Errors: {len(columns) - converted_count - skipped_count}")
+    logging.info("="*60)
+
     return converted_count
 
 
