@@ -653,6 +653,16 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
                     ALTER COLUMN {column_quoted} TYPE TIMESTAMP
                     USING (
                         CASE
+                            -- Handle NULL, empty strings, 'nan', 'None', 'NaT' FIRST
+                            WHEN {column_quoted} IS NULL
+                                OR TRIM({column_quoted}::TEXT) = ''
+                                OR LOWER(TRIM({column_quoted}::TEXT)) IN ('nan', 'none', 'nat', '<na>')
+                                THEN NULL
+
+                            -- Handle trailing dots (e.g., "2025-07-03T03:15:00.")
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}[T ].*\\.$'
+                                THEN TO_TIMESTAMP(RTRIM({column_quoted}::TEXT, '.'), 'YYYY-MM-DD HH24:MI:SS')
+
                             -- ISO-like formats: 2025-07-19 or 2025/07/19 or 2025.07.19
                             WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}$'
                                 THEN TO_TIMESTAMP({column_quoted}::text, 'YYYY-MM-DD')
@@ -720,10 +730,6 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
                             -- Unix timestamp milliseconds (13 digits): 1721395200000
                             WHEN {column_quoted}::text ~ '^\\d{{13}}$'
                                 THEN TO_TIMESTAMP({column_quoted}::text::bigint / 1000.0)
-
-                            -- Already a timestamp or null
-                            WHEN {column_quoted}::text IS NULL OR {column_quoted}::text = ''
-                                THEN NULL
 
                             -- If already timestamp type, keep as is
                             ELSE {column_quoted}::timestamp

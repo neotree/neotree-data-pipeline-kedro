@@ -173,31 +173,115 @@ def inject_sql(sql_script, file_name):
 def generate_timestamp_conversion_query(table_name, columns):
     """
     Generate PostgreSQL query to convert columns to TIMESTAMP type.
-    
+    Handles edge cases: trailing dots, nan, None, and empty strings.
+
     Args:
         table_name (str): Table name (can include schema, e.g., 'schema.table')
         columns (list): List of column names to convert
-        
+
     Returns:
         Void
     """
     if not columns:
         return ""
-    
+
     # Split table name into schema and table if needed
     if '.' in table_name:
         schema, table = table_name.split('.', 1)
         full_table_name = f'"{schema}"."{table}"'
     else:
         full_table_name = f'"{table_name}"'
-    
-    # Generate individual ALTER COLUMN statements
+
+    # Generate individual ALTER COLUMN statements with comprehensive date format handling
     alter_statements = []
     for column in columns:
+        # Use CASE to clean and convert the timestamp values with all supported formats
         alter_statements.append(
-            f'ALTER COLUMN "{column}" TYPE TIMESTAMP USING "{column}"::TIMESTAMP'
+            f'''ALTER COLUMN "{column}" TYPE TIMESTAMP USING
+            CASE
+                -- Handle NULL, empty strings, 'nan', 'None', 'NaT' FIRST
+                WHEN "{column}" IS NULL
+                    OR TRIM("{column}"::TEXT) = ''
+                    OR LOWER(TRIM("{column}"::TEXT)) IN ('nan', 'none', 'nat', '<na>')
+                    THEN NULL
+
+                -- Handle trailing dots (e.g., "2025-07-03T03:15:00.")
+                WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}[T ].*\\.$'
+                    THEN TO_TIMESTAMP(RTRIM("{column}"::TEXT, '.'), 'YYYY-MM-DD HH24:MI:SS')
+
+                -- ISO-like formats: 2025-07-19 or 2025/07/19 or 2025.07.19
+                WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYY-MM-DD')
+
+                -- ISO with time: 2025-07-19 14:30:00
+                WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}\\s+\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYY-MM-DD HH24:MI:SS')
+
+                -- ISO 8601 with T separator: 2025-07-19T14:30:00
+                WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}T\\d{{1,2}}:\\d{{2}}'
+                    THEN TO_TIMESTAMP(SUBSTRING("{column}"::TEXT FROM '^[^+Z]+'), 'YYYY-MM-DD"T"HH24:MI:SS')
+
+                -- DD Month YYYY: 19 July 2025
+                WHEN "{column}"::TEXT ~ '^\\d{{1,2}}\\s+[A-Za-z]+\\s+\\d{{4}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'DD Month YYYY')
+
+                -- Month DD, YYYY: July 19, 2025
+                WHEN "{column}"::TEXT ~ '^[A-Za-z]+\\s+\\d{{1,2}},?\\s+\\d{{4}}$'
+                    THEN TO_TIMESTAMP(REPLACE("{column}"::TEXT, ',', ''), 'Month DD YYYY')
+
+                -- YYYY Month DD: 2025 July 19
+                WHEN "{column}"::TEXT ~ '^\\d{{4}}\\s+[A-Za-z]+\\s+\\d{{1,2}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYY Month DD')
+
+                -- YYYY Month,DD or YYYY Month, DD: 2025 July,19
+                WHEN "{column}"::TEXT ~ '^\\d{{4}}\\s+[A-Za-z]+,?\\s?\\d{{1,2}}$'
+                    THEN TO_TIMESTAMP(REPLACE("{column}"::TEXT, ',', ''), 'YYYY Month DD')
+
+                -- DD-Month-YYYY or DD Month YYYY: 19-Jul-2025, 19 Jul 2025
+                WHEN "{column}"::TEXT ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                    THEN TO_TIMESTAMP(REPLACE("{column}"::TEXT, '-', ' '), 'DD Month YYYY')
+
+                -- US format MM/DD/YYYY: 07/19/2025
+                WHEN "{column}"::TEXT ~ '^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/\\d{{4}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'MM/DD/YYYY')
+
+                -- European DD/MM/YYYY: 19/07/2025
+                WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{{4}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'DD/MM/YYYY')
+
+                -- European DD.MM.YYYY: 19.07.2025
+                WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])\\.(0?[1-9]|1[0-2])\\.\\d{{4}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'DD.MM.YYYY')
+
+                -- DD-MM-YYYY: 19-07-2025
+                WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])-(0?[1-9]|1[0-2])-\\d{{4}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'DD-MM-YYYY')
+
+                -- Short format DD/MM/YY: 19/07/25 (assume 20xx for YY)
+                WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{{2}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'DD/MM/YY')
+
+                -- Short format MM/DD/YY: 07/19/25 (assume 20xx for YY)
+                WHEN "{column}"::TEXT ~ '^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/\\d{{2}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'MM/DD/YY')
+
+                -- Compact YYYYMMDD: 20250719
+                WHEN "{column}"::TEXT ~ '^\\d{{8}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYYMMDD')
+
+                -- Unix timestamp (10 digits): 1721395200
+                WHEN "{column}"::TEXT ~ '^\\d{{10}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT::bigint)
+
+                -- Unix timestamp milliseconds (13 digits): 1721395200000
+                WHEN "{column}"::TEXT ~ '^\\d{{13}}$'
+                    THEN TO_TIMESTAMP("{column}"::TEXT::bigint / 1000.0)
+
+                -- If already timestamp type, keep as is
+                ELSE "{column}"::TIMESTAMP
+            END'''
         )
-    
+
     # Combine into single query
     query = f'ALTER TABLE {full_table_name}\n'
     query += ',\n'.join(alter_statements) + ';;'
@@ -505,12 +589,100 @@ def verify_and_fix_column_type(table_name, schema, column, expected_type):
                     ALTER TABLE "{schema}"."{table_name}"
                     ALTER COLUMN "{column}" TYPE TEXT USING "{column}"::TEXT;;
                 '''
+            elif "TIMESTAMP" in expected_type.upper():
+                # Convert to TIMESTAMP with comprehensive date format handling
+                alter_query = f'''
+                    ALTER TABLE "{schema}"."{table_name}"
+                    ALTER COLUMN "{column}" TYPE TIMESTAMP USING
+                    CASE
+                        -- Handle NULL, empty strings, 'nan', 'None', 'NaT' FIRST
+                        WHEN "{column}" IS NULL
+                            OR TRIM("{column}"::TEXT) = ''
+                            OR LOWER(TRIM("{column}"::TEXT)) IN ('nan', 'none', 'nat', '<na>')
+                            THEN NULL
+
+                        -- Handle trailing dots (e.g., "2025-07-03T03:15:00.")
+                        WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}[T ].*\\.$'
+                            THEN TO_TIMESTAMP(RTRIM("{column}"::TEXT, '.'), 'YYYY-MM-DD HH24:MI:SS')
+
+                        -- ISO-like formats: 2025-07-19 or 2025/07/19 or 2025.07.19
+                        WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYY-MM-DD')
+
+                        -- ISO with time: 2025-07-19 14:30:00
+                        WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}\\s+\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYY-MM-DD HH24:MI:SS')
+
+                        -- ISO 8601 with T separator: 2025-07-19T14:30:00
+                        WHEN "{column}"::TEXT ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}T\\d{{1,2}}:\\d{{2}}'
+                            THEN TO_TIMESTAMP(SUBSTRING("{column}"::TEXT FROM '^[^+Z]+'), 'YYYY-MM-DD"T"HH24:MI:SS')
+
+                        -- DD Month YYYY: 19 July 2025
+                        WHEN "{column}"::TEXT ~ '^\\d{{1,2}}\\s+[A-Za-z]+\\s+\\d{{4}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'DD Month YYYY')
+
+                        -- Month DD, YYYY: July 19, 2025
+                        WHEN "{column}"::TEXT ~ '^[A-Za-z]+\\s+\\d{{1,2}},?\\s+\\d{{4}}$'
+                            THEN TO_TIMESTAMP(REPLACE("{column}"::TEXT, ',', ''), 'Month DD YYYY')
+
+                        -- YYYY Month DD: 2025 July 19
+                        WHEN "{column}"::TEXT ~ '^\\d{{4}}\\s+[A-Za-z]+\\s+\\d{{1,2}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYY Month DD')
+
+                        -- YYYY Month,DD or YYYY Month, DD: 2025 July,19
+                        WHEN "{column}"::TEXT ~ '^\\d{{4}}\\s+[A-Za-z]+,?\\s?\\d{{1,2}}$'
+                            THEN TO_TIMESTAMP(REPLACE("{column}"::TEXT, ',', ''), 'YYYY Month DD')
+
+                        -- DD-Month-YYYY or DD Month YYYY: 19-Jul-2025, 19 Jul 2025
+                        WHEN "{column}"::TEXT ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                            THEN TO_TIMESTAMP(REPLACE("{column}"::TEXT, '-', ' '), 'DD Month YYYY')
+
+                        -- US format MM/DD/YYYY: 07/19/2025
+                        WHEN "{column}"::TEXT ~ '^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/\\d{{4}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'MM/DD/YYYY')
+
+                        -- European DD/MM/YYYY: 19/07/2025
+                        WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{{4}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'DD/MM/YYYY')
+
+                        -- European DD.MM.YYYY: 19.07.2025
+                        WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])\\.(0?[1-9]|1[0-2])\\.\\d{{4}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'DD.MM.YYYY')
+
+                        -- DD-MM-YYYY: 19-07-2025
+                        WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])-(0?[1-9]|1[0-2])-\\d{{4}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'DD-MM-YYYY')
+
+                        -- Short format DD/MM/YY: 19/07/25 (assume 20xx for YY)
+                        WHEN "{column}"::TEXT ~ '^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{{2}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'DD/MM/YY')
+
+                        -- Short format MM/DD/YY: 07/19/25 (assume 20xx for YY)
+                        WHEN "{column}"::TEXT ~ '^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/\\d{{2}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'MM/DD/YY')
+
+                        -- Compact YYYYMMDD: 20250719
+                        WHEN "{column}"::TEXT ~ '^\\d{{8}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT, 'YYYYMMDD')
+
+                        -- Unix timestamp (10 digits): 1721395200
+                        WHEN "{column}"::TEXT ~ '^\\d{{10}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT::bigint)
+
+                        -- Unix timestamp milliseconds (13 digits): 1721395200000
+                        WHEN "{column}"::TEXT ~ '^\\d{{13}}$'
+                            THEN TO_TIMESTAMP("{column}"::TEXT::bigint / 1000.0)
+
+                        -- If already timestamp type, keep as is
+                        ELSE "{column}"::TIMESTAMP
+                    END;;
+                '''
             elif "INTEGER" in expected_type.upper():
                 alter_query = f'''
                     ALTER TABLE "{schema}"."{table_name}"
                     ALTER COLUMN "{column}" TYPE {expected_type} USING
                     CASE
-                        WHEN "{column}"::TEXT ~ '^\d+$' THEN "{column}"::TEXT::{expected_type}
+                        WHEN "{column}"::TEXT ~ '^\\d+$' THEN "{column}"::TEXT::{expected_type}
                         ELSE NULL
                     END;;
                 '''
@@ -519,7 +691,7 @@ def verify_and_fix_column_type(table_name, schema, column, expected_type):
                     ALTER TABLE "{schema}"."{table_name}"
                     ALTER COLUMN "{column}" TYPE {expected_type} USING
                     CASE
-                        WHEN "{column}"::TEXT ~ '^\d+\.?\d*$' THEN "{column}"::TEXT::{expected_type}
+                        WHEN "{column}"::TEXT ~ '^\\d+\\.?\\d*$' THEN "{column}"::TEXT::{expected_type}
                         ELSE NULL
                     END;;
                 '''
