@@ -449,9 +449,10 @@ def insert_old_adm_query(target_table, source_table, columns):
     
 def is_date_column_by_name(column_name: str, table_name: str = None) -> bool:
     """
-    Conservatively detect if a column should be TIMESTAMP based on very specific patterns.
+    VERY CONSERVATIVE date column detection - only matches exact system timestamp columns.
 
-    Only matches columns that are clearly dates - does NOT match generic patterns.
+    Does NOT try to auto-detect date columns based on naming patterns.
+    Use date_data_type_fix() function to manually convert specific columns.
 
     Args:
         column_name: Name of the column
@@ -463,22 +464,17 @@ def is_date_column_by_name(column_name: str, table_name: str = None) -> bool:
     # Check column name patterns (case-insensitive)
     col_lower = column_name.lower()
 
-    # CONSERVATIVE: Only match very specific date-related patterns
-    # Use startswith/endswith or very specific contains to avoid false positives
-    specific_patterns = [
-        col_lower.startswith('date'),           # date, datetime, dateofbirth, dateofdeath
-        col_lower.endswith('date'),             # admissiondate, dischargedate
-        col_lower.endswith('datetime'),         # createddatetime
-        'datetime' in col_lower and 'date' in col_lower,  # datetimeadmission
-        col_lower.startswith('dob'),            # dob, dobtob
-        col_lower.startswith('tob'),            # tob, time of birth (specific)
-        col_lower == 'created_at',              # Exact match
-        col_lower == 'updated_at',              # Exact match
-        col_lower == 'deleted_at',              # Exact match
+    # ONLY match exact system timestamp columns - nothing else
+    # Do NOT try to be smart about detecting date columns by name
+    exact_matches = [
+        col_lower == 'created_at',
+        col_lower == 'updated_at',
+        col_lower == 'deleted_at',
+        col_lower == 'ingested_at',
     ]
 
-    # Return True only if at least one specific pattern matches
-    if any(specific_patterns):
+    # Return True only for exact system column matches
+    if any(exact_matches):
         return True
 
     # Check field metadata if available and table_name provided
