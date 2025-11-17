@@ -9,32 +9,11 @@ Available Functions:
 4. drop_single_letter_columns_all_tables(schema) - Drop single-letter columns from all tables in schema
 5. update_mat_age(source, dest) - Fix maternal age values
 6. datesfix(source, dest) - Fix null date values
-7. count_table_columns(table, schema) - Count active/dropped columns
-8. rebuild_table_dry_run(table, schema) - Preview rebuild without executing
-9. rebuild_table_to_remove_dropped_columns(table, schema) - Reclaim dropped columns
-10. fix_column_limit_error(table, schema, auto_rebuild) - Diagnose/fix 1600 column limit
-
-Quick Start Examples:
---------------------
-# Drop single-letter columns from a specific table
-from data_pipeline.pipelines.data_engineering.queries.data_fix import drop_single_letter_columns
-drop_single_letter_columns('admissions')
-
-# Drop single-letter columns from ALL tables in derived schema
-from data_pipeline.pipelines.data_engineering.queries.data_fix import drop_single_letter_columns_all_tables
-drop_single_letter_columns_all_tables('derived')
-
-# Check if table has dropped columns
-from data_pipeline.pipelines.data_engineering.queries.data_fix import count_table_columns
-count_table_columns('joined_admissions_discharges')
-
-# Preview what rebuild would do (no changes)
-from data_pipeline.pipelines.data_engineering.queries.data_fix import rebuild_table_dry_run
-rebuild_table_dry_run('joined_admissions_discharges')
-
-# Actually rebuild table to reclaim space
-from data_pipeline.pipelines.data_engineering.queries.data_fix import fix_column_limit_error
-fix_column_limit_error('joined_admissions_discharges', auto_rebuild=True)
+7. date_data_type_fix(table, columns, schema) - Convert columns to TIMESTAMP type
+8. count_table_columns(table, schema) - Count active/dropped columns
+9. rebuild_table_dry_run(table, schema) - Preview rebuild without executing
+10. rebuild_table_to_remove_dropped_columns(table, schema) - Reclaim dropped columns
+11. fix_column_limit_error(table, schema, auto_rebuild) - Diagnose/fix 1600 column limit
 """
 
 import logging
@@ -608,6 +587,161 @@ def datesfix_batch(table_pairs: list):
             continue
 
     logging.info(f"Batch date fix completed for {total_tables} tables")
+
+
+def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived'):
+    """
+    Fix data types for date columns by converting them to TIMESTAMP.
+
+    Intelligently handles multiple date formats to prevent data loss:
+    - ISO formats: 2025-07-19, 2025/07/19, 2025.07.19, 20250719
+    - With time: 2025-07-19 14:30:00, 2025-07-19T14:30:00
+    - Text formats: 19 July 2025, July 19 2025, 19-Jul-2025
+    - US/EU formats: 07/19/2025, 19/07/2025, 19.07.2025
+    - Short formats: 19/07/25, 07/19/25
+    - Unix timestamps: 1721395200
+
+    Checks if table exists, then for each column in the list:
+    1. Verifies the column exists
+    2. Intelligently parses various date formats
+    3. Alters the column type to TIMESTAMP
+
+    Args:
+        table_name: Name of the table
+        columns: List of column names to convert to TIMESTAMP
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Number of columns successfully converted
+    """
+    logging.info(f"Starting date data type fix for {schema}.{table_name}")
+
+    # Check if table exists
+    if not table_exists(schema, table_name):
+        logging.error(f"Table {schema}.{table_name} does not exist")
+        return 0
+
+    logging.info(f"Table {schema}.{table_name} exists")
+
+    converted_count = 0
+
+    for column_name in columns:
+        # Check if column exists
+        column_check_query = f"""
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = '{schema}'
+                AND table_name = '{table_name}'
+                AND column_name = '{column_name}'
+            );
+        """
+
+        try:
+            result = inject_sql_with_return(column_check_query)
+
+            if result and result[0][0]:
+                logging.info(f"Column '{column_name}' exists, converting to TIMESTAMP")
+
+                # Quote column name to handle special characters like dots
+                column_quoted = f'"{column_name}"' if '.' in column_name or ' ' in column_name else column_name
+
+                # Convert column to TIMESTAMP with intelligent date format parsing
+                # This handles various date formats to prevent data loss
+                alter_query = f"""
+                    ALTER TABLE {schema}."{table_name}"
+                    ALTER COLUMN {column_quoted} TYPE TIMESTAMP
+                    USING (
+                        CASE
+                            -- ISO-like formats: 2025-07-19 or 2025/07/19 or 2025.07.19
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'YYYY-MM-DD')
+
+                            -- ISO with time: 2025-07-19 14:30:00
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}\\s+\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'YYYY-MM-DD HH24:MI:SS')
+
+                            -- ISO 8601 with T separator: 2025-07-19T14:30:00
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}T\\d{{1,2}}:\\d{{2}}'
+                                THEN TO_TIMESTAMP(SUBSTRING({column_quoted}::text FROM '^[^+Z]+'), 'YYYY-MM-DD"T"HH24:MI:SS')
+
+                            -- DD Month YYYY: 19 July 2025
+                            WHEN {column_quoted}::text ~ '^\\d{{1,2}}\\s+[A-Za-z]+\\s+\\d{{4}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'DD Month YYYY')
+
+                            -- Month DD, YYYY: July 19, 2025
+                            WHEN {column_quoted}::text ~ '^[A-Za-z]+\\s+\\d{{1,2}},?\\s+\\d{{4}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, ',', ''), 'Month DD YYYY')
+
+                            -- YYYY Month DD: 2025 July 19
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}\\s+[A-Za-z]+\\s+\\d{{1,2}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'YYYY Month DD')
+
+                            -- YYYY Month,DD or YYYY Month, DD: 2025 July,19
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}\\s+[A-Za-z]+,?\\s?\\d{{1,2}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, ',', ''), 'YYYY Month DD')
+
+                            -- DD-Month-YYYY or DD Month YYYY: 19-Jul-2025, 19 Jul 2025
+                            WHEN {column_quoted}::text ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, '-', ' '), 'DD Month YYYY')
+
+                            -- US format MM/DD/YYYY: 07/19/2025
+                            WHEN {column_quoted}::text ~ '^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/\\d{{4}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'MM/DD/YYYY')
+
+                            -- European DD/MM/YYYY: 19/07/2025 (where DD > 12 or MM <= 12 and DD > 12)
+                            WHEN {column_quoted}::text ~ '^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{{4}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'DD/MM/YYYY')
+
+                            -- European DD.MM.YYYY: 19.07.2025
+                            WHEN {column_quoted}::text ~ '^(0?[1-9]|[12][0-9]|3[01])\\.(0?[1-9]|1[0-2])\\.\\d{{4}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'DD.MM.YYYY')
+
+                            -- DD-MM-YYYY: 19-07-2025
+                            WHEN {column_quoted}::text ~ '^(0?[1-9]|[12][0-9]|3[01])-(0?[1-9]|1[0-2])-\\d{{4}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'DD-MM-YYYY')
+
+                            -- Short format DD/MM/YY: 19/07/25 (assume 20xx for YY)
+                            WHEN {column_quoted}::text ~ '^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{{2}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'DD/MM/YY')
+
+                            -- Short format MM/DD/YY: 07/19/25 (assume 20xx for YY)
+                            WHEN {column_quoted}::text ~ '^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/\\d{{2}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'MM/DD/YY')
+
+                            -- Compact YYYYMMDD: 20250719
+                            WHEN {column_quoted}::text ~ '^\\d{{8}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'YYYYMMDD')
+
+                            -- Unix timestamp (10 digits): 1721395200
+                            WHEN {column_quoted}::text ~ '^\\d{{10}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text::bigint)
+
+                            -- Unix timestamp milliseconds (13 digits): 1721395200000
+                            WHEN {column_quoted}::text ~ '^\\d{{13}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text::bigint / 1000.0)
+
+                            -- Already a timestamp or null
+                            WHEN {column_quoted}::text IS NULL OR {column_quoted}::text = ''
+                                THEN NULL
+
+                            -- If already timestamp type, keep as is
+                            ELSE {column_quoted}::timestamp
+                        END
+                    );
+                """
+
+                inject_sql_procedure(alter_query, f"CONVERT {table_name}.{column_name} TO TIMESTAMP")
+                logging.info(f"Converted {schema}.{table_name}.{column_name} to TIMESTAMP")
+                converted_count += 1
+            else:
+                logging.warning(f"Column '{column_name}' does not exist in {schema}.{table_name}")
+        except Exception as e:
+            logging.error(f"Error converting column '{column_name}': {e}")
+            # Continue with next column
+
+    logging.info(f"Completed: {converted_count}/{len(columns)} columns converted to TIMESTAMP")
+    return converted_count
 
 
 def _ensure_label_columns_are_text(dest_table: str, date_columns):
@@ -1197,7 +1331,7 @@ def rebuild_table_dry_run(table_name: str, schema: str = 'derived'):
 
     if col_info['dropped'] == 0:
         logging.info("")
-        logging.info("✓ No dropped columns found - rebuild not necessary")
+        logging.info("No dropped columns found - rebuild not necessary")
         return {
             'can_rebuild': False,
             'reason': 'No dropped columns',
@@ -1231,13 +1365,13 @@ def rebuild_table_dry_run(table_name: str, schema: str = 'derived'):
     logging.info("="*60)
     logging.info("BENEFITS:")
     logging.info("="*60)
-    logging.info(f"✓ Reclaim {slots_reclaimed} column slots")
-    logging.info(f"✓ Free up space from dropped columns")
-    logging.info(f"✓ Available capacity: {slots_available_after}/1600 slots")
+    logging.info(f"Reclaim {slots_reclaimed} column slots")
+    logging.info(f"Free up space from dropped columns")
+    logging.info(f"Available capacity: {slots_available_after}/1600 slots")
 
     if col_info['total'] >= 1500:
         logging.warning("")
-        logging.warning("⚠ WARNING: Table is approaching 1600 column limit!")
+        logging.warning(" WARNING: Table is approaching 1600 column limit!")
         logging.warning("   Rebuild is STRONGLY recommended")
 
     logging.info("")

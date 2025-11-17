@@ -363,16 +363,91 @@ def insert_old_adm_query(target_table, source_table, columns):
     
     return insert_select_statement
     
-def get_expected_sql_type(col_type):
-    """Map pandas dtype to PostgreSQL type."""
+def is_date_column_by_name(column_name: str, table_name: str = None) -> bool:
+    """
+    Intelligently detect if a column should be TIMESTAMP based on name patterns and metadata.
+
+    Args:
+        column_name: Name of the column
+        table_name: Optional table name to check field metadata
+
+    Returns:
+        True if column should be TIMESTAMP type
+    """
+    # Check column name patterns (case-insensitive)
+    col_lower = column_name.lower()
+    date_patterns = [
+        'date', 'datetime', 'timestamp', 'time', 'dob', 'tob',
+        'admission', 'discharge', 'birth', 'death', 'created_at',
+        'updated_at', 'deleted_at', 'reviewed_at'
+    ]
+
+    # Direct pattern match
+    if any(pattern in col_lower for pattern in date_patterns):
+        # Exclude non-date fields that contain these patterns
+        exclusions = ['update', 'candidate', 'consolidate', 'dateofbirth_', 'datetime_']
+        if not any(excl in col_lower for excl in exclusions):
+            return True
+
+    # Check field metadata if available and table_name provided
+    if table_name:
+        try:
+            schema = load_json_for_comparison(table_name)
+            if schema:
+                # Build field lookup
+                field_info = {}
+                if isinstance(schema, list):
+                    field_info = {f['key']: f for f in schema}
+                elif isinstance(schema, dict):
+                    first_value = next(iter(schema.values()), None)
+                    if isinstance(first_value, list):
+                        field_info = {f['key']: f for f in first_value}
+                    else:
+                        field_info = schema
+
+                # Check both exact match and without .value/.label suffix
+                base_key = column_name
+                if column_name.endswith('.value') or column_name.endswith('.label'):
+                    base_key = column_name.rsplit('.', 1)[0]
+
+                if base_key in field_info:
+                    field = field_info[base_key]
+                    data_type = field.get('dataType', field.get('type', ''))
+                    if data_type in ['datetime', 'timestamp', 'date']:
+                        return True
+        except Exception:
+            pass  # Metadata not available, continue with pattern matching
+
+    return False
+
+
+def get_expected_sql_type(col_type: str, column_name: str = None, table_name: str = None):
+    """
+    Map pandas dtype to PostgreSQL type with intelligent date detection.
+
+    Args:
+        col_type: Pandas dtype as string
+        column_name: Optional column name for intelligent type detection
+        table_name: Optional table name for metadata lookup
+
+    Returns:
+        PostgreSQL type string
+    """
+    # First check if pandas already detected it as datetime
+    if "datetime" in col_type or "date" in col_type:
+        return "TIMESTAMP"
+
+    # Check if column name suggests it's a date (even if pandas says 'object')
+    if column_name and is_date_column_by_name(column_name, table_name):
+        return "TIMESTAMP"
+
+    # Standard type mapping
     if col_type == "object":
         return "TEXT"
     elif "float" in col_type:
         return "DOUBLE PRECISION"
     elif "int" in col_type:
         return "INTEGER"
-    elif "datetime" in col_type or "date" in col_type:
-        return "TIMESTAMP"
     else:
         return "TEXT"
 
@@ -454,14 +529,17 @@ def verify_and_fix_column_type(table_name, schema, column, expected_type):
         logging.warning(f"Could not verify/fix column type for {column}: {e}")
 
 
-def create_new_columns(table_name,schema,columns):
-    for column,col_type in columns:
-        expected_sql_type = get_expected_sql_type(col_type)
+def create_new_columns(table_name, schema, columns):
+    """Create new columns with intelligent type detection for dates."""
+    for column, col_type in columns:
+        # Pass column name and table name for intelligent date detection
+        expected_sql_type = get_expected_sql_type(col_type, column_name=column, table_name=table_name)
 
-        if not column_exists(schema,table_name,column):
+        if not column_exists(schema, table_name, column):
             # Column doesn't exist - create it
             alter_query = f'ALTER TABLE "{schema}"."{table_name}" ADD COLUMN IF NOT EXISTS "{column}" {expected_sql_type};;'
-            inject_sql(alter_query,f'ADD {column} ON  "{schema}"."{table_name}"')
+            inject_sql(alter_query, f'ADD {column} ON  "{schema}"."{table_name}"')
+            logging.info(f"Created column {column} as {expected_sql_type} in {schema}.{table_name}")
         else:
             # Column exists - verify and fix type if needed
             verify_and_fix_column_type(table_name, schema, column, expected_sql_type)
@@ -503,7 +581,7 @@ def run_query_and_return_df(query) -> pd.DataFrame:
 
 
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
-    """Generate and execute UPSERT queries with automatic table/column creation."""
+    """Generate and execute UPSERT queries with automatic table/column creation and intelligent type detection."""
     if not engine or not sql or not PSYCOPG2_AVAILABLE:
         raise RuntimeError("Database engine and psycopg2 not initialized")
 
@@ -511,6 +589,12 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
         return
 
     schema = 'derived'
+
+    # Helper function to get column type
+    def get_column_type(col_name: str) -> str:
+        """Get PostgreSQL type for a column based on dtype and name."""
+        dtype = str(df[col_name].dtype)
+        return get_expected_sql_type(dtype, column_name=col_name, table_name=table_name)
 
     # Get raw psycopg2 connection for complex operations with psycopg2.sql
     raw_conn = engine.raw_connection()  # type: ignore[union-attr]
@@ -524,14 +608,20 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
             )
             result = cur.fetchone()
             if result[0] is None:
-                # Create table with all current columns
-                create_cols = ', '.join([f'"{col}" TEXT' for col in df.columns])
+                # Create table with intelligent type detection for each column
+                create_col_defs = []
+                for col in df.columns:
+                    col_type = get_column_type(col)
+                    create_col_defs.append(f'"{col}" {col_type}')
+
+                create_cols = ', '.join(create_col_defs)
                 create_query = sql.SQL("CREATE TABLE {}.{} ({})").format(
                     sql.Identifier(schema),
                     sql.Identifier(table_name),
                     sql.SQL(create_cols)
                 )
                 cur.execute(create_query)
+                logging.info(f"Created table {schema}.{table_name} with intelligent type detection")
 
                 # Add unique constraint
                 constraint_name = f"{table_name}_uid_form_created_facility_review_uq"
@@ -546,7 +636,7 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
                     )
                 cur.execute(constraint_query)
 
-            # Step 2: Ensure all columns exist
+            # Step 2: Ensure all columns exist with intelligent type detection
             cur.execute("""
                 SELECT column_name
                 FROM information_schema.columns
@@ -556,14 +646,17 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
             for col in df.columns:
                 if col not in existing_cols:
+                    col_type = get_column_type(col)
                     alter_query = sql.SQL(
-                        "ALTER TABLE {}.{} ADD COLUMN {} TEXT DEFAULT NULL"
+                        "ALTER TABLE {}.{} ADD COLUMN {} {} DEFAULT NULL"
                     ).format(
                         sql.Identifier(schema),
                         sql.Identifier(table_name),
-                        sql.Identifier(col)
+                        sql.Identifier(col),
+                        sql.SQL(col_type)
                     )
                     cur.execute(alter_query)
+                    logging.info(f"Added column {col} as {col_type} to {schema}.{table_name}")
 
             # Step 3: Generate and execute UPSERTs
             for _, row in df.iterrows():
@@ -1285,15 +1378,6 @@ def generate_create_insert_sql(df,schema, table_name):
 
         # STEP 4: Create table only if it doesn't exist (using filtered columns INCLUDING 'transformed')
         if not table_exists(schema,table_name):
-            dtype_map = {
-                'int64': 'INTEGER',
-                'float64': 'DOUBLE PRECISION',
-                'bool': 'BOOLEAN',
-                'object': 'TEXT',
-                'datetime64[ns]': 'TIMESTAMP',
-                'timedelta[ns]': 'INTERVAL'
-            }
-
             create_cols = []
             if("twenty_8_day_follow_up" in table_name):
                 df = reorder_dataframe_columns(df,script=table_name)
@@ -1301,14 +1385,17 @@ def generate_create_insert_sql(df,schema, table_name):
                 drop_table = f'DROP TABLE IF EXISTS {schema}."{table_name}";;'
                 inject_sql(drop_table,f"DROPPING {table_name}")
 
+            # Use intelligent type detection for each column
             for col in df.columns:
                 dtype = str(df[col].dtype)
-                pg_type = dtype_map.get(dtype, 'TEXT')  # Fallback to TEXT
+                # Use intelligent type detection with column name and table name
+                pg_type = get_expected_sql_type(dtype, column_name=col, table_name=table_name)
                 create_cols.append(f'"{col}" {pg_type}')
 
             create_stmt = f'CREATE TABLE IF NOT EXISTS {schema}."{table_name}" ({",".join(create_cols)});;'
 
             inject_sql(create_stmt,f"CREATING {table_name}")
+            logging.info(f"Created table {schema}.{table_name} with intelligent date type detection")
 
         # STEP 4: Insert data
         generate_postgres_insert(df,schema,table_name)

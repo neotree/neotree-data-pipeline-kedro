@@ -29,7 +29,10 @@ from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_k
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table, count_table_columns, fix_column_limit_error
+from data_pipeline.pipelines.data_engineering.queries.data_fix import (deduplicate_table
+                                                                       , count_table_columns
+                                                                       , fix_column_limit_error,
+                                                                       date_data_type_fix)
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge, begin_validation_run, finalize_validation
 
 
@@ -382,7 +385,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
 
         # Final transformations (fixes issues after validation)
         adm_df = finalize_dataframe(adm_df, 'admissions')
-        logging.info(f"WORKING ON ADMISSSIONSSSSSSSSSS::{len(adm_df)}")
+    
         # Save transformed data
         generate_create_insert_sql(adm_df, 'derived', 'admissions')
         deduplicate_table('admissions')
@@ -393,6 +396,14 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
 
         # Process repeatables
         process_repeatables(adm_raw, "admissions")
+    adm_dates_list =['started_at', 
+                        'completed_at',
+                          'EndScriptDatetime.value',
+                            'DateTimeAdmission.value',
+                            'DateHIVtest.value',
+                            'ANVDRLDate.value']
+    date_data_type_fix('admissions',adm_dates_list)
+    date_data_type_fix('joined_admissions_discharges',adm_dates_list)
 
 
 def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, dis_mcl: Any) -> None:
@@ -409,13 +420,13 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
     result = format_date_without_timezone(dis_df, ['started_at', 'completed_at'])
     if result is not None:
         dis_df = result
-
-    result = format_date(dis_df, [
+    discharge_dates_list = [
         'DateAdmissionDC.value', 'DateDischVitals.value', 'DateDischWeight.value',
         'DateTimeDischarge.value', 'EndScriptDatetime.value', 'DateWeaned.value',
         'DateTimeDeath.value', 'DateAdmission.value', 'BirthDateDis.value',
         'DateHIVtest.value', 'DateVDRLSameHIV.value', 'started_at', 'completed_at'
-    ])
+    ]
+    result = format_date(dis_df, discharge_dates_list)
     if result is not None:
         dis_df = result
 
@@ -457,6 +468,8 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
 
         # Process repeatables
         process_repeatables(dis_raw, "discharges")
+    date_data_type_fix('discharges',discharge_dates_list)
+    date_data_type_fix('joined_admissions_discharges',discharge_dates_list)
 
 
 def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outcomes_new_entries: Any, mat_outcomes_mcl: Any) -> pd.DataFrame:
@@ -471,7 +484,9 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
     mat_outcomes_df.set_index(['unique_key'])
 
     # Format dates
-    result = format_date_without_timezone(mat_outcomes_df, ['started_at', 'completed_at', 'DateAdmission.value'])
+    mat_dates = ['started_at', 'completed_at', 'DateAdmission.value']
+
+    result = format_date_without_timezone(mat_outcomes_df, mat_dates)
     if result is not None:
         mat_outcomes_df = result
 
@@ -510,7 +525,7 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
 
         # Process repeatables
         process_repeatables(mat_outcomes_raw, "maternal_outcomes")
-
+    date_data_type_fix('maternal_outcomes',mat_dates)
     # Return DataFrame, checking if it exists and is not empty
     if mat_outcomes_df is not None and not mat_outcomes_df.empty:
         return mat_outcomes_df

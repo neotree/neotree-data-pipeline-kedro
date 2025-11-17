@@ -18,7 +18,7 @@ from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import convert_false_numbers_to_text
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge
 from data_pipeline.pipelines.data_engineering.utils.field_info import update_fields_info, transform_matching_labels
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table,date_data_type_fix
 
 
 def safe_load(dataset_name: str) -> pd.DataFrame:
@@ -241,6 +241,10 @@ def process_single_script(script: str) -> None:
 
         # Process repeatables
         process_script_repeatables(script_raw, script)
+
+        #Enforce TimeStamp Columns
+        date_data_type_fix(script,['completed_at','started_at','DateTimeAdmission.value'
+                                   ,'DateTimeDischarge.value','DateTimeDeath.value','DateAdmission.value'])
 
         logging.info(f"Successfully processed script: {script}")
 
