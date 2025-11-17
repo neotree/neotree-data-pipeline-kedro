@@ -515,7 +515,7 @@ def is_date_column_by_name(column_name: str, table_name: str = None) -> bool:
 
 def get_expected_sql_type(col_type: str, column_name: str = None, table_name: str = None):
     """
-    Map pandas dtype to PostgreSQL type with intelligent date detection.
+    Map pandas dtype to PostgreSQL type with intelligent date and boolean detection.
 
     Args:
         col_type: Pandas dtype as string
@@ -525,6 +525,10 @@ def get_expected_sql_type(col_type: str, column_name: str = None, table_name: st
     Returns:
         PostgreSQL type string
     """
+    # First check if pandas already detected it as boolean
+    if "bool" in col_type.lower():
+        return "BOOLEAN"
+
     # First check if pandas already detected it as datetime
     if "datetime" in col_type or "date" in col_type:
         return "TIMESTAMP"
@@ -532,6 +536,14 @@ def get_expected_sql_type(col_type: str, column_name: str = None, table_name: st
     # Check if column name suggests it's a date (even if pandas says 'object')
     if column_name and is_date_column_by_name(column_name, table_name):
         return "TIMESTAMP"
+
+    # Check if column name suggests it's a boolean (even if pandas says 'object')
+    # Common boolean column names
+    if column_name:
+        col_lower = column_name.lower()
+        boolean_column_names = ['transformed', 'is_active', 'is_deleted', 'enabled', 'disabled', 'active']
+        if col_lower in boolean_column_names:
+            return "BOOLEAN"
 
     # Standard type mapping
     if col_type == "object":
