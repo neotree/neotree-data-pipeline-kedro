@@ -724,8 +724,12 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived', 
                                 OR LOWER(TRIM({column_quoted}::TEXT)) IN ('nan', 'none', 'nat', '<na>')
                                 THEN NULL
 
-                            -- Handle trailing dots (e.g., "2025-07-03T03:15:00.")
-                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}[T ].*\\.$'
+                            -- Handle trailing dots with T separator (e.g., "2025-06-28T06:00:00.")
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}T.*\\.$'
+                                THEN TO_TIMESTAMP(RTRIM({column_quoted}::TEXT, '.'), 'YYYY-MM-DD"T"HH24:MI:SS')
+
+                            -- Handle trailing dots with space separator (e.g., "2025-07-03 03:15:00.")
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}\\s+.*\\.$'
                                 THEN TO_TIMESTAMP(RTRIM({column_quoted}::TEXT, '.'), 'YYYY-MM-DD HH24:MI:SS')
 
                             -- ISO-like formats: 2025-07-19 or 2025/07/19 or 2025.07.19
