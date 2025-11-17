@@ -1658,8 +1658,10 @@ def store_field_metadata(table_name: str, merged_data: Dict[str, Dict[str, str]]
     delete_query = f"DELETE FROM derived.field_metadata WHERE table_name = '{table_name}';;"
     inject_sql(delete_query, f"DELETE old metadata for {table_name}")
 
-    # Build insert values
-    values_rows = []
+    # Build insert values - deduplicate by lowercase column name
+    values_dict = {}  # Use dict to automatically handle duplicates
+    seen_columns = set()  # Track columns we've already processed
+
     for key, meta in merged_data.items():
         if not isinstance(meta, dict):
             continue
@@ -1675,11 +1677,21 @@ def store_field_metadata(table_name: str, merged_data: Dict[str, Dict[str, str]]
         if not column_name:
             continue
 
+        # Skip if we've already seen this column name (case-insensitive)
+        if column_name in seen_columns:
+            logging.debug(f"Skipping duplicate column '{key}' (normalized to '{column_name}') for table {table_name}")
+            continue
+
+        seen_columns.add(column_name)
+
         escaped_table = escape_special_characters(table_name)
         escaped_column = escape_special_characters(column_name)
         escaped_type = escape_special_characters(data_type)
 
-        values_rows.append(f"('{escaped_table}', '{escaped_column}', '{escaped_type}', CURRENT_TIMESTAMP)")
+        # Use column name as key to ensure uniqueness
+        values_dict[column_name] = f"('{escaped_table}', '{escaped_column}', '{escaped_type}', CURRENT_TIMESTAMP)"
+
+    values_rows = list(values_dict.values())
 
     if not values_rows:
         logging.warning(f"No valid metadata rows to insert for {table_name}")
