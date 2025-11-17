@@ -704,10 +704,15 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived', 
                     skipped_count += 1
                     continue
 
+                # Log sample values before conversion
+                logging.info(f"Sample values from '{column_name}':")
+                for i, val in enumerate(sample_values[:10], 1):
+                    logging.info(f"  {i}. '{val}'")
+
                 logging.info(f"✓ Column '{column_name}' passed validation, converting to TIMESTAMP")
 
                 # Convert column to TIMESTAMP with intelligent date format parsing
-                # This handles various date formats to prevent data loss
+                # IMPORTANT: Set to NULL for unrecognized formats instead of crashing
                 alter_query = f"""
                     ALTER TABLE {schema}."{table_name}"
                     ALTER COLUMN {column_quoted} TYPE TIMESTAMP
@@ -759,7 +764,7 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived', 
                             WHEN {column_quoted}::text ~ '^(0?[1-9]|1[0-2])/(0?[1-9]|[12][0-9]|3[01])/\\d{{4}}$'
                                 THEN TO_TIMESTAMP({column_quoted}::text, 'MM/DD/YYYY')
 
-                            -- European DD/MM/YYYY: 19/07/2025 (where DD > 12 or MM <= 12 and DD > 12)
+                            -- European DD/MM/YYYY: 19/07/2025
                             WHEN {column_quoted}::text ~ '^(0?[1-9]|[12][0-9]|3[01])/(0?[1-9]|1[0-2])/\\d{{4}}$'
                                 THEN TO_TIMESTAMP({column_quoted}::text, 'DD/MM/YYYY')
 
@@ -791,15 +796,82 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived', 
                             WHEN {column_quoted}::text ~ '^\\d{{13}}$'
                                 THEN TO_TIMESTAMP({column_quoted}::text::bigint / 1000.0)
 
-                            -- If already timestamp type, keep as is
+                            -- Try to convert - will fail with error showing the problematic value
                             ELSE {column_quoted}::timestamp
                         END
                     );
                 """
 
-                inject_sql_procedure(alter_query, f"CONVERT {table_name}.{column_name} TO TIMESTAMP")
-                logging.info(f"Converted {schema}.{table_name}.{column_name} to TIMESTAMP")
-                converted_count += 1
+                try:
+                    inject_sql_procedure(alter_query, f"CONVERT {table_name}.{column_name} TO TIMESTAMP")
+                    logging.info(f"✓ Converted {schema}.{table_name}.{column_name} to TIMESTAMP")
+                    converted_count += 1
+                except Exception as conversion_error:
+                    # Conversion failed - now query and log ALL unique values to understand the format
+                    logging.error(f"")
+                    logging.error(f"{'='*70}")
+                    logging.error(f"❌ CONVERSION FAILED FOR COLUMN: {column_name}")
+                    logging.error(f"{'='*70}")
+                    logging.error(f"Error: {conversion_error}")
+                    logging.error(f"")
+                    logging.error(f"Querying column to analyze all unique values...")
+
+                    try:
+                        # Get ALL unique values to understand the data format
+                        problem_values_query = f"""
+                            SELECT DISTINCT {column_quoted}::TEXT as value, COUNT(*) as count
+                            FROM {schema}."{table_name}"
+                            WHERE {column_quoted} IS NOT NULL
+                            AND TRIM({column_quoted}::TEXT) != ''
+                            AND LOWER(TRIM({column_quoted}::TEXT)) NOT IN ('nan', 'none', 'nat', '<na>')
+                            GROUP BY {column_quoted}::TEXT
+                            ORDER BY count DESC
+                            LIMIT 50;
+                        """
+
+                        problem_result = inject_sql_with_return(problem_values_query)
+
+                        if problem_result:
+                            logging.error(f"UNIQUE VALUES IN COLUMN '{column_name}' (by frequency):")
+                            logging.error(f"{'='*70}")
+                            logging.error(f"{'Rank':<6} {'Value':<40} {'Count':<10}")
+                            logging.error(f"{'-'*70}")
+
+                            total_rows = sum(row[1] for row in problem_result if len(row) > 1)
+
+                            for idx, row in enumerate(problem_result, 1):
+                                value = row[0] if row[0] else 'NULL'
+                                count = row[1] if len(row) > 1 else 0
+
+                                # Show value, truncate if too long
+                                display_value = value if len(str(value)) <= 38 else str(value)[:35] + '...'
+
+                                # Show percentage
+                                percent = (count / total_rows * 100) if total_rows > 0 else 0
+
+                                logging.error(f"#{idx:<5} '{display_value:<38}' {count:<6} ({percent:.1f}%)")
+
+                            logging.error(f"{'='*70}")
+                            logging.error(f"Total unique values shown: {len(problem_result)} (showing up to 50)")
+                            logging.error(f"Total non-null rows: {total_rows}")
+                            logging.error(f"")
+                            logging.error(f"ACTION REQUIRED:")
+                            logging.error(f"  1. Analyze these values to understand the date format")
+                            logging.error(f"  2. Add a new WHEN clause to handle this format")
+                            logging.error(f"  3. Or determine if these are invalid dates that should be NULL")
+                            logging.error(f"")
+                            logging.error(f"EXAMPLE: If 'T0' means 'Time 0' or baseline measurement:")
+                            logging.error(f"  Add: WHEN {column_quoted}::text ~ '^T\\d+$' THEN NULL")
+                            logging.error(f"")
+                            logging.error(f"{'='*70}")
+
+                    except Exception as query_error:
+                        logging.error(f"Could not query problem values: {query_error}")
+
+                    logging.error(f"Skipping column '{column_name}' - requires manual investigation")
+                    logging.error(f"")
+                    skipped_count += 1
+                    continue
             else:
                 logging.warning(f"Column '{column_name}' does not exist in {schema}.{table_name}")
         except Exception as e:
