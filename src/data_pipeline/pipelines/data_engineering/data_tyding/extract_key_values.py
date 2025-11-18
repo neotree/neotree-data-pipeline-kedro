@@ -174,7 +174,9 @@ def get_fluids_key_values(data_raw):
                 for parent_key in parent_keys:
                     new_entry = {}
                     values = parent_keys[parent_key]
-                    new_entry['fluids']=parent_key
+                    new_entry['value']=parent_key
+                    new_entry['is_fluid']=True
+                    new_entry['is_drug']=False
                     app_version = None
                     if 'appVersion' in row:
                         app_version = row['appVersion']
@@ -220,7 +222,9 @@ def get_drugs_key_values(data_raw):
                 for parent_key in parent_keys:
                     new_entry = {}
                     values = parent_keys[parent_key]
-                    new_entry['drugs']=parent_key
+                    new_entry['value']=parent_key
+                    new_entry['is_fluid']= False
+                    new_entry['is_drug']= True
                     app_version = None
                     if 'appVersion' in row:
                         app_version = row['appVersion']
