@@ -125,7 +125,6 @@ def calculate_date_differences_vectorized(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def join_table():
-    """Main function to create and update joined admissions-discharges table."""
     logging.info("... Starting script to create joined table")
 
     # Read the raw admissions and discharge data into dataframes
@@ -213,12 +212,141 @@ def join_table():
 
     logging.info("... Join script completed!")
 
+def calculate_match_score(row: pd.Series) -> float:
+    """
+    Calculate similarity score between admission and discharge records.
+
+    Compares clinical measurements to determine how well a discharge matches an admission:
+    - OFC (Occipital-Frontal Circumference)
+    - Gestation (weeks)
+    - BirthWeight (grams)
+
+    Returns a score where higher values indicate better matches.
+    """
+    score = 0.0
+    comparisons_made = 0
+
+    # Compare OFC: admission OFC.value vs discharge OFCDis.value
+    if pd.notna(row.get('OFC.value')) and pd.notna(row.get('OFCDis.value')):
+        try:
+            ofc_adm = float(row['OFC.value'])
+            ofc_dis = float(row['OFCDis.value'])
+            # Score based on how close they are (max 10 points if identical)
+            # Penalize 1 point per cm difference
+            diff = abs(ofc_adm - ofc_dis)
+            score += max(0, 10 - diff)
+            comparisons_made += 1
+        except (ValueError, TypeError):
+            pass
+
+    # Compare Gestation: admission Gestation.value vs discharge Gestation.value_discharge
+    if pd.notna(row.get('Gestation.value')) and pd.notna(row.get('Gestation.value_discharge')):
+        try:
+            gest_adm = float(row['Gestation.value'])
+            gest_dis = float(row['Gestation.value_discharge'])
+            # Score based on how close they are (max 10 points if identical)
+            # Penalize 1 point per week difference
+            diff = abs(gest_adm - gest_dis)
+            score += max(0, 10 - diff)
+            comparisons_made += 1
+        except (ValueError, TypeError):
+            pass
+
+    # Compare BirthWeight: admission BirthWeight.value vs discharge BirthWeight.value_discharge
+    # Note: BirthWeight On Discharge is "not to be trusted", so weight it less
+    if pd.notna(row.get('BirthWeight.value')) and pd.notna(row.get('BirthWeight.value_discharge')):
+        try:
+            bw_adm = float(row['BirthWeight.value'])
+            bw_dis = float(row['BirthWeight.value_discharge'])
+            # Score based on how close they are (max 5 points if identical - weighted less)
+            # Penalize 1 point per 500g difference
+            diff = abs(bw_adm - bw_dis) / 500
+            score += max(0, 5 - diff)
+            comparisons_made += 1
+        except (ValueError, TypeError):
+            pass
+
+    # Normalize score if we made comparisons
+    # If no comparisons possible, return -1 to indicate no data
+    if comparisons_made == 0:
+        return -1.0
+
+    return score
+
+
+def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_adm_idx') -> pd.DataFrame:
+    """
+    Resolve duplicate matches by selecting best discharge match for EACH individual admission.
+
+    For each admission with multiple discharge matches, calculates similarity scores
+    based on clinical measurements (OFC, Gestation, BirthWeight) and keeps only
+    the discharge with the highest score for that specific admission.
+
+    Args:
+        merged_df: DataFrame after merge, potentially with duplicate matches per admission
+        adm_unique_col: Column name that uniquely identifies each admission row
+
+    Returns:
+        DataFrame with duplicates resolved by keeping best discharge match per admission
+    """
+    logging.info("Resolving duplicate admission-discharge matches using clinical measurement comparison")
+
+    # Count how many discharge matches each admission has
+    merged_df['_match_count'] = merged_df.groupby(adm_unique_col)[adm_unique_col].transform('count')
+
+    # Separate admissions with multiple matches from those with single matches
+    duplicates = merged_df[merged_df['_match_count'] > 1].copy()
+    non_duplicates = merged_df[merged_df['_match_count'] == 1].copy()
+
+    logging.info(f"Found {len(non_duplicates)} admissions with single discharge match")
+    logging.info(f"Found {duplicates[adm_unique_col].nunique()} admissions with multiple discharge matches ({len(duplicates)} total rows)")
+
+    if duplicates.empty:
+        # No duplicates to resolve
+        result = non_duplicates.drop(columns=['_match_count'])
+        return result
+
+    # Calculate match scores for all duplicate matches
+    duplicates['_match_score'] = duplicates.apply(calculate_match_score, axis=1)
+
+    # For each individual admission, keep the discharge with the highest match score
+    def select_best_discharge_for_admission(group):
+        """Select the best matching discharge for this specific admission."""
+        # If all scores are -1 (no data to compare), keep the first discharge
+        if (group['_match_score'] == -1).all():
+            logging.debug(f"No clinical data to compare for admission {group.iloc[0][adm_unique_col]} - keeping first discharge")
+            return group.iloc[0:1]
+
+        # Otherwise, take the discharge with highest score
+        valid_scores = group[group['_match_score'] >= 0]
+        if not valid_scores.empty:
+            best_idx = valid_scores['_match_score'].idxmax()
+            best_match = valid_scores.loc[best_idx]
+            logging.debug(f"Best match score {best_match['_match_score']:.2f} for admission {best_match[adm_unique_col]}")
+            return valid_scores.loc[[best_idx]]
+        else:
+            return group.iloc[0:1]
+
+    # Group by each individual admission and select best discharge
+    resolved_duplicates = duplicates.groupby(adm_unique_col, group_keys=False).apply(select_best_discharge_for_admission)
+
+    logging.info(f"Resolved {len(duplicates)} duplicate matches down to {len(resolved_duplicates)} best matches")
+
+    # Combine resolved duplicates with non-duplicates
+    result = pd.concat([non_duplicates, resolved_duplicates], ignore_index=True)
+
+    # Clean up temporary columns
+    result = result.drop(columns=['_match_count', '_match_score'], errors='ignore')
+
+    return result
+
+
 def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Create joined admissions-discharges dataset with deduplication.
+    Create joined admissions-discharges dataset with intelligent duplicate resolution.
 
-    OPTIMIZATION: Replaced iterrows() with vectorized date calculations.
-    Performance improvement: ~100-1000x faster for large datasets.
+    Uses clinical measurements (OFC, Gestation, BirthWeight) to match each admission
+    with its most appropriate discharge record when duplicates exist.
     """
     logging.info("Creating joined dataset")
 
@@ -226,7 +354,12 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
         logging.warning("Empty input dataframes - returning empty result")
         return pd.DataFrame()
 
-    # Merge admissions and discharges
+    # Add unique identifier to each admission row (will be preserved through merge)
+    adm_df = adm_df.copy()
+    adm_df['_adm_idx'] = range(len(adm_df))
+
+    # Merge admissions and discharges on uid+facility
+    # This creates ALL possible admission-discharge combinations for each uid+facility pair
     jn_adm_dis = adm_df.merge(
         dis_df,
         how='left',
@@ -234,32 +367,29 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
         suffixes=('', '_discharge')
     )
 
-    # Deduplication strategies
+    logging.info(f"Initial merge created {len(jn_adm_dis)} rows from {len(adm_df)} admissions")
+
+    # Resolve duplicate matches using clinical measurement comparison
+    # For each admission, select the discharge with the best matching clinical measurements
+    jn_adm_dis = resolve_duplicate_matches(jn_adm_dis, adm_unique_col='_adm_idx')
+
+    # Clean up the temporary admission index column
+    jn_adm_dis = jn_adm_dis.drop(columns=['_adm_idx'], errors='ignore')
+
+    # Final deduplication based on unique_key (safety check)
     if 'unique_key' in jn_adm_dis.columns:
         # OPTIMIZATION: Use vectorized string operations instead of lambda map
         jn_adm_dis['DEDUPLICATER'] = jn_adm_dis['unique_key'].astype(str).str[:10]
         # Replace empty strings or short values with None
         jn_adm_dis.loc[jn_adm_dis['unique_key'].astype(str).str.len() < 10, 'DEDUPLICATER'] = None
 
-        # Primary deduplication
+        # Final deduplication on unique_key
         jn_adm_dis = jn_adm_dis.drop_duplicates(
             subset=["uid", "facility", "DEDUPLICATER"],
             keep='first'
         )
 
-        # Further deduplication on OFCDis (helps isolate different admissions mapped to same discharge)
-        if "OFCDis.value" in jn_adm_dis.columns:
-            jn_adm_dis = jn_adm_dis.drop_duplicates(
-                subset=["uid", "facility", "OFCDis.value"],
-                keep='first'
-            )
-
-        # Further deduplication on BirthWeight discharge
-        if "BirthWeight.value_discharge" in jn_adm_dis.columns:
-            jn_adm_dis = jn_adm_dis.drop_duplicates(
-                subset=["uid", "facility", "BirthWeight.value_discharge"],
-                keep='first'
-            )
+    logging.info(f"After all deduplication: {len(jn_adm_dis)} rows")
 
     # Add missing columns to database table
     add_missing_columns(jn_adm_dis, 'joined_admissions_discharges')
