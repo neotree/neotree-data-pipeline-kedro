@@ -93,9 +93,9 @@ def summary_admissions_query():
   return   prefix +f''' SELECT "facility" AS "Facility Name",
                     "uid" AS "NeoTree_ID",
                      CASE
-                    WHEN "DateTimeAdmission.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                    WHEN "DateTimeAdmission.value"::TEXT ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                     to_timestamp("DateTimeAdmission.value", 'DD Mon,YYYY')
-                    WHEN "DateTimeAdmission.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                    WHEN "DateTimeAdmission.value"::TEXT ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
                     to_timestamp("DateTimeAdmission.value", 'YYYY Mon,DD')
                     ELSE NULL
                     END AS "DateTime Admission",
@@ -181,9 +181,9 @@ def summary_admissions_query():
                     "MatHIVtest.label" AS "HIV test?",
                     "ANVDRL.label" AS "ANVDRL",
                     CASE
-                    WHEN "DateHIVtest.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                    WHEN "DateHIVtest.value"::TEXT ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                     to_timestamp("DateHIVtest.value", 'DD Mon,YYYY')
-                    WHEN "DateHIVtest.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                    WHEN "DateHIVtest.value"::TEXT ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
                     to_timestamp("DateHIVtest.value", 'YYYY Mon,DD')
                     ELSE NULL
                     END AS "Date of HIV test",
@@ -193,9 +193,9 @@ def summary_admissions_query():
                     "LengthHAART.label" AS "Length of HAART",
                     "NVPgiven.label" AS "NVP given?",
                      CASE
-                    WHEN "ANVDRLDate.value" ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN 
+                    WHEN "ANVDRLDate.value"::TEXT ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
                     to_timestamp("ANVDRLDate.value", 'DD Mon,YYYY')
-                    WHEN "ANVDRLDate.value" ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN 
+                    WHEN "ANVDRLDate.value"::TEXT ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
                     to_timestamp("ANVDRLDate.value", 'YYYY Mon,DD')
                     ELSE NULL
                     END AS "ANVDRLDate",
