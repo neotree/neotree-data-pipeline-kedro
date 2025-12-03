@@ -1388,50 +1388,60 @@ def generate_postgres_insert(df, schema, table_name):
             # Log detailed information about the failed insert
             error_msg = str(insert_error)
 
-            # Check if it's a boolean type error
-            if 'boolean' in error_msg.lower() and 'invalid input syntax' in error_msg.lower():
-                logging.error(f"=== BOOLEAN TYPE ERROR DETECTED ===")
+            # Extract invalid value and column type from error message
+            import re
+
+            # Try to extract the problematic value and type from error
+            type_match = re.search(r'invalid input syntax for type (\w+(?:\s+\w+)?): "([^"]+)"', error_msg)
+
+            if type_match:
+                error_type = type_match.group(1)
+                invalid_value = type_match.group(2)
+
+                logging.error("\n" + "="*80)
+                logging.error(f"🚨 COLUMN MISMATCH DETECTED - INSERTING INTO WRONG COLUMN 🚨")
+                logging.error("="*80)
                 logging.error(f"Table: {schema}.{table_name}")
-                logging.error(f"Error: {error_msg}")
+                logging.error(f"Error Type: {error_type}")
+                logging.error(f"Invalid Value Attempting Insert: '{invalid_value}'")
+                logging.error("="*80)
 
-                # Extract the invalid value from error message dynamically
-                import re
-                match = re.search(r'invalid input syntax for type boolean: "([^"]+)"', error_msg)
-                invalid_value = match.group(1) if match else None
+                # Find which columns are the problematic type
+                problem_columns = [col for col, dtype in column_types.items() if error_type.lower() in dtype.lower()]
+                logging.error(f"Columns with type '{error_type}': {problem_columns}")
 
-                if invalid_value:
-                    logging.error(f"Invalid value for boolean column: '{invalid_value}'")
+                # Search through the batch rows to find which row has this value
+                logging.error(f"\nSearching batch rows for value '{invalid_value}'...")
+                for batch_idx, row_str in enumerate(batch):
+                    if invalid_value in row_str:
+                        logging.error(f"\n>>> FOUND IN BATCH ROW {batch_idx + i//batch_size}:")
+                        logging.error(f"    Row string: {row_str}")
 
-                    # Find which column(s) are boolean
-                    boolean_columns = [col for col, dtype in column_types.items() if 'bool' in dtype.lower()]
-                    logging.error(f"Boolean columns in table: {boolean_columns}")
+                        # Try to extract uid from the row if it exists
+                        try:
+                            # Find uid in the corresponding dataframe row
+                            actual_row_idx = i + batch_idx
+                            if actual_row_idx < len(df):
+                                actual_row = df.iloc[actual_row_idx]
+                                uid = actual_row.get('uid', 'NOT FOUND')
+                                logging.error(f"    UID: {uid}")
+                                logging.error(f"\n    Full row values:")
 
-                    # Check dataframe for columns with this problematic value
-                    logging.error(f"Searching DataFrame for value '{invalid_value}' in boolean columns...")
-                    for col in boolean_columns:
-                        if col in df.columns:
-                            # Convert to string for comparison
-                            col_str = df[col].astype(str).str.strip()
-                            has_invalid = (col_str == invalid_value).any()
-                            if has_invalid:
-                                count = (col_str == invalid_value).sum()
-                                logging.error(f"*** FOUND: Column '{col}' has {count} occurrences of '{invalid_value}' ***")
-                                # Show sample values
-                                sample_vals = df[col].dropna().astype(str).unique()[:20]
-                                logging.error(f"Sample values in '{col}': {list(sample_vals)}")
-                                # Show the DataFrame dtype for this column
-                                logging.error(f"DataFrame dtype for '{col}': {df[col].dtype}")
-                else:
-                    # If we couldn't extract the value, still show boolean columns
-                    boolean_columns = [col for col, dtype in column_types.items() if 'bool' in dtype.lower()]
-                    logging.error(f"Boolean columns in table: {boolean_columns}")
-                    # Show all unique values in boolean columns
-                    for col in boolean_columns:
-                        if col in df.columns:
-                            sample_vals = df[col].dropna().astype(str).unique()[:20]
-                            logging.error(f"All values in boolean column '{col}': {list(sample_vals)}")
+                                # Print all column names with their values
+                                for col_idx, col_name in enumerate(valid_columns):
+                                    col_value = actual_row.get(col_name, 'NOT FOUND')
+                                    if str(col_value) == invalid_value:
+                                        logging.error(f"      [{col_idx}] {col_name}: '{col_value}' ⚠️ MATCHES ERROR VALUE")
+                                    else:
+                                        logging.error(f"      [{col_idx}] {col_name}: '{col_value}'")
+                        except Exception as detail_err:
+                            logging.error(f"    Could not extract full row details: {detail_err}")
 
-                logging.error(f"=== END BOOLEAN ERROR DETAILS ===")
+                logging.error("\n" + "="*80)
+                logging.error("INTERPRETATION: The value in the dataframe does NOT match its")
+                logging.error("intended column position. Check if columns are shifted or if")
+                logging.error("data is being placed in the wrong column during transformation.")
+                logging.error("="*80 + "\n")
 
             # Re-raise the exception after logging
             raise
