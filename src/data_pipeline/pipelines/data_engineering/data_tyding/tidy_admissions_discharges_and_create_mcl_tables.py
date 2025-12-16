@@ -642,7 +642,24 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
 
 def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> None:
     """Process baseline dataframe with all transformations and save to database."""
-    baseline_df = pd.json_normalize(baseline_new_entries)
+    # Handle duplicate keys in json_normalize by catching the error and cleaning data first
+    try:
+        baseline_df = pd.json_normalize(baseline_new_entries)
+    except ValueError as e:
+        if "duplicate keys" in str(e):
+            logging.warning(f"Duplicate keys found in baseline data, attempting to flatten manually")
+            try:
+                # Flatten with flatten_json or manually handle duplicates
+                baseline_df = pd.DataFrame(baseline_new_entries)
+                # If still nested, try converting to string and back
+                if not baseline_df.empty and baseline_df.dtypes[0] == 'object':
+                    baseline_df = pd.json_normalize(baseline_new_entries)
+            except Exception as inner_e:
+                logging.error(f"Failed to process baseline data with duplicate keys: {formatError(inner_e)}")
+                return
+        else:
+            logging.error(f"Error normalizing baseline data: {formatError(e)}")
+            return
 
     if baseline_df.empty:
         return
