@@ -64,7 +64,7 @@ def load_processed_script(script_type: str) -> OrderedDictType[str, Dict[str, st
         with open(filename, 'r') as file:
             items = json.load(file)
             return OrderedDict(items)
-    return None
+    return OrderedDict()
 # Set up basic logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -225,7 +225,7 @@ def merge_two_script_outputs(
 
 def process_dataframe_with_types(
     df: pd.DataFrame,
-    merged_data: Dict[str, Dict[str, str]]
+    merged_data: Dict[str, Dict[str, str]],
 ) -> pd.DataFrame:
     """
     Process dataframe columns using metadata from merged_data.
@@ -279,10 +279,13 @@ def process_dataframe_with_types(
                     columns_to_process[new_key] = pd.to_numeric(extracted_values, errors='coerce')
                 elif data_type in ['datetime', 'timestamp', 'date']:
                     # Normalize timezone to avoid tz-naive/tz-aware errors
-                    dt_series = pd.to_datetime(extracted_values, errors='coerce')
-                    if hasattr(dt_series.dt, 'tz') and dt_series.dt.tz is not None:
-                        dt_series = dt_series.dt.tz_localize(None)
+                    dt_series = pd.to_datetime(extracted_values, errors="coerce")
+
+                    if isinstance(dt_series, pd.Series):
+                        dt_series = dt_series.dt.tz_localize(None)  # type: ignore[attr-defined]
+
                     columns_to_process[new_key] = dt_series
+
                 else:
                     columns_to_process[new_key] = extracted_values.astype(str)
 
@@ -313,6 +316,7 @@ def process_dataframe_with_types(
         else:
             # If it's a base column and not marked for drop, include it
             if col not in columns_to_drop:
+                
                 normalized_col = col.lower().strip()
                 columns_to_process[normalized_col] = processed_df[col]
                 # Track column order
@@ -329,6 +333,129 @@ def process_dataframe_with_types(
     logging.info(f"Processed {len(df.columns)} input columns → {len(result_df.columns)} output columns")
 
     return result_df
+
+def process_dataframe_with_types_raw_data(
+    df: pd.DataFrame,
+    merged_data: Dict[str, Dict[str, str]],
+) -> pd.DataFrame:
+    """
+    Process dataframe columns using metadata from merged_data.
+    Handles .value and .label suffixes and preserves base columns.
+
+    Maintains original column casing and stable column ordering.
+    """
+
+    processed_df = df.copy()
+    columns_to_process: OrderedDict[str, pd.Series] = OrderedDict()
+    column_order: list[str] = []
+    columns_to_drop: set[str] = set()
+
+    bool_map = {
+        "y": True, "yes": True, "true": True, "1": True, True: True,
+        "n": False, "no": False, "false": False, "0": False, False: False,
+    }
+
+    for col in processed_df.columns:
+        col_str = str(col)
+
+        # Drop malformed / internal columns early
+        if "none" in col_str.lower():
+            columns_to_drop.add(col)
+            continue
+
+        if "." not in col_str:
+            # Base column (no suffix)
+            if col not in columns_to_drop:
+                columns_to_process[col] = processed_df[col]
+                if col not in column_order:
+                    column_order.append(col)
+            continue
+
+        base_key, suffix = col_str.split(".", 1)
+
+        # Drop internal UID columns
+        if "uid" in base_key.lower():
+            columns_to_drop.add(col)
+            continue
+
+        meta = merged_data.get(base_key)
+        if not meta:
+            continue
+
+        data_type = (meta.get("dataType") or "").lower()
+        new_key = base_key  # preserve original casing
+
+        if suffix == "value":
+            extracted = processed_df[col].apply(extract_value_from_json)
+
+            if data_type in {"dropdown", "single_select_option", "period"}:
+                series = extracted.astype(str)
+
+            elif data_type == "multi_select_option":
+                series = extracted.astype(str).apply(clean_to_jsonb_array)
+
+            elif data_type == "boolean":
+                series = (
+                    extracted.astype(str)
+                    .str.strip()
+                    .str.lower()
+                    .map(bool_map)
+                    .fillna(False)
+                )
+
+            elif data_type in {"number", "integer", "float"}:
+                series = pd.to_numeric(extracted, errors="coerce")
+
+            elif data_type in {"datetime", "timestamp", "date"}:
+                series = pd.to_datetime(extracted, errors="coerce")
+                series = series.dt.tz_localize(None)  # safe for tz-naive & aware
+
+            else:
+                series = extracted.astype(str)
+
+            columns_to_process[new_key] = ensure_series(series)
+            if new_key not in column_order:
+                column_order.append(new_key)
+
+            columns_to_drop.add(col)
+
+        elif suffix == "label" and data_type in {
+            "dropdown",
+            "single_select_option",
+            "period",
+            "multi_select_option",
+        }:
+            extracted = processed_df[col].apply(extract_label_from_json)
+            label_key = f"{new_key}_label"
+
+            if data_type == "multi_select_option":
+                series = extracted.astype(str).apply(clean_to_jsonb_array)
+            else:
+                series = extracted.astype(str)
+
+            columns_to_process[label_key] = series
+            if label_key not in column_order:
+                column_order.append(label_key)
+
+            columns_to_drop.add(col)
+
+    # Build final DataFrame
+    result_df = pd.DataFrame(columns_to_process)
+
+    # Enforce column order safely (always returns DataFrame)
+    ordered_cols = [c for c in column_order if c in result_df.columns]
+    result_df = result_df.loc[:, ordered_cols]
+
+    logging.info(
+        f"Processed {len(df.columns)} input columns → {len(result_df.columns)} output columns"
+    )
+
+    return result_df
+
+
+def ensure_series(value: object) -> pd.Series:
+    return value if isinstance(value, pd.Series) else pd.Series(value)
+
 
 def clean_to_jsonb_array(val):
 

@@ -186,6 +186,10 @@ def process_joined_admissions_discharges() -> None:
     # Remove single character and digit-only columns
     clean_jn_adm_dis = clean_jn_adm_dis.loc[:, ~clean_jn_adm_dis.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
 
+    # Ensure clean_jn_adm_dis is a DataFrame
+    if isinstance(clean_jn_adm_dis, pd.Series):
+        clean_jn_adm_dis = clean_jn_adm_dis.to_frame()
+
     # Add new columns if needed
     add_columns_if_needed(clean_jn_adm_dis, 'clean_joined_adm_discharges')
 
@@ -216,6 +220,8 @@ def process_unmatched_discharges() -> None:
 
     if not jn_adm_dis_2.empty:
         filtered_df = jn_adm_dis_2[jn_adm_dis_2['neotreeoutcome'].notna() & (jn_adm_dis_2['neotreeoutcome'] != '')]
+        if isinstance(filtered_df, pd.Series):
+            filtered_df = filtered_df.to_frame()
         generateAndRunUpdateQuery('derived.clean_joined_adm_discharges', filtered_df)
         deduplicate_table('clean_joined_adm_discharges')
 
@@ -305,8 +311,13 @@ def createCleanJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.D
             keep='first'
         )
 
+    # Ensure jn_adm_dis is a DataFrame
+    if isinstance(jn_adm_dis, pd.Series):
+        jn_adm_dis = jn_adm_dis.to_frame()
+
     # Add non-existing columns to table
-    add_columns_if_needed(jn_adm_dis, 'clean_joined_adm_discharges')
+    if isinstance(jn_adm_dis, pd.DataFrame):
+        add_columns_if_needed(jn_adm_dis, 'clean_joined_adm_discharges')
 
     return jn_adm_dis
 

@@ -13,6 +13,7 @@ from .nodes_grouped.step_4_nodes.summary_counts import create_summary_counts
 from .nodes_grouped.step_4_nodes.summary_discharge_diagnosis import create_summary_diagnosis
 from .nodes_grouped.step_5_nodes.grant_privileges import grant_privileges
 from .nodes_grouped.step_6_nodes.data_clean_up import clean_data_for_research
+from .nodes_grouped.step_7_nodes.merge_all import merge_raw_admissions_and_discharges
 
 
 #A File That is used to create all the nodes that make up the data pipeline
@@ -89,6 +90,10 @@ grant_privileges_node = node(
 # Create Clean Data Node and Pass Create Convinience Views Output
 clean_derived_data_node = node(
     clean_data_for_research,inputs = "create_summary_counts_output", outputs = "clean_derived_data_output"
+)
+
+merge_raw_data_node = node(
+    merge_raw_admissions_and_discharges,inputs = "clean_derived_data_output", outputs = "merge_raw_data_output"
 )
  
  

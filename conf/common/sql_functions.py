@@ -451,7 +451,7 @@ def insert_old_adm_query(target_table, source_table, columns):
     
     return insert_select_statement
     
-def is_date_column_by_name(column_name: str, table_name: str = None) -> bool:
+def is_date_column_by_name(column_name: str, table_name: str = '') -> bool:
     """
     VERY CONSERVATIVE date column detection - only matches exact system timestamp columns.
 
@@ -1915,3 +1915,206 @@ def store_field_metadata(table_name: str, merged_data: Dict[str, Dict[str, str]]
         inject_sql(insert_query, f"INSERT metadata batch {i//batch_size + 1} for {table_name}")
 
     logging.info(f"Stored metadata for {len(values_rows)} fields in {table_name}")
+
+
+def update_has_admission_to_is_closed(
+    table_name: str,
+    schema: str = 'derived',
+    admissions_incoming_df: Optional[pd.DataFrame] = None
+) -> int:
+    """
+    Update records marked as has_admission to is_closed when a matching discharge is found.
+
+    This function finds records in the database that have:
+    - has_admission = True
+    - has_discharge = False (or is_closed = False)
+
+    Then checks if there's a matching discharge record in the incoming data and updates
+    the database record to set is_closed = True and merge discharge fields.
+
+    Args:
+        table_name: Name of the table to update
+        schema: Database schema (default: 'derived')
+        admissions_incoming_df: Optional DataFrame with incoming discharge data to match against
+
+    Returns:
+        Number of records updated
+    """
+    try:
+        if not engine or not text:
+            raise RuntimeError("Database engine not initialized")
+
+        # Build query to find records with has_admission but no discharge
+        query = f"""
+            SELECT uid, facility, unique_key
+            FROM {schema}."{table_name}"
+            WHERE has_admission = TRUE
+            AND (has_discharge = FALSE OR is_closed = FALSE)
+            LIMIT 10000
+        ;;"""
+
+        df = run_query_and_return_df(query)
+        if df.empty:
+            logging.info(f"No records to update in {schema}.{table_name} with has_admission and no discharge")
+            return 0
+
+        # If incoming admissions data provided, check for matches
+        records_to_update = []
+        if admissions_incoming_df is not None and not admissions_incoming_df.empty:
+            for _, db_record in df.iterrows():
+                # Find matching discharge in incoming data
+                matching_dis = admissions_incoming_df[
+                    (admissions_incoming_df['uid'] == db_record['uid']) &
+                    (admissions_incoming_df['facility'] == db_record['facility'])
+                ]
+
+                if not matching_dis.empty:
+                    # Build update record with discharge data
+                    update_record = {'uid': db_record['uid'], 'facility': db_record['facility'],
+                                    'unique_key': db_record['unique_key']}
+                    # Add discharge fields from matching record
+                    dis_record = matching_dis.iloc[0]
+                    for col in dis_record.index:
+                        if col not in ['uid', 'facility']:
+                            update_record[col] = dis_record[col]
+
+                    update_record['has_discharge'] = True
+                    update_record['is_closed'] = True
+                    records_to_update.append(update_record)
+
+        if records_to_update:
+            update_df = pd.DataFrame(records_to_update)
+            generateAndRunUpdateQuery(f"{schema}.{table_name}", update_df)
+            logging.info(f"Updated {len(records_to_update)} records in {schema}.{table_name} - set is_closed=True with discharge data")
+            return len(records_to_update)
+
+        logging.info(f"No matching discharge records found for has_admission records in {schema}.{table_name}")
+        return 0
+
+    except Exception as e:
+        logging.error(f"Error updating has_admission to is_closed in {schema}.{table_name}: {e}")
+        return 0
+
+
+def update_has_discharge_with_admission(
+    table_name: str,
+    schema: str = 'derived',
+    admissions_incoming_df: Optional[pd.DataFrame] = None
+) -> int:
+    """
+    Update records marked as has_discharge with incoming admission data when a matching admission is found.
+
+    This function finds records in the database that have:
+    - has_discharge = True
+    - has_admission = False (or is_closed = False)
+
+    Then checks if there's a matching admission record in the incoming data and updates
+    the database record to set is_closed = True and merge admission fields.
+
+    Args:
+        table_name: Name of the table to update
+        schema: Database schema (default: 'derived')
+        admissions_incoming_df: Optional DataFrame with incoming admission data to match against
+
+    Returns:
+        Number of records updated
+    """
+    try:
+        if not engine or not text:
+            raise RuntimeError("Database engine not initialized")
+
+        # Build query to find records with has_discharge but no admission
+        query = f"""
+            SELECT uid, facility, unique_key
+            FROM {schema}."{table_name}"
+            WHERE has_discharge = TRUE
+            AND (has_admission = FALSE OR is_closed = FALSE)
+            LIMIT 10000
+        ;;"""
+
+        df = run_query_and_return_df(query)
+        if df.empty:
+            logging.info(f"No records to update in {schema}.{table_name} with has_discharge and no admission")
+            return 0
+
+        # If incoming admissions data provided, check for matches
+        records_to_update = []
+        if admissions_incoming_df is not None and not admissions_incoming_df.empty:
+            for _, db_record in df.iterrows():
+                # Find matching admission in incoming data
+                matching_adm = admissions_incoming_df[
+                    (admissions_incoming_df['uid'] == db_record['uid']) &
+                    (admissions_incoming_df['facility'] == db_record['facility'])
+                ]
+
+                if not matching_adm.empty:
+                    # Build update record with admission data
+                    update_record = {'uid': db_record['uid'], 'facility': db_record['facility'],
+                                    'unique_key': db_record['unique_key']}
+                    # Add admission fields from matching record
+                    adm_record = matching_adm.iloc[0]
+                    for col in adm_record.index:
+                        if col not in ['uid', 'facility']:
+                            update_record[col] = adm_record[col]
+
+                    update_record['has_admission'] = True
+                    update_record['is_closed'] = True
+                    records_to_update.append(update_record)
+
+        if records_to_update:
+            update_df = pd.DataFrame(records_to_update)
+            generateAndRunUpdateQuery(f"{schema}.{table_name}", update_df)
+            logging.info(f"Updated {len(records_to_update)} records in {schema}.{table_name} - set is_closed=True with admission data")
+            return len(records_to_update)
+
+        logging.info(f"No matching admission records found for has_discharge records in {schema}.{table_name}")
+        return 0
+
+    except Exception as e:
+        logging.error(f"Error updating has_discharge with admission in {schema}.{table_name}: {e}")
+        return 0
+
+
+def reconcile_merged_records(
+    table_name: str,
+    schema: str = 'derived',
+    admissions_df: Optional[pd.DataFrame] = None,
+    discharges_df: Optional[pd.DataFrame] = None
+) -> Dict[str, int]:
+    """
+    Reconcile merged records by updating database records with incoming data.
+
+    This is a convenience function that performs both:
+    1. Update has_admission records to is_closed with matching discharge data
+    2. Update has_discharge records to is_closed with matching admission data
+
+    Args:
+        table_name: Name of the table to reconcile
+        schema: Database schema (default: 'derived')
+        admissions_df: DataFrame with incoming admission data
+        discharges_df: DataFrame with incoming discharge data
+
+    Returns:
+        Dictionary with update counts: {'has_admission_updates': int, 'has_discharge_updates': int}
+    """
+    results = {}
+
+    try:
+        # Update records with has_admission using discharge data
+        results['has_admission_updates'] = update_has_admission_to_is_closed(
+            table_name, schema, discharges_df
+        )
+
+        # Update records with has_discharge using admission data
+        results['has_discharge_updates'] = update_has_discharge_with_admission(
+            table_name, schema, admissions_df
+        )
+
+        total_updates = results['has_admission_updates'] + results['has_discharge_updates']
+        logging.info(f"Reconciliation complete for {schema}.{table_name}: {total_updates} total records updated")
+
+        return results
+
+    except Exception as e:
+        logging.error(f"Error during reconciliation of {schema}.{table_name}: {e}")
+        return {'has_admission_updates': 0, 'has_discharge_updates': 0}
