@@ -642,7 +642,7 @@ def read_new_smch_admissions_query():
             "DateTimeAdmission.value">='2021-02-01' AND facility = 'SMCH';;'''
 
 def read_raw_data_not_joined_in_all_table(table,condition):
-    query = f'select a.* from derived.{table} where {condition};'
+    query = f'select a.* from derived.{table} a where {condition};'
     return query
 
 

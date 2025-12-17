@@ -362,7 +362,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
     # Create derived columns
     adm_df = create_columns(adm_df)
     if adm_df is not None and not adm_df.empty:
-        adm_df = adm_df[adm_df['uid'] != 'Unknown']
+        adm_df = adm_df[adm_df['uid'] != 'Unknown'].to_frame().T
 
         # Clean column names
         adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_", regex=True)
@@ -447,7 +447,7 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
     # Create derived columns and filter
     dis_df = create_columns(dis_df)
     if dis_df is not None and not dis_df.empty:
-        dis_df = dis_df[dis_df['uid'] != 'Unknown']
+        dis_df = dis_df[dis_df['uid'] != 'Unknown'].to_frame().T
 
         # Add new columns to database if needed
         add_new_columns_if_needed(dis_df, 'discharges')
@@ -505,7 +505,7 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
     # Create derived columns and filter
     mat_outcomes_df = create_columns(mat_outcomes_df)
     if mat_outcomes_df is not None and not mat_outcomes_df.empty:
-        mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown']
+        mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown'].to_frame().T
 
         # Add new columns to database if needed
         add_new_columns_if_needed(mat_outcomes_df, 'maternal_outcomes')
@@ -556,7 +556,7 @@ def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any)
     vit_signs_df = calculate_time_spent(vit_signs_df)
 
     # Filter
-    vit_signs_df = vit_signs_df[vit_signs_df['uid'] != 'Unknown']
+    vit_signs_df = vit_signs_df[vit_signs_df['uid'] != 'Unknown'].to_frame().T
 
     # Add new columns to database if needed
     add_new_columns_if_needed(vit_signs_df, 'vitalsigns')
@@ -589,6 +589,7 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
     if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and
         neolab_df['DateBCR.value'].notna().any() and neolab_df['DateBCT.value'].notna().any()):
         # Calculate timedelta and convert to hours (remove timezone to avoid conversion issues)
+        
         timedelta_result = (
             pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None) -
             pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None)
@@ -623,7 +624,7 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
                 neolab_df.sort_values(by=['uid', 'episode'])
 
         # Filter
-        neolab_df = neolab_df[neolab_df['uid'] != 'Unknown']
+        neolab_df = neolab_df[neolab_df['uid'] != 'Unknown'].to_frame().T
         add_new_columns_if_needed(neolab_df, 'neolab')
         # Validate BEFORE transformation to log raw data issues
         validate_dataframe_with_ge(neolab_df, 'neolab')
@@ -644,22 +645,15 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
     """Process baseline dataframe with all transformations and save to database."""
     # Handle duplicate keys in json_normalize by catching the error and cleaning data first
     try:
-        baseline_df = pd.json_normalize(baseline_new_entries)
-    except ValueError as e:
-        if "duplicate keys" in str(e):
-            logging.warning(f"Duplicate keys found in baseline data, attempting to flatten manually")
-            try:
-                # Flatten with flatten_json or manually handle duplicates
-                baseline_df = pd.DataFrame(baseline_new_entries)
-                # If still nested, try converting to string and back
-                if not baseline_df.empty and baseline_df.dtypes[0] == 'object':
-                    baseline_df = pd.json_normalize(baseline_new_entries)
-            except Exception as inner_e:
-                logging.error(f"Failed to process baseline data with duplicate keys: {formatError(inner_e)}")
-                return
-        else:
-            logging.error(f"Error normalizing baseline data: {formatError(e)}")
-            return
+        baseline_df = pd.json_normalize(baseline_new_entries, sep='__')
+    except Exception as e:
+        logging.error("Baseline normalization failed", exc_info=True)
+        return
+
+    if baseline_df.columns.duplicated().any():
+        dupes = baseline_df.columns[baseline_df.columns.duplicated()]
+        logging.warning(f"Duplicate columns detected: {dupes.tolist()}")
+        baseline_df = baseline_df.loc[:, ~baseline_df.columns.duplicated()]
 
     if baseline_df.empty:
         return
@@ -672,8 +666,8 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
     result = format_date_without_timezone(baseline_df, date_column_types)
     if result is not None:
         baseline_df = result
-
-    # Calculate time spent
+    if isinstance(baseline_df, pd.Series):
+        baseline_df = baseline_df.to_frame().T  # Converts Series to single-row DataFrame
     baseline_df = calculate_time_spent(baseline_df)
 
     # Format numeric columns
@@ -711,7 +705,7 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
             baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'], errors='coerce')
 
         # Filter
-        baseline_df = baseline_df[baseline_df['uid'] != 'Unknown']
+        baseline_df = baseline_df[baseline_df['uid'] != 'Unknown'].to_frame().T
 
         # Add new columns to database if needed
         add_new_columns_if_needed(baseline_df, 'baseline')

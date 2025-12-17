@@ -163,7 +163,7 @@ def finalize_script_dataframe(df: pd.DataFrame, script_name: str) -> pd.DataFram
     df = convert_false_numbers_to_text(df, 'derived', script_name)
 
     # Remove single character and digit-only columns
-    df = df.loc[:, ~df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+    df = df.loc[:, ~df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)].copy()
 
     # Transform matching labels
     df = transform_matching_labels(df, script=script_name)
