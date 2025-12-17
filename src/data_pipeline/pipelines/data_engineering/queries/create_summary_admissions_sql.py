@@ -93,10 +93,11 @@ def summary_admissions_query():
   return   prefix +f''' SELECT "facility" AS "Facility Name",
                     "uid" AS "NeoTree_ID",
                      CASE
+                    WHEN pg_typeof("DateTimeAdmission.value")::text LIKE '%timestamp%' THEN "DateTimeAdmission.value"::timestamp without time zone
                     WHEN "DateTimeAdmission.value"::TEXT ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
-                    to_timestamp("DateTimeAdmission.value", 'DD Mon,YYYY')
+                    to_timestamp("DateTimeAdmission.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                     WHEN "DateTimeAdmission.value"::TEXT ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
-                    to_timestamp("DateTimeAdmission.value", 'YYYY Mon,DD')
+                    to_timestamp("DateTimeAdmission.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                     ELSE NULL
                     END AS "DateTime Admission",
                     "Readmission.label" AS "Re-admission?",
@@ -181,10 +182,11 @@ def summary_admissions_query():
                     "MatHIVtest.label" AS "HIV test?",
                     "ANVDRL.label" AS "ANVDRL",
                     CASE
+                    WHEN pg_typeof("DateHIVtest.value")::text LIKE '%timestamp%' THEN "DateHIVtest.value"::timestamp without time zone
                     WHEN "DateHIVtest.value"::TEXT ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
-                    to_timestamp("DateHIVtest.value", 'DD Mon,YYYY')
+                    to_timestamp("DateHIVtest.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                     WHEN "DateHIVtest.value"::TEXT ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
-                    to_timestamp("DateHIVtest.value", 'YYYY Mon,DD')
+                    to_timestamp("DateHIVtest.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                     ELSE NULL
                     END AS "Date of HIV test",
                     "TestThisPreg.label" AS "When HIV test was done",
@@ -193,10 +195,11 @@ def summary_admissions_query():
                     "LengthHAART.label" AS "Length of HAART",
                     "NVPgiven.label" AS "NVP given?",
                      CASE
+                    WHEN pg_typeof("ANVDRLDate.value")::text LIKE '%timestamp%' THEN "ANVDRLDate.value"::timestamp without time zone
                     WHEN "ANVDRLDate.value"::TEXT ~ '^[0-9]{1,2} [A-Za-z]{3},[0-9]{4}$' THEN
-                    to_timestamp("ANVDRLDate.value", 'DD Mon,YYYY')
+                    to_timestamp("ANVDRLDate.value"::text || ' 00:00:00', 'DD Mon,YYYY HH24:MI:SS')
                     WHEN "ANVDRLDate.value"::TEXT ~ '^[0-9]{4} [A-Za-z]{3},[0-9]{1,2}$' THEN
-                    to_timestamp("ANVDRLDate.value", 'YYYY Mon,DD')
+                    to_timestamp("ANVDRLDate.value"::text || ' 00:00:00', 'YYYY Mon,DD HH24:MI:SS')
                     ELSE NULL
                     END AS "ANVDRLDate",
                     "DateVDRLSameHIV.value" AS "Date of VDRL Same as HIV Test Date?",
