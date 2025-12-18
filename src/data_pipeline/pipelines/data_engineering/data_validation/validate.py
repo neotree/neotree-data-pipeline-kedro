@@ -305,77 +305,6 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         errors.append(err_msg)
 
     # ============================================================================
-    # GROUP 3: COMPLIANCE - Sensitive data & security
-    # ============================================================================
-    logger.info("\n[COMPLIANCE-1] SENSITIVE/CONFIDENTIAL DATA CHECK")
-
-    # Known sensitive keywords (static list)
-    drop_keywords = ['surname', 'firstname', 'dobtob', 'column_name', 'mothcell',
-                     'dob.value', 'dob.label', 'kinaddress', 'kincell', 'kinname']
-
-    found_sensitive_columns = []
-    for col in df.columns:
-        col_lower = col.lower()
-        if col_lower in drop_keywords:
-            found_sensitive_columns.append(col)
-
-    # Check for fields marked as confidential in schema (dynamic)
-    confidential_fields_found = []
-    # Handle both dict and list formats
-    schema_fields = field_info.values() if isinstance(field_info, dict) else schema
-    for field in schema_fields:
-        field_key = field.get('key')
-        is_confidential = field.get('confidential', False)
-
-        if is_confidential:
-            # Check if this field exists in the dataset
-            value_col = f"{field_key}.value"
-            label_col = f"{field_key}.label"
-
-            if value_col in df.columns or label_col in df.columns:
-                field_label = field.get('label', field_key)
-                confidential_fields_found.append({
-                    'key': field_key,
-                    'label': field_label,
-                    'has_value': value_col in df.columns,
-                    'has_label': label_col in df.columns
-                })
-
-    # Report both known keywords and schema-based confidential fields together
-    total_sensitive = len(found_sensitive_columns) + len(confidential_fields_found)
-
-    if found_sensitive_columns:
-        logger.error(f"❌ {len(found_sensitive_columns)} known sensitive column(s): {', '.join(found_sensitive_columns)}")
-        warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
-
-    if confidential_fields_found:
-        logger.error(f"❌ {len(confidential_fields_found)} schema-based confidential field(s):")
-        for field in confidential_fields_found[:3]:  # Show max 3
-            columns = []
-            if field['has_value']:
-                columns.append(f"{field['key']}.value")
-            if field['has_label']:
-                columns.append(f"{field['key']}.label")
-
-            # Show sample UIDs with data
-            sample_info = ""
-            if 'uid' in df.columns and field['has_value']:
-                value_col = f"{field['key']}.value"
-                non_null_mask = df[value_col].notna()
-                if non_null_mask.sum() > 0:
-                    sample_uids = get_safe_sample_uids(df, non_null_mask, 2)
-                    sample_info = f" | UIDs: {sample_uids}"
-
-            logger.error(f"   {field['key']} ({field['label']}): {', '.join(columns)}{sample_info}")
-
-        if len(confidential_fields_found) > 3:
-            logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
-        errors.append(f"Found {len(confidential_fields_found)} confidential fields in dataset")
-
-    if total_sensitive == 0:
-        logger.info("✓ No sensitive/confidential data detected")
-
-    # ============================================================================
     # GROUP 2: IMPLEMENTATION - Business logic & validation rules
     # ============================================================================
     logger.info("\n[IMPLEMENTATION-1] FIELD VALIDATION")
@@ -644,47 +573,8 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
             })
 
     # ============================================================================
-    # REPORT RESULTS IN STRUCTURED SECTIONS
-    # ============================================================================
-
-    # IMPLEMENTATION-2: REQUIRED FIELDS (Business logic validation)
-    logger.info("\n[IMPLEMENTATION-2] REQUIRED FIELDS")
-    if required_results:
-        for result in required_results:
-            # Determine the label for sample identifiers
-            if result.get('is_uid_field', False):
-                identifier_label = "unique_keys" if 'unique_key' in df.columns else "Row indices"
-            else:
-                identifier_label = "UIDs"
-
-            logger.error(f"❌ '{result['base_key']}': {result['null_count']}/{result['total_count']} ({result['null_pct']:.1f}%) NULL | {identifier_label}: {result['sample_identifiers']}")
-            errors.append(f"Required field '{result['base_key']}' has {result['null_count']} NULL values")
-        logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
-    else:
-        # Count how many required fields were checked
-        required_count = sum(1 for f in field_info.values() if not f.get('optional', True))
-        if required_count > 0:
-            logger.info(f"✓ All {required_count} required fields populated")
-
-    # IMPLEMENTATION-3: VALUE RANGE VALIDATION (Business rules)
-    logger.info("\n[IMPLEMENTATION-3] VALUE RANGES")
-    if range_results:
-        for result in range_results:
-            violation_count = len(result['violations'])
-            violation_pct = (violation_count / result['total']) * 100
-            samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in result['violations'][:2]])
-            logger.error(f"❌ '{result['base_key']}': {violation_count}/{result['total']} ({violation_pct:.1f}%) out of [{result['min_val']}, {result['max_val']}] | {samples_str}")
-            errors.append(f"Field '{result['base_key']}': {violation_count} out-of-range values")
-        logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
-    else:
-        # Count fields with actual (non-empty) min or max values
-        range_count = sum(1 for f in field_info.values()
-                         if (f.get('minValue') is not None and str(f.get('minValue')).strip() != '') or
-                            (f.get('maxValue') is not None and str(f.get('maxValue')).strip() != ''))
-        if range_count > 0:
-            logger.info(f"✓ All {range_count} range-validated fields valid")
-
     # TECH-2: DATA TYPE VALIDATION (Technical/format validation)
+    # ============================================================================
     logger.info("\n[TECH-2] DATA TYPES")
     type_errors_count = len(type_results) + len(label_results)
 
@@ -706,7 +596,9 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     else:
         logger.info(f"Summary: {type_errors_count} fields with errors")
 
+    # ============================================================================
     # TECH-3: DATA QUALITY METRICS (Technical quality & integrity)
+    # ============================================================================
     logger.info("\n[TECH-3] DATA QUALITY")
 
     # TECH-3.1 Completeness & NULL Analysis
@@ -803,6 +695,47 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         avg_records_per_uid = total_rows / unique_uids if unique_uids > 0 else 0
         logger.info(f"   UIDs: {unique_uids} unique | {total_rows} total rows | Avg: {avg_records_per_uid:.2f} records/UID")
 
+    # ============================================================================
+    # REPORT RESULTS IN STRUCTURED SECTIONS
+    # ============================================================================
+
+    # IMPLEMENTATION-2: REQUIRED FIELDS (Business logic validation)
+    logger.info("\n[IMPLEMENTATION-2] REQUIRED FIELDS")
+    if required_results:
+        for result in required_results:
+            # Determine the label for sample identifiers
+            if result.get('is_uid_field', False):
+                identifier_label = "unique_keys" if 'unique_key' in df.columns else "Row indices"
+            else:
+                identifier_label = "UIDs"
+
+            logger.error(f"❌ '{result['base_key']}': {result['null_count']}/{result['total_count']} ({result['null_pct']:.1f}%) NULL | {identifier_label}: {result['sample_identifiers']}")
+            errors.append(f"Required field '{result['base_key']}' has {result['null_count']} NULL values")
+        logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
+    else:
+        # Count how many required fields were checked
+        required_count = sum(1 for f in field_info.values() if not f.get('optional', True))
+        if required_count > 0:
+            logger.info(f"✓ All {required_count} required fields populated")
+
+    # IMPLEMENTATION-3: VALUE RANGE VALIDATION (Business rules)
+    logger.info("\n[IMPLEMENTATION-3] VALUE RANGES")
+    if range_results:
+        for result in range_results:
+            violation_count = len(result['violations'])
+            violation_pct = (violation_count / result['total']) * 100
+            samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in result['violations'][:2]])
+            logger.error(f"❌ '{result['base_key']}': {violation_count}/{result['total']} ({violation_pct:.1f}%) out of [{result['min_val']}, {result['max_val']}] | {samples_str}")
+            errors.append(f"Field '{result['base_key']}': {violation_count} out-of-range values")
+        logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
+    else:
+        # Count fields with actual (non-empty) min or max values
+        range_count = sum(1 for f in field_info.values()
+                         if (f.get('minValue') is not None and str(f.get('minValue')).strip() != '') or
+                            (f.get('maxValue') is not None and str(f.get('maxValue')).strip() != ''))
+        if range_count > 0:
+            logger.info(f"✓ All {range_count} range-validated fields valid")
+
     # TECH-4: FINAL SUMMARY
     logger.info(f"\n{'='*60}")
     logger.info(f"SUMMARY: {script_or_id} | Rows: {len(df)} | Cols: {len(df.columns)}")
@@ -826,6 +759,77 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
             logger.warning(f"  ... and {len(warnings) - 5} more")
 
     logger.info(f"{'='*60}\n")
+
+    # ============================================================================
+    # GROUP 3: COMPLIANCE - Sensitive data & security
+    # ============================================================================
+    logger.info("\n[COMPLIANCE-1] SENSITIVE/CONFIDENTIAL DATA CHECK")
+
+    # Known sensitive keywords (static list)
+    drop_keywords = ['surname', 'firstname', 'dobtob', 'column_name', 'mothcell',
+                     'dob.value', 'dob.label', 'kinaddress', 'kincell', 'kinname']
+
+    found_sensitive_columns = []
+    for col in df.columns:
+        col_lower = col.lower()
+        if col_lower in drop_keywords:
+            found_sensitive_columns.append(col)
+
+    # Check for fields marked as confidential in schema (dynamic)
+    confidential_fields_found = []
+    # Handle both dict and list formats
+    schema_fields = field_info.values() if isinstance(field_info, dict) else schema
+    for field in schema_fields:
+        field_key = field.get('key')
+        is_confidential = field.get('confidential', False)
+
+        if is_confidential:
+            # Check if this field exists in the dataset
+            value_col = f"{field_key}.value"
+            label_col = f"{field_key}.label"
+
+            if value_col in df.columns or label_col in df.columns:
+                field_label = field.get('label', field_key)
+                confidential_fields_found.append({
+                    'key': field_key,
+                    'label': field_label,
+                    'has_value': value_col in df.columns,
+                    'has_label': label_col in df.columns
+                })
+
+    # Report both known keywords and schema-based confidential fields together
+    total_sensitive = len(found_sensitive_columns) + len(confidential_fields_found)
+
+    if found_sensitive_columns:
+        logger.error(f"❌ {len(found_sensitive_columns)} known sensitive column(s): {', '.join(found_sensitive_columns)}")
+        warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
+
+    if confidential_fields_found:
+        logger.error(f"❌ {len(confidential_fields_found)} schema-based confidential field(s):")
+        for field in confidential_fields_found[:3]:  # Show max 3
+            columns = []
+            if field['has_value']:
+                columns.append(f"{field['key']}.value")
+            if field['has_label']:
+                columns.append(f"{field['key']}.label")
+
+            # Show sample UIDs with data
+            sample_info = ""
+            if 'uid' in df.columns and field['has_value']:
+                value_col = f"{field['key']}.value"
+                non_null_mask = df[value_col].notna()
+                if non_null_mask.sum() > 0:
+                    sample_uids = get_safe_sample_uids(df, non_null_mask, 2)
+                    sample_info = f" | UIDs: {sample_uids}"
+
+            logger.error(f"   {field['key']} ({field['label']}): {', '.join(columns)}{sample_info}")
+
+        if len(confidential_fields_found) > 3:
+            logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
+        errors.append(f"Found {len(confidential_fields_found)} confidential fields in dataset")
+
+    if total_sensitive == 0:
+        logger.info("✓ No sensitive/confidential data detected")
 
 
 def not_90_percent_similar_to_label(x, reference_value):
