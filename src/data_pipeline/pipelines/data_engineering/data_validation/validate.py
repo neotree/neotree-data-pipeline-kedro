@@ -260,8 +260,10 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     else:
         field_info = {f['key']: f for f in schema}
 
-    # 1. VALIDATE UID COLUMN (CRITICAL)
-    logger.info("\n[1] UID VALIDATION")
+    # ============================================================================
+    # GROUP 1: TECH - Infrastructure, errors, data handling
+    # ============================================================================
+    logger.info("\n[TECH-1] UID SCHEMA & STRUCTURE")
 
     # Scripts that allow multiple UIDs (e.g., review/follow-up scripts where multiple records per patient are expected)
     SCRIPTS_ALLOWING_MULTIPLE_UIDS = [
@@ -302,8 +304,10 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         logger.error(err_msg)
         errors.append(err_msg)
 
-    # 2. SENSITIVE/CONFIDENTIAL DATA CHECK
-    logger.info("\n[2] SENSITIVE/CONFIDENTIAL DATA")
+    # ============================================================================
+    # GROUP 3: COMPLIANCE - Sensitive data & security
+    # ============================================================================
+    logger.info("\n[COMPLIANCE-1] SENSITIVE/CONFIDENTIAL DATA CHECK")
 
     # Known sensitive keywords (static list)
     drop_keywords = ['surname', 'firstname', 'dobtob', 'column_name', 'mothcell',
@@ -372,9 +376,9 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         logger.info("✓ No sensitive/confidential data detected")
 
     # ============================================================================
-    # OPTIMIZED COMBINED VALIDATION LOOP
-    # Combines required fields, value ranges, and data type validation in ONE pass
+    # GROUP 2: IMPLEMENTATION - Business logic & validation rules
     # ============================================================================
+    logger.info("\n[IMPLEMENTATION-1] FIELD VALIDATION")
 
     # Storage for results to be reported in sections
     required_results = []
@@ -643,8 +647,8 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     # REPORT RESULTS IN STRUCTURED SECTIONS
     # ============================================================================
 
-    # 3. REQUIRED FIELDS RESULTS
-    logger.info("\n[3] REQUIRED FIELDS")
+    # IMPLEMENTATION-2: REQUIRED FIELDS (Business logic validation)
+    logger.info("\n[IMPLEMENTATION-2] REQUIRED FIELDS")
     if required_results:
         for result in required_results:
             # Determine the label for sample identifiers
@@ -662,8 +666,8 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         if required_count > 0:
             logger.info(f"✓ All {required_count} required fields populated")
 
-    # 4. VALUE RANGE RESULTS
-    logger.info("\n[4] VALUE RANGES")
+    # IMPLEMENTATION-3: VALUE RANGE VALIDATION (Business rules)
+    logger.info("\n[IMPLEMENTATION-3] VALUE RANGES")
     if range_results:
         for result in range_results:
             violation_count = len(result['violations'])
@@ -680,8 +684,8 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         if range_count > 0:
             logger.info(f"✓ All {range_count} range-validated fields valid")
 
-    # 5. DATA TYPE RESULTS
-    logger.info("\n[5] DATA TYPES")
+    # TECH-2: DATA TYPE VALIDATION (Technical/format validation)
+    logger.info("\n[TECH-2] DATA TYPES")
     type_errors_count = len(type_results) + len(label_results)
 
     for result in type_results:
@@ -702,10 +706,10 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     else:
         logger.info(f"Summary: {type_errors_count} fields with errors")
 
-    # 6. DATA QUALITY CHECKS
-    logger.info("\n[6] DATA QUALITY")
+    # TECH-3: DATA QUALITY METRICS (Technical quality & integrity)
+    logger.info("\n[TECH-3] DATA QUALITY")
 
-    # 6.1 Completeness Check
+    # TECH-3.1 Completeness & NULL Analysis
     total_cells = df.shape[0] * df.shape[1]
     null_cells = df.isnull().sum().sum()
     completeness_pct = ((total_cells - null_cells) / total_cells) * 100
@@ -721,7 +725,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         if len(high_null_cols) > 5:
             logger.warning(f"   ... and {len(high_null_cols) - 5} more")
 
-    # 6.2 Consistency Checks (value-label pairs) - only for required fields
+    # TECH-3.2 Consistency Checks (value-label pairs)
     inconsistencies = 0
     for value_col in [col for col in df.columns if col.endswith('.value')]:
         base_key = value_col[:-6]
@@ -758,7 +762,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     else:
         logger.error(f"   ❌ {inconsistencies} required fields with inconsistencies")
 
-    # 6.3 Outlier Detection (for numeric fields)
+    # TECH-3.3 Outlier Detection (for numeric fields)
     outlier_fields = 0
     for value_col in [col for col in df.columns if col.endswith('.value')]:
         base_key = value_col[:-6]
@@ -792,14 +796,14 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     else:
         logger.info(f"   {outlier_fields} fields with outliers")
 
-    # 6.4 Referential Integrity
+    # TECH-3.4 Referential Integrity & Record Distribution
     if 'uid' in df.columns:
         unique_uids = df['uid'].nunique()
         total_rows = len(df)
         avg_records_per_uid = total_rows / unique_uids if unique_uids > 0 else 0
         logger.info(f"   UIDs: {unique_uids} unique | {total_rows} total rows | Avg: {avg_records_per_uid:.2f} records/UID")
 
-    # 7. FINAL SUMMARY
+    # TECH-4: FINAL SUMMARY
     logger.info(f"\n{'='*60}")
     logger.info(f"SUMMARY: {script_or_id} | Rows: {len(df)} | Cols: {len(df.columns)}")
     logger.info(f"Results: {len(errors)} errors, {len(warnings)} warnings")
