@@ -165,7 +165,7 @@ def create_all_merged_admissions_discharges(
 
     country = params['country']
     country_abrev = 'ZIM' if country.lower() == 'zimbabwe' else ('MWI' if country.lower() == 'malawi' else None)
-    table_name = f'ALL_{country_abrev}'
+    table_name = f'ALL_{country_abrev}'.lower()
     schema = 'derived'
 
     # =====================

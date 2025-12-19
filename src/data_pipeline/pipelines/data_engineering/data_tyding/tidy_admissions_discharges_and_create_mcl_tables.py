@@ -362,7 +362,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
     # Create derived columns
     adm_df = create_columns(adm_df)
     if adm_df is not None and not adm_df.empty:
-        adm_df = adm_df[adm_df['uid'] != 'Unknown'].to_frame().T
+        adm_df = adm_df[adm_df['uid'] != 'Unknown']
 
         # Clean column names
         adm_df.columns = adm_df.columns.str.replace(r"[()-]", "_", regex=True)
@@ -373,7 +373,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
                         'BalScoreWks', 'BirthWeight', 'DurationLab', 'BloodSugarmg', 'AntenatalCare',
                         'BloodSugarmmol', 'AdmissionWeight']
         adm_df = format_column_as_numeric(adm_df, numeric_fields)
-
+        adm_df = adm_df.to_frame().T
         if 'MatAgeYrs' in adm_df:
             adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
 
@@ -447,8 +447,8 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
     # Create derived columns and filter
     dis_df = create_columns(dis_df)
     if dis_df is not None and not dis_df.empty:
-        dis_df = dis_df[dis_df['uid'] != 'Unknown'].to_frame().T
-
+        dis_df = dis_df[dis_df['uid'] != 'Unknown']
+        dis_df = dis_df.to_frame().T
         # Add new columns to database if needed
         add_new_columns_if_needed(dis_df, 'discharges')
 
@@ -556,8 +556,8 @@ def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any)
     vit_signs_df = calculate_time_spent(vit_signs_df)
 
     # Filter
-    vit_signs_df = vit_signs_df[vit_signs_df['uid'] != 'Unknown'].to_frame().T
-
+    vit_signs_df = vit_signs_df[vit_signs_df['uid'] != 'Unknown']
+    vit_signs_df = vit_signs_df.to_frame().T
     # Add new columns to database if needed
     add_new_columns_if_needed(vit_signs_df, 'vitalsigns')
 
@@ -624,7 +624,8 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
                 neolab_df.sort_values(by=['uid', 'episode'])
 
         # Filter
-        neolab_df = neolab_df[neolab_df['uid'] != 'Unknown'].to_frame().T
+        neolab_df = neolab_df[neolab_df['uid'] != 'Unknown']
+        neolab_df = neolab_df.to_frame().T
         add_new_columns_if_needed(neolab_df, 'neolab')
         # Validate BEFORE transformation to log raw data issues
         validate_dataframe_with_ge(neolab_df, 'neolab')
@@ -705,8 +706,8 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
             baseline_df['Gestation.value'] = pd.to_numeric(baseline_df['Gestation.value'], errors='coerce')
 
         # Filter
-        baseline_df = baseline_df[baseline_df['uid'] != 'Unknown'].to_frame().T
-
+        baseline_df = baseline_df[baseline_df['uid'] != 'Unknown']
+        baseline_df = baseline_df.to_frame().T
         # Add new columns to database if needed
         add_new_columns_if_needed(baseline_df, 'baseline')
 
