@@ -50,9 +50,26 @@ def calculate_time_spent(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate time spent between started_at and completed_at columns."""
     if "started_at" in df.columns and 'completed_at' in df.columns:
         try:
-            df['started_at'] = pd.to_datetime(df['started_at'], errors='coerce').dt.tz_localize(None)
-            df['completed_at'] = pd.to_datetime(df['completed_at'], errors='coerce').dt.tz_localize(None)
-            df['time_spent'] = (df['completed_at'] - df['started_at']).dt.total_seconds() / 60
+            started_dt = pd.to_datetime(df['started_at'], errors='coerce')
+            completed_dt = pd.to_datetime(df['completed_at'], errors='coerce')
+
+            # Safely remove timezone if present
+            if pd.api.types.is_datetime64_any_dtype(started_dt):
+                if started_dt.dt.tz is not None:
+                    started_dt = started_dt.dt.tz_localize(None)
+            if pd.api.types.is_datetime64_any_dtype(completed_dt):
+                if completed_dt.dt.tz is not None:
+                    completed_dt = completed_dt.dt.tz_localize(None)
+
+            df['started_at'] = started_dt
+            df['completed_at'] = completed_dt
+
+            # Calculate time_spent only if both are datetime-like
+            timedelta = completed_dt - started_dt
+            if pd.api.types.is_timedelta64_dtype(timedelta):
+                df['time_spent'] = timedelta.dt.total_seconds() / 60
+            else:
+                df['time_spent'] = None
         except Exception as e:
             logging.warning(f"Error calculating time_spent: {formatError(e)}")
             df['time_spent'] = None
@@ -112,8 +129,16 @@ def process_age_column_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     # Handle datetime-format ages
     mask_datetime = df['Age.value'].astype(str).str.contains('T', na=False) & (df['Age.value'].astype(str).str.len() > 10)
     if mask_datetime.any() and "DateTimeAdmission.value" in df.columns:
-        admission_dates = pd.to_datetime(df.loc[mask_datetime, 'DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None)
-        birth_dates = pd.to_datetime(df.loc[mask_datetime, 'Age.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None)
+        admission_dates = pd.to_datetime(df.loc[mask_datetime, 'DateTimeAdmission.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
+        birth_dates = pd.to_datetime(df.loc[mask_datetime, 'Age.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
+
+        # Safely remove timezone if present
+        if pd.api.types.is_datetime64_any_dtype(admission_dates):
+            if admission_dates.dt.tz is not None:
+                admission_dates = admission_dates.dt.tz_localize(None)
+        if pd.api.types.is_datetime64_any_dtype(birth_dates):
+            if birth_dates.dt.tz is not None:
+                birth_dates = birth_dates.dt.tz_localize(None)
 
         # Fix bug where DOB > admission date
         mask_fix = admission_dates < birth_dates
@@ -228,7 +253,10 @@ def process_neolab_episodes(neolab_df: pd.DataFrame) -> pd.DataFrame:
             continue
 
         # Calculate episodes based on date changes
-        uid_data['date_only'] = uid_data['DateBCT.value'].dt.strftime('%Y-%m-%d')
+        if pd.api.types.is_datetime64_any_dtype(uid_data['DateBCT.value']):
+            uid_data['date_only'] = uid_data['DateBCT.value'].dt.strftime('%Y-%m-%d')
+        else:
+            uid_data['date_only'] = pd.to_datetime(uid_data['DateBCT.value'], errors='coerce').dt.strftime('%Y-%m-%d')
         uid_data['episode'] = (uid_data['date_only'] != uid_data['date_only'].shift()).cumsum()
 
         # Update main dataframe with episodes
@@ -271,14 +299,24 @@ def process_baseline_dates(baseline_df: pd.DataFrame) -> pd.DataFrame:
         discharge_dates = pd.to_datetime(baseline_df['DateTimeDischarge.value'], errors='coerce')
         admission_dates = pd.to_datetime(baseline_df['DateTimeAdmission.value'], errors='coerce')
         valid_mask = discharge_dates.notna() & admission_dates.notna()
-        baseline_df.loc[valid_mask, 'LengthOfStay.value'] = (discharge_dates - admission_dates).dt.days
+        if valid_mask.any():
+            timedelta = discharge_dates - admission_dates
+            if pd.api.types.is_timedelta64_dtype(timedelta):
+                baseline_df.loc[valid_mask, 'LengthOfStay.value'] = timedelta.dt.days
+            else:
+                baseline_df.loc[valid_mask, 'LengthOfStay.value'] = None
 
     # Calculate Length of Life
     if all(col in baseline_df.columns for col in ['DateTimeDeath.value', 'DateTimeAdmission.value']):
         death_dates = pd.to_datetime(baseline_df['DateTimeDeath.value'], errors='coerce')
         admission_dates = pd.to_datetime(baseline_df['DateTimeAdmission.value'], errors='coerce')
         valid_mask = death_dates.notna() & admission_dates.notna()
-        baseline_df.loc[valid_mask, 'LengthOfLife.value'] = (death_dates - admission_dates).dt.days
+        if valid_mask.any():
+            timedelta = death_dates - admission_dates
+            if pd.api.types.is_timedelta64_dtype(timedelta):
+                baseline_df.loc[valid_mask, 'LengthOfLife.value'] = timedelta.dt.days
+            else:
+                baseline_df.loc[valid_mask, 'LengthOfLife.value'] = None
 
     return baseline_df
 
@@ -311,18 +349,21 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
         dob_dt = pd.to_datetime(adm_df["DOBTOB.value"], errors='coerce')
 
         # Remove timezone info if present
-        if hasattr(admission_dt.dt, 'tz') and admission_dt.dt.tz is not None:
-            admission_dt = admission_dt.dt.tz_localize(None)
-        if hasattr(dob_dt.dt, 'tz') and dob_dt.dt.tz is not None:
-            dob_dt = dob_dt.dt.tz_localize(None)
+        if pd.api.types.is_datetime64_any_dtype(admission_dt):
+            if admission_dt.dt.tz is not None:
+                admission_dt = admission_dt.dt.tz_localize(None)
+        if pd.api.types.is_datetime64_any_dtype(dob_dt):
+            if dob_dt.dt.tz is not None:
+                dob_dt = dob_dt.dt.tz_localize(None)
 
-        # Calculate age in hours
-        adm_df.loc[
-            adm_df["Age.value"].isna() & adm_df["DateTimeAdmission.value"].notna() & adm_df["DOBTOB.value"].notna(),
-            "Age.value"
-        ] = (
-            (admission_dt - dob_dt).dt.total_seconds() / 3600
-        )
+        # Calculate age in hours only if both are datetime
+        if pd.api.types.is_datetime64_any_dtype(admission_dt) and pd.api.types.is_datetime64_any_dtype(dob_dt):
+            timedelta = admission_dt - dob_dt
+            if pd.api.types.is_timedelta64_dtype(timedelta):
+                adm_df.loc[
+                    adm_df["Age.value"].isna() & adm_df["DateTimeAdmission.value"].notna() & adm_df["DOBTOB.value"].notna(),
+                    "Age.value"
+                ] = timedelta.dt.total_seconds() / 3600
 
     # Calculate time spent
     adm_df = calculate_time_spent(adm_df)
@@ -505,8 +546,8 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
     # Create derived columns and filter
     mat_outcomes_df = create_columns(mat_outcomes_df)
     if mat_outcomes_df is not None and not mat_outcomes_df.empty:
-        mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown'].to_frame().T
-
+        mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown']
+        mat_outcomes_df = mat_outcomes_df.to_frame().T
         # Add new columns to database if needed
         add_new_columns_if_needed(mat_outcomes_df, 'maternal_outcomes')
 
@@ -589,13 +630,23 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
     if ("DateBCR.value" in neolab_df and 'DateBCT.value' in neolab_df and
         neolab_df['DateBCR.value'].notna().any() and neolab_df['DateBCT.value'].notna().any()):
         # Calculate timedelta and convert to hours (remove timezone to avoid conversion issues)
-        
-        timedelta_result = (
-            pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None) -
-            pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce').dt.tz_localize(None)
-        )
+        bcr_dates = pd.to_datetime(neolab_df['DateBCR.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
+        bct_dates = pd.to_datetime(neolab_df['DateBCT.value'], format='%Y-%m-%dT%H:%M:%S', errors='coerce')
+
+        # Safely remove timezone if present
+        if pd.api.types.is_datetime64_any_dtype(bcr_dates):
+            if bcr_dates.dt.tz is not None:
+                bcr_dates = bcr_dates.dt.tz_localize(None)
+        if pd.api.types.is_datetime64_any_dtype(bct_dates):
+            if bct_dates.dt.tz is not None:
+                bct_dates = bct_dates.dt.tz_localize(None)
+
+        timedelta_result = bcr_dates - bct_dates
         # Convert to hours by dividing total_seconds by 3600
-        neolab_df['BCReturnTime'] = timedelta_result.dt.total_seconds() / 3600
+        if pd.api.types.is_timedelta64_dtype(timedelta_result):
+            neolab_df['BCReturnTime'] = timedelta_result.dt.total_seconds() / 3600
+        else:
+            neolab_df['BCReturnTime'] = None
     else:
         neolab_df['BCReturnTime'] = None
 
