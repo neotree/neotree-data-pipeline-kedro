@@ -431,17 +431,17 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
 def seed_all_table (table_name,schema):
     
     # CREATE TABLE IF NOT EXIST WITH MINIMAL FIELDS
-    create_table_query = f'''CREATE TABLE IF NOT EXISTS {schema}."{table_name}" (
-    uid TEXT,
-    facility TEXT,
-    unique_key TEXT,
-    unique_key_dis TEXT,
-    OFC NUMERIC(10,2),
-    OFCDis NUMERIC(10,2),
-    has_admission BOOLEAN DEFAULT FALSE,
-    has_discharge BOOLEAN DEFAULT FALSE,
-    is_closed BOOLEAN DEFAULT FALSE
-    );;'''
+    create_table_query = f'''CREATE TABLE IF NOT EXISTS "{schema}"."{table_name}" (
+    "uid" TEXT,
+    "facility" TEXT,
+    "unique_key" TEXT,
+    "unique_key_dis" TEXT,
+    "OFC" NUMERIC(10,2),
+    "OFCDis" NUMERIC(10,2),
+    "has_admission" BOOLEAN DEFAULT FALSE,
+    "has_discharge" BOOLEAN DEFAULT FALSE,
+    "is_closed" BOOLEAN DEFAULT FALSE
+);;'''
     inject_sql(create_table_query, "CREATE ALL TABLE")
     
 
