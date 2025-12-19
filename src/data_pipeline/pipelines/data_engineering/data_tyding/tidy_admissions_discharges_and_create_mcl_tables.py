@@ -29,6 +29,7 @@ from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_k
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text
 from .neolab_data_cleanup import neolab_cleanup
 from .tidy_dynamic_tables import tidy_dynamic_tables
+from pandas import Series
 from data_pipeline.pipelines.data_engineering.queries.data_fix import (deduplicate_table
                                                                        , count_table_columns
                                                                        , fix_column_limit_error,
@@ -343,27 +344,27 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
         adm_df = result
 
     # Calculate age from admission date and DOB if Age is missing
-    if "DateTimeAdmission.value" in adm_df.columns and "DOBTOB.value" in adm_df.columns:
-        # Convert to datetime and remove timezone info to avoid tz-naive/tz-aware errors
-        admission_dt = pd.to_datetime(adm_df["DateTimeAdmission.value"], errors='coerce')
-        dob_dt = pd.to_datetime(adm_df["DOBTOB.value"], errors='coerce')
 
-        # Remove timezone info if present
-        if pd.api.types.is_datetime64_any_dtype(admission_dt):
-            if admission_dt.dt.tz is not None:
-                admission_dt = admission_dt.dt.tz_localize(None)
-        if pd.api.types.is_datetime64_any_dtype(dob_dt):
-            if dob_dt.dt.tz is not None:
-                dob_dt = dob_dt.dt.tz_localize(None)
 
-        # Calculate age in hours only if both are datetime
-        if pd.api.types.is_datetime64_any_dtype(admission_dt) and pd.api.types.is_datetime64_any_dtype(dob_dt):
-            timedelta = admission_dt - dob_dt
-            if pd.api.types.is_timedelta64_dtype(timedelta):
-                adm_df.loc[
-                    adm_df["Age.value"].isna() & adm_df["DateTimeAdmission.value"].notna() & adm_df["DOBTOB.value"].notna(),
-                    "Age.value"
-                ] = timedelta.dt.total_seconds() / 3600
+    if {"DateTimeAdmission.value", "DOBTOB.value"}.issubset(adm_df.columns):
+        # Convert to datetime without timezone
+        admission_dt = pd.to_datetime(adm_df["DateTimeAdmission.value"], errors="coerce")
+        dob_dt = pd.to_datetime(adm_df["DOBTOB.value"], errors="coerce")
+        
+        # Calculate age in hours
+        age_hours = (admission_dt - dob_dt).dt.total_seconds() / 3600
+        
+        # Create mask for valid updates
+        mask = (
+            adm_df["Age.value"].isna() &
+            admission_dt.notna() &
+            dob_dt.notna() &
+            (age_hours >= 0)
+        )
+        
+        # Update Age values
+        adm_df.loc[mask, "Age.value"] = age_hours[mask]
+
 
     # Calculate time spent
     adm_df = calculate_time_spent(adm_df)
