@@ -35,6 +35,6 @@ def create_pipeline(**kwargs):
         create_summary_counts_node,
         grant_privileges_node,
         clean_derived_data_node,
-        merge_raw_data_node
+        #merge_raw_data_node
         ]
     )
