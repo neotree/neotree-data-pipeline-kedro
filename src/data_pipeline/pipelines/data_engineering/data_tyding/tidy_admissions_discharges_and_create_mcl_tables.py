@@ -350,18 +350,23 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
         # Convert to datetime without timezone
         admission_dt = pd.to_datetime(adm_df["DateTimeAdmission.value"], errors="coerce")
         dob_dt = pd.to_datetime(adm_df["DOBTOB.value"], errors="coerce")
-        
-        # Calculate age in hours
-        age_hours = (admission_dt - dob_dt).dt.total_seconds() / 3600
-        
+
+        # Calculate age in hours only if both are datetime
+        age_hours = pd.Series(None, index=adm_df.index, dtype=float)
+        valid_mask = admission_dt.notna() & dob_dt.notna()
+
+        if valid_mask.any():
+            timedelta = admission_dt[valid_mask] - dob_dt[valid_mask]
+            if pd.api.types.is_timedelta64_dtype(timedelta):
+                age_hours[valid_mask] = timedelta.dt.total_seconds() / 3600
+
         # Create mask for valid updates
         mask = (
             adm_df["Age.value"].isna() &
-            admission_dt.notna() &
-            dob_dt.notna() &
+            age_hours.notna() &
             (age_hours >= 0)
         )
-        
+
         # Update Age values
         adm_df.loc[mask, "Age.value"] = age_hours[mask]
 
@@ -415,7 +420,9 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
                         'BalScoreWks', 'BirthWeight', 'DurationLab', 'BloodSugarmg', 'AntenatalCare',
                         'BloodSugarmmol', 'AdmissionWeight']
         adm_df = format_column_as_numeric(adm_df, numeric_fields)
-        adm_df = adm_df.to_frame().T
+        # Convert Series to DataFrame if needed
+        if isinstance(adm_df, pd.Series):
+            adm_df = adm_df.to_frame().T
         if 'MatAgeYrs' in adm_df:
             adm_df['MatAgeYrs'] = adm_df['MatAgeYrs'].apply(extract_years)
 
@@ -490,7 +497,9 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
     dis_df = create_columns(dis_df)
     if dis_df is not None and not dis_df.empty:
         dis_df = dis_df[dis_df['uid'] != 'Unknown']
-        dis_df = dis_df.to_frame().T
+        # Convert Series to DataFrame if needed
+        if isinstance(dis_df, pd.Series):
+            dis_df = dis_df.to_frame().T
         # Add new columns to database if needed
         add_new_columns_if_needed(dis_df, 'discharges')
 
@@ -548,7 +557,9 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
     mat_outcomes_df = create_columns(mat_outcomes_df)
     if mat_outcomes_df is not None and not mat_outcomes_df.empty:
         mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown']
-        mat_outcomes_df = mat_outcomes_df.to_frame().T
+        # Convert Series to DataFrame if needed
+        if isinstance(mat_outcomes_df, pd.Series):
+            mat_outcomes_df = mat_outcomes_df.to_frame().T
         # Add new columns to database if needed
         add_new_columns_if_needed(mat_outcomes_df, 'maternal_outcomes')
 
@@ -599,7 +610,9 @@ def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any)
 
     # Filter
     vit_signs_df = vit_signs_df[vit_signs_df['uid'] != 'Unknown']
-    vit_signs_df = vit_signs_df.to_frame().T
+    # Convert Series to DataFrame if needed
+    if isinstance(vit_signs_df, pd.Series):
+        vit_signs_df = vit_signs_df.to_frame().T
     # Add new columns to database if needed
     add_new_columns_if_needed(vit_signs_df, 'vitalsigns')
 
@@ -677,7 +690,9 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
 
         # Filter
         neolab_df = neolab_df[neolab_df['uid'] != 'Unknown']
-        neolab_df = neolab_df.to_frame().T
+        # Convert Series to DataFrame if needed
+        if isinstance(neolab_df, pd.Series):
+            neolab_df = neolab_df.to_frame().T
         add_new_columns_if_needed(neolab_df, 'neolab')
         # Validate BEFORE transformation to log raw data issues
         validate_dataframe_with_ge(neolab_df, 'neolab')
@@ -759,7 +774,9 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
 
         # Filter
         baseline_df = baseline_df[baseline_df['uid'] != 'Unknown']
-        baseline_df = baseline_df.to_frame().T
+        # Convert Series to DataFrame if needed
+        if isinstance(baseline_df, pd.Series):
+            baseline_df = baseline_df.to_frame().T
         # Add new columns to database if needed
         add_new_columns_if_needed(baseline_df, 'baseline')
 
