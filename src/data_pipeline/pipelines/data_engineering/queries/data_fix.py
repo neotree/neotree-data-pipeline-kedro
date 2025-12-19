@@ -1409,7 +1409,7 @@ def count_table_columns(table_name: str, schema: str = 'derived') -> dict:
             COUNT(*) FILTER (WHERE attisdropped) AS dropped_columns,
             COUNT(*) AS total_columns
         FROM pg_attribute
-        WHERE attrelid = '{schema}.{table_name}'::regclass
+        WHERE attrelid = '{schema}."{table_name}"'::regclass
         AND attnum > 0;
     """
 
@@ -1461,7 +1461,7 @@ def rebuild_table_dry_run(table_name: str, schema: str = 'derived'):
     col_info = count_table_columns(table_name, schema)
 
     # Get row count
-    row_count_query = f"SELECT COUNT(*) FROM {schema}.{table_name};"
+    row_count_query = f'SELECT COUNT(*) FROM {schema}."{table_name}";'
     row_count_result = inject_sql_with_return(row_count_query)
     row_count = row_count_result[0][0] if row_count_result else 0
 
@@ -1590,13 +1590,13 @@ def rebuild_table_to_remove_dropped_columns(table_name: str, schema: str = 'deri
     logging.info(f"Found {col_info_before['dropped']} dropped columns to remove from {schema}.{table_name}")
 
     # Get row count BEFORE rebuild for validation
-    row_count_query = f"SELECT COUNT(*) FROM {schema}.{table_name};"
+    row_count_query = f'SELECT COUNT(*) FROM {schema}."{table_name}";'
     row_count_result = inject_sql_with_return(row_count_query)
     original_row_count = row_count_result[0][0] if row_count_result else 0
     logging.info(f"Original table has {original_row_count} rows")
 
     # Rebuild with comprehensive safety measures
-    rebuild_query = f"""
+    rebuild_query = f'''
         DO $$
         DECLARE
             original_row_count BIGINT;
@@ -1604,7 +1604,7 @@ def rebuild_table_to_remove_dropped_columns(table_name: str, schema: str = 'deri
             backup_exists BOOLEAN := FALSE;
         BEGIN
             -- Step 1: Count original rows
-            SELECT COUNT(*) INTO original_row_count FROM {schema}.{table_name};
+            SELECT COUNT(*) INTO original_row_count FROM "{schema}"."{table_name}";
             RAISE NOTICE 'Original table has % rows', original_row_count;
 
             -- Step 2: Check if backup already exists (safety check)
@@ -1615,16 +1615,16 @@ def rebuild_table_to_remove_dropped_columns(table_name: str, schema: str = 'deri
             ) INTO backup_exists;
 
             IF backup_exists THEN
-                RAISE EXCEPTION 'Backup table {schema}.{table_name}_backup already exists. Please remove it first.';
+                RAISE EXCEPTION 'Backup table "{schema}"."{table_name}_backup" already exists. Please remove it first.';
             END IF;
 
             -- Step 3: Create rebuild table with only active columns
             RAISE NOTICE 'Creating rebuild table...';
-            CREATE TABLE {schema}.{table_name}_rebuild AS
-            SELECT * FROM {schema}.{table_name};
+            CREATE TABLE "{schema}"."{table_name}_rebuild" AS
+            SELECT * FROM "{schema}"."{table_name}";
 
             -- Step 4: Verify row count in rebuild table
-            SELECT COUNT(*) INTO rebuild_row_count FROM {schema}.{table_name}_rebuild;
+            SELECT COUNT(*) INTO rebuild_row_count FROM "{schema}"."{table_name}_rebuild";
             RAISE NOTICE 'Rebuild table has % rows', rebuild_row_count;
 
             IF rebuild_row_count != original_row_count THEN
@@ -1633,19 +1633,19 @@ def rebuild_table_to_remove_dropped_columns(table_name: str, schema: str = 'deri
 
             -- Step 5: Rename original to backup (safety measure)
             RAISE NOTICE 'Renaming original to backup...';
-            ALTER TABLE {schema}.{table_name}
-            RENAME TO {table_name}_backup;
+            ALTER TABLE "{schema}"."{table_name}"
+            RENAME TO "{table_name}_backup";
 
             -- Step 6: Rename rebuild to original name
             RAISE NOTICE 'Activating rebuild table...';
-            ALTER TABLE {schema}.{table_name}_rebuild
-            RENAME TO {table_name};
+            ALTER TABLE "{schema}"."{table_name}_rebuild"
+            RENAME TO "{table_name}";
 
             -- Step 7: Drop backup (only after successful rename)
             RAISE NOTICE 'Dropping backup table...';
-            DROP TABLE {schema}.{table_name}_backup;
+            DROP TABLE "{schema}"."{table_name}_backup";
 
-            RAISE NOTICE '✓ Successfully rebuilt table {schema}.{table_name}';
+            RAISE NOTICE '✓ Successfully rebuilt table "{schema}"."{table_name}"';
 
         EXCEPTION
             WHEN OTHERS THEN
@@ -1659,22 +1659,22 @@ def rebuild_table_to_remove_dropped_columns(table_name: str, schema: str = 'deri
                     AND table_name = '{table_name}_backup'
                 ) THEN
                     -- If new table exists, drop it
-                    DROP TABLE IF EXISTS {schema}.{table_name};
+                    DROP TABLE IF EXISTS "{schema}"."{table_name}";
 
                     -- Restore from backup
-                    ALTER TABLE {schema}.{table_name}_backup
-                    RENAME TO {table_name};
+                    ALTER TABLE "{schema}"."{table_name}_backup"
+                    RENAME TO "{table_name}";
 
                     RAISE NOTICE 'Restored original table from backup';
                 END IF;
 
                 -- Clean up rebuild table if it exists
-                DROP TABLE IF EXISTS {schema}.{table_name}_rebuild;
+                DROP TABLE IF EXISTS "{schema}"."{table_name}_rebuild";
 
                 -- Re-raise the exception
                 RAISE EXCEPTION 'Failed to rebuild table: %', SQLERRM;
         END $$;
-    """
+    '''
 
     try:
         logging.info("Executing rebuild with transaction safety...")

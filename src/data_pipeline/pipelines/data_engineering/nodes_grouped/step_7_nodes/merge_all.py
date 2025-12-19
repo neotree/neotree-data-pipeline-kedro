@@ -165,7 +165,7 @@ def create_all_merged_admissions_discharges(
 
     country = params['country']
     country_abrev = 'ZIM' if country.lower() == 'zimbabwe' else ('MWI' if country.lower() == 'malawi' else None)
-    table_name = f'ALL_{country_abrev}'.lower()
+    table_name = f'ALL_{country_abrev}'
     schema = 'derived'
 
     # =====================
@@ -461,9 +461,9 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
         schema = 'derived'
         ###SEED TABLES IF NOT EXISTS
         seed_all_table(table_name,schema)
-        admission_query = read_raw_data_not_joined_in_all_table('admissions',f' NOT EXISTS (SELECT 1 FROM derived.{table_name} b where a.uid=b.uid and a.facility=b.facility and a.unique_key=b.unique_key)' )
+        admission_query = read_raw_data_not_joined_in_all_table('admissions',f' NOT EXISTS (SELECT 1 FROM derived."{table_name}" b where a.uid=b.uid and a.facility=b.facility and a.unique_key=b.unique_key)' )
         adm_df= run_query_and_return_df(admission_query)
-        discharges_query = read_raw_data_not_joined_in_all_table('discharges',f' NOT EXISTS (SELECT 1 FROM derived.{table_name} b where a.uid=b.uid and a.facility=b.facility and a.unique_key=b.unique_key_dis)')
+        discharges_query = read_raw_data_not_joined_in_all_table('discharges',f' NOT EXISTS (SELECT 1 FROM derived."{table_name}" b where a.uid=b.uid and a.facility=b.facility and a.unique_key=b.unique_key_dis)')
         dis_df = run_query_and_return_df(discharges_query)
 
         if( not adm_df.empty or not dis_df.empty):
