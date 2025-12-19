@@ -902,7 +902,7 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
         raw_conn.close()  # type: ignore[union-attr]
 
 
-def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
+def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
     """Optimized bulk update using PostgreSQL UPDATE FROM VALUES syntax, 
     with handling for boolean and numeric types."""
     try:
@@ -1053,9 +1053,21 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame):
             ) AS v({columns_str})
             WHERE t.uid = v.uid
             AND t.facility = v.facility
-            AND t."unique_key" = v."unique_key";;
+            AND t."unique_key" IS NOT NULL
+            AND t."unique_key" = v."unique_key" ;;
         """
-
+        if (disharge):
+            update_query = f"""
+            UPDATE {table} AS t
+            SET {', '.join(set_clauses)}
+            FROM (VALUES
+                {values_str}
+            ) AS v({columns_str})
+            WHERE t.uid = v.uid
+            AND t.facility = v.facility
+            AND t."unique_key_dis" IS NOT NULL
+            AND t."unique_key_dis" = v."unique_key_dis";;
+          """
         inject_sql(update_query, f"BULK UPDATE {table}")
         logging.info(f"Successfully bulk updated {len(values_rows)} rows in {table}")
 

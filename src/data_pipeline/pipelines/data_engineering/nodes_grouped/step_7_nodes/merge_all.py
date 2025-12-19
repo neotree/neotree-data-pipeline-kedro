@@ -230,6 +230,8 @@ def create_all_merged_admissions_discharges(
                     update_record = adm.to_dict()
                     update_record['has_admission'] = True
                     update_record['is_closed'] = True
+                    # CRITICAL FIX: Store the discharge's unique_key_dis value for WHERE clause filtering
+                    update_record['unique_key_dis'] = candidates.iloc[0]['unique_key_dis']
                     updates_list.append(update_record)
                     admissions_updated += 1
                 else:
@@ -242,6 +244,8 @@ def create_all_merged_admissions_discharges(
                             update_record = adm.to_dict()
                             update_record['has_admission'] = True
                             update_record['is_closed'] = True
+                            # CRITICAL FIX: Store the discharge's unique_key_dis value for WHERE clause filtering
+                            update_record['unique_key_dis'] = ofc_match.iloc[0]['unique_key_dis']
                             updates_list.append(update_record)
                             admissions_updated += 1
                         else:
@@ -271,7 +275,10 @@ def create_all_merged_admissions_discharges(
 
         # Execute batch update if any
         if updates_list:
-            generateAndRunUpdateQuery(f'{schema}."{table_name}"', pd.DataFrame(updates_list))
+            updates_df = pd.DataFrame(updates_list)
+            logging.debug(f"Phase 1 Update records: Updating {len(updates_df)} discharge records with admission data")
+            logging.debug(f"Update filter using uid, facility, and unique_key_dis from matched discharges")
+            generateAndRunUpdateQuery(f'{schema}."{table_name}"', updates_df,disharge=True)
             logging.debug(f"Batch updated {len(updates_list)} discharge records with admission data")
 
         # Execute batch insert if any
@@ -332,6 +339,8 @@ def create_all_merged_admissions_discharges(
                     update_record = dis.to_dict()
                     update_record['has_discharge'] = True
                     update_record['is_closed'] = True
+                    # CRITICAL FIX: Store the admission's unique_key value for WHERE clause filtering
+                    update_record['unique_key'] = candidates.iloc[0]['unique_key']
                     updates_list.append(update_record)
                     discharges_updated += 1
                 else:
@@ -344,6 +353,8 @@ def create_all_merged_admissions_discharges(
                             update_record = dis.to_dict()
                             update_record['has_discharge'] = True
                             update_record['is_closed'] = True
+                            # CRITICAL FIX: Store the admission's unique_key value for WHERE clause filtering
+                            update_record['unique_key'] = ofcdis_match.iloc[0]['unique_key']
                             updates_list.append(update_record)
                             discharges_updated += 1
                         else:
@@ -373,7 +384,10 @@ def create_all_merged_admissions_discharges(
 
         # Execute batch update if any
         if updates_list:
-            generateAndRunUpdateQuery(f'{schema}."{table_name}"', pd.DataFrame(updates_list))
+            updates_df = pd.DataFrame(updates_list)
+            logging.debug(f"Phase 2 Update records: Updating {len(updates_df)} admission records with discharge data")
+            logging.debug(f"Update filter using uid, facility, and unique_key from matched admissions")
+            generateAndRunUpdateQuery(f'{schema}."{table_name}"', updates_df)
             logging.debug(f"Batch updated {len(updates_list)} admission records with discharge data")
 
         # Execute batch insert if any
