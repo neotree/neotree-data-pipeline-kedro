@@ -64,7 +64,7 @@ def get_metadata_for_script(script_type: str):
         return {}
 
 
-def validate_and_process_admissions(adm_df: pd.DataFrame):
+def validate_and_process_admissions(adm_df: pd.DataFrame) -> pd.DataFrame:
     """
     Validate and process admissions dataframe against admissions metadata.
     Applies type coercion and maintains case sensitivity of keys.
@@ -133,7 +133,7 @@ def validate_and_process_discharges(dis_df: pd.DataFrame) -> pd.DataFrame:
 def create_all_merged_admissions_discharges(
     new_adm: pd.DataFrame,
     new_dis: pd.DataFrame
-) -> pd.DataFrame:
+):
     """
     Enhanced admissions/discharges merge with duplicate detection
     and hierarchical merge rules.
@@ -351,8 +351,7 @@ def create_all_merged_admissions_discharges(
 
     logging.info(f"Discharges phase complete: {discharges_updated} updated, {discharges_inserted} inserted")
 
-    # --- IMPORTANT CHANGE ---
-    # Do not return anything
+    # Do not return anything as we do not have any use of a dataframe at this point
     return None
 
 
