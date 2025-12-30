@@ -331,6 +331,8 @@ def process_dataframe_with_types(
     result_df = result_df[existing_cols]
 
     logging.info(f"Processed {len(df.columns)} input columns → {len(result_df.columns)} output columns")
+    if isinstance(result_df, pd.Series):
+        result_df = result_df.to_frame().T
 
     return result_df
 
@@ -449,7 +451,9 @@ def process_dataframe_with_types_raw_data(
     logging.info(
         f"Processed {len(df.columns)} input columns → {len(result_df.columns)} output columns"
     )
-
+    if isinstance(result_df, pd.Series):
+        result_df = result_df.to_frame().T
+        
     return result_df
 
 

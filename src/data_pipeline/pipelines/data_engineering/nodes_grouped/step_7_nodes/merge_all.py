@@ -135,274 +135,224 @@ def create_all_merged_admissions_discharges(
     new_dis: pd.DataFrame
 ) -> pd.DataFrame:
     """
-    Merge admissions and discharges using database-level operations.
-
-    IMPORTANT: new_adm and new_dis only contain records NOT already in the database table
-
-    PHASE 1 - PROCESS ADMISSIONS (Database-level):
-    1. Validate admissions against metadata and ensure table columns exist
-    2. For each admission:
-       a. Query database for matching discharge (uid, facility, is_closed=False, has_admission=False)
-       b. If found (single or with OFC disambiguation), UPDATE the record with admission fields and set has_admission=True, is_closed=True
-       c. If not found, INSERT new admission record with has_admission=True, has_discharge=False, is_closed=False
-
-    PHASE 2 - PROCESS DISCHARGES (Database-level):
-    3. Validate discharges against metadata and ensure table columns exist
-    4. For each discharge:
-       a. Query database for matching admission (uid, facility, is_closed=False, has_discharge=False, has_admission=True)
-       b. If found (single or with OFCDis disambiguation), UPDATE the record with discharge fields and set has_discharge=True, is_closed=True
-       c. If not found, INSERT new discharge record with has_discharge=True, has_admission=False, is_closed=False
-
-    Args:
-        merged_df: Existing merged records DataFrame (not used - kept for backwards compatibility)
-        new_adm: New admissions DataFrame to process (only records NOT in database)
-        new_dis: New discharges DataFrame to process (only records NOT in database)
-
-    Returns:
-        Updated merged DataFrame read from database after all operations
+    Enhanced admissions/discharges merge with duplicate detection
+    and hierarchical merge rules.
     """
-  
 
     country = params['country']
     country_abrev = 'ZIM' if country.lower() == 'zimbabwe' else ('MWI' if country.lower() == 'malawi' else None)
     table_name = f'ALL_{country_abrev}'
     schema = 'derived'
 
-    # =====================
-    # VALIDATE & PROCESS INCOMING DATA WITH METADATA
-    # =====================
+    # ---------------------------------------------------------
+    # Helpers
+    # ---------------------------------------------------------
+
+    def is_duplicate_admission(df):
+        return df.duplicated(subset=["uid", "facility", "DateTimeAdmission.value"], keep=False)
+
+    def is_duplicate_discharge(df):
+        dis = df.copy()
+        dis["effective_discharge_date"] = dis["DateTimeDischarge.value"].combine_first(
+            dis["DateTimeDeath.value"]
+        )
+        return dis.duplicated(subset=["uid", "facility", "effective_discharge_date"], keep=False)
+
+    def hierarchical_match(reference_row, candidates):
+        """
+        Resolve ambiguous matches hierarchically.
+        Returns a single row OR None.
+        """
+
+        # 1) OFC vs OFCDis
+        if "OFC.value" in reference_row and "OFCDis.value" in candidates.columns:
+            if pd.notna(reference_row["OFC.value"]):
+                m = candidates[candidates["OFCDis.value"] == reference_row["OFC.value"]]
+                if len(m) == 1:
+                    return m.iloc[0]
+
+        # 2) BirthWeight
+        if "BirthWeight.value" in reference_row and "BirthWeight.value" in candidates.columns:
+            if pd.notna(reference_row["BirthWeight.value"]):
+                m = candidates[candidates["BirthWeight.value"] == reference_row["BirthWeight.value"]]
+                if len(m) == 1:
+                    return m.iloc[0]
+
+        # 3) Temperature
+        if "Temperature.value" in reference_row and "Temperature.value" in candidates.columns:
+            if pd.notna(reference_row["Temperature.value"]):
+                m = candidates[candidates["Temperature.value"] == reference_row["Temperature.value"]]
+                if len(m) == 1:
+                    return m.iloc[0]
+
+        return None
+
+    # ---------------------------------------------------------
+    # VALIDATE INPUT AND NORMALISE TYPES
+    # ---------------------------------------------------------
+
     new_adm = validate_and_process_admissions(new_adm)
     new_dis = validate_and_process_discharges(new_dis)
 
-    # Cast OFC and OFCDis to numeric (floating point) for consistent matching
-    if 'OFC' in new_adm.columns:
-        new_adm['OFC'] = pd.to_numeric(new_adm['OFC'], errors='coerce')
-    if 'OFCDis' in new_dis.columns:
-        new_dis['OFCDis'] = pd.to_numeric(new_dis['OFCDis'], errors='coerce')
+    if 'OFC.value' in new_adm.columns:
+        new_adm['OFC.value'] = pd.to_numeric(new_adm['OFC.value'], errors='coerce')
 
-    # =====================
-    # PHASE 1: PROCESS ADMISSIONS
-    # =====================
+    if 'OFCDis.value' in new_dis.columns:
+        new_dis['OFCDis.value'] = pd.to_numeric(new_dis['OFCDis.value'], errors='coerce')
+
+    # ---------------------------------------------------------
+    # PHASE 1 — PROCESS ADMISSIONS
+    # ---------------------------------------------------------
+
     logging.info("PHASE 1: Processing admissions...")
 
-    # Ensure all columns from admissions exist in the database table
     if not new_adm.empty:
         add_new_columns_if_needed(new_adm, table_name, schema)
 
     admissions_inserted = 0
     admissions_updated = 0
 
-    # BATCH QUERY: Get all admissions with their potential matches from database
     if not new_adm.empty:
+
         uids = tuple(set(new_adm['uid'].unique()))
         facilities = tuple(set(new_adm['facility'].unique()))
 
-        # Query all existing discharges without admission for these uid/facility combos
-        batch_query = f'''
-            SELECT uid, facility, unique_key_dis, "OFCDis"
+        query = f"""
+            SELECT uid, facility, unique_key_dis, "OFCDis", "BirthWeight.value", "Temperature.value",
+                   "DateTimeDischarge.value", "DateTimeDeath.value"
             FROM {schema}."{table_name}"
             WHERE uid = ANY(ARRAY{list(uids)})
             AND facility = ANY(ARRAY{list(facilities)})
             AND is_closed = FALSE
             AND has_admission = FALSE
-        ;;'''
+        ;;
+        """
 
-        existing_discharges = run_query_and_return_df(batch_query)
+        existing_discharges = run_query_and_return_df(query)
 
-        # Separate admissions into: matched (to update), unmatched (to insert)
-        updates_list = []
-        inserts_list = []
+        updates_list, inserts_list = [], []
 
         for _, adm in new_adm.iterrows():
-            uid_val = adm['uid']
-            facility_val = adm['facility']
 
-            # Find matches in existing discharges
+            uid_val = adm["uid"]
+            facility_val = adm["facility"]
+
             candidates = existing_discharges[
-                (existing_discharges['uid'] == uid_val) &
-                (existing_discharges['facility'] == facility_val)
+                (existing_discharges["uid"] == uid_val) &
+                (existing_discharges["facility"] == facility_val)
             ]
 
-            if not candidates.empty:
-                # Found matching discharge(s)
-                if len(candidates) == 1:
-                    # Single match - prepare for update
-                    update_record = adm.to_dict()
-                    update_record['has_admission'] = True
-                    update_record['is_closed'] = True
-                    # CRITICAL FIX: Store the discharge's unique_key_dis value for WHERE clause filtering
-                    update_record['unique_key_dis'] = candidates.iloc[0]['unique_key_dis']
-                    updates_list.append(update_record)
-                    admissions_updated += 1
-                else:
-                    # Multiple matches - use OFC to disambiguate
-                    if 'OFC' in adm.index:
-                        ofc_value = adm['OFC']
-                        ofc_match = candidates[candidates['OFCDis'] == ofc_value]
-                        if not ofc_match.empty:
-                            # Found matching OFC - prepare for update
-                            update_record = adm.to_dict()
-                            update_record['has_admission'] = True
-                            update_record['is_closed'] = True
-                            # CRITICAL FIX: Store the discharge's unique_key_dis value for WHERE clause filtering
-                            update_record['unique_key_dis'] = ofc_match.iloc[0]['unique_key_dis']
-                            updates_list.append(update_record)
-                            admissions_updated += 1
-                        else:
-                            # No OFC match - prepare for insert
-                            adm_record = adm.to_dict()
-                            adm_record['has_admission'] = True
-                            adm_record['has_discharge'] = False
-                            adm_record['is_closed'] = False
-                            inserts_list.append(adm_record)
-                            admissions_inserted += 1
-                    else:
-                        # No OFC available - prepare for insert
-                        adm_record = adm.to_dict()
-                        adm_record['has_admission'] = True
-                        adm_record['has_discharge'] = False
-                        adm_record['is_closed'] = False
-                        inserts_list.append(adm_record)
-                        admissions_inserted += 1
-            else:
-                # No matching discharge - prepare for insert
-                adm_record = adm.to_dict()
-                adm_record['has_admission'] = True
-                adm_record['has_discharge'] = False
-                adm_record['is_closed'] = False
-                inserts_list.append(adm_record)
-                admissions_inserted += 1
+            # collapse pure duplicates to one logical row
+            if not candidates.empty and is_duplicate_discharge(candidates).all():
+                candidates = candidates.head(1)
 
-        # Execute batch update if any
+            if candidates.empty:
+                rec = adm.to_dict()
+                rec.update(dict(has_admission=True, has_discharge=False, is_closed=False))
+                inserts_list.append(rec)
+                admissions_inserted += 1
+                continue
+
+            match_row = candidates.iloc[0] if len(candidates) == 1 else hierarchical_match(adm, candidates)
+
+            if match_row is None:
+                rec = adm.to_dict()
+                rec.update(dict(has_admission=True, has_discharge=False, is_closed=False))
+                inserts_list.append(rec)
+                admissions_inserted += 1
+            else:
+                rec = adm.to_dict()
+                rec.update(dict(has_admission=True, is_closed=True,
+                                unique_key_dis=match_row["unique_key_dis"]))
+                updates_list.append(rec)
+                admissions_updated += 1
+
         if updates_list:
             updates_df = pd.DataFrame(updates_list)
-            logging.debug(f"Phase 1 Update records: Updating {len(updates_df)} discharge records with admission data")
-            logging.debug(f"Update filter using uid, facility, and unique_key_dis from matched discharges")
-            generateAndRunUpdateQuery(f'{schema}."{table_name}"', updates_df,disharge=True)
-            logging.debug(f"Batch updated {len(updates_list)} discharge records with admission data")
+            generateAndRunUpdateQuery(f'{schema}."{table_name}"', updates_df, disharge=True)
 
-        # Execute batch insert if any
         if inserts_list:
             generate_create_insert_sql(pd.DataFrame(inserts_list), schema, table_name)
-            logging.debug(f"Batch inserted {len(inserts_list)} new admission records")
 
-    logging.info(f"Admissions phase complete: {admissions_updated} updated discharges, {admissions_inserted} new admissions inserted")
+    logging.info(f"Admissions phase complete: {admissions_updated} updated, {admissions_inserted} inserted")
 
-    # =====================
-    # PHASE 2: PROCESS DISCHARGES
-    # =====================
+    # ---------------------------------------------------------
+    # PHASE 2 — PROCESS DISCHARGES
+    # ---------------------------------------------------------
+
     logging.info("PHASE 2: Processing discharges...")
 
-    # Ensure all columns from discharges exist in the database table
     if not new_dis.empty:
         add_new_columns_if_needed(new_dis, table_name, schema)
 
     discharges_inserted = 0
     discharges_updated = 0
 
-    # BATCH QUERY: Get all discharges with their potential matches from database
     if not new_dis.empty:
+
         uids = tuple(set(new_dis['uid'].unique()))
         facilities = tuple(set(new_dis['facility'].unique()))
 
-        # Query all existing admissions without discharge for these uid/facility combos
-        batch_query = f'''
-            SELECT uid, facility, unique_key, "OFC"
+        query = f"""
+            SELECT uid, facility, unique_key, "OFC.value", "BirthWeight.value", "Temperature.value",
+                   "DateTimeAdmission.value"
             FROM {schema}."{table_name}"
             WHERE uid = ANY(ARRAY{list(uids)})
             AND facility = ANY(ARRAY{list(facilities)})
             AND is_closed = FALSE
             AND has_discharge = FALSE
             AND has_admission = TRUE
-        ;;'''
+        ;;
+        """
 
-        existing_admissions = run_query_and_return_df(batch_query)
+        existing_admissions = run_query_and_return_df(query)
 
-        # Separate discharges into: matched (to update), unmatched (to insert)
-        updates_list = []
-        inserts_list = []
+        updates_list, inserts_list = [], []
 
         for _, dis in new_dis.iterrows():
-            uid_val = dis['uid']
-            facility_val = dis['facility']
 
-            # Find matches in existing admissions
+            uid_val = dis["uid"]
+            facility_val = dis["facility"]
+
             candidates = existing_admissions[
-                (existing_admissions['uid'] == uid_val) &
-                (existing_admissions['facility'] == facility_val)
+                (existing_admissions["uid"] == uid_val) &
+                (existing_admissions["facility"] == facility_val)
             ]
 
-            if not candidates.empty:
-                # Found matching admission(s)
-                if len(candidates) == 1:
-                    # Single match - prepare for update
-                    update_record = dis.to_dict()
-                    update_record['has_discharge'] = True
-                    update_record['is_closed'] = True
-                    # CRITICAL FIX: Store the admission's unique_key value for WHERE clause filtering
-                    update_record['unique_key'] = candidates.iloc[0]['unique_key']
-                    updates_list.append(update_record)
-                    discharges_updated += 1
-                else:
-                    # Multiple matches - use OFCDis to disambiguate
-                    if 'OFCDis' in dis.index:
-                        ofcdis_value = dis['OFCDis']
-                        ofcdis_match = candidates[candidates['OFC'] == ofcdis_value]
-                        if not ofcdis_match.empty:
-                            # Found matching OFCDis - prepare for update
-                            update_record = dis.to_dict()
-                            update_record['has_discharge'] = True
-                            update_record['is_closed'] = True
-                            # CRITICAL FIX: Store the admission's unique_key value for WHERE clause filtering
-                            update_record['unique_key'] = ofcdis_match.iloc[0]['unique_key']
-                            updates_list.append(update_record)
-                            discharges_updated += 1
-                        else:
-                            # No OFCDis match - prepare for insert
-                            dis_record = dis.to_dict()
-                            dis_record['has_admission'] = False
-                            dis_record['has_discharge'] = True
-                            dis_record['is_closed'] = False
-                            inserts_list.append(dis_record)
-                            discharges_inserted += 1
-                    else:
-                        # No OFCDis available - prepare for insert
-                        dis_record = dis.to_dict()
-                        dis_record['has_admission'] = False
-                        dis_record['has_discharge'] = True
-                        dis_record['is_closed'] = False
-                        inserts_list.append(dis_record)
-                        discharges_inserted += 1
-            else:
-                # No matching admission - prepare for insert
-                dis_record = dis.to_dict()
-                dis_record['has_admission'] = False
-                dis_record['has_discharge'] = True
-                dis_record['is_closed'] = False
-                inserts_list.append(dis_record)
-                discharges_inserted += 1
+            if not candidates.empty and is_duplicate_admission(candidates).all():
+                candidates = candidates.head(1)
 
-        # Execute batch update if any
+            if candidates.empty:
+                rec = dis.to_dict()
+                rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
+                inserts_list.append(rec)
+                discharges_inserted += 1
+                continue
+
+            match_row = candidates.iloc[0] if len(candidates) == 1 else hierarchical_match(dis, candidates)
+
+            if match_row is None:
+                rec = dis.to_dict()
+                rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
+                inserts_list.append(rec)
+                discharges_inserted += 1
+            else:
+                rec = dis.to_dict()
+                rec.update(dict(has_discharge=True, is_closed=True,
+                                unique_key=match_row["unique_key"]))
+                updates_list.append(rec)
+                discharges_updated += 1
+
         if updates_list:
             updates_df = pd.DataFrame(updates_list)
-            logging.debug(f"Phase 2 Update records: Updating {len(updates_df)} admission records with discharge data")
-            logging.debug(f"Update filter using uid, facility, and unique_key from matched admissions")
             generateAndRunUpdateQuery(f'{schema}."{table_name}"', updates_df)
-            logging.debug(f"Batch updated {len(updates_list)} admission records with discharge data")
 
-        # Execute batch insert if any
         if inserts_list:
             generate_create_insert_sql(pd.DataFrame(inserts_list), schema, table_name)
-            logging.debug(f"Batch inserted {len(inserts_list)} new discharge records")
 
-    logging.info(f"Discharges phase complete: {discharges_updated} updated admissions, {discharges_inserted} new discharges inserted")
+    logging.info(f"Discharges phase complete: {discharges_updated} updated, {discharges_inserted} inserted")
 
-    # Return final merged dataframe from database
-    final_query = f'SELECT * FROM {schema}."{table_name}";;'
-    result_df = run_query_and_return_df(final_query)
-    logging.info(f"Merge complete: Final record count = {len(result_df)}")
 
-    return result_df.reset_index(drop=True) if not result_df.empty else pd.DataFrame()
 
 
 def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> None:
@@ -441,6 +391,7 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
             column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
             if column_pairs:
                 create_new_columns(table_name, schema, column_pairs)
+
 
 def seed_all_table (table_name,schema):
     

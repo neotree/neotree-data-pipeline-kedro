@@ -326,22 +326,29 @@ def create_exploded_table(df: pd.DataFrame, table_name):
         logging.error(f'ERR DF=={ex}')
 
 def append_data(df: pd.DataFrame, table_name):
-    """Add data to an existing table in batches."""
+    """Add data to an existing table in batches using parameterized queries."""
     if not engine:
         raise RuntimeError("Database engine not initialized")
 
+    schema = 'derived'
     batch_size = 1000
+    total_inserted = 0
+    
     for i in range(0, len(df), batch_size):
         batch = df.iloc[i:i+batch_size]
-
-        # Convert to values you can inspect
-        values = batch.replace({pd.NA: None, np.nan: None}).to_dict('records')
-        print(f"Batch {i} sample:", values[0] if values else "No data")
-
-        # Insert the batch
-        batch.to_sql(table_name, con=engine, schema='derived',
-                     if_exists='append', index=False)
-    logging.info(f"Appended {len(df)} rows to {table_name} in {(len(df) // batch_size) + 1} batches")
+        
+        if batch.empty:
+            continue
+        
+        # Use the existing generate_postgres_insert function for proper type handling
+        try:
+            generate_postgres_insert(batch, schema, table_name)
+            total_inserted += len(batch)
+        except Exception as e:
+            logging.error(f"Error appending batch {i//batch_size + 1} to {table_name}: {e}")
+            raise
+    
+    logging.info(f"Appended {total_inserted} rows to {table_name} in {(total_inserted // batch_size) + 1} batches")
 
 # def inject_sql_with_return(sql_script):
 #     conn = engine.raw_connection()
@@ -513,7 +520,7 @@ def is_date_column_by_name(column_name: str, table_name: str = '') -> bool:
     return False
 
 
-def get_expected_sql_type(col_type: str, column_name: str = None, table_name: str = None):
+def get_expected_sql_type(col_type: str, column_name: str = '', table_name: str = ''):
     """
     Map pandas dtype to PostgreSQL type with intelligent date and boolean detection.
 
@@ -952,14 +959,16 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             uid_val = escape_special_characters(str(row['uid']))
             facility_val = escape_special_characters(str(row['facility']))
             unique_key_val = escape_special_characters(str(row['unique_key']))
+            unique_key_val_alternative = escape_special_characters(str(row['unique_key_dis']))
 
             row_values.append(f"'{uid_val}'")
             row_values.append(f"'{facility_val}'")
             row_values.append(f"'{unique_key_val}'")
+            row_values.append(f"'{unique_key_val_alternative}'")
 
             # Add update columns
             for col in df.columns:
-                if col in ['uid', 'facility', 'unique_key']:
+                if col in ['uid', 'facility', 'unique_key','unique_key_dis']:
                     continue
 
                 val = row[col]
@@ -1354,7 +1363,7 @@ def generate_postgres_insert(df, schema, table_name):
                 continue
 
             # Handle specific types
-            if col == 'unique_key':
+            if col == 'unique_key' or col=='unique_key_dis':
                 row_values.append(f"'{str(val)}'")
             elif isinstance(val, (list, dict)):
                 json_val = json.dumps(val)
