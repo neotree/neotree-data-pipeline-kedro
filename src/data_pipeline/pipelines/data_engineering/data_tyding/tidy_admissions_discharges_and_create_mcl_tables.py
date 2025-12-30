@@ -48,35 +48,63 @@ def safe_load(dataset_name: str) -> pd.DataFrame:
 
 
 def calculate_time_spent(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate time spent between started_at and completed_at columns."""
-    if "started_at" in df.columns and 'completed_at' in df.columns:
-        try:
-            started_dt = pd.to_datetime(df['started_at'], errors='coerce')
-            completed_dt = pd.to_datetime(df['completed_at'], errors='coerce')
+    if "started_at" not in df.columns or "completed_at" not in df.columns:
+        df["time_spent"] = None
+        return df
 
-            # Safely remove timezone if present
-            if pd.api.types.is_datetime64_any_dtype(started_dt):
-                if started_dt.dt.tz is not None:
-                    started_dt = started_dt.dt.tz_localize(None)
-            if pd.api.types.is_datetime64_any_dtype(completed_dt):
-                if completed_dt.dt.tz is not None:
-                    completed_dt = completed_dt.dt.tz_localize(None)
+    try:
+        started_dt = pd.to_datetime(df["started_at"], errors="coerce")
+        completed_dt = pd.to_datetime(df["completed_at"], errors="coerce")
 
-            df['started_at'] = started_dt
-            df['completed_at'] = completed_dt
+        # Normalize timezone if present
+        if getattr(started_dt.dt, "tz", None) is not None:
+            started_dt = started_dt.dt.tz_localize(None)
+        if getattr(completed_dt.dt, "tz", None) is not None:
+            completed_dt = completed_dt.dt.tz_localize(None)
 
-            # Calculate time_spent only if both are datetime-like
-            timedelta = completed_dt - started_dt
-            if pd.api.types.is_timedelta64_dtype(timedelta):
-                df['time_spent'] = timedelta.dt.total_seconds() / 60
-            else:
-                df['time_spent'] = None
-        except Exception as e:
-            logging.warning(f"Error calculating time_spent: {formatError(e)}")
-            df['time_spent'] = None
-    else:
-        df['time_spent'] = None
+        df["started_at"] = started_dt
+        df["completed_at"] = completed_dt
+
+        # Compute minutes (only for valid & non-negative deltas)
+        delta_minutes = (completed_dt - started_dt).dt.total_seconds() / 60
+        df["time_spent"] = delta_minutes.where(delta_minutes >= 0)
+
+    except Exception as e:
+        logging.warning(f"Error calculating time_spent: {formatError(e)}")
+        df["time_spent"] = None
+
     return df
+
+def safely_update_age_hours(adm_df: pd.DataFrame) -> pd.DataFrame:
+    if not {"DateTimeAdmission.value", "DOBTOB.value"}.issubset(adm_df.columns):
+        return adm_df
+
+    try:
+        admission_dt = pd.to_datetime(adm_df["DateTimeAdmission.value"], errors="coerce")
+        dob_dt = pd.to_datetime(adm_df["DOBTOB.value"], errors="coerce")
+
+        # Normalize timezone (if tz-aware)
+        if getattr(admission_dt.dt, "tz", None) is not None:
+            admission_dt = admission_dt.dt.tz_localize(None)
+        if getattr(dob_dt.dt, "tz", None) is not None:
+            dob_dt = dob_dt.dt.tz_localize(None)
+
+        # Compute timedelta where both are valid
+        age_hours = (admission_dt - dob_dt).dt.total_seconds() / 3600
+
+        # Valid rows only (non-negative)
+        valid_mask = (
+            adm_df["Age.value"].isna()
+            & age_hours.notna()
+            & (age_hours >= 0)
+        )
+
+        adm_df.loc[valid_mask, "Age.value"] = age_hours.loc[valid_mask]
+
+    except Exception as e:
+        logging.warning(f"Error calculating age (hours): {formatError(e)}")
+
+    return adm_df
 
 
 def parse_age_hours(age_string: str) -> float:
@@ -344,33 +372,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
         adm_df = result
 
     # Calculate age from admission date and DOB if Age is missing
-
-
-    if {"DateTimeAdmission.value", "DOBTOB.value"}.issubset(adm_df.columns):
-        # Convert to datetime without timezone
-        admission_dt = pd.to_datetime(adm_df["DateTimeAdmission.value"], errors="coerce")
-        dob_dt = pd.to_datetime(adm_df["DOBTOB.value"], errors="coerce")
-
-        # Calculate age in hours only if both are datetime
-        age_hours = pd.Series(None, index=adm_df.index, dtype=float)
-        valid_mask = admission_dt.notna() & dob_dt.notna()
-
-        if valid_mask.any():
-            timedelta = admission_dt[valid_mask] - dob_dt[valid_mask]
-            if pd.api.types.is_timedelta64_dtype(timedelta):
-                age_hours[valid_mask] = timedelta.dt.total_seconds() / 3600
-
-        # Create mask for valid updates
-        mask = (
-            adm_df["Age.value"].isna() &
-            age_hours.notna() &
-            (age_hours >= 0)
-        )
-
-        # Update Age values
-        adm_df.loc[mask, "Age.value"] = age_hours[mask]
-
-
+    adm_df = safely_update_age_hours(adm_df)
     # Calculate time spent
     adm_df = calculate_time_spent(adm_df)
 
