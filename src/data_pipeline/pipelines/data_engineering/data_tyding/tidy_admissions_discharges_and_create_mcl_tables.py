@@ -216,6 +216,10 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
     Proactively checks column limit and rebuilds table if approaching PostgreSQL's 1600 limit.
     This prevents column limit errors by reclaiming dropped columns before adding new ones.
     """
+    # Ensure df is a DataFrame, not a Series
+    if isinstance(df, pd.Series):
+        df = df.to_frame().T
+
     if table_exists(schema, table_name):
         # PROACTIVE COLUMN LIMIT CHECK
         # Check current column usage and rebuild if > 1200 to prevent hitting the 1600 limit
@@ -250,7 +254,8 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
 def finalize_dataframe(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> pd.DataFrame:
     """Apply final transformations to dataframe before saving."""
     df = convert_false_numbers_to_text(df, schema, table_name)
-    df = df.loc[:, ~df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+    result = df.loc[:, ~df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+    df = result if isinstance(result, pd.DataFrame) else result.to_frame().T
     df = transform_matching_labels(df, table_name)
     return df
 
