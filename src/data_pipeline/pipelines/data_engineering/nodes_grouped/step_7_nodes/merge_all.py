@@ -64,7 +64,7 @@ def get_metadata_for_script(script_type: str):
         return {}
 
 
-def validate_and_process_admissions(adm_df: pd.DataFrame) -> pd.DataFrame:
+def validate_and_process_admissions(adm_df: pd.DataFrame):
     """
     Validate and process admissions dataframe against admissions metadata.
     Applies type coercion and maintains case sensitivity of keys.
@@ -218,7 +218,7 @@ def create_all_merged_admissions_discharges(
         facilities = tuple(set(new_adm['facility'].unique()))
 
         query = f"""
-            SELECT uid, facility, unique_key_dis, "OFCDis", "BirthWeight.value", "Temperature.value",
+            SELECT uid, facility, unique_key_dis, "OFCDis.value", "BirthWeight.value", "Temperature.value",
                    "DateTimeDischarge.value", "DateTimeDeath.value"
             FROM {schema}."{table_name}"
             WHERE uid = ANY(ARRAY{list(uids)})
@@ -242,7 +242,6 @@ def create_all_merged_admissions_discharges(
                 (existing_discharges["facility"] == facility_val)
             ]
 
-            # collapse pure duplicates to one logical row
             if not candidates.empty and is_duplicate_discharge(candidates).all():
                 candidates = candidates.head(1)
 
@@ -351,6 +350,11 @@ def create_all_merged_admissions_discharges(
             generate_create_insert_sql(pd.DataFrame(inserts_list), schema, table_name)
 
     logging.info(f"Discharges phase complete: {discharges_updated} updated, {discharges_inserted} inserted")
+
+    # --- IMPORTANT CHANGE ---
+    # Do not return anything
+    return None
+
 
 
 
