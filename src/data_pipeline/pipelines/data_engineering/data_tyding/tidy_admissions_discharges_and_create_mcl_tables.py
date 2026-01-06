@@ -243,7 +243,6 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
         # Now proceed with adding new columns
         existing_cols = pd.DataFrame(get_table_column_names(table_name, schema))
         new_columns = set(df.columns) - set(existing_cols.columns)
-
         if new_columns:
             logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
             column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
@@ -344,7 +343,7 @@ def process_baseline_dates(baseline_df: pd.DataFrame) -> pd.DataFrame:
     if all(col in baseline_df.columns for col in ['DateTimeDeath.value', 'DateTimeAdmission.value']):
         death_dates = pd.to_datetime(baseline_df['DateTimeDeath.value'], errors='coerce')
         admission_dates = pd.to_datetime(baseline_df['DateTimeAdmission.value'], errors='coerce')
-        valid_mask = death_dates.notna() & admission_dates.notna()
+        valid_mask = pd.notna(death_dates) & pd.notna(admission_dates)
         if valid_mask.any():
             timedelta = death_dates - admission_dates
             if pd.api.types.is_timedelta64_dtype(timedelta):

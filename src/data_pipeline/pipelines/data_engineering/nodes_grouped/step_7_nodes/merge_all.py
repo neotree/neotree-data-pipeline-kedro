@@ -172,16 +172,16 @@ def create_all_merged_admissions_discharges(
                     return m.iloc[0]
 
         # 2) BirthWeight
-        if "BirthWeight.value" in reference_row and "BirthWeight.value" in candidates.columns:
+        if "BirthWeight.value" in reference_row and "BirthWeight.value_dis" in candidates.columns:
             if pd.notna(reference_row["BirthWeight.value"]):
-                m = candidates[candidates["BirthWeight.value"] == reference_row["BirthWeight.value"]]
+                m = candidates[candidates["BirthWeight.value_dis"] == reference_row["BirthWeight.value"]]
                 if len(m) == 1:
                     return m.iloc[0]
 
         # 3) Temperature
-        if "Temperature.value" in reference_row and "Temperature.value" in candidates.columns:
+        if "Temperature.value" in reference_row and "Temperature.value_dis" in candidates.columns:
             if pd.notna(reference_row["Temperature.value"]):
-                m = candidates[candidates["Temperature.value"] == reference_row["Temperature.value"]]
+                m = candidates[candidates["Temperature.value_dis"] == reference_row["Temperature.value"]]
                 if len(m) == 1:
                     return m.iloc[0]
 
@@ -218,7 +218,7 @@ def create_all_merged_admissions_discharges(
         facilities = tuple(set(new_adm['facility'].unique()))
 
         query = f"""
-            SELECT uid, facility, unique_key_dis, "OFCDis.value", "BirthWeight.value", "Temperature.value",
+            SELECT uid, facility, unique_key_dis, "OFCDis.value", "BirthWeight.value_dis", "Temperature.value_dis",
                    "DateTimeDischarge.value", "DateTimeDeath.value"
             FROM {schema}."{table_name}"
             WHERE uid = ANY(ARRAY{list(uids)})
@@ -404,8 +404,12 @@ def seed_all_table (table_name,schema):
     "facility" TEXT,
     "unique_key" TEXT,
     "unique_key_dis" TEXT,
-    "OFC" NUMERIC(10,2),
-    "OFCDis" NUMERIC(10,2),
+    "OFC.value" NUMERIC(10,2),
+    "OFCDis.value" NUMERIC(10,2),
+    "Temperature.value_dis" NUMERIC(10,2),
+    "Temperature.value" NUMERIC(10,2),
+    "BirthWeight.value_dis" NUMERIC(10,2),
+    "BirthWeight.value" NUMERIC(10,2),
     "has_admission" BOOLEAN DEFAULT FALSE,
     "has_discharge" BOOLEAN DEFAULT FALSE,
     "is_closed" BOOLEAN DEFAULT FALSE
@@ -433,9 +437,18 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
         adm_df= run_query_and_return_df(admission_query)
         discharges_query = read_raw_data_not_joined_in_all_table('discharges',f' NOT EXISTS (SELECT 1 FROM derived."{table_name}" b where a.uid=b.uid and a.facility=b.facility and a.unique_key=b.unique_key_dis)')
         dis_df = run_query_and_return_df(discharges_query)
+        admissions_columns = None
+        if table_exists(schema,'admissions'):
+            admissions_columns= pd.DataFrame(get_table_column_names('admissions', 'derived'), columns=["column_name"])
+            #Rename Columns that exist in admission and discharge
+            if not admissions_columns.empty and "column_name" in admissions_columns.columns:
+                adm_cols = admissions_columns["column_name"].tolist()
+                rename_map = {c: f"{c}_dis" for c in dis_df.columns if c in adm_cols}
+                dis_df = dis_df.rename(columns=rename_map)
+
 
         if( not adm_df.empty or not dis_df.empty):
-            if (not dis_df.empty and 'unique_key' in dis_df):
+            if (not dis_df.empty and 'unique_key' in dis_df.columns):
                 dis_df.rename(columns={'unique_key': 'unique_key_dis'}, inplace=True)
                   
             create_all_merged_admissions_discharges(adm_df,dis_df)     
