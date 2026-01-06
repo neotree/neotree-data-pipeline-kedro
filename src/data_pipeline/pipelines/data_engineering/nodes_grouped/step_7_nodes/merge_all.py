@@ -410,6 +410,9 @@ def seed_all_table (table_name,schema):
     "Temperature.value" NUMERIC(10,2),
     "BirthWeight.value_dis" NUMERIC(10,2),
     "BirthWeight.value" NUMERIC(10,2),
+    "DateTimeDischarge.value" TIMESTAMP, 
+    "DateTimeDeath.value" TIMESTAMP,
+    "DateTimeAdmission.value" TIMESTAMP, 
     "has_admission" BOOLEAN DEFAULT FALSE,
     "has_discharge" BOOLEAN DEFAULT FALSE,
     "is_closed" BOOLEAN DEFAULT FALSE

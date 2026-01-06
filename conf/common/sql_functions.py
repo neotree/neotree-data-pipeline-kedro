@@ -959,12 +959,15 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             uid_val = escape_special_characters(str(row['uid']))
             facility_val = escape_special_characters(str(row['facility']))
             unique_key_val = escape_special_characters(str(row['unique_key']))
-            unique_key_val_alternative = escape_special_characters(str(row['unique_key_dis']))
+            unique_key_val_alternative= None
+            if 'unique_key_dis' in df.columns:
+                unique_key_val_alternative = escape_special_characters(str(row['unique_key_dis']))
 
             row_values.append(f"'{uid_val}'")
             row_values.append(f"'{facility_val}'")
             row_values.append(f"'{unique_key_val}'")
-            row_values.append(f"'{unique_key_val_alternative}'")
+            if unique_key_val_alternative is not None:
+                row_values.append(f"'{unique_key_val_alternative}'")
 
             # Add update columns
             for col in df.columns:
