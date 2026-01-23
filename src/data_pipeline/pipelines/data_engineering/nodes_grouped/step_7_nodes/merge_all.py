@@ -153,13 +153,13 @@ def create_all_merged_admissions_discharges(
 
         rename_map = {}
         if "uid" not in df.columns:
-            for alt in ("UID", "NeoTreeID", "NeotreeID", "Neotree_ID", "neotree_id", "neotreeid"):
+            for alt in ("UID", "NeoTreeID", "NeotreeID", "Neotree_ID", "neotree_id", "neotreeid","uid_dis"):
                 if alt in df.columns:
                     rename_map[alt] = "uid"
                     break
 
         if "facility" not in df.columns:
-            for alt in ("Facility", "facility_id", "facilityId"):
+            for alt in ("Facility", "facility_id", "facilityId","facility_dis"):
                 if alt in df.columns:
                     rename_map[alt] = "facility"
                     break

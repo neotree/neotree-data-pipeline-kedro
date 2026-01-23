@@ -186,8 +186,6 @@ def process_script_repeatables(script_raw: pd.DataFrame, script_name: str) -> No
 def process_single_script(script: str) -> None:
     """Process a single dynamic script."""
     catalog_query = f'read_{script}'
-    if(script=='combined_maternity_outcomes'):
-        logging.info("#############SCRRRRRIIIPT########"+catalog_query)
 
     # Load raw data
     script_raw = safe_load(catalog_query)
