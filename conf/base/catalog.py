@@ -122,7 +122,12 @@ if hospital_scripts:
                      script_case = case_object[0][script_name]  
                   read_query = read_deduplicated_data_query(script_case,condition,dedup_destination,script_name)
                   if("combined_maternity" in script_name):
-                     logging.info("#########MY COMBINED#########"+read_query)
+                     #Remove completed_at condition to cater for old data
+                     read_query = read_query.replace(
+                     'AND cs."data"->>\'completed_at\' is NOT NUll',
+                     ''
+                     )
+                     
                   
                   create_query = SQLTableDataSet(
                                  table_name=script_name,
