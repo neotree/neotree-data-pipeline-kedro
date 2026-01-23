@@ -147,6 +147,38 @@ def create_all_merged_admissions_discharges(
     # ---------------------------------------------------------
     # Helpers
     # ---------------------------------------------------------
+    def normalize_key_columns(df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
+
+        rename_map = {}
+        if "uid" not in df.columns:
+            for alt in ("UID", "NeoTreeID", "NeotreeID", "Neotree_ID", "neotree_id", "neotreeid"):
+                if alt in df.columns:
+                    rename_map[alt] = "uid"
+                    break
+
+        if "facility" not in df.columns:
+            for alt in ("Facility", "facility_id", "facilityId"):
+                if alt in df.columns:
+                    rename_map[alt] = "facility"
+                    break
+
+        if rename_map:
+            df = df.rename(columns=rename_map)
+
+        return df
+
+    def ensure_required_columns(df: pd.DataFrame, label: str) -> pd.DataFrame:
+        if df.empty:
+            return df
+
+        missing = [col for col in ("uid", "facility") if col not in df.columns]
+        if missing:
+            logging.error(f"{label} dataframe missing required columns {missing}; skipping {label} processing.")
+            return df.iloc[0:0]
+
+        return df
 
     def is_duplicate_admission(df):
         return df.duplicated(subset=["uid", "facility", "DateTimeAdmission.value"], keep=False)
@@ -193,6 +225,12 @@ def create_all_merged_admissions_discharges(
 
     new_adm = validate_and_process_admissions(new_adm)
     new_dis = validate_and_process_discharges(new_dis)
+
+    new_adm = normalize_key_columns(new_adm)
+    new_dis = normalize_key_columns(new_dis)
+
+    new_adm = ensure_required_columns(new_adm, "Admissions")
+    new_dis = ensure_required_columns(new_dis, "Discharges")
 
     if 'OFC.value' in new_adm.columns:
         new_adm['OFC.value'] = pd.to_numeric(new_adm['OFC.value'], errors='coerce')
