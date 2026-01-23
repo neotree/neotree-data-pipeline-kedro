@@ -81,7 +81,7 @@ def get_key_values(data_raw):
                         if entry_data is not None:
                             k, v, mcl = restructure_new_format(c, entry_data, mcl)
                         #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID NEW FORMAT
-                            if new_entry['uid'] is None:
+                            if 'uid' not in new_entry or new_entry['uid'] is None:
                                 if((k=='NeoTreeID' or k=='NUID_BC' or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                                     if hasattr(v, 'value'):
                                         new_entry['uid'] = v.value
@@ -95,7 +95,7 @@ def get_key_values(data_raw):
                     k, v, mcl = restructure(c, mcl)
 
                 #SET UID FOR ZIM DISCHARGES WHICH COME WITH NULL UID OLD FORMAT
-                if new_entry['uid'] is None:
+                if 'uid' not in new_entry or new_entry['uid'] is None:
                     if k is not None and ((k=='NeoTreeID' or k=='NUID_BC'or k=='NUID_M' or k=='NUID_S') and new_entry['uid'] is None):
                         if hasattr(v, 'value'):
                             new_entry['uid'] = v.value

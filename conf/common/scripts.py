@@ -281,7 +281,10 @@ def process_dataframe_with_types(
                     # Normalize timezone to avoid tz-naive/tz-aware errors
                     dt_series = pd.to_datetime(extracted_values, errors="coerce")
 
-                    if isinstance(dt_series, pd.Series):
+                    if isinstance(dt_series, pd.Series) and (
+                        pd.api.types.is_datetime64_any_dtype(dt_series)
+                        or pd.api.types.is_datetime64tz_dtype(dt_series)
+                    ):
                         dt_series = dt_series.dt.tz_localize(None)  # type: ignore[attr-defined]
 
                     columns_to_process[new_key] = dt_series
@@ -410,7 +413,14 @@ def process_dataframe_with_types_raw_data(
 
             elif data_type in {"datetime", "timestamp", "date"}:
                 series = pd.to_datetime(extracted, errors="coerce")
-                series = series.dt.tz_localize(None)  # safe for tz-naive & aware
+                if (
+                    isinstance(series, pd.Series)
+                    and (
+                        pd.api.types.is_datetime64_any_dtype(series)
+                        or pd.api.types.is_datetime64tz_dtype(series)
+                    )
+                ):
+                    series = series.dt.tz_localize(None)  # safe for tz-naive & aware
 
             else:
                 series = extracted.astype(str)
