@@ -17,7 +17,7 @@ Available Functions:
 """
 
 import logging
-from conf.common.sql_functions import inject_sql_procedure, inject_sql_with_return
+from conf.common.sql_functions import inject_sql_procedure, inject_sql_with_return,inject_sql
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
 import re

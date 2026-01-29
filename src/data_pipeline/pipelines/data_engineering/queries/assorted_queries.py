@@ -867,4 +867,39 @@ def regenerate_unique_key_query(id, unique_key):
               '''
 
 
-  
+def clean_known_confidential_columns(schema: str, table: str):
+    def qident(s: str) -> str:
+        return '"' + s.replace('"', '""') + '"'
+
+    fq = f"{qident(schema)}.{qident(table)}"
+
+    keys = [
+        "KinCell",
+        "KinAddress",
+        "KinName",
+        "MothersCell",
+        "MotherFirstName",
+        "MotherSurname",
+        "BabyFirst",
+        "BabySurname",
+        "BabyLast",
+        "MothCell",
+        "BabyFirstName",
+        "DOBTOB"
+    ]
+
+    arr = ", ".join("'" + k.replace("'", "''") + "'" for k in keys)
+
+    sql = f"""
+    UPDATE {fq}
+    SET data = jsonb_set(
+    data,
+    '{{entries}}',
+    (data->'entries') - ARRAY[{arr}]::text[],
+    true
+    )
+    WHERE jsonb_typeof(data->'entries') = 'object'
+    AND (data->'entries') ?| ARRAY[{arr}]::text[];;
+    """.strip()
+
+    return sql

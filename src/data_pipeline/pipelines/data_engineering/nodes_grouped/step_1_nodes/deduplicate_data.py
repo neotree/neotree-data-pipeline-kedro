@@ -3,7 +3,7 @@ sys.path.append(os.getcwd())
 import logging
 from conf.common.sql_functions import inject_sql
 from conf.base.catalog import cron_log_file,generic_dedup_queries,cron_time,env
-from data_pipeline.pipelines.data_engineering.queries.assorted_queries import insert_sessions_data
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import insert_sessions_data,clean_known_confidential_columns
 from conf.common.config import config
 from data_pipeline.pipelines.data_engineering.data_tyding.regenerate_unique_key import regenerate_unique_key
 
@@ -14,6 +14,10 @@ def deduplicate_data(data_import_output):
     try:
         
         if data_import_output is not None:
+            #Clean Up Confidential Columns From Source
+            logging.info("******CLEANING KNOWN CONFIDENTIALITY COLUMNS*********")
+            inject_sql(clean_known_confidential_columns("public","sessions"),"confidential-sessions")
+            inject_sql(clean_known_confidential_columns("public","clean_sessions"),"confidential-clean-sessions")
             logging.info("******START DATA CLEANING*********")
             inject_sql(insert_sessions_data(),"Sessions Data")
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********") 
