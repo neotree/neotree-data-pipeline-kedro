@@ -149,7 +149,12 @@ def add_new_columns_if_needed(df: pd.DataFrame, script_name: str) -> None:
 
         if new_columns:
             logging.info(f"Adding {len(new_columns)} new columns to {script_name}: {new_columns}")
-            column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
+            def _col_dtype(col: str) -> str:
+                series_or_df = df[col]
+                if isinstance(series_or_df, pd.DataFrame):
+                    return str(series_or_df.iloc[:, 0].dtype)
+                return str(series_or_df.dtype)
+            column_pairs = [(col, _col_dtype(col)) for col in new_columns]
             if column_pairs:
                 create_new_columns(script_name, 'derived', column_pairs)
 

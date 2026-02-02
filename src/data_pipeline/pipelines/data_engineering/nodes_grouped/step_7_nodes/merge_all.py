@@ -153,10 +153,17 @@ def create_all_merged_admissions_discharges(
 
         rename_map = {}
         if "uid" not in df.columns:
-            for alt in ("UID", "NeoTreeID", "NeotreeID", "Neotree_ID", "neotree_id", "neotreeid","uid_dis"):
+            for alt in ("UID", "NeoTreeID", "NeotreeID", "Neotree_ID", "neotree_id", "neotreeid", "uid_dis"):
                 if alt in df.columns:
                     rename_map[alt] = "uid"
                     break
+            if "uid" not in rename_map:
+                uid_like = [
+                    col for col in df.columns
+                    if "uid" in str(col).lower()
+                ]
+                if uid_like:
+                    rename_map[uid_like[0]] = "uid"
 
         if "facility" not in df.columns:
             for alt in ("Facility", "facility_id", "facilityId","facility_dis"):
@@ -251,6 +258,9 @@ def create_all_merged_admissions_discharges(
     admissions_updated = 0
 
     if not new_adm.empty:
+        if "uid" not in new_adm.columns or "facility" not in new_adm.columns:
+            logging.error("Admissions dataframe missing uid/facility; skipping admissions merge.")
+            return None
 
         uids = tuple(set(new_adm['uid'].unique()))
         facilities = tuple(set(new_adm['facility'].unique()))
@@ -326,6 +336,9 @@ def create_all_merged_admissions_discharges(
     discharges_updated = 0
 
     if not new_dis.empty:
+        if "uid" not in new_dis.columns or "facility" not in new_dis.columns:
+            logging.error("Discharges dataframe missing uid/facility; skipping discharges merge.")
+            return None
 
         uids = tuple(set(new_dis['uid'].unique()))
         facilities = tuple(set(new_dis['facility'].unique()))
@@ -425,11 +438,17 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
 
         # Now proceed with adding new columns
         existing_cols = pd.DataFrame(get_table_column_names(table_name, schema))
-        new_columns = set(df.columns) - set(existing_cols.columns)
+        existing_col_names = set(existing_cols[0].values) if not existing_cols.empty else set()
+        new_columns = set(df.columns) - existing_col_names
 
         if new_columns:
             logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
-            column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
+            def _col_dtype(col: str) -> str:
+                series_or_df = df[col]
+                if isinstance(series_or_df, pd.DataFrame):
+                    return str(series_or_df.iloc[:, 0].dtype)
+                return str(series_or_df.dtype)
+            column_pairs = [(col, _col_dtype(col)) for col in new_columns]
             if column_pairs:
                 create_new_columns(table_name, schema, column_pairs)
 

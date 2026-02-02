@@ -53,8 +53,14 @@ def calculate_time_spent(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     try:
-        started_dt = pd.to_datetime(df["started_at"], errors="coerce")
-        completed_dt = pd.to_datetime(df["completed_at"], errors="coerce")
+        started_col = df["started_at"]
+        completed_col = df["completed_at"]
+        if isinstance(started_col, pd.DataFrame):
+            started_col = started_col.iloc[:, 0]
+        if isinstance(completed_col, pd.DataFrame):
+            completed_col = completed_col.iloc[:, 0]
+        started_dt = pd.to_datetime(started_col, errors="coerce")
+        completed_dt = pd.to_datetime(completed_col, errors="coerce")
 
         # Normalize timezone if present
         if getattr(started_dt.dt, "tz", None) is not None:
@@ -242,10 +248,16 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
 
         # Now proceed with adding new columns
         existing_cols = pd.DataFrame(get_table_column_names(table_name, schema))
-        new_columns = set(df.columns) - set(existing_cols.columns)
+        existing_col_names = set(existing_cols[0].values) if not existing_cols.empty else set()
+        new_columns = set(df.columns) - existing_col_names
         if new_columns:
             logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
-            column_pairs = [(col, str(df[col].dtype)) for col in new_columns]
+            def _col_dtype(col: str) -> str:
+                series_or_df = df[col]
+                if isinstance(series_or_df, pd.DataFrame):
+                    return str(series_or_df.iloc[:, 0].dtype)
+                return str(series_or_df.dtype)
+            column_pairs = [(col, _col_dtype(col)) for col in new_columns]
             if column_pairs:
                 create_new_columns(table_name, schema, column_pairs)
 
