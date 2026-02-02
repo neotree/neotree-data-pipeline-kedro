@@ -1128,6 +1128,13 @@ def transform_dataframe_with_field_info(df, table_name):
     # Create a copy for transformation
     transformed_df = df.copy()
 
+    # ====================
+    # 0. DROP CONFIDENTIAL cOLUMNS
+    # ====================
+    confidential_cols = [c for c in transformed_df.columns if field_info.get(c.split('.')[0], {}).get('confidential')]
+    logging.info("IDENTIFIED CONFIDENTIAL COLUMNS ARE:-- %s", confidential_cols)
+    transformed_df = transformed_df.drop(columns=confidential_cols, errors='ignore')
+    
     # Columns to exclude from transformation
     exclude_cols = ['transformed', 'unique_key', 'uid']
 
