@@ -12,7 +12,7 @@ import traceback
 from .templates import get_html_validation_template
 from conf.common.scripts import get_script, merge_script_data
 from conf.common.logger import setup_logger
-from typing import Dict
+from typing import Dict, cast
 from datetime import datetime
 from conf.base.catalog import params, hospital_conf
 import re
@@ -260,6 +260,56 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     else:
         field_info = {f['key']: f for f in schema}
 
+    bool_map = {
+        "y": True, "yes": True, "true": True, "1": True, True: True,
+        "n": False, "no": False, "false": False, "0": False, False: False,
+    }
+
+    def _coerce_boolean_series(series: pd.Series) -> pd.Series:
+        return (
+            series.astype(str)
+            .str.strip()
+            .str.lower()
+            .map(bool_map)
+        )
+
+    def _evaluate_condition_mask(condition: str) -> pd.Series:
+        if not condition or not isinstance(condition, str):
+            return pd.Series(True, index=df.index)
+
+        expr = condition.strip()
+        keys = re.findall(r"\$([A-Za-z0-9_]+)", expr)
+
+        for key in keys:
+            expr = expr.replace(f"${key}", f"__{key}")
+
+        expr = re.sub(r"\band\b", "&", expr, flags=re.I)
+        expr = re.sub(r"\bor\b", "|", expr, flags=re.I)
+        expr = re.sub(r"\btrue\b", "True", expr, flags=re.I)
+        expr = re.sub(r"\bfalse\b", "False", expr, flags=re.I)
+        expr = re.sub(r"(?<![<>=!])=(?!=)", "==", expr)
+
+        local_dict = {}
+        for key in keys:
+            col = f"{key}.value"
+            if col in df.columns:
+                series = df[col]
+            else:
+                series = pd.Series([pd.NA] * len(df), index=df.index)
+            meta = field_info.get(key, {})
+            if (meta.get("dataType") or "").lower() == "boolean":
+                series = _coerce_boolean_series(series)
+            local_dict[f"__{key}"] = series
+
+        try:
+            result = pd.eval(expr, engine="python", local_dict=local_dict)
+            if isinstance(result, (bool, np.bool_)):
+                return pd.Series(bool(result), index=df.index)
+            return result.fillna(False)
+        except Exception as exc:
+            logger.warning(f"⚠ Failed to evaluate condition '{condition}': {exc}")
+            return pd.Series(False, index=df.index)
+
     # ============================================================================
     # GROUP 1: TECH - Infrastructure, errors, data handling
     # ============================================================================
@@ -334,6 +384,12 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
 
         # --- REQUIRED FIELDS VALIDATION ---
         if not is_optional:
+            condition = field.get("condition")
+            condition_mask = _evaluate_condition_mask(condition)
+            eligible_count = int(condition_mask.sum())
+            if eligible_count == 0:
+                continue
+
             # Check for NULL/empty values
             temp_series = (
                 df[value_col]
@@ -343,10 +399,10 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 .replace('', np.nan)
             )
 
-            null_count = temp_series.isna().sum()
+            null_mask = condition_mask & temp_series.isna()
+            null_count = int(null_mask.sum())
             if null_count > 0:
-                null_pct = (null_count / len(df)) * 100
-                null_mask = temp_series.isna()
+                null_pct = (null_count / eligible_count) * 100
 
                 # Special handling: if the field being checked is 'uid', we can't show UIDs as samples
                 # Instead, show unique_key or row indices
@@ -362,7 +418,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 required_results.append({
                     'base_key': base_key,
                     'null_count': null_count,
-                    'total_count': len(df),
+                    'total_count': eligible_count,
                     'null_pct': null_pct,
                     'sample_identifiers': sample_identifiers,
                     'is_uid_field': base_key.lower() == 'uid'
@@ -609,7 +665,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
 
     # Show columns with high NULL rates
     null_rates = (df.isnull().sum() / len(df)) * 100
-    high_null_cols = null_rates[null_rates > 50].sort_values(ascending=False)
+    high_null_cols = cast(pd.Series, null_rates[null_rates > 50].sort_values(ascending=False))
     if not high_null_cols.empty:
         logger.warning(f"⚠ {len(high_null_cols)} columns >50% NULL:")
         for col, rate in high_null_cols.head(5).items():
@@ -629,7 +685,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
 
             # Only check consistency for required fields
             if not is_optional:
-                inconsistent_mask = df[value_col].isna() & df[label_col].notna()
+                inconsistent_mask = cast(pd.Series, df[value_col].isna() & df[label_col].notna())
                 if inconsistent_mask.sum() > 0:
                     inconsistencies += 1
                     inconsistent_count = inconsistent_mask.sum()
@@ -637,7 +693,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                     # Special handling for UID field
                     if base_key.lower() == 'uid':
                         if 'unique_key' in df.columns:
-                            sample_identifiers = df.loc[inconsistent_mask, 'unique_key'].head(2).tolist()
+                            sample_identifiers = df["unique_key"][inconsistent_mask].head(2).tolist()
                             identifier_label = "unique_keys"
                         else:
                             sample_identifiers = df[inconsistent_mask].head(2).index.tolist()
@@ -666,7 +722,7 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
 
         if data_type in ['number', 'integer', 'float', 'timer']:
             try:
-                numeric_values = pd.to_numeric(df[value_col], errors='coerce').dropna()
+                numeric_values = cast(pd.Series, pd.to_numeric(df[value_col], errors='coerce')).dropna()
                 if len(numeric_values) > 10:
                     Q1 = numeric_values.quantile(0.25)
                     Q3 = numeric_values.quantile(0.75)

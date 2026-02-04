@@ -345,7 +345,7 @@ def process_dataframe_with_types_raw_data(
 ) -> pd.DataFrame:
     """
     Process dataframe columns using metadata from merged_data.
-    Handles .value and .label suffixes and preserves base columns.
+    Handles .value and .label suffixes and preserves original column names.
 
     Maintains original column casing and stable column ordering.
     """
@@ -388,8 +388,6 @@ def process_dataframe_with_types_raw_data(
             continue
 
         data_type = (meta.get("dataType") or "").lower()
-        new_key = base_key  # preserve original casing
-
         if suffix == "value":
             extracted = processed_df[col].apply(extract_value_from_json)
 
@@ -425,9 +423,9 @@ def process_dataframe_with_types_raw_data(
             else:
                 series = extracted.astype(str)
 
-            columns_to_process[new_key] = ensure_series(series)
-            if new_key not in column_order:
-                column_order.append(new_key)
+            columns_to_process[col_str] = ensure_series(series)
+            if col_str not in column_order:
+                column_order.append(col_str)
 
             columns_to_drop.add(col)
 
@@ -438,16 +436,14 @@ def process_dataframe_with_types_raw_data(
             "multi_select_option",
         }:
             extracted = processed_df[col].apply(extract_label_from_json)
-            label_key = f"{new_key}_label"
-
             if data_type == "multi_select_option":
                 series = extracted.astype(str).apply(clean_to_jsonb_array)
             else:
                 series = extracted.astype(str)
 
-            columns_to_process[label_key] = series
-            if label_key not in column_order:
-                column_order.append(label_key)
+            columns_to_process[col_str] = series
+            if col_str not in column_order:
+                column_order.append(col_str)
 
             columns_to_drop.add(col)
 

@@ -971,7 +971,7 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
 
             # Add update columns
             for col in df.columns:
-                if col in ['uid', 'facility', 'unique_key','unique_key_dis']:
+                if col in ['uid', 'facility', 'unique_key','unique_key_dis','facility_dis']:
                     continue
 
                 val = row[col]
@@ -1065,21 +1065,10 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             ) AS v({columns_str})
             WHERE t.uid = v.uid
             AND t.facility = v.facility
-            AND t."unique_key" IS NOT NULL
-            AND t."unique_key" = v."unique_key" ;;
+            AND (t."unique_key" IS NOT NULL
+            AND t."unique_key" = v."unique_key")
+             OR (t."unique_key_dis" IS NOT NULL AND t."unique_key_dis"=v."unique_key_dis");;
         """
-        if (disharge):
-            update_query = f"""
-            UPDATE {table} AS t
-            SET {', '.join(set_clauses)}
-            FROM (VALUES
-                {values_str}
-            ) AS v({columns_str})
-            WHERE t.uid = v.uid
-            AND t.facility = v.facility
-            AND t."unique_key_dis" IS NOT NULL
-            AND t."unique_key_dis" = v."unique_key_dis";;
-          """
         inject_sql(update_query, f"BULK UPDATE {table}")
         logging.info(f"Successfully bulk updated {len(values_rows)} rows in {table}")
 
