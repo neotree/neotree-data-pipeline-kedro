@@ -2,7 +2,7 @@ import pandas as pd
 import logging
 from typing import List, Optional, cast
 from conf.base.catalog import params
-from conf.common.sql_functions import inject_sql, run_query_and_return_df,generate_create_insert_sql,generateAndRunUpdateQuery
+from conf.common.sql_functions import inject_sql, run_query_and_return_df,generate_create_insert_sql,generateAndRunUpdateQuery, escape_special_characters
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.common.sql_functions import get_table_column_names
 from conf.common.scripts import process_dataframe_with_types_raw_data
@@ -744,7 +744,98 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             generate_create_insert_sql(discharges_only, schema, table_name)
 
         if isinstance(merged_df, pd.DataFrame) and not is_empty_df(merged_df):
-            generateAndRunUpdateQuery(f'{schema}."{table_name}"', merged_df)
+            # If table is empty, we must insert merged rows before attempting updates
+            if total_merged_rows == 0:
+                generate_create_insert_sql(merged_df, schema, table_name)
+            else:
+                # Split merged_df into new rows vs existing rows (update only affects matches)
+                try:
+                    existing_keys_df = pd.DataFrame()
+                    if {"uid", "facility"}.issubset(merged_df.columns):
+                        key_pairs = cast(
+                            pd.DataFrame,
+                            merged_df.loc[:, ["uid", "facility"]]
+                            .dropna()
+                            .astype(str)
+                            .drop_duplicates(),
+                        )
+                        if not key_pairs.empty:
+                            values_rows = ", ".join(
+                                f"('{escape_special_characters(u)}','{escape_special_characters(f)}')"
+                                for u, f in key_pairs.itertuples(index=False, name=None)
+                            )
+                            existing_keys_df = run_query_and_return_df(
+                                f"""
+                                SELECT t.uid, t.facility, t.unique_key, t.unique_key_dis
+                                FROM {schema}."{table_name}" AS t
+                                JOIN (VALUES {values_rows}) AS v(uid, facility)
+                                  ON t.uid = v.uid AND t.facility = v.facility;
+                                """
+                            ) or pd.DataFrame()
+                except Exception:
+                    existing_keys_df = pd.DataFrame()
+
+                merged_df = merged_df.copy()
+                for col in ["uid", "facility", "unique_key", "unique_key_dis"]:
+                    if col in merged_df.columns:
+                        merged_df[col] = merged_df[col].astype(str)
+
+                if not existing_keys_df.empty:
+                    existing_keys_df = existing_keys_df.copy()
+                    for col in ["uid", "facility", "unique_key", "unique_key_dis"]:
+                        if col in existing_keys_df.columns:
+                            existing_keys_df[col] = existing_keys_df[col].astype(str)
+
+                    # Build match sets on uid+facility+unique_key and uid+facility+unique_key_dis
+                    key_set = set()
+                    if {"uid", "facility", "unique_key"}.issubset(existing_keys_df.columns):
+                        key_set.update(
+                            (u, f, k)
+                            for u, f, k in zip(
+                                existing_keys_df["uid"],
+                                existing_keys_df["facility"],
+                                existing_keys_df["unique_key"],
+                            )
+                            if k not in [None, "None", "nan", "NaT", "<NA>"]
+                        )
+                    dis_key_set = set()
+                    if {"uid", "facility", "unique_key_dis"}.issubset(existing_keys_df.columns):
+                        dis_key_set.update(
+                            (u, f, k)
+                            for u, f, k in zip(
+                                existing_keys_df["uid"],
+                                existing_keys_df["facility"],
+                                existing_keys_df["unique_key_dis"],
+                            )
+                            if k not in [None, "None", "nan", "NaT", "<NA>"]
+                        )
+
+                    def _is_existing(row: pd.Series) -> bool:
+                        uid = row.get("uid")
+                        facility = row.get("facility")
+                        ukey = row.get("unique_key")
+                        ukey_dis = row.get("unique_key_dis")
+                        if uid is None or facility is None:
+                            return False
+                        if (uid, facility, ukey) in key_set:
+                            return True
+                        if ukey_dis is not None and (uid, facility, ukey_dis) in dis_key_set:
+                            return True
+                        return False
+
+                    existing_mask = merged_df.apply(_is_existing, axis=1)
+                    to_insert = merged_df[~existing_mask]
+                    to_update = merged_df[existing_mask]
+                else:
+                    to_insert = merged_df
+                    to_update = pd.DataFrame()
+
+                if isinstance(to_insert, pd.DataFrame) and not is_empty_df(to_insert):
+                    generate_create_insert_sql(to_insert, schema, table_name)
+
+                if isinstance(to_update, pd.DataFrame) and not is_empty_df(to_update):
+                    generateAndRunUpdateQuery(f'{schema}."{table_name}"', to_update)
+            # If table was empty we already inserted; no update needed in that case.
 
         return dict(status="Success", message="Raw Data Merging Complete")
     except Exception as e:

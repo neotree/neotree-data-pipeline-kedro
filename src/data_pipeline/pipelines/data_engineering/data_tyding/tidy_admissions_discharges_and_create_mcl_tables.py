@@ -248,7 +248,14 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
 
         # Now proceed with adding new columns
         existing_cols = pd.DataFrame(get_table_column_names(table_name, schema))
-        existing_col_names = set(existing_cols[0].values) if not existing_cols.empty else set()
+        if existing_cols.empty:
+            existing_col_names = set()
+        elif 0 in existing_cols.columns:
+            existing_col_names = set(existing_cols[0].values)
+        elif 'column_name' in existing_cols.columns:
+            existing_col_names = set(existing_cols['column_name'].values)
+        else:
+            existing_col_names = set(existing_cols.iloc[:, 0].values)
         new_columns = set(df.columns) - existing_col_names
         if new_columns:
             logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
