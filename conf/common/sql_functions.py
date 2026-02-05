@@ -918,6 +918,7 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
 
         # OPTIMIZATION 1: Batch fetch all column types in a single query
         column_types = {}
+        existing_columns = set()
         if not df.columns.empty:
             # Extract table name from parameter (handles both "schema.table" and "table" formats)
             if '.' in table:
@@ -938,11 +939,13 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             """
             results = inject_sql_with_return(batch_type_query)
             column_types = {row[0]: row[1] for row in results} if results else {}
+            existing_columns = set(column_types.keys())
 
         # Add 'unknown' for columns not found in table
         for col in df.columns:
             if col not in column_types:
                 column_types[col] = 'unknown'
+        has_unique_key_dis = 'unique_key_dis' in df.columns and 'unique_key_dis' in existing_columns
 
         # Boolean mapping
         bool_map = {
@@ -959,8 +962,8 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             uid_val = escape_special_characters(str(row['uid']))
             facility_val = escape_special_characters(str(row['facility']))
             unique_key_val = escape_special_characters(str(row['unique_key']))
-            unique_key_val_alternative= None
-            if 'unique_key_dis' in df.columns:
+            unique_key_val_alternative = None
+            if has_unique_key_dis:
                 unique_key_val_alternative = escape_special_characters(str(row['unique_key_dis']))
 
             row_values.append(f"'{uid_val}'")
@@ -1039,7 +1042,11 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             return
 
         # Build SET clause for all columns except WHERE clause columns
-        update_cols = [col for col in df.columns if col not in ['uid', 'facility', 'unique_key']]
+        update_cols = [
+            col for col in df.columns
+            if col not in ['uid', 'facility', 'unique_key']
+            and (col != 'unique_key_dis' or has_unique_key_dis)
+        ]
 
         set_clauses = []
         for col in update_cols:
@@ -1057,6 +1064,15 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
         columns_str = ', '.join([f'"{col}"' for col in value_columns])
 
         values_str = ',\n'.join(values_rows)
+        match_clauses = [
+            '(t."unique_key" IS NOT NULL AND t."unique_key" = v."unique_key")'
+        ]
+        if has_unique_key_dis:
+            match_clauses.append(
+                '(t."unique_key_dis" IS NOT NULL AND v."unique_key_dis" IS NOT NULL '
+                'AND t."unique_key_dis" = v."unique_key_dis")'
+            )
+
         update_query = f"""
             UPDATE {table} AS t
             SET {', '.join(set_clauses)}
@@ -1065,9 +1081,9 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             ) AS v({columns_str})
             WHERE t.uid = v.uid
             AND t.facility = v.facility
-            AND (t."unique_key" IS NOT NULL
-            AND t."unique_key" = v."unique_key")
-             OR (t."unique_key_dis" IS NOT NULL AND t."unique_key_dis"=v."unique_key_dis");;
+            AND (
+                {' OR '.join(match_clauses)}
+            );;
         """
         inject_sql(update_query, f"BULK UPDATE {table}")
         logging.info(f"Successfully bulk updated {len(values_rows)} rows in {table}")
