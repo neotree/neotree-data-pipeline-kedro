@@ -945,7 +945,11 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
         for col in df.columns:
             if col not in column_types:
                 column_types[col] = 'unknown'
-        has_unique_key_dis = 'unique_key_dis' in df.columns and 'unique_key_dis' in existing_columns
+        # Use a direct DB check to avoid referencing columns that don't exist
+        has_unique_key_dis = (
+            'unique_key_dis' in df.columns
+            and column_exists(schema, table_name, 'unique_key_dis')
+        )
 
         # Boolean mapping
         bool_map = {
