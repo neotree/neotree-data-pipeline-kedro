@@ -1589,7 +1589,7 @@ def format_value(col, value, col_type):
     
 def generate_create_insert_sql(df,schema, table_name):
     # Infer PostgreSQL types
-    drop_keywords=['surname','firstname','dobtob','column_name','mothcell','dob.value',"dob.label","kinaddress","kincell","kinname"]
+    drop_keywords=["babysurname",'surname','firstname','dobtob','column_name','mothcell','dob.value',"dob.label","kinaddress","kincell","kinname","mothersurname"]
 
     try:
         original_columns = len(df.columns)
