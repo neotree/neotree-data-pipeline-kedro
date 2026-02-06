@@ -190,12 +190,18 @@ def create_all_merged_admissions_discharges(
         if is_empty_df(df):
             return df
 
-        missing = [col for col in ("uid", "facility") if col not in df.columns]
-        if missing:
-            logging.error(f"{label} dataframe missing required columns {missing}; skipping {label} processing.")
-            # Ensure we always return a DataFrame (avoid returning a Series in edge cases)
+        if "uid" not in df.columns:
+            logging.error(f"{label} dataframe missing required column 'uid'; skipping {label} processing.")
             cols = list(df.columns) if hasattr(df, "columns") else []
             return pd.DataFrame(columns=cols)
+
+        if "facility" not in df.columns:
+            # Allow processing to continue; unmatched rows will remain unmatched.
+            logging.warning(
+                f"{label} dataframe missing 'facility'; inserting unmatched rows with NULL facility."
+            )
+            df = df.copy()
+            df["facility"] = pd.NA
 
         return df
 
@@ -697,6 +703,16 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             adm_df = run_query_and_return_df(admission_query)
             if adm_df is None:
                 adm_df = pd.DataFrame()
+            # Ensure uid-only unmatched admissions are included
+            uid_only_adm = run_query_and_return_df(
+                f'''
+                SELECT a.* FROM {schema}."admissions" a
+                WHERE a.uid NOT IN (SELECT uid FROM {schema}."discharges")
+                  AND ({admissions_condition})
+                '''
+            )
+            if uid_only_adm is not None and not uid_only_adm.empty:
+                adm_df = pd.concat([adm_df, uid_only_adm], ignore_index=True).drop_duplicates()
         else:
             logging.warning('Table derived."admissions" does not exist; skipping admissions fetch.')
 
@@ -705,6 +721,16 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             dis_df = run_query_and_return_df(discharges_query)
             if dis_df is None:
                 dis_df = pd.DataFrame()
+            # Ensure uid-only unmatched discharges are included
+            uid_only_dis = run_query_and_return_df(
+                f'''
+                SELECT a.* FROM {schema}."discharges" a
+                WHERE a.uid NOT IN (SELECT uid FROM {schema}."admissions")
+                  AND ({discharges_condition})
+                '''
+            )
+            if uid_only_dis is not None and not uid_only_dis.empty:
+                dis_df = pd.concat([dis_df, uid_only_dis], ignore_index=True).drop_duplicates()
         else:
             logging.warning('Table derived."discharges" does not exist; skipping discharges fetch.')
         admissions_columns = None
