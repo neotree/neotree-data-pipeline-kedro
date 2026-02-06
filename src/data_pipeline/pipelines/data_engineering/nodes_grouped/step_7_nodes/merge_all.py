@@ -222,6 +222,8 @@ def create_all_merged_admissions_discharges(
         cols = set(df.columns)
         drop_cols = []
         for col in cols:
+            if str(col).startswith("_"):
+                continue
             if col in allowed_base or "." in col:
                 continue
             if f"{col}.value" in cols or f"{col}.label" in cols:
@@ -440,6 +442,18 @@ def create_all_merged_admissions_discharges(
         uid_val = dis_row.get("uid")
         facility_val = dis_row.get("facility")
 
+        if dis_row.get("_no_admission_in_base") is True:
+            if dis_row.get("_source") == "new":
+                rec = dis_row.drop(
+                    labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
+                    errors="ignore",
+                ).to_dict()
+                rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
+                rec["match_status"] = "unmatched_discharge"
+                rec["_source"] = "new"
+                new_rows.append(rec)
+            continue
+
         candidates = admissions_pool[
             (admissions_pool["uid"] == uid_val)
             & (admissions_pool["facility"] == facility_val)
@@ -448,7 +462,10 @@ def create_all_merged_admissions_discharges(
 
         if candidates.empty:
             if dis_row.get("_source") == "new":
-                rec = dis_row.drop(labels=["_merged_index", "_source", "_effective_discharge_dt"], errors="ignore").to_dict()
+                rec = dis_row.drop(
+                    labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
+                    errors="ignore",
+                ).to_dict()
                 rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
                 rec["match_status"] = "unmatched_discharge"
                 rec["_source"] = "new"
@@ -487,7 +504,10 @@ def create_all_merged_admissions_discharges(
 
         if selected is None:
             if dis_row.get("_source") == "new":
-                rec = dis_row.drop(labels=["_merged_index", "_source", "_effective_discharge_dt"], errors="ignore").to_dict()
+                rec = dis_row.drop(
+                    labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
+                    errors="ignore",
+                ).to_dict()
                 rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
                 rec["match_status"] = "unmatched_discharge"
                 rec["_source"] = "new"
@@ -501,7 +521,10 @@ def create_all_merged_admissions_discharges(
         dis_source = dis_row.get("_source")
 
         adm_data = selected.drop(labels=["_merged_index", "_source"], errors="ignore").to_dict()
-        dis_data = dis_row.drop(labels=["_merged_index", "_source", "_effective_discharge_dt"], errors="ignore").to_dict()
+        dis_data = dis_row.drop(
+            labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
+            errors="ignore",
+        ).to_dict()
 
         if adm_source == "existing":
             merged_index = int(selected["_merged_index"])
@@ -729,7 +752,12 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                   AND ({discharges_condition})
                 '''
             )
+            if not is_empty_df(dis_df) and "_no_admission_in_base" not in dis_df.columns:
+                dis_df = dis_df.copy()
+                dis_df["_no_admission_in_base"] = False
             if uid_only_dis is not None and not uid_only_dis.empty:
+                uid_only_dis = uid_only_dis.copy()
+                uid_only_dis["_no_admission_in_base"] = True
                 dis_df = pd.concat([dis_df, uid_only_dis], ignore_index=True).drop_duplicates()
         else:
             logging.warning('Table derived."discharges" does not exist; skipping discharges fetch.')
