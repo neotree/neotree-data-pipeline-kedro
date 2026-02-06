@@ -885,7 +885,10 @@ def clean_known_confidential_columns(schema: str, table: str):
         "BabyLast",
         "MothCell",
         "BabyFirstName",
-        "DOBTOB"
+        "DOBTOB",
+        "MotherAddressVillage",
+        "MatPhysAddressDistrict",
+        "BIDDOBTOB"
     ]
 
     arr = ", ".join("'" + k.replace("'", "''") + "'" for k in keys)
