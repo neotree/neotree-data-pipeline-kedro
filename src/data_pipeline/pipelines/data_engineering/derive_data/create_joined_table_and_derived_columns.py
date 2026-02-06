@@ -203,6 +203,8 @@ def join_table():
                         jn_adm_dis_2['NeoTreeOutcome.value'].notna() &
                         (jn_adm_dis_2['NeoTreeOutcome.value'] != '')
                     ]
+                    if isinstance(filtered_df, pd.Series):
+                        filtered_df = filtered_df.to_frame().T
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges', filtered_df)
                     deduplicate_table('joined_admissions_discharges')
 
@@ -412,7 +414,6 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
 
     logging.info(f"Finished creating joined dataset: {len(jn_adm_dis)} rows")
     return jn_adm_dis
-
 
 
 

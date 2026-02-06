@@ -839,6 +839,8 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                 generate_create_insert_sql(merged_new, schema, table_name)
 
             if not is_empty_df(merged_existing):
+                if isinstance(merged_existing, pd.Series):
+                    merged_existing = merged_existing.to_frame().T
                 merged_existing = merged_existing.drop(columns=["_source", "_merged_index"], errors="ignore")
                 generateAndRunUpdateQuery(f'{schema}."{table_name}"', merged_existing)
 
