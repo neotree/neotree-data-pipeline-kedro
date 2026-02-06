@@ -2,7 +2,15 @@ import pandas as pd
 import logging
 from typing import List, Optional, cast
 from conf.base.catalog import params
-from conf.common.sql_functions import inject_sql, run_query_and_return_df,generate_create_insert_sql,generateAndRunUpdateQuery, escape_special_characters
+from conf.common.sql_functions import (
+    inject_sql,
+    run_query_and_return_df,
+    generate_create_insert_sql,
+    generateAndRunUpdateQuery,
+    escape_special_characters,
+    inject_sql_with_return,
+    column_exists,
+)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from conf.common.sql_functions import get_table_column_names
 from conf.common.scripts import process_dataframe_with_types_raw_data
@@ -655,6 +663,34 @@ def seed_all_table(table_name, schema):
     inject_sql(create_table_query, "CREATE ALL TABLE")
     
 
+def index_exists(schema: str, index_name: str) -> bool:
+    query = (
+        "SELECT 1 FROM pg_indexes "
+        f"WHERE schemaname = '{schema}' AND indexname = '{index_name}' LIMIT 1;"
+    )
+    result = inject_sql_with_return(query)
+    return bool(result)
+
+
+def ensure_index(schema: str, table: str, columns: List[str], index_name: str) -> None:
+    if not table_exists(schema, table):
+        return
+
+    for col in columns:
+        if not column_exists(schema, table, col):
+            logging.warning(
+                f"Skipping index {schema}.{index_name}: column '{col}' missing on {schema}.{table}"
+            )
+            return
+
+    if index_exists(schema, index_name):
+        return
+
+    cols_sql = ", ".join([f'"{c}"' for c in columns])
+    create_index = f'CREATE INDEX IF NOT EXISTS "{index_name}" ON "{schema}"."{table}" ({cols_sql});;'
+    inject_sql(create_index, f"CREATE INDEX {schema}.{index_name}")
+
+
 
 def merge_raw_admissions_and_discharges(clean_derived_data_output):
     """Main function to clean and join research data."""
@@ -671,6 +707,14 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
         schema = 'derived'
         ###SEED TABLES IF NOT EXISTS
         seed_all_table(table_name, schema)
+
+        # Ensure indexes for incremental merge performance
+        ensure_index(schema, table_name, ["uid", "facility", "DateTimeAdmission.value"], f"idx_{table_name.lower()}_uid_fac_adm")
+        ensure_index(schema, table_name, ["uid", "facility", "DateTimeDischarge.value"], f"idx_{table_name.lower()}_uid_fac_dis")
+        ensure_index(schema, table_name, ["uid", "facility", "DateTimeDeath.value"], f"idx_{table_name.lower()}_uid_fac_death")
+        ensure_index(schema, "admissions", ["uid", "facility", "DateTimeAdmission.value"], "idx_admissions_uid_fac_adm")
+        ensure_index(schema, "discharges", ["uid", "facility", "DateTimeDischarge.value"], "idx_discharges_uid_fac_dis")
+        ensure_index(schema, "discharges", ["uid", "facility", "DateTimeDeath.value"], "idx_discharges_uid_fac_death")
 
         existing_merged = pd.DataFrame()
         total_merged_rows = 0

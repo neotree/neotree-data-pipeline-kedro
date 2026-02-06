@@ -20,7 +20,10 @@ from conf.common.sql_functions import (
     generateAndRunUpdateQuery,
     generate_create_insert_sql,
     get_date_column_names,
-    run_query_and_return_df
+    run_query_and_return_df,
+    inject_sql,
+    inject_sql_with_return,
+    column_exists
 )
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.data_validation.validate import reset_log
@@ -124,6 +127,34 @@ def calculate_date_differences_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def index_exists(schema: str, index_name: str) -> bool:
+    query = (
+        "SELECT 1 FROM pg_indexes "
+        f"WHERE schemaname = '{schema}' AND indexname = '{index_name}' LIMIT 1;"
+    )
+    result = inject_sql_with_return(query)
+    return bool(result)
+
+
+def ensure_index(schema: str, table: str, columns: List[str], index_name: str) -> None:
+    if not table_exists(schema, table):
+        return
+
+    for col in columns:
+        if not column_exists(schema, table, col):
+            logging.warning(
+                f"Skipping index {schema}.{index_name}: column '{col}' missing on {schema}.{table}"
+            )
+            return
+
+    if index_exists(schema, index_name):
+        return
+
+    cols_sql = ", ".join([f'"{c}"' for c in columns])
+    create_index = f'CREATE INDEX IF NOT EXISTS "{index_name}" ON "{schema}"."{table}" ({cols_sql});;'
+    inject_sql(create_index, f"CREATE INDEX {schema}.{index_name}")
+
+
 def join_table():
     logging.info("... Starting script to create joined table")
 
@@ -132,6 +163,26 @@ def join_table():
     reset_log('logs/queries.log')
 
     try:
+        # Ensure indexes for join performance (only if table + columns exist)
+        ensure_index(
+            "derived",
+            "joined_admissions_discharges",
+            ["uid", "unique_key"],
+            "idx_joined_adm_dis_uid_uk",
+        )
+        ensure_index(
+            "derived",
+            "admissions",
+            ["uid", "unique_key"],
+            "idx_admissions_uid_uk",
+        )
+        ensure_index(
+            "derived",
+            "discharges",
+            ["uid","unique_key"],
+            "idx_discharges_uid_uk",
+        )
+
         # Load Derived Admissions and Discharges
         read_admissions_query = get_query_for_table(
             'admissions',
@@ -414,6 +465,5 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
 
     logging.info(f"Finished creating joined dataset: {len(jn_adm_dis)} rows")
     return jn_adm_dis
-
 
 
