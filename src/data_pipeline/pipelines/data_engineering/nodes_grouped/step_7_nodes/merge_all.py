@@ -286,6 +286,8 @@ def create_all_merged_admissions_discharges(
     existing_merged = normalize_key_columns(existing_merged)
     existing_merged = ensure_discharge_keys(existing_merged)
     existing_merged = drop_unwanted_base_columns(existing_merged)
+    if not is_empty_df(existing_merged):
+        existing_merged["_source"] = "existing"
 
     # ---------------------------------------------------------
     # PREP POOLS FOR MATCHING
@@ -407,17 +409,23 @@ def create_all_merged_admissions_discharges(
     drops: set[int] = set()
 
     def fallback_by_datetime(candidates: pd.DataFrame, discharge_row: pd.Series) -> pd.Series:
+        admission_dt_col = None
         if "DateTimeAdmission.value" in candidates.columns:
+            admission_dt_col = "DateTimeAdmission.value"
+        elif "DateTimeAdmission.value_dis" in candidates.columns:
+            admission_dt_col = "DateTimeAdmission.value_dis"
+
+        if admission_dt_col:
             discharge_dt = discharge_row.get("_effective_discharge_dt")
             if pd.notna(discharge_dt):
                 candidates = candidates.copy()
-                candidates["_delta"] = discharge_dt - candidates["DateTimeAdmission.value"]
+                candidates["_delta"] = discharge_dt - candidates[admission_dt_col]
                 candidates["_delta_seconds"] = candidates["_delta"].apply(lambda x: x.total_seconds() if pd.notna(x) else None)
                 valid = candidates[candidates["_delta_seconds"] >= 0]
                 if not valid.empty:
                     return valid.nsmallest(1, "_delta_seconds").iloc[0]
             try:
-                return candidates.sort_values("DateTimeAdmission.value").iloc[0]
+                return candidates.sort_values(admission_dt_col).iloc[0]
             except Exception:
                 return candidates.iloc[0]
         return candidates.iloc[0]
@@ -437,6 +445,7 @@ def create_all_merged_admissions_discharges(
                 rec = dis_row.drop(labels=["_merged_index", "_source", "_effective_discharge_dt"], errors="ignore").to_dict()
                 rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
                 rec["match_status"] = "unmatched_discharge"
+                rec["_source"] = "new"
                 new_rows.append(rec)
             continue
 
@@ -444,8 +453,11 @@ def create_all_merged_admissions_discharges(
         ambiguous = False
 
         ofc_dis_val = dis_row.get("OFCDis.value")
-        if pd.notna(ofc_dis_val) and "OFC.value" in candidates.columns:
-            ofc_matches = candidates[candidates["OFC.value"] == ofc_dis_val]
+        ofc_adm_col = "OFC.value" if "OFC.value" in candidates.columns else (
+            "OFC.value_dis" if "OFC.value_dis" in candidates.columns else None
+        )
+        if pd.notna(ofc_dis_val) and ofc_adm_col:
+            ofc_matches = candidates[candidates[ofc_adm_col] == ofc_dis_val]
             if len(ofc_matches) == 1:
                 selected = ofc_matches.iloc[0]
             elif len(ofc_matches) > 1:
@@ -453,8 +465,11 @@ def create_all_merged_admissions_discharges(
 
         if selected is None:
             bw_dis_val = dis_row.get("BirthWeight.value_dis")
-            if pd.notna(bw_dis_val) and "BirthWeight.value" in candidates.columns:
-                bw_matches = candidates[candidates["BirthWeight.value"] == bw_dis_val]
+            bw_adm_col = "BirthWeight.value" if "BirthWeight.value" in candidates.columns else (
+                "BirthWeight.value_dis" if "BirthWeight.value_dis" in candidates.columns else None
+            )
+            if pd.notna(bw_dis_val) and bw_adm_col:
+                bw_matches = candidates[candidates[bw_adm_col] == bw_dis_val]
                 if len(bw_matches) == 1:
                     selected = bw_matches.iloc[0]
                 elif len(bw_matches) > 1:
@@ -469,6 +484,7 @@ def create_all_merged_admissions_discharges(
                 rec = dis_row.drop(labels=["_merged_index", "_source", "_effective_discharge_dt"], errors="ignore").to_dict()
                 rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
                 rec["match_status"] = "unmatched_discharge"
+                rec["_source"] = "new"
                 new_rows.append(rec)
             continue
 
@@ -511,6 +527,7 @@ def create_all_merged_admissions_discharges(
             rec = {**adm_data, **dis_data}
             rec.update(dict(has_admission=True, has_discharge=True, is_closed=True))
             rec["match_status"] = "ambiguous" if ambiguous else "matched"
+            rec["_source"] = "new"
             new_rows.append(rec)
 
         if ambiguous:
@@ -532,6 +549,7 @@ def create_all_merged_admissions_discharges(
         rec = adm_row.drop(labels=["_merged_index", "_source"], errors="ignore").to_dict()
         rec.update(dict(has_admission=True, has_discharge=False, is_closed=False))
         rec["match_status"] = "unmatched_admission"
+        rec["_source"] = "new"
         new_rows.append(rec)
 
     # ---------------------------------------------------------
@@ -737,105 +755,38 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
         if isinstance(merged_df, pd.Series):
             merged_df = merged_df.to_frame().T
 
-        if not is_empty_df(admissions_only):
-            generate_create_insert_sql(admissions_only, schema, table_name)
+        admissions_only_new = admissions_only
+        if not is_empty_df(admissions_only) and "_source" in admissions_only.columns:
+            admissions_only_new = admissions_only[admissions_only["_source"] == "new"]
+        if not is_empty_df(admissions_only_new):
+            admissions_only_new = admissions_only_new.drop(
+                columns=["_source", "_merged_index"], errors="ignore"
+            )
+            generate_create_insert_sql(admissions_only_new, schema, table_name)
 
-        if not is_empty_df(discharges_only):
-            generate_create_insert_sql(discharges_only, schema, table_name)
+        discharges_only_new = discharges_only
+        if not is_empty_df(discharges_only) and "_source" in discharges_only.columns:
+            discharges_only_new = discharges_only[discharges_only["_source"] == "new"]
+        if not is_empty_df(discharges_only_new):
+            discharges_only_new = discharges_only_new.drop(
+                columns=["_source", "_merged_index"], errors="ignore"
+            )
+            generate_create_insert_sql(discharges_only_new, schema, table_name)
 
         if isinstance(merged_df, pd.DataFrame) and not is_empty_df(merged_df):
-            # If table is empty, we must insert merged rows before attempting updates
-            if total_merged_rows == 0:
-                generate_create_insert_sql(merged_df, schema, table_name)
-            else:
-                # Split merged_df into new rows vs existing rows (update only affects matches)
-                try:
-                    existing_keys_df = pd.DataFrame()
-                    if {"uid", "facility"}.issubset(merged_df.columns):
-                        key_pairs = cast(
-                            pd.DataFrame,
-                            merged_df.loc[:, ["uid", "facility"]]
-                            .dropna()
-                            .astype(str)
-                            .drop_duplicates(),
-                        )
-                        if not key_pairs.empty:
-                            values_rows = ", ".join(
-                                f"('{escape_special_characters(u)}','{escape_special_characters(f)}')"
-                                for u, f in key_pairs.itertuples(index=False, name=None)
-                            )
-                            existing_keys_df = run_query_and_return_df(
-                                f"""
-                                SELECT t.uid, t.facility, t.unique_key, t.unique_key_dis
-                                FROM {schema}."{table_name}" AS t
-                                JOIN (VALUES {values_rows}) AS v(uid, facility)
-                                  ON t.uid = v.uid AND t.facility = v.facility;
-                                """
-                            ) or pd.DataFrame()
-                except Exception:
-                    existing_keys_df = pd.DataFrame()
+            merged_new = merged_df
+            merged_existing = pd.DataFrame()
+            if "_source" in merged_df.columns:
+                merged_new = merged_df[merged_df["_source"] == "new"]
+                merged_existing = merged_df[merged_df["_source"] == "existing"]
 
-                merged_df = merged_df.copy()
-                for col in ["uid", "facility", "unique_key", "unique_key_dis"]:
-                    if col in merged_df.columns:
-                        merged_df[col] = merged_df[col].astype(str)
+            if not is_empty_df(merged_new):
+                merged_new = merged_new.drop(columns=["_source", "_merged_index"], errors="ignore")
+                generate_create_insert_sql(merged_new, schema, table_name)
 
-                if not existing_keys_df.empty:
-                    existing_keys_df = existing_keys_df.copy()
-                    for col in ["uid", "facility", "unique_key", "unique_key_dis"]:
-                        if col in existing_keys_df.columns:
-                            existing_keys_df[col] = existing_keys_df[col].astype(str)
-
-                    # Build match sets on uid+facility+unique_key and uid+facility+unique_key_dis
-                    key_set = set()
-                    if {"uid", "facility", "unique_key"}.issubset(existing_keys_df.columns):
-                        key_set.update(
-                            (u, f, k)
-                            for u, f, k in zip(
-                                existing_keys_df["uid"],
-                                existing_keys_df["facility"],
-                                existing_keys_df["unique_key"],
-                            )
-                            if k not in [None, "None", "nan", "NaT", "<NA>"]
-                        )
-                    dis_key_set = set()
-                    if {"uid", "facility", "unique_key_dis"}.issubset(existing_keys_df.columns):
-                        dis_key_set.update(
-                            (u, f, k)
-                            for u, f, k in zip(
-                                existing_keys_df["uid"],
-                                existing_keys_df["facility"],
-                                existing_keys_df["unique_key_dis"],
-                            )
-                            if k not in [None, "None", "nan", "NaT", "<NA>"]
-                        )
-
-                    def _is_existing(row: pd.Series) -> bool:
-                        uid = row.get("uid")
-                        facility = row.get("facility")
-                        ukey = row.get("unique_key")
-                        ukey_dis = row.get("unique_key_dis")
-                        if uid is None or facility is None:
-                            return False
-                        if (uid, facility, ukey) in key_set:
-                            return True
-                        if ukey_dis is not None and (uid, facility, ukey_dis) in dis_key_set:
-                            return True
-                        return False
-
-                    existing_mask = merged_df.apply(_is_existing, axis=1)
-                    to_insert = merged_df[~existing_mask]
-                    to_update = merged_df[existing_mask]
-                else:
-                    to_insert = merged_df
-                    to_update = pd.DataFrame()
-
-                if isinstance(to_insert, pd.DataFrame) and not is_empty_df(to_insert):
-                    generate_create_insert_sql(to_insert, schema, table_name)
-
-                if isinstance(to_update, pd.DataFrame) and not is_empty_df(to_update):
-                    generateAndRunUpdateQuery(f'{schema}."{table_name}"', to_update)
-            # If table was empty we already inserted; no update needed in that case.
+            if not is_empty_df(merged_existing):
+                merged_existing = merged_existing.drop(columns=["_source", "_merged_index"], errors="ignore")
+                generateAndRunUpdateQuery(f'{schema}."{table_name}"', merged_existing)
 
         return dict(status="Success", message="Raw Data Merging Complete")
     except Exception as e:
