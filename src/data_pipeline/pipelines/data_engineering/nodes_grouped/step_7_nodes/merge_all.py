@@ -212,6 +212,14 @@ def create_all_merged_admissions_discharges(
 
         return df
 
+    def ensure_no_admission_flag(df: pd.DataFrame) -> pd.DataFrame:
+        if is_empty_df(df):
+            return df
+        if "_no_admission_in_base" not in df.columns:
+            df = df.copy()
+            df["_no_admission_in_base"] = False
+        return df
+
     def drop_unwanted_base_columns(df: pd.DataFrame) -> pd.DataFrame:
         if is_empty_df(df):
             return df
@@ -256,6 +264,7 @@ def create_all_merged_admissions_discharges(
 
     new_adm = ensure_required_columns(new_adm, "Admissions")
     new_dis = ensure_required_columns(new_dis, "Discharges")
+    new_dis = ensure_no_admission_flag(new_dis)
 
     if 'OFC.value' in new_adm.columns:
         new_adm['OFC.value'] = pd.to_numeric(new_adm['OFC.value'], errors='coerce')
@@ -319,6 +328,7 @@ def create_all_merged_admissions_discharges(
 
     admissions_pool = ensure_required_columns(admissions_pool, "Admissions")
     discharges_pool = ensure_required_columns(discharges_pool, "Discharges")
+    discharges_pool = ensure_no_admission_flag(discharges_pool)
 
     if "DateTimeAdmission.value" in admissions_pool.columns:
         admissions_pool["DateTimeAdmission.value"] = pd.to_datetime(
