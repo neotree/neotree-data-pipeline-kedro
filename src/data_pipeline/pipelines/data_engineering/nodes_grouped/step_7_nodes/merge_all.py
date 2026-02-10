@@ -700,13 +700,13 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             dis_df = run_query_and_return_df(discharges_query)
             if dis_df is None:
                 dis_df = pd.DataFrame()
-            # Ensure uid-only unmatched discharges are included
-            uid_only_dis = run_query_and_return_df(
+            # Ensure uid+facility-only unmatched discharges are included
+            uid_facility_only_dis = run_query_and_return_df(
                 f'''
                 SELECT a.* FROM {schema}."discharges" a
                 WHERE NOT EXISTS (
                     SELECT 1 FROM {schema}."admissions" ad
-                    WHERE ad.uid = a.uid
+                    WHERE ad.uid = a.uid AND ad.facility = a.facility
                 )
                   AND ({discharges_condition})
                 '''
@@ -714,11 +714,15 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             if not is_empty_df(dis_df) and "_no_admission_in_base" not in dis_df.columns:
                 dis_df = dis_df.copy()
                 dis_df["_no_admission_in_base"] = False
-            if uid_only_dis is not None and not uid_only_dis.empty:
-                uid_only_dis = uid_only_dis.copy()
-                uid_only_dis["_no_admission_in_base"] = True
-                # Keep the uid-only marker when duplicates exist by placing uid_only_dis first
-                dis_df = pd.concat([uid_only_dis, dis_df], ignore_index=True).drop_duplicates()
+            if uid_facility_only_dis is not None and not uid_facility_only_dis.empty:
+                uid_facility_only_dis = uid_facility_only_dis.copy()
+                uid_facility_only_dis["_no_admission_in_base"] = True
+                # Concatenate with uid_facility_only_dis FIRST (highest priority)
+                # Then drop duplicates keeping the uid_facility_only_dis version
+                key_cols = ["uid", "facility"]
+                if "unique_key_dis" in uid_facility_only_dis.columns:
+                    key_cols.append("unique_key_dis")
+                dis_df = pd.concat([uid_facility_only_dis, dis_df], ignore_index=True).drop_duplicates(subset=key_cols, keep="first")
         else:
             logging.warning('Table derived."discharges" does not exist; skipping discharges fetch.')
         admissions_columns = None
