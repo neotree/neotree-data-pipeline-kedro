@@ -1,6 +1,6 @@
 import pandas as pd
 import logging
-from typing import List, Optional, cast
+from typing import List, Optional, cast, Set, Tuple
 from conf.base.catalog import params
 from conf.common.sql_functions import (
     inject_sql,
@@ -349,9 +349,9 @@ def create_all_merged_admissions_discharges(
     # MATCHING
     # ---------------------------------------------------------
 
-    matched_admission_indices: set[int] = set()
-    matched_discharge_indices: set[int] = set()
-    new_rows: list[dict] = []
+    matched_admission_indices: Set[int] = set()
+    matched_discharge_indices: Set[int] = set()
+    new_rows: List[dict] = []
 
     def fallback_by_datetime(candidates: pd.DataFrame, discharge_row: pd.Series) -> pd.Series:
         admission_dt_col = None
@@ -766,7 +766,7 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
         if isinstance(merged_df, pd.Series):
             merged_df = merged_df.to_frame().T
 
-        def _fetch_existing_keys(df: pd.DataFrame, key_cols: List[str]) -> set[tuple]:
+        def _fetch_existing_keys(df: pd.DataFrame, key_cols: List[str]) -> Set[Tuple]:
             if is_empty_df(df) or not all(col in df.columns for col in key_cols):
                 return set()
             keys_df = df.loc[:, key_cols].dropna().astype(str).drop_duplicates()
