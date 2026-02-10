@@ -841,14 +841,15 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                         f"('{escape_special_characters(u)}','{escape_special_characters(f)}','{escape_special_characters(k)}')"
                         for u, f, k in adm_keys.to_numpy()
                     )
-                    existing_adm_keys_df = run_query_and_return_df(
+                    result = run_query_and_return_df(
                         f"""
                         SELECT t.uid, t.facility, t.unique_key, t.unique_key_dis
                         FROM {schema}."{table_name}" AS t
                         JOIN (VALUES {values_rows}) AS v(uid, facility, unique_key)
                           ON t.uid = v.uid AND t.facility = v.facility AND t.unique_key = v.unique_key;
                         """
-                    ) or pd.DataFrame()
+                    )
+                    existing_adm_keys_df = result if result is not None else pd.DataFrame()
 
             if {"uid", "facility", "unique_key_dis"}.issubset(merged_df.columns):
                 dis_keys = (
@@ -862,14 +863,15 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                         f"('{escape_special_characters(u)}','{escape_special_characters(f)}','{escape_special_characters(k)}')"
                         for u, f, k in dis_keys.to_numpy()
                     )
-                    existing_dis_keys_df = run_query_and_return_df(
+                    result = run_query_and_return_df(
                         f"""
                         SELECT t.uid, t.facility, t.unique_key, t.unique_key_dis
                         FROM {schema}."{table_name}" AS t
                         JOIN (VALUES {values_rows}) AS v(uid, facility, unique_key_dis)
                           ON t.uid = v.uid AND t.facility = v.facility AND t.unique_key_dis = v.unique_key_dis;
                         """
-                    ) or pd.DataFrame()
+                    )
+                    existing_dis_keys_df = result if result is not None else pd.DataFrame()
 
             if not existing_adm_keys_df.empty or not existing_dis_keys_df.empty:
                 existing_keys_df = pd.concat(
