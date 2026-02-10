@@ -804,6 +804,18 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                         axis=1,
                     )
                     admissions_only_new = admissions_only_new[mask]
+            else:
+                # Fallback: deduplicate on available columns
+                available_key_cols = []
+                for col in ["uid", "facility", "unique_key"]:
+                    if col in admissions_only_new.columns:
+                        available_key_cols.append(col)
+                if available_key_cols:
+                    admissions_only_new = admissions_only_new.drop_duplicates(subset=available_key_cols, keep="first")
+                logging.warning(
+                    f"Admission-only records missing some key columns for full deduplication. "
+                    f"Available columns: {available_key_cols}. Proceeding with partial deduplication."
+                )
             if not is_empty_df(admissions_only_new):
                 generate_create_insert_sql(admissions_only_new, schema, table_name)
 
@@ -812,6 +824,11 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             discharges_only_new = discharges_only_new.drop(
                 columns=["_source", "_merged_index"], errors="ignore"
             )
+            # If unique_key_dis doesn't exist but unique_key does, rename it to avoid conflicts
+            if "unique_key_dis" not in discharges_only_new.columns and "unique_key" in discharges_only_new.columns:
+                discharges_only_new = discharges_only_new.rename(columns={"unique_key": "unique_key_dis"})
+                logging.info("Renamed unique_key to unique_key_dis in discharge-only records to avoid conflicts")
+
             if {"uid", "facility", "unique_key_dis"}.issubset(discharges_only_new.columns):
                 existing_dis_keys = _fetch_existing_keys(discharges_only_new, ["uid", "facility", "unique_key_dis"])
                 if existing_dis_keys:
@@ -820,6 +837,18 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                         axis=1,
                     )
                     discharges_only_new = discharges_only_new[mask]
+            else:
+                # Fallback: deduplicate on available columns
+                available_key_cols = []
+                for col in ["uid", "facility", "unique_key_dis"]:
+                    if col in discharges_only_new.columns:
+                        available_key_cols.append(col)
+                if available_key_cols:
+                    discharges_only_new = discharges_only_new.drop_duplicates(subset=available_key_cols, keep="first")
+                logging.warning(
+                    f"Discharge-only records missing some key columns for full deduplication. "
+                    f"Available columns: {available_key_cols}. Proceeding with partial deduplication."
+                )
             if not is_empty_df(discharges_only_new):
                 generate_create_insert_sql(discharges_only_new, schema, table_name)
 
