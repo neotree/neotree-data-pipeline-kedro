@@ -140,6 +140,57 @@ def validate_and_process_discharges(dis_df: pd.DataFrame) -> pd.DataFrame:
         return dis_df
 
 
+def transform_discharge_keys(dis_df: pd.DataFrame, adm_cols: set) -> pd.DataFrame:
+    """
+    Transform discharge dataframe columns to avoid collisions with admission columns.
+
+    For keys that exist in both admission and discharge:
+    - Rename most keys to have _dis suffix
+    - For facility and uid: keep both (facility + facility_dis, uid + uid_dis)
+    - Always ensure unique_key is renamed to unique_key_dis
+
+    Args:
+        dis_df: Discharge DataFrame
+        adm_cols: Set of column names from admission table
+
+    Returns:
+        Transformed discharge DataFrame
+    """
+    if is_empty_df(dis_df) or not adm_cols:
+        return dis_df
+
+    dis_df = dis_df.copy()
+    rename_map = {}
+
+    # Columns to always rename with _dis suffix (except facility, uid)
+    for col in dis_df.columns:
+        if col in {"facility", "uid", "_no_admission_in_base", "_source", "_effective_discharge_dt", "_merged_index"}:
+            continue
+
+        # Always rename unique_key to unique_key_dis
+        if col == "unique_key":
+            rename_map[col] = "unique_key_dis"
+            continue
+
+        # If column exists in admissions and contains dots (data point), rename with _dis
+        if col in adm_cols and "." in col:
+            rename_map[col] = f"{col}_dis"
+        elif col in adm_cols and col.lower().endswith("value"):
+            rename_map[col] = f"{col}_dis"
+
+    if rename_map:
+        dis_df = dis_df.rename(columns=rename_map)
+        logging.info(f"Transformed {len(rename_map)} discharge columns: {rename_map}")
+
+    # Ensure facility_dis and uid_dis exist (create from facility/uid if needed)
+    if "facility" in dis_df.columns and "facility_dis" not in dis_df.columns:
+        dis_df["facility_dis"] = dis_df["facility"]
+    if "uid" in dis_df.columns and "uid_dis" not in dis_df.columns:
+        dis_df["uid_dis"] = dis_df["uid"]
+
+    return dis_df
+
+
 def create_all_merged_admissions_discharges(
     new_adm: pd.DataFrame,
     new_dis: pd.DataFrame,
@@ -445,6 +496,18 @@ def create_all_merged_admissions_discharges(
                 errors="ignore",
             ).to_dict()
             rec = {**adm_data, **dis_data}
+
+            # For merged records: facility comes from admission, facility_dis from discharge
+            # Same for uid: uid from admission, uid_dis from discharge
+            if "facility" in rec:
+                # facility already from admission, ensure facility_dis comes from discharge
+                if "facility_dis" in dis_data:
+                    rec["facility_dis"] = dis_data["facility_dis"]
+            if "uid" in rec:
+                # uid already from admission, ensure uid_dis comes from discharge
+                if "uid_dis" in dis_data:
+                    rec["uid_dis"] = dis_data["uid_dis"]
+
             rec.update(dict(has_admission=True, has_discharge=True, is_closed=True))
             rec["match_status"] = "ambiguous" if ambiguous else "matched"
             rec["_source"] = "new"
@@ -731,22 +794,14 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                 get_table_column_names("admissions", "derived"),
                 columns=["column_name"],
             )
-            # Rename discharge columns that collide with admissions columns
+            # Transform discharge dataframe columns EARLY to avoid collisions
             if not is_empty_df(admissions_columns) and "column_name" in admissions_columns.columns:
                 adm_cols = set(admissions_columns["column_name"].tolist())
-                rename_map = {
-                    c: f"{c}_dis"
-                    for c in dis_df.columns
-                    if c in adm_cols and c != "unique_key"
-                }
-                if rename_map:
-                    dis_df = dis_df.rename(columns=rename_map)
+                dis_df = transform_discharge_keys(dis_df, adm_cols)
 
 
         if not is_empty_df(adm_df) or not is_empty_df(dis_df):
-            if (not is_empty_df(dis_df) and 'unique_key' in dis_df.columns):
-                dis_df.rename(columns={'unique_key': 'unique_key_dis'}, inplace=True)
-                  
+            # Note: unique_key renaming is now handled in transform_discharge_keys()
             merged_outputs = create_all_merged_admissions_discharges(
                 adm_df,
                 dis_df,
@@ -824,33 +879,56 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             discharges_only_new = discharges_only_new.drop(
                 columns=["_source", "_merged_index"], errors="ignore"
             )
+            # Log current columns for debugging
+            logging.info(f"Discharge-only columns before deduplication: {list(discharges_only_new.columns)}")
+            logging.info(f"Discharge-only records count: {len(discharges_only_new)}")
+
             # If unique_key_dis doesn't exist but unique_key does, rename it to avoid conflicts
             if "unique_key_dis" not in discharges_only_new.columns and "unique_key" in discharges_only_new.columns:
                 discharges_only_new = discharges_only_new.rename(columns={"unique_key": "unique_key_dis"})
                 logging.info("Renamed unique_key to unique_key_dis in discharge-only records to avoid conflicts")
 
-            if {"uid", "facility", "unique_key_dis"}.issubset(discharges_only_new.columns):
-                existing_dis_keys = _fetch_existing_keys(discharges_only_new, ["uid", "facility", "unique_key_dis"])
+            # Determine which uid/facility columns exist
+            uid_col = "uid" if "uid" in discharges_only_new.columns else ("uid_dis" if "uid_dis" in discharges_only_new.columns else None)
+            facility_col = "facility" if "facility" in discharges_only_new.columns else ("facility_dis" if "facility_dis" in discharges_only_new.columns else None)
+
+            if uid_col and facility_col and "unique_key_dis" in discharges_only_new.columns:
+                existing_dis_keys = _fetch_existing_keys(discharges_only_new, [uid_col, facility_col, "unique_key_dis"])
+                logging.info(f"Found {len(existing_dis_keys)} existing discharge keys in database")
                 if existing_dis_keys:
                     mask = discharges_only_new.apply(
-                        lambda r: (str(r.get("uid")), str(r.get("facility")), str(r.get("unique_key_dis"))) not in existing_dis_keys,
+                        lambda r: (str(r.get(uid_col)), str(r.get(facility_col)), str(r.get("unique_key_dis"))) not in existing_dis_keys,
                         axis=1,
                     )
                     discharges_only_new = discharges_only_new[mask]
+                    logging.info(f"After deduplication: {len(discharges_only_new)} new discharge records to insert")
             else:
                 # Fallback: deduplicate on available columns
                 available_key_cols = []
-                for col in ["uid", "facility", "unique_key_dis"]:
+                for col in ["uid", "uid_dis"]:
                     if col in discharges_only_new.columns:
                         available_key_cols.append(col)
+                        break
+                for col in ["facility", "facility_dis"]:
+                    if col in discharges_only_new.columns:
+                        available_key_cols.append(col)
+                        break
+                if "unique_key_dis" in discharges_only_new.columns:
+                    available_key_cols.append("unique_key_dis")
+
                 if available_key_cols:
                     discharges_only_new = discharges_only_new.drop_duplicates(subset=available_key_cols, keep="first")
-                logging.warning(
-                    f"Discharge-only records missing some key columns for full deduplication. "
-                    f"Available columns: {available_key_cols}. Proceeding with partial deduplication."
-                )
+                    logging.info(f"Using fallback deduplication on {available_key_cols}. Records: {len(discharges_only_new)}")
+                else:
+                    logging.warning(
+                        f"Discharge-only records missing key columns. Available: {list(discharges_only_new.columns[:10])}"
+                    )
+
             if not is_empty_df(discharges_only_new):
+                logging.info(f"Inserting {len(discharges_only_new)} discharge-only records into {schema}.{table_name}")
                 generate_create_insert_sql(discharges_only_new, schema, table_name)
+            else:
+                logging.info("No new discharge-only records to insert after deduplication")
 
         if isinstance(merged_df, pd.DataFrame) and not is_empty_df(merged_df):
             merged_df = merged_df.drop(columns=["_source", "_merged_index"], errors="ignore")
