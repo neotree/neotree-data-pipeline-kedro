@@ -14,13 +14,395 @@ Available Functions:
 9. rebuild_table_dry_run(table, schema) - Preview rebuild without executing
 10. rebuild_table_to_remove_dropped_columns(table, schema) - Reclaim dropped columns
 11. fix_column_limit_error(table, schema, auto_rebuild) - Diagnose/fix 1600 column limit
+12. purge_uid_records(uid, ...) - Scan/delete a test UID or NUID across database tables
 """
 
 import logging
-from conf.common.sql_functions import inject_sql_procedure, inject_sql_with_return,inject_sql
+from conf.common.sql_functions import (
+    engine,
+    inject_sql,
+    inject_sql_procedure,
+    inject_sql_with_return,
+    text,
+)
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
 import re
+
+
+DEFAULT_UID_MATCH_COLUMNS = ("uid", "nuid", "neotree_id", "neotreeid")
+DEFAULT_JSON_UID_KEYS = (
+    "UID",
+    "NeoTreeID",
+    "NeoTreeIDBC",
+    "NUID_BC",
+    "NUID_M",
+    "NUID_S",
+)
+KNOWN_TEST_UIDS = ("AAAA-111111",)
+
+
+def _quote_identifier(identifier: str) -> str:
+    return '"' + str(identifier).replace('"', '""') + '"'
+
+
+def _escape_sql_literal(value: str) -> str:
+    return str(value).replace("'", "''")
+
+
+def _build_uid_filter(columns, uid: str) -> str:
+    escaped_uid = _escape_sql_literal(uid)
+    return " OR ".join(
+        f"{_quote_identifier(column)} = '{escaped_uid}'" for column in columns
+    )
+
+
+def _build_json_uid_filter(data_column: str, uid: str) -> str:
+    escaped_uid = _escape_sql_literal(uid)
+    quoted_data_column = _quote_identifier(data_column)
+    object_entry_matches = " OR ".join(
+        f"{quoted_data_column}->'entries'->'{json_key}'->'values'->'value'->>0 = '{escaped_uid}'"
+        for json_key in DEFAULT_JSON_UID_KEYS
+    )
+    old_format_key_list = ", ".join(
+        f"'{_escape_sql_literal(json_key)}'" for json_key in DEFAULT_JSON_UID_KEYS
+    )
+
+    return f"""(
+        {quoted_data_column}->>'uid' = '{escaped_uid}'
+        OR {object_entry_matches}
+        OR EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(
+                CASE
+                    WHEN jsonb_typeof({quoted_data_column}->'entries') = 'array'
+                    THEN {quoted_data_column}->'entries'
+                    ELSE '[]'::jsonb
+                END
+            ) AS entry
+            WHERE entry->>'key' IN ({old_format_key_list})
+            AND (
+                entry->'values'->0->>'value' = '{escaped_uid}'
+                OR entry->'values'->'value'->>0 = '{escaped_uid}'
+            )
+        )
+    )"""
+
+
+def _get_uid_table_matches(schemas=None, candidate_columns=None):
+    schemas = tuple(schemas or ("public", "derived"))
+    candidate_columns = tuple(candidate_columns or DEFAULT_UID_MATCH_COLUMNS)
+
+    schema_sql = ", ".join(f"'{_escape_sql_literal(schema)}'" for schema in schemas)
+    column_sql = ", ".join(
+        f"'{_escape_sql_literal(column.lower())}'" for column in candidate_columns
+    )
+
+    query = f"""
+        SELECT DISTINCT
+            c.table_schema,
+            c.table_name,
+            c.column_name,
+            c.data_type
+        FROM information_schema.columns c
+        INNER JOIN information_schema.tables t
+            ON c.table_schema = t.table_schema
+            AND c.table_name = t.table_name
+        WHERE t.table_type = 'BASE TABLE'
+        AND c.table_schema IN ({schema_sql})
+        AND (
+            LOWER(c.column_name) IN ({column_sql})
+            OR LOWER(c.column_name) = 'data'
+        )
+        ORDER BY c.table_schema, c.table_name, c.column_name;
+    """
+
+    grouped_matches = {}
+    for schema_name, table_name, column_name, data_type in inject_sql_with_return(query):
+        spec = grouped_matches.setdefault(
+            (schema_name, table_name),
+            {"columns": [], "json_columns": []},
+        )
+        if str(column_name).lower() in candidate_columns:
+            spec["columns"].append(column_name)
+        if (
+            str(column_name).lower() == "data"
+            and str(data_type).lower() in ("json", "jsonb")
+        ):
+            spec["json_columns"].append(column_name)
+
+    return grouped_matches
+
+
+def _build_table_match_specs(uid: str, schemas=None, candidate_columns=None):
+    schemas = tuple(schemas or ("public", "derived"))
+    candidate_columns = tuple(candidate_columns or DEFAULT_UID_MATCH_COLUMNS)
+    grouped_matches = _get_uid_table_matches(schemas, candidate_columns)
+    table_specs = []
+
+    for (schema_name, table_name), match_config in grouped_matches.items():
+        filters = []
+        if match_config["columns"]:
+            filters.append(_build_uid_filter(match_config["columns"], uid))
+        for json_column in match_config["json_columns"]:
+            filters.append(_build_json_uid_filter(json_column, uid))
+
+        if not filters:
+            continue
+
+        table_specs.append(
+            {
+                "schema": schema_name,
+                "table": table_name,
+                "columns": match_config["columns"],
+                "json_columns": match_config["json_columns"],
+                "where_clause": " OR ".join(f"({where_filter})" for where_filter in filters),
+            }
+        )
+
+    schema_priority = {"derived": 0, "public": 1}
+    table_specs.sort(
+        key=lambda spec: (
+            schema_priority.get(spec["schema"], 99),
+            spec["schema"],
+            spec["table"],
+        )
+    )
+    return table_specs
+
+
+def _execute_scalar_queries_in_transaction(query_specs):
+    if not engine or not text:
+        raise RuntimeError("Database engine not initialized")
+
+    results = []
+    with engine.begin() as connection:  # type: ignore[union-attr]
+        for query_spec in query_specs:
+            scalar_result = connection.execute(text(query_spec["sql"])).scalar()
+            row_count = int(scalar_result) if scalar_result else 0
+            results.append(
+                {
+                    "schema": query_spec["schema"],
+                    "table": query_spec["table"],
+                    "columns": query_spec["columns"],
+                    "json_columns": query_spec["json_columns"],
+                    "rows": row_count,
+                }
+            )
+
+    return results
+
+
+def purge_uid_records(
+    uid: str,
+    schemas=None,
+    candidate_columns=None,
+    dry_run: bool = True,
+):
+    """
+    Scan or delete a specific UID/NUID across database tables.
+
+    This is intended for removing test records that were created in production
+    or stage environments and have propagated into raw and derived tables.
+
+    Args:
+        uid: UID/NUID value to match exactly
+        schemas: Schemas to inspect. Defaults to ('public', 'derived')
+        candidate_columns: Candidate column names to match exactly. Defaults to
+            uid/nuid/neotree id variants.
+        dry_run: When True, only count matches. When False, delete them.
+
+    Returns:
+        Dict with per-table matches and total rows affected.
+    """
+    if not uid or not str(uid).strip():
+        raise ValueError("uid must be a non-empty string")
+
+    table_specs = _build_table_match_specs(uid, schemas, candidate_columns)
+    matches = []
+    total_rows = 0
+
+    if dry_run:
+        query_results = []
+        for spec in table_specs:
+            qualified_table = (
+                f"{_quote_identifier(spec['schema'])}.{_quote_identifier(spec['table'])}"
+            )
+            query = (
+                f"SELECT COUNT(*) FROM {qualified_table} WHERE {spec['where_clause']};"
+            )
+            result = inject_sql_with_return(query)
+            row_count = int(result[0][0]) if result and result[0] and result[0][0] else 0
+            query_results.append(
+                {
+                    "schema": spec["schema"],
+                    "table": spec["table"],
+                    "columns": spec["columns"],
+                    "json_columns": spec["json_columns"],
+                    "rows": row_count,
+                }
+            )
+    else:
+        query_specs = []
+        for spec in table_specs:
+            qualified_table = (
+                f"{_quote_identifier(spec['schema'])}.{_quote_identifier(spec['table'])}"
+            )
+            query_specs.append(
+                {
+                    "schema": spec["schema"],
+                    "table": spec["table"],
+                    "columns": spec["columns"],
+                    "json_columns": spec["json_columns"],
+                    "sql": f"""
+                        WITH deleted AS (
+                            DELETE FROM {qualified_table}
+                            WHERE {spec['where_clause']}
+                            RETURNING 1
+                        )
+                        SELECT COUNT(*) FROM deleted;
+                    """,
+                }
+            )
+        query_results = _execute_scalar_queries_in_transaction(query_specs)
+
+    for result in query_results:
+        row_count = result["rows"]
+        if row_count <= 0:
+            continue
+
+        match_sources = []
+        if result["columns"]:
+            match_sources.append(", ".join(result["columns"]))
+        if result["json_columns"]:
+            match_sources.append(f"json:{', '.join(result['json_columns'])}")
+
+        matches.append(
+            {
+                "schema": result["schema"],
+                "table": result["table"],
+                "columns": result["columns"],
+                "json_columns": result["json_columns"],
+                "rows": row_count,
+                "match_sources": match_sources,
+            }
+        )
+        total_rows += row_count
+
+    action = "Found" if dry_run else "Deleted"
+    logging.info(
+        "%s %s matching row(s) for UID '%s' across %s table(s)",
+        action,
+        total_rows,
+        uid,
+        len(matches),
+    )
+
+    for match in matches:
+        logging.info(
+            "%s.%s via %s -> %s row(s)",
+            match["schema"],
+            match["table"],
+            ", ".join(match["match_sources"]),
+            match["rows"],
+        )
+
+    return {
+        "uid": uid,
+        "dry_run": dry_run,
+        "scanned_tables": len(table_specs),
+        "affected_tables": len(matches),
+        "affected_rows": total_rows,
+        "matches": matches,
+    }
+
+
+def purge_known_test_uids(
+    schemas=None,
+    candidate_columns=None,
+    max_rows_per_uid: int = 100,
+):
+    """
+    Purge a fixed allowlist of known test UIDs.
+
+    This is intended for scheduled maintenance jobs. Each UID is scanned first
+    and only deleted when matches are present and under the configured safety
+    threshold.
+
+    Args:
+        schemas: Schemas to inspect. Defaults to ('public', 'derived')
+        candidate_columns: Candidate column names to match exactly.
+        max_rows_per_uid: Abort deletion for a UID if dry run exceeds this count.
+
+    Returns:
+        Summary dict with per-UID outcomes.
+    """
+    if max_rows_per_uid <= 0:
+        raise ValueError("max_rows_per_uid must be greater than zero")
+
+    summary = {
+        "uids_checked": len(KNOWN_TEST_UIDS),
+        "uids_deleted": 0,
+        "uids_skipped": 0,
+        "total_rows_deleted": 0,
+        "results": [],
+    }
+
+    for uid in KNOWN_TEST_UIDS:
+        scan_result = purge_uid_records(
+            uid=uid,
+            schemas=schemas,
+            candidate_columns=candidate_columns,
+            dry_run=True,
+        )
+
+        if scan_result["affected_rows"] == 0:
+            summary["results"].append(
+                {
+                    "uid": uid,
+                    "status": "not_found",
+                    "rows": 0,
+                    "matches": [],
+                }
+            )
+            continue
+
+        if scan_result["affected_rows"] > max_rows_per_uid:
+            logging.warning(
+                "Skipping purge for UID '%s': dry run found %s row(s), above safeguard of %s",
+                uid,
+                scan_result["affected_rows"],
+                max_rows_per_uid,
+            )
+            summary["uids_skipped"] += 1
+            summary["results"].append(
+                {
+                    "uid": uid,
+                    "status": "skipped_max_rows",
+                    "rows": scan_result["affected_rows"],
+                    "matches": scan_result["matches"],
+                }
+            )
+            continue
+
+        delete_result = purge_uid_records(
+            uid=uid,
+            schemas=schemas,
+            candidate_columns=candidate_columns,
+            dry_run=False,
+        )
+        summary["uids_deleted"] += 1
+        summary["total_rows_deleted"] += delete_result["affected_rows"]
+        summary["results"].append(
+            {
+                "uid": uid,
+                "status": "deleted",
+                "rows": delete_result["affected_rows"],
+                "matches": delete_result["matches"],
+            }
+        )
+
+    return summary
 
 
 

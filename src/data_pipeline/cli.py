@@ -2,6 +2,7 @@
 """Command line tools for manipulating a Kedro project.
 Intended to be invoked via `kedro`."""
 import os
+import sys
 from itertools import chain
 from pathlib import Path
 from typing import Dict, Iterable, Tuple
@@ -125,6 +126,28 @@ def _try_convert_to_numeric(value):
     return int(value) if value.is_integer() else value
 
 
+def _bootstrap_legacy_env_arg(env: str) -> None:
+    """Keep legacy config parsing working for utility commands."""
+    normalized_env_arg = f"--env={env}"
+    current_argv = list(sys.argv)
+
+    rebuilt_argv = current_argv[:2] + [normalized_env_arg]
+    skip_next = False
+
+    for arg in current_argv[2:]:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--env":
+            skip_next = True
+            continue
+        if arg.startswith("--env="):
+            continue
+        rebuilt_argv.append(arg)
+
+    sys.argv = rebuilt_argv
+
+
 @click.group(context_settings=CONTEXT_SETTINGS, name=__file__)
 def cli():
     """Command line tools for manipulating a Kedro project."""
@@ -208,6 +231,73 @@ def run(
             load_versions=load_version,
             pipeline_name=pipeline,
         )
+
+
+@cli.command("purge-uid")
+@click.option("--env", required=True, help=ENV_ARG_HELP)
+@click.option(
+    "--uid",
+    "target_uid",
+    required=True,
+    help="UID/NUID value to scan for and remove.",
+)
+@click.option(
+    "--schema",
+    "schemas",
+    multiple=True,
+    help="Schema to scan. Defaults to public and derived.",
+)
+@click.option(
+    "--column",
+    "candidate_columns",
+    multiple=True,
+    help="Candidate UID column name. Defaults to uid/nuid/neotree_id variants.",
+)
+@click.option(
+    "--execute",
+    is_flag=True,
+    help="Delete matching rows. Without this flag, the command only reports matches.",
+)
+@click.option(
+    "--confirm-uid",
+    default="",
+    help="Required with --execute. Must exactly match --uid.",
+)
+def purge_uid(env, target_uid, schemas, candidate_columns, execute, confirm_uid):
+    """Scan for a test UID/NUID and optionally delete it across database tables."""
+    if execute and confirm_uid != target_uid:
+        raise KedroCliError(
+            "--execute requires --confirm-uid to exactly match the value passed to --uid."
+        )
+
+    _bootstrap_legacy_env_arg(env)
+
+    from data_pipeline.pipelines.data_engineering.queries.data_fix import (
+        purge_uid_records,
+    )
+
+    results = purge_uid_records(
+        uid=target_uid,
+        schemas=schemas or None,
+        candidate_columns=candidate_columns or None,
+        dry_run=not execute,
+    )
+
+    action = "Deleted" if execute else "Matched"
+    click.echo(
+        f"{action} {results['affected_rows']} row(s) across "
+        f"{results['affected_tables']} table(s); "
+        f"scanned {results['scanned_tables']} table(s)."
+    )
+
+    for match in results["matches"]:
+        click.echo(
+            f"{match['schema']}.{match['table']}: "
+            f"{match['rows']} row(s) via {', '.join(match['match_sources'])}"
+        )
+
+    if not execute:
+        click.echo("Dry run only. Re-run with --execute to delete matching rows.")
 
 
 cli.add_command(pipeline_group)

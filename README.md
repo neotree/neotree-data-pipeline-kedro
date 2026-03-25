@@ -60,6 +60,8 @@ The `hospitals.ini` file contains hospitals script ids configurations
 8. files_dir:  Works hand in hand with the `mode` field. It is the path to the directory containing scripts that                     need to be imported into the database. The path should be specified using the path pattern of the                     operating system being in use. By Default it is `OPTIONAL` however it becomes `REQUIRED` the moment we                set `mode` to `import`
 
 9. cron_interval: An `OPTIONAL` number value used to determine the number of hours to be used before the next running                   of the automated data pipeline. If not specified, the automation script will default to `6 hours`
+10. known_test_uid_cleanup_interval: An `OPTIONAL` number value used to determine the number of hours between runs of the scheduled known test UID cleanup job. If omitted or set to `0`, the cleanup job will not be installed.
+11. known_test_uid_cleanup_max_rows: An `OPTIONAL` number value used as a safety cutoff for the scheduled known test UID cleanup job. If the dry run for a known test UID exceeds this number, deletion is skipped. The default is `100`
 
 ## EXAMPLE OF FULL `database.ini` FILE:
     [postgresql_dev]
@@ -152,6 +154,7 @@ After running the above command, logs should start appearing on your screen, det
 4. To confirm that your entries have been written to the crontab file, run `crontab -e` then check if your entries are available
 >It is important to specify the time zone in the `crontab` file before starting to run the automation script so that you won't have challenges with differences in server time against the time zone that you want the automation script to run.
 >To set the time zone append the following line at the top of your `crontab` file: `TZ="SPECIFY_TIMEZONE` e.g `TZ= "Africa/Harare"`
+>If `known_test_uid_cleanup_interval` is configured in `database.ini`, the automation script will also install a second cron job that runs `kedro purge-known-test-uids --env=...` using the configured row-count safeguard.
 
 ## ALTERNATIVELY ##
 > If you have knowledge with the linux operating system, you can write the automation command directly to the cron service by following the the steps below:
@@ -182,6 +185,58 @@ After running the above command, logs should start appearing on your screen, det
 > You can also add the `--parallel` flag to the automation script to enable concurrency
 *NOTE*: *Your python environment should be named `env` else change the command `env/bin/python` to suit the name of your environment*
 *NOTE*: *The automation scripts should be set or run after all the setup process including the installation of dependencies has been completed*
+
+## DATA CLEANUP COMMANDS
+> The project includes commands for safely removing known test UIDs from the database.
+
+### MANUAL UID CLEANUP
+Use this when you want to inspect or remove a single specific UID manually.
+
+1. Run a dry run first:
+`kedro purge-uid --env=prod --uid AAAA-111111`
+2. If the reported matches are correct, run the delete:
+`kedro purge-uid --env=prod --uid AAAA-111111 --execute --confirm-uid AAAA-111111`
+
+Notes:
+1. The first command only scans and reports matches.
+2. The second command deletes matching rows.
+3. `--confirm-uid` must exactly match the value passed to `--uid`.
+4. Deletion is transactional, meaning the matching deletes are committed together or rolled back together if there is an error.
+5. The cleanup checks both standard UID columns and raw JSON-backed session data where NeoTree IDs may be stored.
+
+### SCHEDULED KNOWN TEST UID CLEANUP
+Use this when you want a low-cost periodic cleanup for fixed known test UIDs.
+
+The scheduled cleanup command is:
+`kedro purge-known-test-uids --env=prod`
+
+This command:
+1. Uses a fixed allowlist of known test UIDs defined in the codebase.
+2. Runs a dry run internally before deleting anything.
+3. Skips deletion if the number of matches for a known test UID exceeds the configured safety threshold.
+4. Only deletes allowlisted test UIDs; it does not accept arbitrary UIDs.
+
+### ENABLING SCHEDULED CLEANUP IN AUTOMATION
+To install the scheduled cleanup cron job, add the following optional values to `conf/local/database.ini`:
+
+```ini
+[postgresql_prod]
+cron_interval = 6
+known_test_uid_cleanup_interval = 12
+known_test_uid_cleanup_max_rows = 100
+```
+
+Then run:
+`python automation.py kedro --env=prod`
+
+If `known_test_uid_cleanup_interval` is greater than `0`, the automation script will install a second cron job for:
+`kedro purge-known-test-uids --env=prod --max-rows-per-uid 100`
+
+Recommended usage:
+1. Use manual cleanup for one-off production support actions.
+2. Use scheduled cleanup only for approved known test UIDs such as `AAAA-111111`.
+3. Start with a conservative interval such as every `12` hours.
+4. Keep the safety threshold low enough to catch unexpected broad matches.
 
 ## LOGS
 There are 3 (three) main log files that are generated by the data pipeline when it runs:
