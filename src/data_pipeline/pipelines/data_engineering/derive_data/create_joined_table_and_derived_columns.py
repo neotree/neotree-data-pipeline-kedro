@@ -394,6 +394,17 @@ def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_a
     return result
 
 
+def get_join_unique_key(df: pd.DataFrame) -> pd.Series:
+    """Return the best available unique key for joined rows."""
+    if 'unique_key' in df.columns and 'unique_key_discharge' in df.columns:
+        return df['unique_key'].combine_first(df['unique_key_discharge'])
+    if 'unique_key' in df.columns:
+        return df['unique_key']
+    if 'unique_key_discharge' in df.columns:
+        return df['unique_key_discharge']
+    return pd.Series([None] * len(df), index=df.index, dtype='object')
+
+
 def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFrame:
     """
     Create joined admissions-discharges dataset with intelligent duplicate resolution.
@@ -403,38 +414,52 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
     """
     logging.info("Creating joined dataset")
 
-    if adm_df.empty or dis_df.empty:
+    if adm_df.empty and dis_df.empty:
         logging.warning("Empty input dataframes - returning empty result")
         return pd.DataFrame()
 
-    # Add unique identifier to each admission row (will be preserved through merge)
     adm_df = adm_df.copy()
-    adm_df['_adm_idx'] = range(len(adm_df))
+    dis_df = dis_df.copy()
 
-    # Merge admissions and discharges on uid+facility
-    # This creates ALL possible admission-discharge combinations for each uid+facility pair
+    if not adm_df.empty:
+        # Preserve each admission identity so duplicate discharge matches can be resolved safely.
+        adm_df['_adm_idx'] = range(len(adm_df))
+
+    # Merge admissions and discharges on uid+facility.
+    # Use a full outer join so unmatched admissions and unmatched discharges are both retained.
     jn_adm_dis = adm_df.merge(
         dis_df,
-        how='left',
+        how='outer',
         on=['uid', 'facility'],
-        suffixes=('', '_discharge')
+        suffixes=('', '_discharge'),
+        indicator=True
     )
 
-    logging.info(f"Initial merge created {len(jn_adm_dis)} rows from {len(adm_df)} admissions")
+    logging.info(
+        f"Initial merge created {len(jn_adm_dis)} rows from "
+        f"{len(adm_df)} admissions and {len(dis_df)} discharges"
+    )
 
-    # Resolve duplicate matches using clinical measurement comparison
-    # For each admission, select the discharge with the best matching clinical measurements
-    jn_adm_dis = resolve_duplicate_matches(jn_adm_dis, adm_unique_col='_adm_idx')
+    # Resolve duplicate matches only for rows attached to an admission.
+    # Right-only rows are unmatched discharges and should pass through unchanged.
+    right_only_rows = jn_adm_dis[jn_adm_dis['_merge'] == 'right_only'].copy()
+    left_and_matched_rows = jn_adm_dis[jn_adm_dis['_merge'] != 'right_only'].copy()
 
-    # Clean up the temporary admission index column
-    jn_adm_dis = jn_adm_dis.drop(columns=['_adm_idx'], errors='ignore')
+    if not left_and_matched_rows.empty and '_adm_idx' in left_and_matched_rows.columns:
+        left_and_matched_rows = resolve_duplicate_matches(left_and_matched_rows, adm_unique_col='_adm_idx')
 
-    # Final deduplication based on unique_key (safety check)
-    if 'unique_key' in jn_adm_dis.columns:
+    jn_adm_dis = pd.concat([left_and_matched_rows, right_only_rows], ignore_index=True, sort=False)
+
+    # Clean up temporary merge bookkeeping.
+    jn_adm_dis = jn_adm_dis.drop(columns=['_adm_idx', '_merge'], errors='ignore')
+
+    join_unique_key = get_join_unique_key(jn_adm_dis)
+    if not join_unique_key.empty:
         # OPTIMIZATION: Use vectorized string operations instead of lambda map
-        jn_adm_dis['DEDUPLICATER'] = jn_adm_dis['unique_key'].astype(str).str[:10]
+        join_unique_key_str = join_unique_key.astype(str)
+        jn_adm_dis['DEDUPLICATER'] = join_unique_key_str.str[:10]
         # Replace empty strings or short values with None
-        jn_adm_dis.loc[jn_adm_dis['unique_key'].astype(str).str.len() < 10, 'DEDUPLICATER'] = None
+        jn_adm_dis.loc[join_unique_key_str.str.len() < 10, 'DEDUPLICATER'] = None
 
         # Final deduplication on unique_key
         jn_adm_dis = jn_adm_dis.drop_duplicates(
