@@ -4,7 +4,6 @@ import json
 from psycopg2 import sql
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from  conf.common.config import config
-from conf.common.sql_functions import column_exists
 from datetime import datetime
 
 params = config()
@@ -445,9 +444,6 @@ WHERE NOT EXISTS (
 
 
 def read_dicharges_not_joined():
-        joined_unique_key = 'COALESCE(j.unique_key_discharge, j.unique_key)' if column_exists(
-            'derived', 'joined_admissions_discharges', 'unique_key_discharge'
-        ) else 'j.unique_key'
         return f'''SELECT * 
 FROM derived.discharges dis
 WHERE NOT EXISTS (
@@ -455,13 +451,10 @@ WHERE NOT EXISTS (
     FROM derived.joined_admissions_discharges j 
     WHERE dis.uid = j.uid
       AND dis.facility = j.facility
-      AND dis.unique_key = {joined_unique_key}
+      AND dis.unique_key = j.unique_key_discharge
 )'''
 
 def read_clean_dicharges_not_joined():
-        joined_unique_key = 'COALESCE(j.unique_key_discharge, j.unique_key)' if column_exists(
-            'derived', 'clean_joined_adm_discharges', 'unique_key_discharge'
-        ) else 'j.unique_key'
         return f'''SELECT * 
 FROM derived.clean_discharges dis
 WHERE NOT EXISTS (
@@ -469,7 +462,7 @@ WHERE NOT EXISTS (
     FROM derived.clean_joined_adm_discharges j 
     WHERE dis.uid = j.uid
       AND dis.facility = j.facility
-      AND dis.unique_key = {joined_unique_key}
+      AND dis.unique_key = j.unique_key_discharge
 )'''
 
 def admissions_without_discharges():

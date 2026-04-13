@@ -394,17 +394,6 @@ def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_a
     return result
 
 
-def get_join_unique_key(df: pd.DataFrame) -> pd.Series:
-    """Return the best available unique key for joined rows."""
-    if 'unique_key' in df.columns and 'unique_key_discharge' in df.columns:
-        return df['unique_key'].combine_first(df['unique_key_discharge'])
-    if 'unique_key' in df.columns:
-        return df['unique_key']
-    if 'unique_key_discharge' in df.columns:
-        return df['unique_key_discharge']
-    return pd.Series([None] * len(df), index=df.index, dtype='object')
-
-
 def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFrame:
     """
     Create joined admissions-discharges dataset with intelligent duplicate resolution.
@@ -440,8 +429,9 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
         f"{len(adm_df)} admissions and {len(dis_df)} discharges"
     )
 
-    # Resolve duplicate matches only for rows attached to an admission.
-    # Right-only rows are unmatched discharges and should pass through unchanged.
+    # Pandas creates `_merge` because `indicator=True` is set above.
+    # We use it only as a temporary internal marker to identify `right_only`
+    # discharge rows before dropping the column again.
     right_only_rows = jn_adm_dis[jn_adm_dis['_merge'] == 'right_only'].copy()
     left_and_matched_rows = jn_adm_dis[jn_adm_dis['_merge'] != 'right_only'].copy()
 
@@ -450,20 +440,13 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
 
     jn_adm_dis = pd.concat([left_and_matched_rows, right_only_rows], ignore_index=True, sort=False)
 
-    # Clean up temporary merge bookkeeping.
+    # `_merge` is not part of the business schema; remove merge bookkeeping now.
     jn_adm_dis = jn_adm_dis.drop(columns=['_adm_idx', '_merge'], errors='ignore')
 
-    join_unique_key = get_join_unique_key(jn_adm_dis)
-    if not join_unique_key.empty:
-        # OPTIMIZATION: Use vectorized string operations instead of lambda map
-        join_unique_key_str = join_unique_key.astype(str)
-        jn_adm_dis['DEDUPLICATER'] = join_unique_key_str.str[:10]
-        # Replace empty strings or short values with None
-        jn_adm_dis.loc[join_unique_key_str.str.len() < 10, 'DEDUPLICATER'] = None
-
-        # Final deduplication on unique_key
+    dedup_subset = [col for col in ['uid', 'facility', 'unique_key', 'unique_key_discharge'] if col in jn_adm_dis.columns]
+    if dedup_subset:
         jn_adm_dis = jn_adm_dis.drop_duplicates(
-            subset=["uid", "facility", "DEDUPLICATER"],
+            subset=dedup_subset,
             keep='first'
         )
 
