@@ -1,6 +1,7 @@
 
 """Command line tools for manipulating a Kedro project.
 Intended to be invoked via `kedro`."""
+import logging
 import os
 import sys
 from itertools import chain
@@ -275,29 +276,152 @@ def purge_uid(env, target_uid, schemas, candidate_columns, execute, confirm_uid)
     from data_pipeline.pipelines.data_engineering.queries.data_fix import (
         purge_uid_records,
     )
-
-    results = purge_uid_records(
-        uid=target_uid,
-        schemas=schemas or None,
-        candidate_columns=candidate_columns or None,
-        dry_run=not execute,
-    )
-
-    action = "Deleted" if execute else "Matched"
-    click.echo(
-        f"{action} {results['affected_rows']} row(s) across "
-        f"{results['affected_tables']} table(s); "
-        f"scanned {results['scanned_tables']} table(s)."
-    )
-
-    for match in results["matches"]:
-        click.echo(
-            f"{match['schema']}.{match['table']}: "
-            f"{match['rows']} row(s) via {', '.join(match['match_sources'])}"
+    try:
+        scan_results = purge_uid_records(
+            uid=target_uid,
+            schemas=schemas or None,
+            candidate_columns=candidate_columns or None,
+            dry_run=True,
         )
 
-    if not execute:
-        click.echo("Dry run only. Re-run with --execute to delete matching rows.")
+        if not execute:
+            click.echo(
+                f"Matched {scan_results['affected_rows']} row(s) across "
+                f"{scan_results['affected_tables']} table(s); "
+                f"scanned {scan_results['scanned_tables']} table(s)."
+            )
+            for table_name in scan_results["affected_table_names"]:
+                click.echo(table_name)
+            click.echo("Dry run only. Re-run with --execute to delete matching rows.")
+            return
+
+        if not scan_results["matches"]:
+            click.echo("No matching rows found. Nothing to delete.")
+            return
+
+        delete_results = purge_uid_records(
+            uid=target_uid,
+            schemas=schemas or None,
+            candidate_columns=candidate_columns or None,
+            dry_run=False,
+            table_matches=scan_results["matches"],
+        )
+        click.echo(
+            f"Deleted {delete_results['affected_rows']} row(s) across "
+            f"{delete_results['affected_tables']} table(s); "
+            f"scanned {scan_results['scanned_tables']} table(s)."
+        )
+        for table_name in delete_results["affected_table_names"]:
+            click.echo(table_name)
+    except Exception:
+        logging.exception("Manual UID cleanup failed for uid '%s'", target_uid)
+        raise KedroCliError(
+            "UID cleanup failed. Check the existing error log for details."
+        )
+
+
+@cli.command("purge-known-test-uids")
+@click.option("--env", required=True, help=ENV_ARG_HELP)
+@click.option(
+    "--schema",
+    "schemas",
+    multiple=True,
+    help="Schema to scan. Defaults to public, derived, and scratch.",
+)
+@click.option(
+    "--column",
+    "candidate_columns",
+    multiple=True,
+    help="Candidate UID column name. Defaults include uid and NeoTree ID variants.",
+)
+@click.option(
+    "--max-rows-per-uid",
+    default=100,
+    show_default=True,
+    type=int,
+    help="Safety cutoff. Skip deletion when a known test UID exceeds this match count.",
+)
+def purge_known_test_uids(env, schemas, candidate_columns, max_rows_per_uid):
+    """Purge the scheduled allowlist of known test UIDs."""
+    _bootstrap_legacy_env_arg(env)
+
+    from data_pipeline.pipelines.data_engineering.queries.data_fix import (
+        KNOWN_TEST_UIDS,
+        purge_known_test_uids as purge_known_test_uids_job,
+    )
+
+    try:
+        results = purge_known_test_uids_job(
+            schemas=schemas or None,
+            candidate_columns=candidate_columns or None,
+            max_rows_per_uid=max_rows_per_uid,
+        )
+        click.echo(
+            f"Checked {results['uids_checked']} known test UID(s); "
+            f"deleted {results['uids_deleted']}, skipped {results['uids_skipped']}, "
+            f"removed {results['total_rows_deleted']} row(s)."
+        )
+        click.echo(f"Allowlist: {', '.join(KNOWN_TEST_UIDS)}")
+        for result in results["results"]:
+            click.echo(
+                f"{result['uid']}: {result['status']} ({result['rows']} row(s))"
+            )
+    except Exception:
+        logging.exception("Scheduled known test UID cleanup failed")
+        raise KedroCliError(
+            "Known test UID cleanup failed. Check the existing error log for details."
+        )
+
+
+@cli.command("purge-known-test-uids-source-only")
+@click.option("--env", required=True, help=ENV_ARG_HELP)
+@click.option(
+    "--column",
+    "candidate_columns",
+    multiple=True,
+    help="Candidate UID column name. Defaults include uid and NeoTree ID variants.",
+)
+@click.option(
+    "--max-rows-per-uid",
+    default=100,
+    show_default=True,
+    type=int,
+    help="Safety cutoff. Skip deletion when a known test UID exceeds this match count.",
+)
+def purge_known_test_uids_source_only(env, candidate_columns, max_rows_per_uid):
+    """Purge known test UIDs only from source session tables before pipeline execution."""
+    _bootstrap_legacy_env_arg(env)
+
+    from data_pipeline.constants import SOURCE_UID_CLEANUP_TABLES
+    from data_pipeline.pipelines.data_engineering.queries.data_fix import (
+        KNOWN_TEST_UIDS,
+        purge_known_test_uids_source_only as purge_known_test_uids_source_only_job,
+    )
+
+    try:
+        results = purge_known_test_uids_source_only_job(
+            candidate_columns=candidate_columns or None,
+            max_rows_per_uid=max_rows_per_uid,
+        )
+        click.echo(
+            f"Checked {results['uids_checked']} known test UID(s); "
+            f"deleted {results['uids_deleted']}, skipped {results['uids_skipped']}, "
+            f"removed {results['total_rows_deleted']} row(s) from source tables."
+        )
+        click.echo(f"Allowlist: {', '.join(KNOWN_TEST_UIDS)}")
+        click.echo(
+            "Source tables: "
+            + ", ".join(f"{schema}.{table}" for schema, table in SOURCE_UID_CLEANUP_TABLES)
+        )
+        for result in results["results"]:
+            click.echo(
+                f"{result['uid']}: {result['status']} ({result['rows']} row(s))"
+            )
+    except Exception:
+        logging.exception("Source-only known test UID cleanup failed")
+        raise KedroCliError(
+            "Source-only known test UID cleanup failed. Check the existing error log for details."
+        )
 
 
 cli.add_command(pipeline_group)
