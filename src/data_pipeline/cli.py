@@ -20,8 +20,10 @@ from kedro.utils import load_obj
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
-# get our package onto the python path
-PROJ_PATH = Path(__file__).resolve().parent
+# Ensure project root (conf/, src/) is importable when invoked via `kedro`.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 ENV_ARG_HELP = """Run the pipeline in a configured environment. If not specified,
 pipeline will run using environment `local`."""
