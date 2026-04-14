@@ -69,8 +69,9 @@ def _build_uid_filter(columns, uid: str) -> str:
 def _build_json_uid_filter(data_column: str, uid: str) -> str:
     escaped_uid = _escape_sql_literal(uid)
     quoted_data_column = _quote_identifier(data_column)
+    json_data_column = f"({quoted_data_column})::jsonb"
     object_entry_matches = " OR ".join(
-        f"{quoted_data_column}->'entries'->'{json_key}'->'values'->'value'->>0 = '{escaped_uid}'"
+        f"{json_data_column}->'entries'->'{json_key}'->'values'->'value'->>0 = '{escaped_uid}'"
         for json_key in DEFAULT_JSON_UID_KEYS
     )
     old_format_key_list = ", ".join(
@@ -78,14 +79,14 @@ def _build_json_uid_filter(data_column: str, uid: str) -> str:
     )
 
     return f"""(
-        {quoted_data_column}->>'uid' = '{escaped_uid}'
+        {json_data_column}->>'uid' = '{escaped_uid}'
         OR {object_entry_matches}
         OR EXISTS (
             SELECT 1
             FROM jsonb_array_elements(
                 CASE
-                    WHEN jsonb_typeof({quoted_data_column}->'entries') = 'array'
-                    THEN {quoted_data_column}->'entries'
+                    WHEN jsonb_typeof({json_data_column}->'entries') = 'array'
+                    THEN {json_data_column}->'entries'
                     ELSE '[]'::jsonb
                 END
             ) AS entry
@@ -428,6 +429,7 @@ def _execute_scalar_queries_in_transaction(query_specs):
             row_count = int(scalar_result) if scalar_result else 0
             results.append(
                 {
+                    "uid": query_spec["uid"],
                     "schema": query_spec["schema"],
                     "table": query_spec["table"],
                     "columns": query_spec["columns"],
@@ -610,9 +612,9 @@ def purge_uid_records(
                     continue
                 query_specs.append(
                     {
+                        "uid": uid,
                         "schema": match["schema"],
                         "table": match["table"],
-                        "uid": uid,
                         "columns": spec["columns"],
                         "json_columns": spec["json_columns"],
                         "incremental_column": match.get("incremental_column"),
@@ -2606,4 +2608,3 @@ def fix_column_limit_error(table_name: str, schema: str = 'derived', auto_rebuil
         logging.warning("  3. Using JSONB for semi-structured data")
 
     return col_info['dropped'] > 0
-

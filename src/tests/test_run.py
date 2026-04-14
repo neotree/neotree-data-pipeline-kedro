@@ -25,4 +25,4 @@ def project_context():
 # functionality
 class TestProjectContext:
     def test_package_name(self, project_context):
-        assert project_context.package_name == "data_pipeline"
+        assert project_context._package_name == "data_pipeline"
