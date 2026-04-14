@@ -14,9 +14,9 @@ SQLAlchemy==1.4.45
 typing==3.7.4
 python-dateutil==2.8.1
 python-crontab== 2.7.1
+python-json-logger==2.0.7
 setuptools==65.5.1
 memory-profiler==0.61.0 
 great_expectations==0.18.14
 pdfkit==1.0.0
-
 
