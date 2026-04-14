@@ -25,10 +25,13 @@ cron_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
 start = time.time()
 
 cwd = os.getcwd()
-logs_dir = os.path.join(cwd, "logs")
-Path(logs_dir).mkdir(parents=True, exist_ok=True)
+logs_dir = str(cwd+"/logs")
 log = logging.getLogger('');
-cron_log_file = Path(logs_dir) / "data_pipeline_cron.log"
+#Prefered Log Var for Ubuntu
+ubuntu_log_dir = "/var/log"
+if Path(ubuntu_log_dir).exists():
+    logs_dir = ubuntu_log_dir
+cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
 
 generic_dedup_queries = []
 
