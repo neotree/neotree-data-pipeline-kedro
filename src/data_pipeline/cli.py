@@ -221,6 +221,14 @@ def run(
     node_names = _get_values_as_tuple(node_names) if node_names else node_names
 
     package_name = str(Path(__file__).resolve().parent.name)
+    # Preflight cleanup for known test UIDs before running the pipeline.
+    if env:
+        _bootstrap_legacy_env_arg(env)
+        from data_pipeline.pipelines.data_engineering.queries.data_fix import (
+            purge_known_test_uids_source_only as purge_known_test_uids_source_only_job,
+        )
+        purge_known_test_uids_source_only_job()
+
     with KedroSession.create(package_name, env=env, extra_params=params) as session:
         session.run(
             tags=tag,
