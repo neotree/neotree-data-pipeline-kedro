@@ -5,7 +5,7 @@ formatters:
         format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     json_formatter:
         format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        class: pythonjsonlogger.json.JsonFormatter
+        class: pythonjsonlogger.jsonlogger.JsonFormatter
 
 handlers:
     console:

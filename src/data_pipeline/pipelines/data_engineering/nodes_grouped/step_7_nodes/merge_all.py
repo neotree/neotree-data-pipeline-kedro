@@ -1,6 +1,6 @@
 import pandas as pd
 import logging
-from typing import List, Optional, cast
+from typing import List, Optional, cast, Set, Tuple
 from conf.base.catalog import params
 from conf.common.sql_functions import (
     inject_sql,
@@ -140,6 +140,57 @@ def validate_and_process_discharges(dis_df: pd.DataFrame) -> pd.DataFrame:
         return dis_df
 
 
+def transform_discharge_keys(dis_df: pd.DataFrame, adm_cols: set) -> pd.DataFrame:
+    """
+    Transform discharge dataframe columns to avoid collisions with admission columns.
+
+    For keys that exist in both admission and discharge:
+    - Rename most keys to have _dis suffix
+    - For facility and uid: keep both (facility + facility_dis, uid + uid_dis)
+    - Always ensure unique_key is renamed to unique_key_dis
+
+    Args:
+        dis_df: Discharge DataFrame
+        adm_cols: Set of column names from admission table
+
+    Returns:
+        Transformed discharge DataFrame
+    """
+    if is_empty_df(dis_df) or not adm_cols:
+        return dis_df
+
+    dis_df = dis_df.copy()
+    rename_map = {}
+
+    # Columns to always rename with _dis suffix (except facility, uid)
+    for col in dis_df.columns:
+        if col in {"facility", "uid", "_no_admission_in_base", "_source", "_effective_discharge_dt", "_merged_index"}:
+            continue
+
+        # Always rename unique_key to unique_key_dis
+        if col == "unique_key":
+            rename_map[col] = "unique_key_dis"
+            continue
+
+        # If column exists in admissions and contains dots (data point), rename with _dis
+        if col in adm_cols and "." in col:
+            rename_map[col] = f"{col}_dis"
+        elif col in adm_cols and col.lower().endswith("value"):
+            rename_map[col] = f"{col}_dis"
+
+    if rename_map:
+        dis_df = dis_df.rename(columns=rename_map)
+        logging.info(f"Transformed {len(rename_map)} discharge columns: {rename_map}")
+
+    # Ensure facility_dis and uid_dis exist (create from facility/uid if needed)
+    if "facility" in dis_df.columns and "facility_dis" not in dis_df.columns:
+        dis_df["facility_dis"] = dis_df["facility"]
+    if "uid" in dis_df.columns and "uid_dis" not in dis_df.columns:
+        dis_df["uid_dis"] = dis_df["uid"]
+
+    return dis_df
+
+
 def create_all_merged_admissions_discharges(
     new_adm: pd.DataFrame,
     new_dis: pd.DataFrame,
@@ -212,6 +263,14 @@ def create_all_merged_admissions_discharges(
 
         return df
 
+    def ensure_no_admission_flag(df: pd.DataFrame) -> pd.DataFrame:
+        if is_empty_df(df):
+            return df
+        if "_no_admission_in_base" not in df.columns:
+            df = df.copy()
+            df["_no_admission_in_base"] = False
+        return df
+
     def drop_unwanted_base_columns(df: pd.DataFrame) -> pd.DataFrame:
         if is_empty_df(df):
             return df
@@ -256,6 +315,7 @@ def create_all_merged_admissions_discharges(
 
     new_adm = ensure_required_columns(new_adm, "Admissions")
     new_dis = ensure_required_columns(new_dis, "Discharges")
+    new_dis = ensure_no_admission_flag(new_dis)
 
     if 'OFC.value' in new_adm.columns:
         new_adm['OFC.value'] = pd.to_numeric(new_adm['OFC.value'], errors='coerce')
@@ -319,6 +379,7 @@ def create_all_merged_admissions_discharges(
 
     admissions_pool = ensure_required_columns(admissions_pool, "Admissions")
     discharges_pool = ensure_required_columns(discharges_pool, "Discharges")
+    discharges_pool = ensure_no_admission_flag(discharges_pool)
 
     if "DateTimeAdmission.value" in admissions_pool.columns:
         admissions_pool["DateTimeAdmission.value"] = pd.to_datetime(
@@ -339,8 +400,9 @@ def create_all_merged_admissions_discharges(
     # MATCHING
     # ---------------------------------------------------------
 
-    matched_admission_indices: set[int] = set()
-    new_rows: list[dict] = []
+    matched_admission_indices: Set[int] = set()
+    matched_discharge_indices: Set[int] = set()
+    new_rows: List[dict] = []
 
     def fallback_by_datetime(candidates: pd.DataFrame, discharge_row: pd.Series) -> pd.Series:
         admission_dt_col = None
@@ -364,54 +426,45 @@ def create_all_merged_admissions_discharges(
                 return candidates.iloc[0]
         return candidates.iloc[0]
 
-    for _, dis_row in discharges_pool.iterrows():
+    # ---------------------------------------------------------
+    # SCENARIO 1 & 3: PROCESS ALL DISCHARGES
+    # Scenario 1: Match discharge with admission (has_admission=True, has_discharge=True)
+    # Scenario 3: Unmatched discharge (has_admission=False, has_discharge=True)
+    # ---------------------------------------------------------
+
+    for dis_idx, (_, dis_row) in enumerate(discharges_pool.iterrows()):
         uid_val = dis_row.get("uid")
         facility_val = dis_row.get("facility")
 
-        if dis_row.get("_no_admission_in_base") is True:
-            if dis_row.get("_source") == "new":
-                rec = dis_row.drop(
-                    labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
-                    errors="ignore",
-                ).to_dict()
-                rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
-                rec["match_status"] = "unmatched_discharge"
-                rec["_source"] = "new"
-                new_rows.append(rec)
-            continue
+        logging.debug(f"Processing discharge {dis_idx}: uid={uid_val}, facility={facility_val}, _no_admission_in_base={dis_row.get('_no_admission_in_base')}")
 
+        # Find candidate admissions for this discharge
         candidates = admissions_pool[
             (admissions_pool["uid"] == uid_val)
             & (admissions_pool["facility"] == facility_val)
             & (~admissions_pool.index.isin(matched_admission_indices))
         ]
 
-        if candidates.empty:
-            rec = dis_row.drop(
-                labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
-                errors="ignore",
-            ).to_dict()
-            rec.update(dict(has_admission=False, has_discharge=True, is_closed=False))
-            rec["match_status"] = "unmatched_discharge"
-            rec["_source"] = "new"
-            new_rows.append(rec)
-            continue
-
         selected = None
         ambiguous = False
 
-        ofc_dis_val = dis_row.get("OFCDis.value")
-        ofc_adm_col = "OFC.value" if "OFC.value" in candidates.columns else (
-            "OFC.value_dis" if "OFC.value_dis" in candidates.columns else None
-        )
-        if pd.notna(ofc_dis_val) and ofc_adm_col:
-            ofc_matches = candidates[candidates[ofc_adm_col] == ofc_dis_val]
-            if len(ofc_matches) == 1:
-                selected = ofc_matches.iloc[0]
-            elif len(ofc_matches) > 1:
-                ambiguous = True
+        # MATCHING ATTEMPT 1: OFC (Oxygen Fraction) matching
+        if not candidates.empty:
+            ofc_dis_val = dis_row.get("OFCDis.value")
+            ofc_adm_col = "OFC.value" if "OFC.value" in candidates.columns else (
+                "OFC.value_dis" if "OFC.value_dis" in candidates.columns else None
+            )
+            if pd.notna(ofc_dis_val) and ofc_adm_col:
+                ofc_matches = candidates[candidates[ofc_adm_col] == ofc_dis_val]
+                if len(ofc_matches) == 1:
+                    selected = ofc_matches.iloc[0]
+                    logging.debug(f"  → Matched via OFC for uid={uid_val}")
+                elif len(ofc_matches) > 1:
+                    ambiguous = True
+                    logging.debug(f"  → Ambiguous OFC matches ({len(ofc_matches)}) for uid={uid_val}")
 
-        if selected is None:
+        # MATCHING ATTEMPT 2: BirthWeight matching
+        if selected is None and not candidates.empty:
             bw_dis_val = dis_row.get("BirthWeight.value_dis")
             bw_adm_col = "BirthWeight.value" if "BirthWeight.value" in candidates.columns else (
                 "BirthWeight.value_dis" if "BirthWeight.value_dis" in candidates.columns else None
@@ -420,14 +473,57 @@ def create_all_merged_admissions_discharges(
                 bw_matches = candidates[candidates[bw_adm_col] == bw_dis_val]
                 if len(bw_matches) == 1:
                     selected = bw_matches.iloc[0]
+                    logging.debug(f"  → Matched via BirthWeight for uid={uid_val}")
                 elif len(bw_matches) > 1:
                     ambiguous = True
+                    logging.debug(f"  → Ambiguous BirthWeight matches ({len(bw_matches)}) for uid={uid_val}")
 
-        if selected is None:
+        # MATCHING ATTEMPT 3: DateTime fallback
+        if selected is None and not candidates.empty:
             selected = fallback_by_datetime(candidates, dis_row)
             ambiguous = True
+            logging.debug(f"  → Matched via datetime fallback for uid={uid_val}")
 
-        if selected is None:
+        # SCENARIO 1: MATCHED DISCHARGE + ADMISSION
+        if selected is not None:
+            idx = cast(int, selected.name)
+            matched_admission_indices.add(idx if idx is not None else 0)
+            matched_discharge_indices.add(dis_idx)
+
+            adm_data = selected.drop(labels=["_merged_index", "_source"], errors="ignore").to_dict()
+            dis_data = dis_row.drop(
+                labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
+                errors="ignore",
+            ).to_dict()
+            rec = {**adm_data, **dis_data}
+
+            # For merged records: facility comes from admission, facility_dis from discharge
+            # Same for uid: uid from admission, uid_dis from discharge
+            if "facility" in rec:
+                # facility already from admission, ensure facility_dis comes from discharge
+                if "facility_dis" in dis_data:
+                    rec["facility_dis"] = dis_data["facility_dis"]
+            if "uid" in rec:
+                # uid already from admission, ensure uid_dis comes from discharge
+                if "uid_dis" in dis_data:
+                    rec["uid_dis"] = dis_data["uid_dis"]
+
+            rec.update(dict(has_admission=True, has_discharge=True, is_closed=True))
+            rec["match_status"] = "ambiguous" if ambiguous else "matched"
+            rec["_source"] = "new"
+            new_rows.append(rec)
+
+            if ambiguous:
+                logging.warning(
+                    "Ambiguous match resolved via fallback for uid=%s facility=%s",
+                    uid_val,
+                    facility_val,
+                )
+            logging.info(f"  ✓ SCENARIO 1 (Merged): Discharge matched with admission for uid={uid_val}")
+
+        # SCENARIO 3: UNMATCHED DISCHARGE (no matching admission found)
+        else:
+            matched_discharge_indices.add(dis_idx)
             rec = dis_row.drop(
                 labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
                 errors="ignore",
@@ -436,31 +532,11 @@ def create_all_merged_admissions_discharges(
             rec["match_status"] = "unmatched_discharge"
             rec["_source"] = "new"
             new_rows.append(rec)
-            continue
-
-        idx = cast(int, selected.name)
-        matched_admission_indices.add(idx if idx is not None else 0)
-
-        adm_data = selected.drop(labels=["_merged_index", "_source"], errors="ignore").to_dict()
-        dis_data = dis_row.drop(
-            labels=["_merged_index", "_source", "_effective_discharge_dt", "_no_admission_in_base"],
-            errors="ignore",
-        ).to_dict()
-        rec = {**adm_data, **dis_data}
-        rec.update(dict(has_admission=True, has_discharge=True, is_closed=True))
-        rec["match_status"] = "ambiguous" if ambiguous else "matched"
-        rec["_source"] = "new"
-        new_rows.append(rec)
-
-        if ambiguous:
-            logging.warning(
-                "Ambiguous match resolved via fallback for uid=%s facility=%s",
-                uid_val,
-                facility_val,
-            )
+            logging.info(f"  ✗ SCENARIO 3 (Unmatched Discharge): No admission found for uid={uid_val}, facility={facility_val}")
 
     # ---------------------------------------------------------
-    # UNMATCHED NEW ADMISSIONS
+    # SCENARIO 2: UNMATCHED NEW ADMISSIONS
+    # Insert admissions without matching discharges
     # ---------------------------------------------------------
 
     unmatched_adm = admissions_pool[
@@ -468,11 +544,15 @@ def create_all_merged_admissions_discharges(
         & (~admissions_pool.index.isin(matched_admission_indices))
     ]
     for _, adm_row in unmatched_adm.iterrows():
+        uid_val = adm_row.get("uid")
+        facility_val = adm_row.get("facility")
+
         rec = adm_row.drop(labels=["_merged_index", "_source"], errors="ignore").to_dict()
         rec.update(dict(has_admission=True, has_discharge=False, is_closed=False))
         rec["match_status"] = "unmatched_admission"
         rec["_source"] = "new"
         new_rows.append(rec)
+        logging.info(f"  ✓ SCENARIO 2 (Unmatched Admission): No discharge found for uid={uid_val}, facility={facility_val}")
 
     merged_rows_df = pd.DataFrame(new_rows)
     combined = merged_rows_df.copy()
@@ -482,27 +562,54 @@ def create_all_merged_admissions_discharges(
         ["has_admission", "has_discharge", "is_closed", "match_status"],
     )
 
+    # ---------------------------------------------------------
+    # SCENARIO FILTERING & PREPARATION
+    # ---------------------------------------------------------
+
+    # SCENARIO 1: MERGED RECORDS (admission + discharge)
     merged_df = combined[
         (combined["has_admission"] == True) & (combined["has_discharge"] == True)
     ].copy()
-    merged_df["is_closed"] = True
+    if not is_empty_df(merged_df):
+        merged_df["is_closed"] = True
+        logging.info(f"✓ SCENARIO 1: {len(merged_df)} merged records (admission + discharge)")
+    else:
+        logging.info("✓ SCENARIO 1: 0 merged records")
 
+    # SCENARIO 2: ADMISSIONS ONLY (no discharge)
     admissions_only = combined[
         (combined["has_admission"] == True) & (combined["has_discharge"] == False)
     ].copy()
-    admissions_only["has_admission"] = True
-    admissions_only["has_discharge"] = False
-    admissions_only["is_closed"] = False
-    admissions_only = admissions_only.drop(columns=["uid_dis", "facility_dis"], errors="ignore")
+    if not is_empty_df(admissions_only):
+        admissions_only["has_admission"] = True
+        admissions_only["has_discharge"] = False
+        admissions_only["is_closed"] = False
+        # Remove discharge-specific columns from admission-only records
+        admissions_only = admissions_only.drop(columns=["uid_dis", "facility_dis"], errors="ignore")
+        logging.info(f"✓ SCENARIO 2: {len(admissions_only)} admission-only records (no discharge)")
+    else:
+        logging.info("✓ SCENARIO 2: 0 admission-only records")
 
+    # SCENARIO 3: DISCHARGES ONLY (no admission)
     discharges_only = combined[
         (combined["has_admission"] == False) & (combined["has_discharge"] == True)
     ].copy()
-    discharges_only["has_admission"] = False
-    discharges_only["has_discharge"] = True
-    discharges_only["is_closed"] = False
+    if not is_empty_df(discharges_only):
+        discharges_only["has_admission"] = False
+        discharges_only["has_discharge"] = True
+        discharges_only["is_closed"] = False
+        logging.info(f"✓ SCENARIO 3: {len(discharges_only)} discharge-only records (no admission)")
+    else:
+        logging.info("✓ SCENARIO 3: 0 discharge-only records")
 
-    
+    # ---------------------------------------------------------
+    # SUMMARY
+    # ---------------------------------------------------------
+    total_records = len(merged_df) + len(admissions_only) + len(discharges_only)
+    logging.info(f"========== TOTAL: {total_records} records across all 3 scenarios ==========")
+    logging.info(f"  Scenario 1 (Merged):           {len(merged_df)} records")
+    logging.info(f"  Scenario 2 (Admissions only):  {len(admissions_only)} records")
+    logging.info(f"  Scenario 3 (Discharges only):  {len(discharges_only)} records")
 
     return dict(
         admissions_only=admissions_only,
@@ -656,13 +763,13 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             dis_df = run_query_and_return_df(discharges_query)
             if dis_df is None:
                 dis_df = pd.DataFrame()
-            # Ensure uid-only unmatched discharges are included
-            uid_only_dis = run_query_and_return_df(
+            # Ensure uid+facility-only unmatched discharges are included
+            uid_facility_only_dis = run_query_and_return_df(
                 f'''
                 SELECT a.* FROM {schema}."discharges" a
                 WHERE NOT EXISTS (
                     SELECT 1 FROM {schema}."admissions" ad
-                    WHERE ad.uid = a.uid
+                    WHERE ad.uid = a.uid AND ad.facility = a.facility
                 )
                   AND ({discharges_condition})
                 '''
@@ -670,11 +777,15 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             if not is_empty_df(dis_df) and "_no_admission_in_base" not in dis_df.columns:
                 dis_df = dis_df.copy()
                 dis_df["_no_admission_in_base"] = False
-            if uid_only_dis is not None and not uid_only_dis.empty:
-                uid_only_dis = uid_only_dis.copy()
-                uid_only_dis["_no_admission_in_base"] = True
-                # Keep the uid-only marker when duplicates exist by placing uid_only_dis first
-                dis_df = pd.concat([uid_only_dis, dis_df], ignore_index=True).drop_duplicates()
+            if uid_facility_only_dis is not None and not uid_facility_only_dis.empty:
+                uid_facility_only_dis = uid_facility_only_dis.copy()
+                uid_facility_only_dis["_no_admission_in_base"] = True
+                # Concatenate with uid_facility_only_dis FIRST (highest priority)
+                # Then drop duplicates keeping the uid_facility_only_dis version
+                key_cols = ["uid", "facility"]
+                if "unique_key_dis" in uid_facility_only_dis.columns:
+                    key_cols.append("unique_key_dis")
+                dis_df = pd.concat([uid_facility_only_dis, dis_df], ignore_index=True).drop_duplicates(subset=key_cols, keep="first")
         else:
             logging.warning('Table derived."discharges" does not exist; skipping discharges fetch.')
         admissions_columns = None
@@ -683,22 +794,14 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                 get_table_column_names("admissions", "derived"),
                 columns=["column_name"],
             )
-            # Rename discharge columns that collide with admissions columns
+            # Transform discharge dataframe columns EARLY to avoid collisions
             if not is_empty_df(admissions_columns) and "column_name" in admissions_columns.columns:
                 adm_cols = set(admissions_columns["column_name"].tolist())
-                rename_map = {
-                    c: f"{c}_dis"
-                    for c in dis_df.columns
-                    if c in adm_cols and c != "unique_key"
-                }
-                if rename_map:
-                    dis_df = dis_df.rename(columns=rename_map)
+                dis_df = transform_discharge_keys(dis_df, adm_cols)
 
 
         if not is_empty_df(adm_df) or not is_empty_df(dis_df):
-            if (not is_empty_df(dis_df) and 'unique_key' in dis_df.columns):
-                dis_df.rename(columns={'unique_key': 'unique_key_dis'}, inplace=True)
-                  
+            # Note: unique_key renaming is now handled in transform_discharge_keys()
             merged_outputs = create_all_merged_admissions_discharges(
                 adm_df,
                 dis_df,
@@ -718,7 +821,7 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
         if isinstance(merged_df, pd.Series):
             merged_df = merged_df.to_frame().T
 
-        def _fetch_existing_keys(df: pd.DataFrame, key_cols: List[str]) -> set[tuple]:
+        def _fetch_existing_keys(df: pd.DataFrame, key_cols: List[str]) -> Set[Tuple]:
             if is_empty_df(df) or not all(col in df.columns for col in key_cols):
                 return set()
             keys_df = df.loc[:, key_cols].dropna().astype(str).drop_duplicates()
@@ -756,6 +859,18 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                         axis=1,
                     )
                     admissions_only_new = admissions_only_new[mask]
+            else:
+                # Fallback: deduplicate on available columns
+                available_key_cols = []
+                for col in ["uid", "facility", "unique_key"]:
+                    if col in admissions_only_new.columns:
+                        available_key_cols.append(col)
+                if available_key_cols:
+                    admissions_only_new = admissions_only_new.drop_duplicates(subset=available_key_cols, keep="first")
+                logging.warning(
+                    f"Admission-only records missing some key columns for full deduplication. "
+                    f"Available columns: {available_key_cols}. Proceeding with partial deduplication."
+                )
             if not is_empty_df(admissions_only_new):
                 generate_create_insert_sql(admissions_only_new, schema, table_name)
 
@@ -764,16 +879,56 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
             discharges_only_new = discharges_only_new.drop(
                 columns=["_source", "_merged_index"], errors="ignore"
             )
-            if {"uid", "facility", "unique_key_dis"}.issubset(discharges_only_new.columns):
-                existing_dis_keys = _fetch_existing_keys(discharges_only_new, ["uid", "facility", "unique_key_dis"])
+            # Log current columns for debugging
+            logging.info(f"Discharge-only columns before deduplication: {list(discharges_only_new.columns)}")
+            logging.info(f"Discharge-only records count: {len(discharges_only_new)}")
+
+            # If unique_key_dis doesn't exist but unique_key does, rename it to avoid conflicts
+            if "unique_key_dis" not in discharges_only_new.columns and "unique_key" in discharges_only_new.columns:
+                discharges_only_new = discharges_only_new.rename(columns={"unique_key": "unique_key_dis"})
+                logging.info("Renamed unique_key to unique_key_dis in discharge-only records to avoid conflicts")
+
+            # Determine which uid/facility columns exist
+            uid_col = "uid" if "uid" in discharges_only_new.columns else ("uid_dis" if "uid_dis" in discharges_only_new.columns else None)
+            facility_col = "facility" if "facility" in discharges_only_new.columns else ("facility_dis" if "facility_dis" in discharges_only_new.columns else None)
+
+            if uid_col and facility_col and "unique_key_dis" in discharges_only_new.columns:
+                existing_dis_keys = _fetch_existing_keys(discharges_only_new, [uid_col, facility_col, "unique_key_dis"])
+                logging.info(f"Found {len(existing_dis_keys)} existing discharge keys in database")
                 if existing_dis_keys:
                     mask = discharges_only_new.apply(
-                        lambda r: (str(r.get("uid")), str(r.get("facility")), str(r.get("unique_key_dis"))) not in existing_dis_keys,
+                        lambda r: (str(r.get(uid_col)), str(r.get(facility_col)), str(r.get("unique_key_dis"))) not in existing_dis_keys,
                         axis=1,
                     )
                     discharges_only_new = discharges_only_new[mask]
+                    logging.info(f"After deduplication: {len(discharges_only_new)} new discharge records to insert")
+            else:
+                # Fallback: deduplicate on available columns
+                available_key_cols = []
+                for col in ["uid", "uid_dis"]:
+                    if col in discharges_only_new.columns:
+                        available_key_cols.append(col)
+                        break
+                for col in ["facility", "facility_dis"]:
+                    if col in discharges_only_new.columns:
+                        available_key_cols.append(col)
+                        break
+                if "unique_key_dis" in discharges_only_new.columns:
+                    available_key_cols.append("unique_key_dis")
+
+                if available_key_cols:
+                    discharges_only_new = discharges_only_new.drop_duplicates(subset=available_key_cols, keep="first")
+                    logging.info(f"Using fallback deduplication on {available_key_cols}. Records: {len(discharges_only_new)}")
+                else:
+                    logging.warning(
+                        f"Discharge-only records missing key columns. Available: {list(discharges_only_new.columns[:10])}"
+                    )
+
             if not is_empty_df(discharges_only_new):
+                logging.info(f"Inserting {len(discharges_only_new)} discharge-only records into {schema}.{table_name}")
                 generate_create_insert_sql(discharges_only_new, schema, table_name)
+            else:
+                logging.info("No new discharge-only records to insert after deduplication")
 
         if isinstance(merged_df, pd.DataFrame) and not is_empty_df(merged_df):
             merged_df = merged_df.drop(columns=["_source", "_merged_index"], errors="ignore")
@@ -793,14 +948,15 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                         f"('{escape_special_characters(u)}','{escape_special_characters(f)}','{escape_special_characters(k)}')"
                         for u, f, k in adm_keys.to_numpy()
                     )
-                    existing_adm_keys_df = run_query_and_return_df(
+                    result = run_query_and_return_df(
                         f"""
                         SELECT t.uid, t.facility, t.unique_key, t.unique_key_dis
                         FROM {schema}."{table_name}" AS t
                         JOIN (VALUES {values_rows}) AS v(uid, facility, unique_key)
                           ON t.uid = v.uid AND t.facility = v.facility AND t.unique_key = v.unique_key;
                         """
-                    ) or pd.DataFrame()
+                    )
+                    existing_adm_keys_df = result if result is not None else pd.DataFrame()
 
             if {"uid", "facility", "unique_key_dis"}.issubset(merged_df.columns):
                 dis_keys = (
@@ -814,14 +970,15 @@ def merge_raw_admissions_and_discharges(clean_derived_data_output):
                         f"('{escape_special_characters(u)}','{escape_special_characters(f)}','{escape_special_characters(k)}')"
                         for u, f, k in dis_keys.to_numpy()
                     )
-                    existing_dis_keys_df = run_query_and_return_df(
+                    result = run_query_and_return_df(
                         f"""
                         SELECT t.uid, t.facility, t.unique_key, t.unique_key_dis
                         FROM {schema}."{table_name}" AS t
                         JOIN (VALUES {values_rows}) AS v(uid, facility, unique_key_dis)
                           ON t.uid = v.uid AND t.facility = v.facility AND t.unique_key_dis = v.unique_key_dis;
                         """
-                    ) or pd.DataFrame()
+                    )
+                    existing_dis_keys_df = result if result is not None else pd.DataFrame()
 
             if not existing_adm_keys_df.empty or not existing_dis_keys_df.empty:
                 existing_keys_df = pd.concat(
