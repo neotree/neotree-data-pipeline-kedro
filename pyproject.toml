@@ -1,7 +1,8 @@
 [tool.kedro]
 package_name = "data_pipeline"
 project_name = "Neotree Data Pipeline Kedro"
-kedro_init_version = "0.18.14"
+project_version = "0.17.0"
+source_dir = "src"
 
 [tool.isort]
 multi_line_output = 3
