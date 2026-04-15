@@ -445,30 +445,24 @@ WHERE NOT EXISTS (
 
 def read_dicharges_not_joined():
         return f'''SELECT * 
-FROM derived.discharges 
-WHERE uid IN (
-    SELECT uid 
-    FROM derived.admissions ad 
-    WHERE NOT EXISTS (
-        SELECT 1 
-        FROM derived.joined_admissions_discharges j 
-        WHERE ad.uid = j.uid 
-          AND ad.unique_key = j.unique_key
-    )
+FROM derived.discharges dis
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM derived.joined_admissions_discharges j 
+    WHERE dis.uid = j.uid
+      AND dis.facility = j.facility
+      AND dis.unique_key = j.unique_key_discharge
 )'''
 
 def read_clean_dicharges_not_joined():
         return f'''SELECT * 
-FROM derived.clean_discharges 
-WHERE uid IN (
-    SELECT uid 
-    FROM derived.clean_admissions ad 
-    WHERE NOT EXISTS (
-        SELECT 1 
-        FROM derived.clean_joined_adm_discharges j 
-        WHERE ad.uid = j.uid 
-          AND ad.unique_key = j.unique_key
-    )
+FROM derived.clean_discharges dis
+WHERE NOT EXISTS (
+    SELECT 1 
+    FROM derived.clean_joined_adm_discharges j 
+    WHERE dis.uid = j.uid
+      AND dis.facility = j.facility
+      AND dis.unique_key = j.unique_key_discharge
 )'''
 
 def admissions_without_discharges():
