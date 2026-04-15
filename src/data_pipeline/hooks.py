@@ -4,7 +4,6 @@ from typing import Iterable
 from kedro.config import ConfigLoader
 from kedro.framework.hooks import hook_impl
 from kedro.io import DataCatalog
-from data_pipeline.pipelines import data_engineering as de
 
 
 
@@ -17,6 +16,8 @@ class ProjectHooks:
             A mapping from a pipeline name to a ``Pipeline`` object.
 
         """
+        from data_pipeline.pipelines import data_engineering as de
+
         data_engineering_pipeline = de.create_pipeline();
 
         return {

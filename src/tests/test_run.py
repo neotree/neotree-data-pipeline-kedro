@@ -10,13 +10,18 @@ To run the tests, run ``kedro test``.
 from pathlib import Path
 
 import pytest
+from kedro.config import ConfigLoader
 from kedro.framework.context import KedroContext
+from pluggy import PluginManager
 
 
 @pytest.fixture
 def project_context():
     return KedroContext(
-        package_name="data_pipeline", project_path=Path.cwd()
+        package_name="data_pipeline",
+        project_path=Path.cwd(),
+        config_loader=ConfigLoader(str(Path.cwd() / "conf")),
+        hook_manager=PluginManager("kedro"),
     )
 
 
@@ -25,4 +30,4 @@ def project_context():
 # functionality
 class TestProjectContext:
     def test_package_name(self, project_context):
-        assert project_context.package_name == "data_pipeline"
+        assert project_context._package_name == "data_pipeline"

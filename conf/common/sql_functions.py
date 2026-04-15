@@ -12,7 +12,6 @@ import numpy as np
 from conf.common.logger import setup_logger
 from conf.common.format_error import formatError
 from .config import config
-from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
@@ -491,6 +490,8 @@ def is_date_column_by_name(column_name: str, table_name: str = '') -> bool:
     # Check field metadata if available and table_name provided
     if table_name:
         try:
+            from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
+
             schema = load_json_for_comparison(table_name)
             if schema:
                 # Build field lookup
@@ -1126,6 +1127,8 @@ def transform_dataframe_with_field_info(df, table_name):
     """
 
     # Load field info using table_name as script
+    from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
+
     schema = load_json_for_comparison(table_name)
     if not schema:
         logging.info(f"No field info found for {table_name}, skipping transformation")
