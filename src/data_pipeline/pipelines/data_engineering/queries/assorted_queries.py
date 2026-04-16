@@ -861,6 +861,106 @@ def regenerate_unique_key_query(id, unique_key):
               '''
 
 
+def create_pii_redaction_functions():
+    return r"""
+    CREATE SCHEMA IF NOT EXISTS scratch;;
+
+    CREATE OR REPLACE FUNCTION scratch.strip_pii_text(input_text text)
+    RETURNS text
+    LANGUAGE plpgsql
+    IMMUTABLE
+    AS $$
+    DECLARE
+        redacted text := input_text;
+        previous text;
+        pattern text;
+        redaction_pass integer := 0;
+        patterns text[] := ARRAY[
+            -- Zimbabwe national ID: DD-NNNNNN-L-DD or DD-NNNNNNN-L-DD.
+            '(^|[^[:alnum:]])[0-9]{2}[ -]?[0-9]{6,7}[ -]?[A-Za-z][ -]?[0-9]{2}(?=[^[:alnum:]]|$)',
+            -- Malawi national registration number: 8 uppercase alpha-numeric chars, starting with a letter.
+            -- Do not match inside hyphenated NeoTree UIDs such as ABDC-1234567 or A128-1234567.
+            '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{7}(?=[^[:alnum:]-]|$)',
+            -- Malawi phone numbers. Strong prefix matches cover all 9-digit national numbers;
+            -- unprefixed matches stay mobile-focused to reduce false positives.
+            '(^|[^[:alnum:]])\+?265([ -]?[0-9]){9}(?=[^[:alnum:]]|$)',
+            '(^|[^[:alnum:]])0([ -]?[0-9]){9}(?=[^[:alnum:]]|$)',
+            '(^|[^[:alnum:]])[89]([ -]?[0-9]){8}(?=[^[:alnum:]]|$)',
+            -- Zimbabwe phone numbers. Strong prefix matches cover national numbers from 5 to 10 digits;
+            -- unprefixed matches stay mobile-focused to reduce false positives.
+            '(^|[^[:alnum:]])\+?263([ -]?[0-9]){5,10}(?=[^[:alnum:]]|$)',
+            '(^|[^[:alnum:]])0([ -]?[0-9]){5,10}(?=[^[:alnum:]]|$)',
+            '(^|[^[:alnum:]])7[1378]([ -]?[0-9]){7}(?=[^[:alnum:]]|$)'
+        ];
+    BEGIN
+        IF redacted IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        LOOP
+            previous := redacted;
+            redaction_pass := redaction_pass + 1;
+
+            FOREACH pattern IN ARRAY patterns LOOP
+                redacted := regexp_replace(redacted, pattern, '\1[PII_REMOVED]', 'g');
+            END LOOP;
+
+            EXIT WHEN redacted = previous OR redaction_pass >= 10;
+        END LOOP;
+
+        RETURN redacted;
+    END;
+    $$;;
+
+    CREATE OR REPLACE FUNCTION scratch.strip_pii_jsonb(input_json jsonb)
+    RETURNS jsonb
+    LANGUAGE sql
+    IMMUTABLE
+    AS $$
+        SELECT CASE jsonb_typeof(input_json)
+            WHEN 'object' THEN COALESCE(
+                (
+                    SELECT jsonb_object_agg(key, scratch.strip_pii_jsonb(value))
+                    FROM jsonb_each(input_json)
+                ),
+                '{}'::jsonb
+            )
+            WHEN 'array' THEN COALESCE(
+                (
+                    SELECT jsonb_agg(scratch.strip_pii_jsonb(value) ORDER BY ordinality)
+                    FROM jsonb_array_elements(input_json) WITH ORDINALITY AS arr(value, ordinality)
+                ),
+                '[]'::jsonb
+            )
+            WHEN 'string' THEN to_jsonb(scratch.strip_pii_text(input_json #>> '{}'))
+            WHEN 'number' THEN CASE
+                WHEN scratch.strip_pii_text(input_json #>> '{}') <> input_json #>> '{}'
+                THEN to_jsonb('[PII_REMOVED]'::text)
+                ELSE input_json
+            END
+            ELSE input_json
+        END
+    $$;;
+    """.strip()
+
+
+def clean_pii_patterns(schema: str, table: str):
+    def qident(s: str) -> str:
+        return '"' + s.replace('"', '""') + '"'
+
+    fq = f"{qident(schema)}.{qident(table)}"
+
+    return rf"""
+    {create_pii_redaction_functions()}
+
+    UPDATE {fq}
+    SET data = scratch.strip_pii_jsonb(data)
+    WHERE data IS NOT NULL
+    AND data::text ~ '([0-9]{{2}}[ -]?[0-9]{{6,7}}[ -]?[A-Za-z][ -]?[0-9]{{2}}|[A-Z][A-Z0-9]{{7}}|\+?265([ -]?[0-9]){{9}}|0([ -]?[0-9]){{9}}|[89]([ -]?[0-9]){{8}}|\+?263([ -]?[0-9]){{5,10}}|0([ -]?[0-9]){{5,10}}|7[1378]([ -]?[0-9]){{7}})';;
+
+    """.strip()
+
+
 def clean_known_confidential_columns(schema: str, table: str):
     def qident(s: str) -> str:
         return '"' + s.replace('"', '""') + '"'
@@ -897,6 +997,8 @@ def clean_known_confidential_columns(schema: str, table: str):
     )
     WHERE jsonb_typeof(data->'entries') = 'object'
     AND (data->'entries') ?| ARRAY[{arr}]::text[];;
+
+    {clean_pii_patterns(schema, table)}
     """.strip()
 
     return sql
