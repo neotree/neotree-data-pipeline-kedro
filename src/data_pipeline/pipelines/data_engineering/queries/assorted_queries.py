@@ -830,18 +830,33 @@ def insert_sessions_data():
 
     # f'''drop table if exists {table} cascade;;
     # CREATE INDEX IF NOT EXISTS idx_clean_sessions_cleaned ON {clean_sessions} (cleaned);;
-    return f'''CREATE TABLE IF NOT EXISTS public.clean_sessions (
+    return f'''ALTER TABLE {sessions}
+                ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
+
+                CREATE INDEX IF NOT EXISTS idx_sessions_pii_cleaned
+                ON {sessions} (pii_cleaned);;
+
+                CREATE TABLE IF NOT EXISTS public.clean_sessions (
                 id INTEGER PRIMARY KEY,
                 uid TEXT,
                 ingested_at TIMESTAMP WITHOUT TIME ZONE,
                 data JSONB,
                 scriptid TEXT,
                 unique_key VARCHAR,
-                cleaned BOOLEAN
-            );;     
+                cleaned BOOLEAN,
+                pii_cleaned BOOLEAN DEFAULT FALSE
+            );;
+
+                ALTER TABLE {clean_sessions}
+                ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
+
+                CREATE INDEX IF NOT EXISTS idx_clean_sessions_pii_cleaned
+                ON {clean_sessions} (pii_cleaned);;
         
         INSERT INTO {clean_sessions} 
-        SELECT *,false FROM {sessions} s
+        (id, uid, ingested_at, data, scriptid, unique_key, cleaned, pii_cleaned)
+        SELECT s.id, s.uid, s.ingested_at, s.data, s.scriptid, s.unique_key, false, COALESCE(s.pii_cleaned, false)
+        FROM {sessions} s
         WHERE NOT EXISTS (
         SELECT 1
         FROM {clean_sessions} cs
@@ -953,10 +968,21 @@ def clean_pii_patterns(schema: str, table: str):
     return rf"""
     {create_pii_redaction_functions()}
 
+    ALTER TABLE {fq}
+    ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
+
+    CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned
+    ON {fq} (pii_cleaned);;
+
     UPDATE {fq}
     SET data = scratch.strip_pii_jsonb(data)
-    WHERE data IS NOT NULL
+    WHERE COALESCE(pii_cleaned, FALSE) = FALSE
+    AND data IS NOT NULL
     AND data::text ~ '([0-9]{{2}}[ -]?[0-9]{{6,7}}[ -]?[A-Za-z][ -]?[0-9]{{2}}|[A-Z][A-Z0-9]{{7}}|\+?265([ -]?[0-9]){{9}}|0([ -]?[0-9]){{9}}|[89]([ -]?[0-9]){{8}}|\+?263([ -]?[0-9]){{5,10}}|0([ -]?[0-9]){{5,10}}|7[1378]([ -]?[0-9]){{7}})';;
+
+    UPDATE {fq}
+    SET pii_cleaned = TRUE
+    WHERE COALESCE(pii_cleaned, FALSE) = FALSE;;
 
     """.strip()
 
@@ -995,7 +1021,8 @@ def clean_known_confidential_columns(schema: str, table: str):
     (data->'entries') - ARRAY[{arr}]::text[],
     true
     )
-    WHERE jsonb_typeof(data->'entries') = 'object'
+    WHERE COALESCE(pii_cleaned, FALSE) = FALSE
+    AND jsonb_typeof(data->'entries') = 'object'
     AND (data->'entries') ?| ARRAY[{arr}]::text[];;
 
     {clean_pii_patterns(schema, table)}

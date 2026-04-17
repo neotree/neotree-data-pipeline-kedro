@@ -116,3 +116,15 @@ def test_sql_scrubber_handles_json_numbers():
 
     assert "WHEN 'number' THEN CASE" in source
     assert "THEN to_jsonb('[PII_REMOVED]'::text)" in source
+
+
+def test_sql_scrubber_is_incremental_with_pii_flag():
+    project_root = Path(__file__).parents[4]
+    assorted_queries = project_root / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
+
+    source = assorted_queries.read_text()
+
+    assert "ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE" in source
+    assert "WHERE COALESCE(pii_cleaned, FALSE) = FALSE" in source
+    assert "SET pii_cleaned = TRUE" in source
+    assert "COALESCE(s.pii_cleaned, false)" in source
