@@ -968,6 +968,12 @@ def clean_pii_patterns(schema: str, table: str):
     return rf"""
     {create_pii_redaction_functions()}
 
+    ALTER TABLE {fq}
+    ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
+
+    CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned
+    ON {fq} (pii_cleaned);;
+
     UPDATE {fq}
     SET data = scratch.strip_pii_jsonb(data)
     WHERE COALESCE(pii_cleaned, FALSE) = FALSE
@@ -1008,12 +1014,6 @@ def clean_known_confidential_columns(schema: str, table: str):
     arr = ", ".join("'" + k.replace("'", "''") + "'" for k in keys)
 
     sql = f"""
-    ALTER TABLE {fq}
-    ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
-
-    CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned
-    ON {fq} (pii_cleaned);;
-
     UPDATE {fq}
     SET data = jsonb_set(
     data,

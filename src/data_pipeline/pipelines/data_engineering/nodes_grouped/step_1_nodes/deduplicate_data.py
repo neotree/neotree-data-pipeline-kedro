@@ -17,9 +17,9 @@ def deduplicate_data(data_import_output):
             #Clean Up Confidential Columns From Source
             logging.info("******CLEANING KNOWN CONFIDENTIALITY COLUMNS*********")
             inject_sql(clean_known_confidential_columns("public","sessions"),"confidential-sessions")
+            inject_sql(clean_known_confidential_columns("public","clean_sessions"),"confidential-clean-sessions")
             logging.info("******START DATA CLEANING*********")
             inject_sql(insert_sessions_data(),"Sessions Data")
-            inject_sql(clean_known_confidential_columns("public","clean_sessions"),"confidential-clean-sessions")
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********") 
             regenerate_unique_key()
             ###DEDUPLICATE DYNAMICALLY
