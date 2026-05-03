@@ -5,7 +5,6 @@ from pathlib import Path
 
 PATTERNS = [
     r"(^|[^A-Za-z0-9])[0-9]{2}[ -]?[0-9]{6,7}[ -]?[A-Za-z][ -]?[0-9]{2}(?=[^A-Za-z0-9]|$)",
-    r"(^|[^A-Za-z0-9-])[A-Z][A-Z0-9]{7}(?=[^A-Za-z0-9-]|$)",
     r"(^|[^A-Za-z0-9])\+?265([ -]?[0-9]){9}(?=[^A-Za-z0-9]|$)",
     r"(^|[^A-Za-z0-9])0[89]([ -]?[0-9]){8}(?=[^A-Za-z0-9]|$)",
     r"(^|[^A-Za-z0-9])[89]([ -]?[0-9]){8}(?=[^A-Za-z0-9]|$)",
@@ -123,13 +122,45 @@ SNAPSHOT_PAYLOAD = {
     "scriptVersion": 625,
 }
 
+PROJECT_ROOT = Path(__file__).parents[4]
+REPAIRED_CORRUPTED_SESSIONS_FIXTURE = (
+    PROJECT_ROOT
+    / "src"
+    / "tests"
+    / "pipelines"
+    / "data_engineering"
+    / "fixtures"
+    / "repaired_corrupted_sessions.json"
+)
+CORRUPTED_SESSIONS_FIXTURE = (
+    PROJECT_ROOT
+    / "src"
+    / "tests"
+    / "pipelines"
+    / "data_engineering"
+    / "fixtures"
+    / "corrupted_sessions.json"
+)
+
 
 def redact(value: str) -> str:
     redacted = value
+    normalized = redacted.strip()
+    if re.fullmatch(r"[A-Z][A-Z0-9]{7}", normalized):
+        return "[PII_REMOVED]"
     for _ in range(10):
         previous = redacted
         for pattern in PATTERNS:
             redacted = re.sub(pattern, r"\1[PII_REMOVED]", redacted)
+        if re.search(
+            r"(^|[^a-z])(id|nrn|national id|nationalid|identity|identity number|patient id|patientid|mother id|motherid|guardian id|guardianid)([^a-z]|$)",
+            redacted.lower(),
+        ):
+            redacted = re.sub(
+                r"(^|[^A-Za-z0-9-])[A-Z][A-Z0-9]{7}(?=[^A-Za-z0-9-]|$)",
+                r"\1[PII_REMOVED]",
+                redacted,
+            )
         if redacted == previous:
             break
     return redacted
@@ -161,6 +192,14 @@ def scrub_payload_entries_only(payload):
     if isinstance(scrubbed, dict) and "entries" in scrubbed:
         scrubbed["entries"] = scrub_entries_only(scrubbed["entries"])
     return scrubbed
+
+
+def load_repaired_corrupted_sessions_fixture():
+    return json.loads(REPAIRED_CORRUPTED_SESSIONS_FIXTURE.read_text())
+
+
+def load_corrupted_sessions_fixture():
+    return json.loads(CORRUPTED_SESSIONS_FIXTURE.read_text())
 
 
 def test_redacts_country_specific_phone_number_formats():
@@ -211,37 +250,58 @@ def test_redacts_phone_numbers_with_punctuation_and_wrappers():
 
 def test_redacts_national_id_formats():
     examples = [
-        "63-123456-A-12",
-        "63123456A12",
-        "63 1234567 A 12",
-        "631234567A12",
-        "631234567a12",
-        "63-1234567-A-12",
-        "A1B2C3D4",
-        "Z9999999",
+        ("id 63-123456-A-12 done", "id [PII_REMOVED] done"),
+        ("id 63123456A12 done", "id [PII_REMOVED] done"),
+        ("id 63 1234567 A 12 done", "id [PII_REMOVED] done"),
+        ("id 631234567A12 done", "id [PII_REMOVED] done"),
+        ("id 631234567a12 done", "id [PII_REMOVED] done"),
+        ("id 63-1234567-A-12 done", "id [PII_REMOVED] done"),
+        ("id A1B2C3D4 done", "id [PII_REMOVED] done"),
+        ("id Z9999999 done", "id [PII_REMOVED] done"),
+        ("id national id A1B2C3D4 done", "id national id [PII_REMOVED] done"),
+        ("id nrn Z9999999 done", "id nrn [PII_REMOVED] done"),
     ]
 
-    for example in examples:
-        assert redact(f"id {example} done") == "id [PII_REMOVED] done"
+    for example, redacted_value in examples:
+        assert redact(example) == redacted_value
 
 
 def test_redacts_ids_with_surrounding_punctuation():
     examples = [
         "(63-123456-A-12)",
-        "[A1B2C3D4]",
         "nrn=A1B2C3D4;",
         "zim_id:63-1234567-A-12",
     ]
 
     expected = [
         "([PII_REMOVED])",
-        "[[PII_REMOVED]]",
         "nrn=[PII_REMOVED];",
         "zim_id:[PII_REMOVED]",
     ]
 
     for example, redacted_value in zip(examples, expected):
         assert redact(example) == redacted_value
+
+
+def test_preserves_malawi_nrn_like_tokens_with_punctuation_but_without_identity_context():
+    examples = [
+        "[A1B2C3D4]",
+        "(Z9999999)",
+    ]
+
+    for example in examples:
+        assert redact(example) == example
+
+
+def test_preserves_generic_malawi_nrn_like_tokens_without_identity_context():
+    examples = [
+        "code A1B2C3D4 done",
+        "facility Z9999999 active",
+        "token A1B2C3D4 queued",
+    ]
+
+    for example in examples:
+        assert redact(example) == example
 
 
 def test_preserves_hyphenated_neotree_uids():
@@ -533,6 +593,101 @@ def test_payload_scoped_scrubber_redacts_nested_repeatables_inside_entries():
     assert scrubbed["entries"]["repeatables"]["contacts"][1]["note"] == "reviewed 2026-04-28T23:16"
 
 
+def test_repaired_corrupted_sessions_fixture_contains_no_redaction_marker():
+    rows = load_repaired_corrupted_sessions_fixture()
+
+    assert len(rows) == 30
+    assert "[PII_REMOVED]" not in json.dumps(rows, sort_keys=True)
+
+
+def test_repaired_corrupted_sessions_fixture_is_stable_under_entries_scrubber():
+    rows = load_repaired_corrupted_sessions_fixture()
+
+    for row in rows:
+        payload = row["data"]
+        scrubbed = scrub_payload_entries_only(payload)
+
+        assert scrubbed == payload
+
+
+def test_corrupted_and_repaired_fixtures_match_row_for_row():
+    corrupted_rows = load_corrupted_sessions_fixture()
+    repaired_rows = load_repaired_corrupted_sessions_fixture()
+
+    corrupted_ids = [(row["id"], row["uid"]) for row in corrupted_rows]
+    repaired_ids = [(row["id"], row["uid"]) for row in repaired_rows]
+
+    assert len(corrupted_rows) == 30
+    assert len(repaired_rows) == 30
+    assert repaired_ids == corrupted_ids
+
+
+def test_repaired_fixture_clears_all_markers_from_corrupted_rows():
+    corrupted_rows = load_corrupted_sessions_fixture()
+    repaired_rows = load_repaired_corrupted_sessions_fixture()
+
+    for corrupted_row, repaired_row in zip(corrupted_rows, repaired_rows):
+        assert corrupted_row["id"] == repaired_row["id"]
+        assert "[PII_REMOVED]" in json.dumps(corrupted_row["data"], sort_keys=True)
+        assert "[PII_REMOVED]" not in json.dumps(repaired_row["data"], sort_keys=True)
+
+
+def test_repaired_fixture_preserves_unrelated_row_metadata_from_corrupted_fixture():
+    corrupted_rows = load_corrupted_sessions_fixture()
+    repaired_rows = load_repaired_corrupted_sessions_fixture()
+
+    for corrupted_row, repaired_row in zip(corrupted_rows, repaired_rows):
+        assert corrupted_row["id"] == repaired_row["id"]
+        assert corrupted_row["uid"] == repaired_row["uid"]
+        assert corrupted_row["ingested_at"] == repaired_row["ingested_at"]
+        assert corrupted_row["scriptid"] == repaired_row["scriptid"]
+        assert corrupted_row["unique_key"] == repaired_row["unique_key"]
+        assert corrupted_row["pii_cleaned"] == repaired_row["pii_cleaned"]
+
+
+def test_repaired_fixture_preserves_unaffected_top_level_payload_metadata():
+    corrupted_rows = load_corrupted_sessions_fixture()
+    repaired_rows = load_repaired_corrupted_sessions_fixture()
+
+    safe_keys = [
+        "appEnv",
+        "app_mode",
+        "appVersion",
+        "country",
+        "started_at",
+        "completed_at",
+        "unique_key",
+        "hospital_id",
+        "scriptTitle",
+        "scriptVersion",
+        "dateAndTimeOfDeath",
+    ]
+
+    for corrupted_row, repaired_row in zip(corrupted_rows, repaired_rows):
+        corrupted_payload = corrupted_row["data"]
+        repaired_payload = repaired_row["data"]
+
+        for key in safe_keys:
+            assert corrupted_payload.get(key) == repaired_payload.get(key)
+
+        assert corrupted_payload.get("script") == repaired_payload.get("script")
+
+
+def test_repaired_corrupted_sessions_fixture_preserves_top_level_metadata():
+    rows = load_repaired_corrupted_sessions_fixture()
+
+    for row in rows:
+        payload = row["data"]
+        scrubbed = scrub_payload_entries_only(payload)
+
+        assert scrubbed["uid"] == payload["uid"]
+        assert scrubbed["started_at"] == payload["started_at"]
+        assert scrubbed["completed_at"] == payload["completed_at"]
+        assert scrubbed["unique_key"] == payload["unique_key"]
+        assert scrubbed["script"]["id"] == payload["script"]["id"]
+        assert scrubbed["hospital_id"] == payload["hospital_id"]
+
+
 def test_numeric_phone_like_values_are_redactable_by_patterns():
     examples = [
         "265991234567",
@@ -546,8 +701,7 @@ def test_numeric_phone_like_values_are_redactable_by_patterns():
 
 
 def test_sql_scrubber_handles_json_numbers():
-    project_root = Path(__file__).parents[4]
-    assorted_queries = project_root / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
+    assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
 
     source = assorted_queries.read_text()
 
@@ -556,8 +710,7 @@ def test_sql_scrubber_handles_json_numbers():
 
 
 def test_sql_scrubber_is_incremental_with_pii_flag():
-    project_root = Path(__file__).parents[4]
-    assorted_queries = project_root / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
+    assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
 
     source = assorted_queries.read_text()
 
@@ -570,20 +723,20 @@ def test_sql_scrubber_is_incremental_with_pii_flag():
 
 
 def test_sql_scrubber_has_protected_shape_and_normalization_helpers():
-    project_root = Path(__file__).parents[4]
-    assorted_queries = project_root / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
+    assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
 
     source = assorted_queries.read_text()
 
     assert "CREATE OR REPLACE FUNCTION scratch.is_protected_non_pii_text" in source
     assert "CREATE OR REPLACE FUNCTION scratch.normalize_phone_candidate" in source
+    assert "CREATE OR REPLACE FUNCTION scratch.contains_identity_context" in source
+    assert "CREATE OR REPLACE FUNCTION scratch.matches_malawi_nrn_text" in source
     assert "CREATE OR REPLACE FUNCTION scratch.matches_pii_text" in source
     assert "WHEN input_json ? 'entries' THEN jsonb_set(" in source
 
 
 def test_sql_scrubber_has_canary_and_telemetry_helpers():
-    project_root = Path(__file__).parents[4]
-    assorted_queries = project_root / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
+    assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
 
     source = assorted_queries.read_text()
 
@@ -592,3 +745,50 @@ def test_sql_scrubber_has_canary_and_telemetry_helpers():
     assert "def pii_suspicious_fragments_query(" in source
     assert "def pii_canary_summary_query(" in source
     assert "LIKE '%[PII_REMOVED]:%'" in source
+
+
+def test_sql_scrubber_restores_original_data_for_suspicious_redactions():
+    assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
+
+    source = assorted_queries.read_text()
+
+    assert "CREATE TABLE scratch.pii_redaction_candidates AS" in source
+    assert "data AS original_data" in source
+    assert "scratch.strip_pii_jsonb(data) AS redacted_data" in source
+    assert "suspicious_output" in source
+    assert "SET data = candidates.original_data," in source
+    assert "AND candidates.suspicious_output = TRUE" in source
+    assert "SET pii_cleaned = FALSE," in source
+    assert "pii_cleaned_version = 0" in source
+
+
+def test_sql_scrubber_persists_skip_summary_rows():
+    assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
+
+    source = assorted_queries.read_text()
+
+    assert "CREATE TABLE IF NOT EXISTS scratch.pii_redaction_skips" in source
+    assert "DELETE FROM scratch.pii_redaction_skips" in source
+    assert "INSERT INTO scratch.pii_redaction_skips" in source
+    assert "def pii_skipped_redaction_summary_query(" in source
+    assert "COUNT(*)::bigint AS skipped_count" in source
+
+
+def test_deduplicate_node_logs_pii_skip_summary():
+    deduplicate_node = (
+        PROJECT_ROOT
+        / "src"
+        / "data_pipeline"
+        / "pipelines"
+        / "data_engineering"
+        / "nodes_grouped"
+        / "step_1_nodes"
+        / "deduplicate_data.py"
+    )
+
+    source = deduplicate_node.read_text()
+
+    assert "def log_pii_skip_summary(" in source
+    assert 'log_pii_skip_summary("public", "clean_sessions")' in source
+    assert 'clean_known_confidential_columns("public","sessions")' not in source
+    assert "PII redaction skipped %s suspicious row(s)" in source

@@ -930,6 +930,45 @@ def create_pii_redaction_functions():
         SELECT regexp_replace(COALESCE(input_text, ''), '[\s\-\(\)]', '', 'g')
     $$;;
 
+    CREATE OR REPLACE FUNCTION scratch.contains_identity_context(input_text text)
+    RETURNS boolean
+    LANGUAGE sql
+    IMMUTABLE
+    AS $$
+        SELECT COALESCE(
+            lower(input_text) ~ '(^|[^a-z])(id|nrn|national id|nationalid|identity|identity number|patient id|patientid|mother id|motherid|guardian id|guardianid)([^a-z]|$)',
+            FALSE
+        )
+    $$;;
+
+    CREATE OR REPLACE FUNCTION scratch.matches_malawi_nrn_text(input_text text)
+    RETURNS boolean
+    LANGUAGE plpgsql
+    IMMUTABLE
+    AS $$
+    DECLARE
+        trimmed text;
+    BEGIN
+        IF input_text IS NULL OR scratch.is_protected_non_pii_text(input_text) THEN
+            RETURN FALSE;
+        END IF;
+
+        trimmed := btrim(input_text);
+
+        IF trimmed ~ '^[A-Z][A-Z0-9]{7}$' THEN
+            RETURN TRUE;
+        END IF;
+
+        IF scratch.contains_identity_context(input_text)
+           AND input_text ~ '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{7}(?=[^[:alnum:]-]|$)'
+        THEN
+            RETURN TRUE;
+        END IF;
+
+        RETURN FALSE;
+    END;
+    $$;;
+
     CREATE OR REPLACE FUNCTION scratch.matches_pii_text(input_text text)
     RETURNS boolean
     LANGUAGE plpgsql
@@ -950,7 +989,7 @@ def create_pii_redaction_functions():
            OR normalized ~ '^07[1378][0-9]{{7}}$'
            OR normalized ~ '^7[1378][0-9]{{7}}$'
            OR input_text ~ '(^|[^[:alnum:]])[0-9]{{2}}[ -]?[0-9]{{6,7}}[ -]?[A-Za-z][ -]?[0-9]{{2}}(?=[^[:alnum:]]|$)'
-           OR input_text ~ '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{{7}}(?=[^[:alnum:]-]|$)'
+           OR scratch.matches_malawi_nrn_text(input_text)
         THEN
             RETURN TRUE;
         END IF;
@@ -972,9 +1011,6 @@ def create_pii_redaction_functions():
         patterns text[] := ARRAY[
             -- Zimbabwe national ID: DD-NNNNNN-L-DD or DD-NNNNNNN-L-DD.
             '(^|[^[:alnum:]])[0-9]{2}[ -]?[0-9]{6,7}[ -]?[A-Za-z][ -]?[0-9]{2}(?=[^[:alnum:]]|$)',
-            -- Malawi national registration number: 8 uppercase alpha-numeric chars, starting with a letter.
-            -- Do not match inside hyphenated NeoTree UIDs such as ABDC-1234567 or A128-1234567.
-            '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{7}(?=[^[:alnum:]-]|$)',
             -- Malawi phone numbers stay mobile-focused to avoid matching date/time fragments.
             '(^|[^[:alnum:]])\+?265([ -]?[0-9]){9}(?=[^[:alnum:]]|$)',
             '(^|[^[:alnum:]])0[89]([ -]?[0-9]){8}(?=[^[:alnum:]]|$)',
@@ -1002,6 +1038,10 @@ def create_pii_redaction_functions():
             RETURN '[PII_REMOVED]';
         END IF;
 
+        IF btrim(redacted) ~ '^[A-Z][A-Z0-9]{7}$' THEN
+            RETURN '[PII_REMOVED]';
+        END IF;
+
         LOOP
             previous := redacted;
             redaction_pass := redaction_pass + 1;
@@ -1009,6 +1049,15 @@ def create_pii_redaction_functions():
             FOREACH pattern IN ARRAY patterns LOOP
                 redacted := regexp_replace(redacted, pattern, '\1[PII_REMOVED]', 'g');
             END LOOP;
+
+            IF scratch.contains_identity_context(redacted) THEN
+                redacted := regexp_replace(
+                    redacted,
+                    '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{7}(?=[^[:alnum:]-]|$)',
+                    '\1[PII_REMOVED]',
+                    'g'
+                );
+            END IF;
 
             EXIT WHEN redacted = previous OR redaction_pass >= 10;
         END LOOP;
@@ -1078,17 +1127,131 @@ def clean_pii_patterns(schema: str, table: str):
     return rf"""
     {create_pii_redaction_functions()}
 
-    UPDATE {fq}
-    SET data = scratch.strip_pii_jsonb(data)
+    CREATE TABLE IF NOT EXISTS scratch.pii_redaction_skips (
+        table_schema text NOT NULL,
+        table_name text NOT NULL,
+        id bigint NOT NULL,
+        uid text NULL,
+        scriptid text NULL,
+        ingested_at timestamp NULL,
+        suspicious_pattern text NOT NULL,
+        data_excerpt text NULL,
+        logged_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );;
+
+    DELETE FROM scratch.pii_redaction_skips
+    WHERE table_schema = '{schema}'
+    AND table_name = '{table}';;
+
+    DROP TABLE IF EXISTS scratch.pii_redaction_candidates;;
+
+    CREATE TABLE scratch.pii_redaction_candidates AS
+    SELECT
+        id,
+        data AS original_data,
+        scratch.strip_pii_jsonb(data) AS redacted_data,
+        (
+            scratch.strip_pii_jsonb(data)::text LIKE '%[PII_REMOVED]:%'
+            OR scratch.strip_pii_jsonb(data)::text LIKE '%T[PII_REMOVED]%'
+            OR scratch.strip_pii_jsonb(data)::text LIKE '%-[PII_REMOVED]-%'
+        ) AS suspicious_output
+    FROM {fq}
     WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
     AND data IS NOT NULL
     AND data ? 'entries';;
+
+    INSERT INTO scratch.pii_redaction_skips (
+        table_schema,
+        table_name,
+        id,
+        uid,
+        scriptid,
+        ingested_at,
+        suspicious_pattern,
+        data_excerpt
+    )
+    SELECT
+        '{schema}',
+        '{table}',
+        t.id,
+        t.uid,
+        t.scriptid,
+        t.ingested_at,
+        CASE
+            WHEN candidates.redacted_data::text LIKE '%[PII_REMOVED]:%' THEN '[PII_REMOVED]:'
+            WHEN candidates.redacted_data::text LIKE '%T[PII_REMOVED]%' THEN 'T[PII_REMOVED]'
+            WHEN candidates.redacted_data::text LIKE '%-[PII_REMOVED]-%' THEN '-[PII_REMOVED]-'
+            ELSE 'unknown'
+        END,
+        left(candidates.redacted_data::text, 300)
+    FROM {fq} t
+    JOIN scratch.pii_redaction_candidates candidates
+      ON t.id = candidates.id
+    WHERE candidates.suspicious_output = TRUE;;
+
+    UPDATE {fq}
+    SET data = candidates.redacted_data,
+    pii_cleaned = TRUE,
+    pii_cleaned_version = {PII_CLEANED_VERSION}
+    FROM scratch.pii_redaction_candidates candidates
+    WHERE {fq}.id = candidates.id
+    AND candidates.suspicious_output = FALSE;;
+
+    UPDATE {fq}
+    SET data = candidates.original_data,
+    pii_cleaned = FALSE,
+    pii_cleaned_version = 0
+    FROM scratch.pii_redaction_candidates candidates
+    WHERE {fq}.id = candidates.id
+    AND candidates.suspicious_output = TRUE;;
 
     UPDATE {fq}
     SET pii_cleaned = TRUE,
     pii_cleaned_version = {PII_CLEANED_VERSION}
     WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION};;
 
+    UPDATE {fq}
+    SET pii_cleaned = FALSE,
+    pii_cleaned_version = 0
+    WHERE id IN (
+        SELECT id
+        FROM scratch.pii_redaction_candidates
+        WHERE suspicious_output = TRUE
+    );;
+
+    DROP TABLE IF EXISTS scratch.pii_redaction_candidates;;
+
+    """.strip()
+
+
+def pii_skipped_redaction_summary_query(schema: str, table: str, sample_limit: int = 10):
+    escaped_schema = schema.replace("'", "''")
+    escaped_table = table.replace("'", "''")
+    return rf"""
+    WITH skipped AS (
+        SELECT *
+        FROM scratch.pii_redaction_skips
+        WHERE table_schema = '{escaped_schema}'
+        AND table_name = '{escaped_table}'
+        ORDER BY ingested_at DESC NULLS LAST, id DESC
+    ),
+    sample AS (
+        SELECT string_agg(
+            concat(id::text, ':', COALESCE(uid, 'NULL'), ':', suspicious_pattern),
+            ', '
+            ORDER BY ingested_at DESC NULLS LAST, id DESC
+        ) AS sample_rows
+        FROM (
+            SELECT id, uid, suspicious_pattern, ingested_at
+            FROM skipped
+            LIMIT {sample_limit}
+        ) limited
+    )
+    SELECT
+        COUNT(*)::bigint AS skipped_count,
+        COALESCE(string_agg(DISTINCT suspicious_pattern, ', '), '') AS patterns,
+        COALESCE((SELECT sample_rows FROM sample), '') AS sample_rows
+    FROM skipped;;
     """.strip()
 
 
