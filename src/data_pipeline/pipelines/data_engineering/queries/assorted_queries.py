@@ -8,6 +8,7 @@ from datetime import datetime
 
 params = config()
 env = params['env']
+PII_CLEANED_VERSION = 2
 
 # TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 
@@ -833,8 +834,19 @@ def insert_sessions_data():
     return f'''ALTER TABLE {sessions}
                 ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
 
+                ALTER TABLE {sessions}
+                ADD COLUMN IF NOT EXISTS pii_cleaned_version INTEGER DEFAULT 0;;
+
+                UPDATE {sessions}
+                SET pii_cleaned_version = {PII_CLEANED_VERSION}
+                WHERE COALESCE(pii_cleaned, FALSE) = TRUE
+                AND COALESCE(pii_cleaned_version, 0) = 0;;
+
                 CREATE INDEX IF NOT EXISTS idx_sessions_pii_cleaned
                 ON {sessions} (pii_cleaned);;
+
+                CREATE INDEX IF NOT EXISTS idx_sessions_pii_cleaned_version
+                ON {sessions} (pii_cleaned_version);;
 
                 CREATE TABLE IF NOT EXISTS public.clean_sessions (
                 id INTEGER PRIMARY KEY,
@@ -844,18 +856,31 @@ def insert_sessions_data():
                 scriptid TEXT,
                 unique_key VARCHAR,
                 cleaned BOOLEAN,
-                pii_cleaned BOOLEAN DEFAULT FALSE
+                pii_cleaned BOOLEAN DEFAULT FALSE,
+                pii_cleaned_version INTEGER DEFAULT 0
             );;
 
                 ALTER TABLE {clean_sessions}
                 ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
 
+                ALTER TABLE {clean_sessions}
+                ADD COLUMN IF NOT EXISTS pii_cleaned_version INTEGER DEFAULT 0;;
+
+                UPDATE {clean_sessions}
+                SET pii_cleaned_version = {PII_CLEANED_VERSION}
+                WHERE COALESCE(pii_cleaned, FALSE) = TRUE
+                AND COALESCE(pii_cleaned_version, 0) = 0;;
+
                 CREATE INDEX IF NOT EXISTS idx_clean_sessions_pii_cleaned
                 ON {clean_sessions} (pii_cleaned);;
+
+                CREATE INDEX IF NOT EXISTS idx_clean_sessions_pii_cleaned_version
+                ON {clean_sessions} (pii_cleaned_version);;
         
         INSERT INTO {clean_sessions} 
-        (id, uid, ingested_at, data, scriptid, unique_key, cleaned, pii_cleaned)
-        SELECT s.id, s.uid, s.ingested_at, s.data, s.scriptid, s.unique_key, false, COALESCE(s.pii_cleaned, false)
+        (id, uid, ingested_at, data, scriptid, unique_key, cleaned, pii_cleaned, pii_cleaned_version)
+        SELECT s.id, s.uid, s.ingested_at, s.data, s.scriptid, s.unique_key, false, COALESCE(s.pii_cleaned, false),
+        COALESCE(s.pii_cleaned_version, CASE WHEN COALESCE(s.pii_cleaned, false) THEN {PII_CLEANED_VERSION} ELSE 0 END)
         FROM {sessions} s
         WHERE NOT EXISTS (
         SELECT 1
@@ -877,8 +902,62 @@ def regenerate_unique_key_query(id, unique_key):
 
 
 def create_pii_redaction_functions():
-    return r"""
+    return rf"""
     CREATE SCHEMA IF NOT EXISTS scratch;;
+
+    CREATE OR REPLACE FUNCTION scratch.is_protected_non_pii_text(input_text text)
+    RETURNS boolean
+    LANGUAGE sql
+    IMMUTABLE
+    AS $$
+        SELECT COALESCE(
+            input_text ~ '^\d{{4}}-\d{{2}}-\d{{2}}([T ][0-9]{{2}}:[0-9]{{2}}(:[0-9]{{2}}(\.[0-9]+)?)?(Z|[+-][0-9]{{2}}:[0-9]{{2}})?)?$'
+            OR input_text ~ '^\d{{4}}/\d{{2}}/\d{{2}}([ T][0-9]{{2}}:[0-9]{{2}}(:[0-9]{{2}}(\.[0-9]+)?)?)?$'
+            OR input_text ~ '^\d{{2}}-\d{{2}}-\d{{4}}([ T][0-9]{{2}}:[0-9]{{2}}(:[0-9]{{2}}(\.[0-9]+)?)?)?$'
+            OR input_text ~ '^[0-9a-f]{{8}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{4}}-[0-9a-f]{{12}}$'
+            OR input_text ~ '^[A-Z0-9]{{3,5}}-[0-9]{{4,8}}$'
+            OR input_text ~ '^[A-Za-z0-9]{{20,}}$'
+            OR input_text ~ '^[0-9]+\.[0-9]+\.[0-9]+$',
+            FALSE
+        )
+    $$;;
+
+    CREATE OR REPLACE FUNCTION scratch.normalize_phone_candidate(input_text text)
+    RETURNS text
+    LANGUAGE sql
+    IMMUTABLE
+    AS $$
+        SELECT regexp_replace(COALESCE(input_text, ''), '[\s\-\(\)]', '', 'g')
+    $$;;
+
+    CREATE OR REPLACE FUNCTION scratch.matches_pii_text(input_text text)
+    RETURNS boolean
+    LANGUAGE plpgsql
+    IMMUTABLE
+    AS $$
+    DECLARE
+        normalized text;
+    BEGIN
+        IF input_text IS NULL OR scratch.is_protected_non_pii_text(input_text) THEN
+            RETURN FALSE;
+        END IF;
+
+        normalized := scratch.normalize_phone_candidate(input_text);
+
+        IF normalized ~ '^(\+?265)?[89][0-9]{{8}}$'
+           OR normalized ~ '^0[89][0-9]{{8}}$'
+           OR normalized ~ '^(\+?263)[0-9]{{5,10}}$'
+           OR normalized ~ '^07[1378][0-9]{{7}}$'
+           OR normalized ~ '^7[1378][0-9]{{7}}$'
+           OR input_text ~ '(^|[^[:alnum:]])[0-9]{{2}}[ -]?[0-9]{{6,7}}[ -]?[A-Za-z][ -]?[0-9]{{2}}(?=[^[:alnum:]]|$)'
+           OR input_text ~ '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{{7}}(?=[^[:alnum:]-]|$)'
+        THEN
+            RETURN TRUE;
+        END IF;
+
+        RETURN FALSE;
+    END;
+    $$;;
 
     CREATE OR REPLACE FUNCTION scratch.strip_pii_text(input_text text)
     RETURNS text
@@ -896,20 +975,31 @@ def create_pii_redaction_functions():
             -- Malawi national registration number: 8 uppercase alpha-numeric chars, starting with a letter.
             -- Do not match inside hyphenated NeoTree UIDs such as ABDC-1234567 or A128-1234567.
             '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{7}(?=[^[:alnum:]-]|$)',
-            -- Malawi phone numbers. Strong prefix matches cover all 9-digit national numbers;
-            -- unprefixed matches stay mobile-focused to reduce false positives.
+            -- Malawi phone numbers stay mobile-focused to avoid matching date/time fragments.
             '(^|[^[:alnum:]])\+?265([ -]?[0-9]){9}(?=[^[:alnum:]]|$)',
-            '(^|[^[:alnum:]])0([ -]?[0-9]){9}(?=[^[:alnum:]]|$)',
+            '(^|[^[:alnum:]])0[89]([ -]?[0-9]){8}(?=[^[:alnum:]]|$)',
             '(^|[^[:alnum:]])[89]([ -]?[0-9]){8}(?=[^[:alnum:]]|$)',
-            -- Zimbabwe phone numbers. Strong prefix matches cover national numbers from 5 to 10 digits;
-            -- unprefixed matches stay mobile-focused to reduce false positives.
+            -- Zimbabwe phone numbers stay mobile-focused for local formats to avoid matching timestamps.
             '(^|[^[:alnum:]])\+?263([ -]?[0-9]){5,10}(?=[^[:alnum:]]|$)',
-            '(^|[^[:alnum:]])0([ -]?[0-9]){5,10}(?=[^[:alnum:]]|$)',
+            '(^|[^[:alnum:]])07[1378]([ -]?[0-9]){7}(?=[^[:alnum:]]|$)',
             '(^|[^[:alnum:]])7[1378]([ -]?[0-9]){7}(?=[^[:alnum:]]|$)'
         ];
     BEGIN
         IF redacted IS NULL THEN
             RETURN NULL;
+        END IF;
+
+        IF scratch.is_protected_non_pii_text(redacted) THEN
+            RETURN redacted;
+        END IF;
+
+        IF scratch.normalize_phone_candidate(redacted) ~ '^(\+?265)?[89][0-9]{{8}}$'
+           OR scratch.normalize_phone_candidate(redacted) ~ '^0[89][0-9]{{8}}$'
+           OR scratch.normalize_phone_candidate(redacted) ~ '^(\+?263)[0-9]{{5,10}}$'
+           OR scratch.normalize_phone_candidate(redacted) ~ '^07[1378][0-9]{{7}}$'
+           OR scratch.normalize_phone_candidate(redacted) ~ '^7[1378][0-9]{{7}}$'
+        THEN
+            RETURN '[PII_REMOVED]';
         END IF;
 
         LOOP
@@ -927,7 +1017,7 @@ def create_pii_redaction_functions():
     END;
     $$;;
 
-    CREATE OR REPLACE FUNCTION scratch.strip_pii_jsonb(input_json jsonb)
+    CREATE OR REPLACE FUNCTION scratch.strip_pii_entries_jsonb(input_json jsonb)
     RETURNS jsonb
     LANGUAGE sql
     IMMUTABLE
@@ -935,24 +1025,44 @@ def create_pii_redaction_functions():
         SELECT CASE jsonb_typeof(input_json)
             WHEN 'object' THEN COALESCE(
                 (
-                    SELECT jsonb_object_agg(key, scratch.strip_pii_jsonb(value))
+                    SELECT jsonb_object_agg(key, scratch.strip_pii_entries_jsonb(value))
                     FROM jsonb_each(input_json)
                 ),
-                '{}'::jsonb
+                '{{}}'::jsonb
             )
             WHEN 'array' THEN COALESCE(
                 (
-                    SELECT jsonb_agg(scratch.strip_pii_jsonb(value) ORDER BY ordinality)
+                    SELECT jsonb_agg(scratch.strip_pii_entries_jsonb(value) ORDER BY ordinality)
                     FROM jsonb_array_elements(input_json) WITH ORDINALITY AS arr(value, ordinality)
                 ),
                 '[]'::jsonb
             )
-            WHEN 'string' THEN to_jsonb(scratch.strip_pii_text(input_json #>> '{}'))
+            WHEN 'string' THEN to_jsonb(scratch.strip_pii_text(input_json #>> '{{}}'))
             WHEN 'number' THEN CASE
-                WHEN scratch.strip_pii_text(input_json #>> '{}') <> input_json #>> '{}'
+                WHEN scratch.strip_pii_text(input_json #>> '{{}}') <> input_json #>> '{{}}'
                 THEN to_jsonb('[PII_REMOVED]'::text)
                 ELSE input_json
             END
+            ELSE input_json
+            END
+    $$;;
+
+    CREATE OR REPLACE FUNCTION scratch.strip_pii_jsonb(input_json jsonb)
+    RETURNS jsonb
+    LANGUAGE sql
+    IMMUTABLE
+    AS $$
+        SELECT CASE jsonb_typeof(input_json)
+            WHEN 'object' THEN
+                CASE
+                    WHEN input_json ? 'entries' THEN jsonb_set(
+                        input_json,
+                        '{entries}',
+                        scratch.strip_pii_entries_jsonb(input_json->'entries'),
+                        true
+                    )
+                    ELSE input_json
+                END
             ELSE input_json
         END
     $$;;
@@ -970,13 +1080,14 @@ def clean_pii_patterns(schema: str, table: str):
 
     UPDATE {fq}
     SET data = scratch.strip_pii_jsonb(data)
-    WHERE COALESCE(pii_cleaned, FALSE) = FALSE
+    WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
     AND data IS NOT NULL
-    AND data::text ~ '([0-9]{{2}}[ -]?[0-9]{{6,7}}[ -]?[A-Za-z][ -]?[0-9]{{2}}|[A-Z][A-Z0-9]{{7}}|\+?265([ -]?[0-9]){{9}}|0([ -]?[0-9]){{9}}|[89]([ -]?[0-9]){{8}}|\+?263([ -]?[0-9]){{5,10}}|0([ -]?[0-9]){{5,10}}|7[1378]([ -]?[0-9]){{7}})';;
+    AND data ? 'entries';;
 
     UPDATE {fq}
-    SET pii_cleaned = TRUE
-    WHERE COALESCE(pii_cleaned, FALSE) = FALSE;;
+    SET pii_cleaned = TRUE,
+    pii_cleaned_version = {PII_CLEANED_VERSION}
+    WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION};;
 
     """.strip()
 
@@ -1011,8 +1122,19 @@ def clean_known_confidential_columns(schema: str, table: str):
     ALTER TABLE {fq}
     ADD COLUMN IF NOT EXISTS pii_cleaned BOOLEAN DEFAULT FALSE;;
 
+    ALTER TABLE {fq}
+    ADD COLUMN IF NOT EXISTS pii_cleaned_version INTEGER DEFAULT 0;;
+
+    UPDATE {fq}
+    SET pii_cleaned_version = {PII_CLEANED_VERSION}
+    WHERE COALESCE(pii_cleaned, FALSE) = TRUE
+    AND COALESCE(pii_cleaned_version, 0) = 0;;
+
     CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned
     ON {fq} (pii_cleaned);;
+
+    CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned_version
+    ON {fq} (pii_cleaned_version);;
 
     UPDATE {fq}
     SET data = jsonb_set(
@@ -1021,7 +1143,7 @@ def clean_known_confidential_columns(schema: str, table: str):
     (data->'entries') - ARRAY[{arr}]::text[],
     true
     )
-    WHERE COALESCE(pii_cleaned, FALSE) = FALSE
+    WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
     AND jsonb_typeof(data->'entries') = 'object'
     AND (data->'entries') ?| ARRAY[{arr}]::text[];;
 
@@ -1029,3 +1151,123 @@ def clean_known_confidential_columns(schema: str, table: str):
     """.strip()
 
     return sql
+
+
+def pii_redaction_preview_query(schema: str, table: str, limit_rows: int = 50):
+    def qident(s: str) -> str:
+        return '"' + s.replace('"', '""') + '"'
+
+    fq = f"{qident(schema)}.{qident(table)}"
+
+    return rf"""
+    {create_pii_redaction_functions()}
+
+    WITH candidates AS (
+        SELECT
+            id,
+            uid,
+            data->'entries' AS before_entries,
+            scratch.strip_pii_entries_jsonb(data->'entries') AS after_entries
+        FROM {fq}
+        WHERE data IS NOT NULL
+        AND data ? 'entries'
+        AND COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
+    )
+    SELECT
+        id,
+        uid,
+        jsonb_pretty(before_entries) AS before_entries,
+        jsonb_pretty(after_entries) AS after_entries
+    FROM candidates
+    WHERE before_entries IS DISTINCT FROM after_entries
+    LIMIT {int(limit_rows)};;
+    """.strip()
+
+
+def pii_redaction_key_telemetry_query(schema: str, table: str):
+    def qident(s: str) -> str:
+        return '"' + s.replace('"', '""') + '"'
+
+    fq = f"{qident(schema)}.{qident(table)}"
+
+    return rf"""
+    {create_pii_redaction_functions()}
+
+    WITH row_candidates AS (
+        SELECT
+            id,
+            uid,
+            data->'entries' AS before_entries,
+            scratch.strip_pii_entries_jsonb(data->'entries') AS after_entries
+        FROM {fq}
+        WHERE data IS NOT NULL
+        AND data ? 'entries'
+        AND COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
+    ),
+    changed_keys AS (
+        SELECT
+            key,
+            before_entry,
+            after_entry
+        FROM row_candidates
+        CROSS JOIN LATERAL jsonb_each(before_entries) AS before_map(key, before_entry)
+        JOIN LATERAL jsonb_each(after_entries) AS after_map(key, after_entry)
+        ON before_map.key = after_map.key
+        WHERE before_entry IS DISTINCT FROM after_entry
+    )
+    SELECT
+        key,
+        count(*) AS changed_rows,
+        min(left(before_entry::text, 120)) AS sample_before,
+        min(left(after_entry::text, 120)) AS sample_after
+    FROM changed_keys
+    GROUP BY key
+    ORDER BY changed_rows DESC, key;;
+    """.strip()
+
+
+def pii_suspicious_fragments_query(schema: str, table: str):
+    def qident(s: str) -> str:
+        return '"' + s.replace('"', '""') + '"'
+
+    fq = f"{qident(schema)}.{qident(table)}"
+
+    return rf"""
+    SELECT
+        id,
+        uid,
+        scriptid,
+        ingested_at,
+        left(data::text, 500) AS data_excerpt
+    FROM {fq}
+    WHERE data::text LIKE '%[PII_REMOVED]:%'
+       OR data::text LIKE '%T[PII_REMOVED]%'
+       OR data::text LIKE '%-[PII_REMOVED]-%'
+    ORDER BY ingested_at DESC NULLS LAST;;
+    """.strip()
+
+
+def pii_canary_summary_query(schema: str, table: str):
+    def qident(s: str) -> str:
+        return '"' + s.replace('"', '""') + '"'
+
+    fq = f"{qident(schema)}.{qident(table)}"
+
+    return rf"""
+    {create_pii_redaction_functions()}
+
+    WITH candidates AS (
+        SELECT
+            id,
+            data->'entries' AS before_entries,
+            scratch.strip_pii_entries_jsonb(data->'entries') AS after_entries
+        FROM {fq}
+        WHERE data IS NOT NULL
+        AND data ? 'entries'
+        AND COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
+    )
+    SELECT
+        count(*) AS candidate_rows,
+        count(*) FILTER (WHERE before_entries IS DISTINCT FROM after_entries) AS changed_rows
+    FROM candidates;;
+    """.strip()
