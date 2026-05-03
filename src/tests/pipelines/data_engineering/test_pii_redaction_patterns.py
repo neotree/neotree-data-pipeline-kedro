@@ -735,17 +735,6 @@ def test_sql_scrubber_has_protected_shape_and_normalization_helpers():
     assert "WHEN input_json ? 'entries' THEN jsonb_set(" in source
 
 
-def test_sql_scrubber_has_canary_and_telemetry_helpers():
-    assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"
-
-    source = assorted_queries.read_text()
-
-    assert "def pii_redaction_preview_query(" in source
-    assert "def pii_redaction_key_telemetry_query(" in source
-    assert "def pii_suspicious_fragments_query(" in source
-    assert "def pii_canary_summary_query(" in source
-    assert "LIKE '%[PII_REMOVED]:%'" in source
-
 
 def test_sql_scrubber_restores_original_data_for_suspicious_redactions():
     assorted_queries = PROJECT_ROOT / "src" / "data_pipeline" / "pipelines" / "data_engineering" / "queries" / "assorted_queries.py"

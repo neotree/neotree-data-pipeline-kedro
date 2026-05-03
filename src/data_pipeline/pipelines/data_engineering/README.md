@@ -4,56 +4,39 @@
 
 The pipeline contains regex-based PII redaction for Malawi and Zimbabwe phone numbers and national ID values.
 
-Because this logic mutates source JSON in `public.sessions` and `public.clean_sessions`, production rollout must
-always follow a canary process before a full run.
+The raw `public.sessions` table is not redacted. It is kept as the recovery source.
 
-### Pre-Prod Checklist
+PII cleanup is applied only to `public.clean_sessions`, after rows have been copied from `public.sessions`.
 
-1. Confirm a fresh database backup exists.
-2. Deploy code to a staging/snapshot environment first.
-3. Run the SQL canary queries against `public.sessions` and `public.clean_sessions`.
-4. Review:
-   - candidate row count
-   - changed row count
-   - changed keys
-   - sample before/after values
-   - suspicious fragment report
-5. Only proceed to prod if protected shapes such as timestamps, UUIDs, unique keys, and top-level metadata are unchanged.
+### Current Behavior
 
-### Canary Queries
+1. `insert_sessions_data()` populates `public.clean_sessions` from `public.sessions`.
+2. known confidential entry keys are removed from `public.clean_sessions`
+3. regex-based PII redaction runs only on `public.clean_sessions`
+4. if a redacted result looks suspicious, the original `data` payload is restored for that row
+5. suspicious rows are skipped and left as:
+   - `pii_cleaned = FALSE`
+   - `pii_cleaned_version = 0`
+6. a summary of skipped suspicious rows is written to the logs
 
-These helpers are defined in:
+Suspicious output currently means any redacted result containing patterns like:
 
-- `data_pipeline.pipelines.data_engineering.queries.assorted_queries.pii_canary_summary_query`
-- `data_pipeline.pipelines.data_engineering.queries.assorted_queries.pii_redaction_preview_query`
-- `data_pipeline.pipelines.data_engineering.queries.assorted_queries.pii_redaction_key_telemetry_query`
-- `data_pipeline.pipelines.data_engineering.queries.assorted_queries.pii_suspicious_fragments_query`
-
-Recommended review order:
-
-1. `pii_canary_summary_query(...)`
-2. `pii_redaction_key_telemetry_query(...)`
-3. `pii_redaction_preview_query(...)`
-4. `pii_suspicious_fragments_query(...)`
+- `[PII_REMOVED]:`
+- `T[PII_REMOVED]`
+- `-[PII_REMOVED]-`
 
 ### Recovery Notes
 
-If a bad deployment corrupts values:
+If a bad deployment corrupts `public.clean_sessions`:
 
-1. Stop the pipeline.
-2. Deploy the fixed build before any rerun.
-3. Restore `public.sessions` from a clean source.
-4. Restore or rebuild `public.clean_sessions`.
-5. Rebuild downstream derived tables.
+1. stop the pipeline
+2. deploy the fixed build before any rerun
+3. rebuild or restore `public.clean_sessions` from `public.sessions`
+4. rebuild downstream derived tables as needed
 
 If rows must be reprocessed by a newer redaction ruleset, reset only the versioned tracking field for the affected rows:
 
 ```sql
-UPDATE public.sessions
-SET pii_cleaned = FALSE,
-    pii_cleaned_version = 0
-WHERE id IN (...);
-
 UPDATE public.clean_sessions
 SET pii_cleaned = FALSE,
     pii_cleaned_version = 0
