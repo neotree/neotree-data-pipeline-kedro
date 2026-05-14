@@ -112,12 +112,65 @@ def deduplicate_data_query(condition, destination_table):
                 unique_key,
                 review_number
             )'''
-            condition = script_condition + f''' AND NOT EXISTS (
-                SELECT 1 FROM {schema}."{table}" ds
-                WHERE cs.uid = ds.uid
-                 AND  CAST(cs.data->>'completed_at' AS date) = ds.completed_at          
-            
-            )'''
+            condition = script_condition + f'''
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM {schema}."{table}" ds
+                    WHERE cs.uid = ds.uid
+                    AND COALESCE(
+                            CASE
+                            -- Example: 2025-03-21T08:56:14.983Z
+                            WHEN NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), '') 
+                                ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T'
+                                THEN LEFT(NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), ''), 10)::date
+
+                            -- Example: 2025-03-21
+                            WHEN NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), '') 
+                                ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}$'
+                                THEN NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), '')::date
+
+                            -- Example: 12 Jun, 2025 / 12 Jun 2025
+                            WHEN REGEXP_REPLACE(
+                                    REPLACE(NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
+                                    '\\s+',
+                                    ' ',
+                                    'g'
+                                ) ~ '^\\d{{1,2}} [A-Za-z]{{3}} \\d{{4}}$'
+                                THEN TO_DATE(
+                                REGEXP_REPLACE(
+                                    REPLACE(NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
+                                    '\\s+',
+                                    ' ',
+                                    'g'
+                                ),
+                                'DD Mon YYYY'
+                                )
+
+                            -- Example: 12 June, 2025 / 12 June 2025
+                            WHEN REGEXP_REPLACE(
+                                    REPLACE(NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
+                                    '\\s+',
+                                    ' ',
+                                    'g'
+                                ) ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
+                                THEN TO_DATE(
+                                REGEXP_REPLACE(
+                                    REPLACE(NULLIF(TRIM(cs.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
+                                    '\\s+',
+                                    ' ',
+                                    'g'
+                                ),
+                                'DD FMMonth YYYY'
+                                )
+
+                            ELSE NULL
+                            END,
+
+                            -- fallback: use only date part from completed_at
+                            LEFT(cs.data->>'completed_at', 10)::date
+                        ) = ds.completed_at::date
+                )
+                '''
 
             return f"""{operation}
                 (WITH filtered AS (
