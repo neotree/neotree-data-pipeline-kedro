@@ -1273,6 +1273,7 @@ def _looks_like_date(value: str) -> bool:
         r'^\d{1,2}/\d{1,2}/\d{4}',           # MM/DD/YYYY or DD/MM/YYYY
         r'^\d{4}/\d{1,2}/\d{1,2}',           # YYYY/MM/DD
         r'^\d{1,2}-\d{1,2}-\d{4}',           # DD-MM-YYYY or MM-DD-YYYY
+        r'^\d{1,2}\s+[A-Za-z]{3,9},?\s+\d{4}',  # 06 Aug, 2025 or 06 August 2025
         r'^\d{10,13}$',                      # Unix timestamp (10-13 digits)
         r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}',   # ISO 8601 with time
         r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}',   # YYYY-MM-DD HH:MM
@@ -1283,6 +1284,48 @@ def _looks_like_date(value: str) -> bool:
             return True
 
     return False
+
+
+def _date_parse_case_sql(raw_expr: str) -> str:
+    """
+    Build a PostgreSQL CASE expression for parsing date-like text consistently.
+
+    The same source value can flow through several datesfix routes, so all routes
+    should share one parser. Keep the most specific timestamp patterns before
+    date-only patterns.
+    """
+    return f"""
+                    CASE
+                        WHEN {raw_expr} ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
+                            THEN TO_TIMESTAMP({raw_expr}, 'YYYY-MM-DD')
+                        WHEN {raw_expr} ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}\\s+\\d{{1,2}}:\\d{{2}}$'
+                            THEN TO_TIMESTAMP({raw_expr}, 'YYYY-MM-DD HH24:MI')
+                        WHEN {raw_expr} ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}\\s+\\d{{1,2}}:\\d{{2}}:\\d{{2}}$'
+                            THEN TO_TIMESTAMP({raw_expr}, 'YYYY-MM-DD HH24:MI:SS')
+                        WHEN {raw_expr} ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}T\\d{{1,2}}:\\d{{2}}$'
+                            THEN TO_TIMESTAMP({raw_expr}, 'YYYY-MM-DD"T"HH24:MI')
+                        WHEN {raw_expr} ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}T\\d{{1,2}}:\\d{{2}}:\\d{{2}}'
+                            THEN TO_TIMESTAMP(SUBSTRING({raw_expr} FROM '^[^+Z]+'), 'YYYY-MM-DD"T"HH24:MI:SS')
+                        WHEN {raw_expr} ~ '^\\d{{1,2}}\\s+[A-Za-z]{{3}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}$'
+                            THEN TO_TIMESTAMP(REPLACE({raw_expr}, ',', ''), 'DD Mon YYYY HH24:MI')
+                        WHEN {raw_expr} ~ '^\\d{{1,2}}\\s+[A-Za-z]{{3}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}:\\d{{2}}$'
+                            THEN TO_TIMESTAMP(REPLACE({raw_expr}, ',', ''), 'DD Mon YYYY HH24:MI:SS')
+                        WHEN {raw_expr} ~ '^\\d{{1,2}}\\s+[A-Za-z]{{4,9}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}$'
+                            THEN TO_TIMESTAMP(REPLACE({raw_expr}, ',', ''), 'DD Month YYYY HH24:MI')
+                        WHEN {raw_expr} ~ '^\\d{{1,2}}\\s+[A-Za-z]{{4,9}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}:\\d{{2}}$'
+                            THEN TO_TIMESTAMP(REPLACE({raw_expr}, ',', ''), 'DD Month YYYY HH24:MI:SS')
+                        WHEN {raw_expr} ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
+                            THEN TO_TIMESTAMP({raw_expr}, 'DD Month YYYY')
+                        WHEN {raw_expr} ~ '^\\d{{1,2}} [A-Za-z]+, \\d{{4}}$'
+                            THEN TO_TIMESTAMP(REPLACE({raw_expr}, ',', ''), 'DD Month YYYY')
+                        WHEN {raw_expr} ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
+                            THEN TO_TIMESTAMP({raw_expr}, 'YYYY Month DD')
+                        WHEN {raw_expr} ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
+                            THEN TO_TIMESTAMP(REPLACE({raw_expr}, ',', ''), 'YYYY Month DD')
+                        WHEN {raw_expr} ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
+                            THEN TO_TIMESTAMP(REPLACE({raw_expr}, '-', ' '), 'DD Month YYYY')
+                        ELSE NULL
+                    END"""
 
 
 def datesfix(source_table: str, dest_table: str):
@@ -1573,6 +1616,10 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived', 
                             WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}\\s+\\d{{1,2}}:\\d{{2}}(:\\d{{2}})?'
                                 THEN TO_TIMESTAMP({column_quoted}::text, 'YYYY-MM-DD HH24:MI:SS')
 
+                            -- ISO 8601 with T separator: 2025-07-19T14:30
+                            WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}T\\d{{1,2}}:\\d{{2}}$'
+                                THEN TO_TIMESTAMP({column_quoted}::text, 'YYYY-MM-DD"T"HH24:MI')
+
                             -- ISO 8601 with T separator: 2025-07-19T14:30:00
                             WHEN {column_quoted}::text ~ '^\\d{{4}}[-/.]\\d{{1,2}}[-/.]\\d{{1,2}}T\\d{{1,2}}:\\d{{2}}'
                                 THEN TO_TIMESTAMP(SUBSTRING({column_quoted}::text FROM '^[^+Z]+'), 'YYYY-MM-DD"T"HH24:MI:SS')
@@ -1580,6 +1627,26 @@ def date_data_type_fix(table_name: str, columns: list, schema: str = 'derived', 
                             -- DD Month YYYY: 19 July 2025
                             WHEN {column_quoted}::text ~ '^\\d{{1,2}}\\s+[A-Za-z]+\\s+\\d{{4}}$'
                                 THEN TO_TIMESTAMP({column_quoted}::text, 'DD Month YYYY')
+
+                            -- DD Mon, YYYY HH:MI: 06 Aug, 2025 09:06
+                            WHEN {column_quoted}::text ~ '^\\d{{1,2}}\\s+[A-Za-z]{{3}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, ',', ''), 'DD Mon YYYY HH24:MI')
+
+                            -- DD Mon, YYYY HH:MI:SS: 06 Aug, 2025 09:06:30
+                            WHEN {column_quoted}::text ~ '^\\d{{1,2}}\\s+[A-Za-z]{{3}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}:\\d{{2}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, ',', ''), 'DD Mon YYYY HH24:MI:SS')
+
+                            -- DD Month, YYYY HH:MI: 06 August, 2025 09:06
+                            WHEN {column_quoted}::text ~ '^\\d{{1,2}}\\s+[A-Za-z]{{4,9}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, ',', ''), 'DD Month YYYY HH24:MI')
+
+                            -- DD Month, YYYY HH:MI:SS: 06 August, 2025 09:06:30
+                            WHEN {column_quoted}::text ~ '^\\d{{1,2}}\\s+[A-Za-z]{{4,9}},?\\s+\\d{{4}}\\s+\\d{{1,2}}:\\d{{2}}:\\d{{2}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, ',', ''), 'DD Month YYYY HH24:MI:SS')
+
+                            -- DD Month, YYYY: 19 July, 2025
+                            WHEN {column_quoted}::text ~ '^\\d{{1,2}}\\s+[A-Za-z]+,\\s+\\d{{4}}$'
+                                THEN TO_TIMESTAMP(REPLACE({column_quoted}::text, ',', ''), 'DD Month YYYY')
 
                             -- Month DD, YYYY: July 19, 2025
                             WHEN {column_quoted}::text ~ '^[A-Za-z]+\\s+\\d{{1,2}},?\\s+\\d{{4}}$'
@@ -1857,19 +1924,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                         uid,
                         unique_key,
                         raw_val,
-                        CASE
-                            WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
-                                THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
-                            WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
-                                THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
-                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
-                                THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
-                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
-                                THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
-                            WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
-                                THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
-                            ELSE NULL
-                        END AS date_val
+                        {_date_parse_case_sql('raw_val')} AS date_val
                     FROM cleaned
                 ),
                 formatted AS (
@@ -1913,19 +1968,7 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                             uid,
                             unique_key,
                             raw_val,
-                            CASE
-                                WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
-                                    THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
-                                WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
-                                    THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
-                                WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
-                                    THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
-                                WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
-                                    THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
-                                WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
-                                    THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
-                                ELSE NULL
-                            END AS date_val
+                            {_date_parse_case_sql('raw_val')} AS date_val
                         FROM cleaned
                     ),
                     updated AS (
@@ -2026,19 +2069,7 @@ def _fix_dates_from_derived_direct(source_table: str, dest_table: str, date_colu
                     uid,
                     unique_key,
                     raw_val,
-                    CASE
-                        WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
-                            THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
-                        WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
-                            THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
-                        WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
-                            THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
-                        WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
-                            THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
-                        WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
-                            THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
-                        ELSE NULL
-                    END AS date_val
+                    {_date_parse_case_sql('raw_val')} AS date_val
                 FROM cleaned
             ),
             updated AS (
@@ -2167,24 +2198,7 @@ def _fix_dates_to_clean_table(source_table: str, dest_table: str, date_columns):
                         uid,
                         unique_key,
                         raw_val,
-                        CASE
-                            -- ISO-like formats: 2025-07-19 or 2025/07/19
-                            WHEN raw_val ~ '^\\d{{4}}[-/]\\d{{1,2}}[-/]\\d{{1,2}}$'
-                                THEN TO_TIMESTAMP(raw_val, 'YYYY-MM-DD')
-                            -- 19 July 2025
-                            WHEN raw_val ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
-                                THEN TO_TIMESTAMP(raw_val, 'DD Month YYYY')
-                            -- 2025 July 19
-                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+ \\d{{1,2}}$'
-                                THEN TO_TIMESTAMP(raw_val, 'YYYY Month DD')
-                            -- 2025 July,19 or 2025 July, 19
-                            WHEN raw_val ~ '^\\d{{4}} [A-Za-z]+,? ?\\d{{1,2}}$'
-                                THEN TO_TIMESTAMP(REPLACE(raw_val, ',', ''), 'YYYY Month DD')
-                            -- 19-Jul-2025 or 19 Jul 2025
-                            WHEN raw_val ~ '^\\d{{1,2}}[- ]?[A-Za-z]{{3,9}}[- ]?\\d{{4}}$'
-                                THEN TO_TIMESTAMP(REPLACE(raw_val, '-', ' '), 'DD Month YYYY')
-                            ELSE NULL
-                        END AS date_val
+                        {_date_parse_case_sql('raw_val')} AS date_val
                     FROM cleaned
                 ),
                 updated AS (

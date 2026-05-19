@@ -1371,6 +1371,7 @@ def generate_postgres_insert(df, schema, table_name):
 
     # Fetch column types before building values so inserts can respect the
     # actual destination types instead of inferring from the raw values.
+    # Get column types to detect potential type mismatches
     column_types = {}
     try:
         table_cols_with_types = get_table_columns(table_name, schema)
@@ -1382,6 +1383,7 @@ def generate_postgres_insert(df, schema, table_name):
         'y': True, 'yes': True, 'true': True, '1': True, True: True,
         'n': False, 'no': False, 'false': False, '0': False, False: False
     }
+        logging.warning(f"Could not fetch column types for validation: {e}")
 
     # Build values rows - MUST iterate in the same order as valid_columns
     values_rows = []
@@ -1442,6 +1444,7 @@ def generate_postgres_insert(df, schema, table_name):
                 row_values.append(f"'{escape_special_characters(val)}'")
             else:
                 row_values.append("NULL" if str(val) in {'NaT', 'None', 'nan', '', '<NA>'} else str(val))
+            row_values.append(format_insert_value_for_column(val, col, column_types.get(col, '')))
 
         if row_values:
             values_rows.append(f"({', '.join(row_values)})")
@@ -1542,6 +1545,71 @@ def clean_datetime_string(s:str):
 
     except Exception:
         return s
+
+
+def is_nullish_value(val) -> bool:
+    """Return True for pandas/Python null-like scalar values."""
+    if isinstance(val, (list, dict)):
+        return False
+    try:
+        if pd.isna(val):
+            return True
+    except (TypeError, ValueError):
+        pass
+    return str(val) in {'NaT', 'None', 'nan', '', '<NA>'}
+
+
+def format_insert_value_for_column(val, col: str, col_type: str = '') -> str:
+    """Format a dataframe value as a SQL literal compatible with the target column."""
+    if is_nullish_value(val):
+        return "NULL"
+
+    col_type_lower = (col_type or '').lower()
+
+    if col == 'unique_key' or col == 'unique_key_dis':
+        return f"'{escape_special_characters(str(val))}'"
+
+    if isinstance(val, (list, dict)):
+        json_val = json.dumps(val)
+        return f"'{escape_special_characters(json_val)}'"
+
+    if 'double precision' in col_type_lower or 'numeric' in col_type_lower or 'real' in col_type_lower:
+        numeric_val = pd.to_numeric(val, errors='coerce')
+        return "NULL" if pd.isna(numeric_val) else str(float(numeric_val))
+
+    if col_type_lower in {'integer', 'bigint', 'smallint'}:
+        numeric_val = pd.to_numeric(val, errors='coerce')
+        return "NULL" if pd.isna(numeric_val) else str(int(numeric_val))
+
+    if 'bool' in col_type_lower:
+        if isinstance(val, bool):
+            return 'TRUE' if val else 'FALSE'
+        val_str = str(val).strip().lower()
+        if val_str in {'true', 't', 'yes', 'y', '1'}:
+            return 'TRUE'
+        if val_str in {'false', 'f', 'no', 'n', '0'}:
+            return 'FALSE'
+        return "NULL"
+
+    if 'timestamp' in col_type_lower or col_type_lower == 'date':
+        converted = clean_datetime_string(str(val))
+        return "NULL" if converted in {'NaT', 'None', 'nan', '', '<NA>'} else f"'{escape_special_characters(converted)}'"
+
+    if isinstance(val, (pd.Timestamp, pd.Timedelta)):
+        if isinstance(val, pd.Timestamp) and val.tz is not None:
+            val = val.tz_localize(None)
+        converted = clean_datetime_string(str(val))
+        return "NULL" if converted in {'NaT', 'None', 'nan', '', '<NA>'} else f"'{escape_special_characters(converted)}'"
+
+    if is_date_prefix(str(val)) and col != 'unique_key':
+        converted_date_like = clean_datetime_string(str(val))
+        return "NULL" if converted_date_like in {'NaT', 'None', 'nan', '', '<NA>'} else f"'{escape_special_characters(converted_date_like)}'"
+
+    if isinstance(val, str):
+        return f"'{escape_special_characters(val)}'"
+
+    return str(val)
+
 
 def is_effectively_na(val):
     try:

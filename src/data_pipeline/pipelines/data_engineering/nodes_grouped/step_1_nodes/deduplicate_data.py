@@ -40,11 +40,20 @@ def deduplicate_data(data_import_output):
     try:
         
         if data_import_output is not None:
+<<<<<<< HEAD
+            #Clean Up Confidential Columns From Source
+            logging.info("******CLEANING KNOWN CONFIDENTIALITY COLUMNS*********")
+            inject_sql(clean_known_confidential_columns("public","sessions"),"confidential-sessions")
+            inject_sql(clean_known_confidential_columns("public","clean_sessions"),"confidential-clean-sessions")
+            logging.info("******START DATA CLEANING*********")
+            inject_sql(insert_sessions_data(),"Sessions Data")
+=======
             logging.info("******START DATA CLEANING*********")
             inject_sql(insert_sessions_data(),"Sessions Data")
             logging.info("******CLEANING KNOWN CONFIDENTIALITY COLUMNS ON CLEAN SESSIONS*********")
             inject_sql(clean_known_confidential_columns("public","clean_sessions"),"confidential-clean-sessions")
             log_pii_skip_summary("public", "clean_sessions")
+>>>>>>> NEOAPP1238
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********") 
             regenerate_unique_key()
             ###DEDUPLICATE DYNAMICALLY
