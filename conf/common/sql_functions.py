@@ -1369,12 +1369,20 @@ def generate_postgres_insert(df, schema, table_name):
     except Exception as e:
         logging.warning(f"Could not verify/update table structure: {e}")
 
+    # Fetch column types before building values so inserts can respect the
+    # actual destination types instead of inferring from the raw values.
     # Get column types to detect potential type mismatches
     column_types = {}
     try:
         table_cols_with_types = get_table_columns(table_name, schema)
         column_types = {col[0]: col[1] for col in table_cols_with_types} if table_cols_with_types else {}
     except Exception as e:
+        logging.warning(f"Could not fetch column types for insert preparation: {e}")
+
+    bool_map = {
+        'y': True, 'yes': True, 'true': True, '1': True, True: True,
+        'n': False, 'no': False, 'false': False, '0': False, False: False
+    }
         logging.warning(f"Could not fetch column types for validation: {e}")
 
     # Build values rows - MUST iterate in the same order as valid_columns
@@ -1384,6 +1392,58 @@ def generate_postgres_insert(df, schema, table_name):
         # Iterate through columns in the EXACT same order as valid_columns
         for col in valid_columns:
             val = df.at[idx, col]
+            col_type = column_types.get(col, 'unknown').lower()
+
+            # NULL handling (safe for arrays/lists)
+            if not isinstance(val, (list, dict)) and (
+                pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '', '<NA>'}
+            ):
+                row_values.append("NULL")
+                continue
+
+            # Handle specific types
+            if col == 'unique_key' or col=='unique_key_dis':
+                row_values.append(f"'{str(val)}'")
+            elif isinstance(val, (list, dict)):
+                json_val = json.dumps(val)
+                row_values.append(f"'{escape_special_characters(json_val)}'")
+            elif 'bool' in col_type:
+                val_str = str(val).strip().lower()
+                mapped = bool_map.get(val_str, bool_map.get(val, None))
+                row_values.append("NULL" if mapped is None else ('TRUE' if mapped else 'FALSE'))
+            elif any(t in col_type for t in ['int', 'numeric', 'double', 'real', 'float', 'decimal']):
+                try:
+                    num_val = pd.to_numeric(val, errors='coerce')
+                    if pd.isna(num_val):
+                        row_values.append("NULL")
+                    else:
+                        row_values.append(str(float(num_val)))
+                except Exception:
+                    row_values.append("NULL")
+            elif 'timestamp' in col_type or 'date' in col_type:
+                if isinstance(val, (pd.Timestamp, pd.Timedelta)):
+                    # Handle timezone-aware timestamps by converting to naive
+                    if isinstance(val, pd.Timestamp) and val.tz is not None:
+                        val = val.tz_localize(None)  # Remove timezone info
+                    converted = f"'{clean_datetime_string(str(val))}'"
+                    row_values.append("NULL" if converted.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted)
+                elif is_date_prefix(str(val)) and col != 'unique_key':
+                    converted_date_like = f"'{clean_datetime_string(str(val))}'"
+                    row_values.append("NULL" if converted_date_like.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted_date_like)
+                else:
+                    logging.warning(
+                        "Nulling invalid date-like value for %s.%s.%s at row %s. Value=%r",
+                        schema,
+                        table_name,
+                        col,
+                        idx,
+                        val,
+                    )
+                    row_values.append("NULL")
+            elif isinstance(val, str):
+                row_values.append(f"'{escape_special_characters(val)}'")
+            else:
+                row_values.append("NULL" if str(val) in {'NaT', 'None', 'nan', '', '<NA>'} else str(val))
             row_values.append(format_insert_value_for_column(val, col, column_types.get(col, '')))
 
         if row_values:

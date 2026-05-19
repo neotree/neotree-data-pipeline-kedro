@@ -269,6 +269,32 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
                 create_new_columns(table_name, schema, column_pairs)
 
 
+def coerce_numeric_columns(df: pd.DataFrame, columns: List[str], table_name: str) -> pd.DataFrame:
+    """Force known numeric columns to numeric/null and log dropped invalid values."""
+    for col in columns:
+        if col not in df.columns:
+            continue
+
+        original = df[col]
+        converted = pd.to_numeric(original, errors='coerce')
+
+        invalid_mask = original.notna() & converted.isna()
+        invalid_count = int(invalid_mask.sum())
+        if invalid_count > 0:
+            samples = original[invalid_mask].astype(str).head(3).tolist()
+            logging.warning(
+                "Coerced %s invalid value(s) to NULL in %s.%s. Samples: %s",
+                invalid_count,
+                table_name,
+                col,
+                samples,
+            )
+
+        df[col] = converted
+
+    return df
+
+
 def finalize_dataframe(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> pd.DataFrame:
     """Apply final transformations to dataframe before saving."""
     df = convert_false_numbers_to_text(df, schema, table_name)
@@ -445,6 +471,18 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
                         'BalScoreWks', 'BirthWeight', 'DurationLab', 'BloodSugarmg', 'AntenatalCare',
                         'BloodSugarmmol', 'AdmissionWeight']
         adm_df = format_column_as_numeric(adm_df, numeric_fields)
+        adm_df = coerce_numeric_columns(
+            adm_df,
+            [
+                'MatAgeYrs',
+                'MatAgeYrs.value',
+                'matageyrs',
+                'MatAge',
+                'MatAge.value',
+                'matage',
+            ],
+            'admissions',
+        )
         # Convert Series to DataFrame if needed
         if isinstance(adm_df, pd.Series):
             adm_df = adm_df.to_frame().T
