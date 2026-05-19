@@ -9,6 +9,7 @@ from datetime import datetime
 params = config()
 env = params['env']
 PII_CLEANED_VERSION = 2
+PII_CLEANUP_BATCH_SIZE = 5000
 
 # TO BE USED AS IT IS AS IT CONTAINS SPECIAL REQUIREMENTS
 
@@ -1106,7 +1107,7 @@ def create_pii_redaction_functions():
                 CASE
                     WHEN input_json ? 'entries' THEN jsonb_set(
                         input_json,
-                        '{entries}',
+                        '{{entries}}',
                         scratch.strip_pii_entries_jsonb(input_json->'entries'),
                         true
                     )
@@ -1143,11 +1144,11 @@ def clean_pii_patterns(schema: str, table: str):
     WHERE table_schema = '{schema}'
     AND table_name = '{table}';;
 
-    DROP TABLE IF EXISTS scratch.pii_redaction_candidates;;
+    DROP TABLE IF EXISTS pii_redaction_candidates;;
 
-    CREATE TABLE scratch.pii_redaction_candidates AS
+    CREATE TEMP TABLE pii_redaction_candidates ON COMMIT DROP AS
     SELECT
-        id,
+        t.id,
         data AS original_data,
         scratch.strip_pii_jsonb(data) AS redacted_data,
         (
@@ -1155,10 +1156,9 @@ def clean_pii_patterns(schema: str, table: str):
             OR scratch.strip_pii_jsonb(data)::text LIKE '%T[PII_REMOVED]%'
             OR scratch.strip_pii_jsonb(data)::text LIKE '%-[PII_REMOVED]-%'
         ) AS suspicious_output
-    FROM {fq}
-    WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
-    AND data IS NOT NULL
-    AND data ? 'entries';;
+    FROM {fq} t
+    JOIN pii_cleanup_targets target_rows
+      ON t.id = target_rows.id;;
 
     INSERT INTO scratch.pii_redaction_skips (
         table_schema,
@@ -1185,7 +1185,7 @@ def clean_pii_patterns(schema: str, table: str):
         END,
         left(candidates.redacted_data::text, 300)
     FROM {fq} t
-    JOIN scratch.pii_redaction_candidates candidates
+    JOIN pii_redaction_candidates candidates
       ON t.id = candidates.id
     WHERE candidates.suspicious_output = TRUE;;
 
@@ -1193,7 +1193,7 @@ def clean_pii_patterns(schema: str, table: str):
     SET data = candidates.redacted_data,
     pii_cleaned = TRUE,
     pii_cleaned_version = {PII_CLEANED_VERSION}
-    FROM scratch.pii_redaction_candidates candidates
+    FROM pii_redaction_candidates candidates
     WHERE {fq}.id = candidates.id
     AND candidates.suspicious_output = FALSE;;
 
@@ -1201,25 +1201,12 @@ def clean_pii_patterns(schema: str, table: str):
     SET data = candidates.original_data,
     pii_cleaned = FALSE,
     pii_cleaned_version = 0
-    FROM scratch.pii_redaction_candidates candidates
+    FROM pii_redaction_candidates candidates
     WHERE {fq}.id = candidates.id
     AND candidates.suspicious_output = TRUE;;
 
-    UPDATE {fq}
-    SET pii_cleaned = TRUE,
-    pii_cleaned_version = {PII_CLEANED_VERSION}
-    WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION};;
-
-    UPDATE {fq}
-    SET pii_cleaned = FALSE,
-    pii_cleaned_version = 0
-    WHERE id IN (
-        SELECT id
-        FROM scratch.pii_redaction_candidates
-        WHERE suspicious_output = TRUE
-    );;
-
-    DROP TABLE IF EXISTS scratch.pii_redaction_candidates;;
+    DROP TABLE IF EXISTS pii_redaction_candidates;;
+    DROP TABLE IF EXISTS pii_cleanup_targets;;
 
     """.strip()
 
@@ -1299,6 +1286,17 @@ def clean_known_confidential_columns(schema: str, table: str):
     CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned_version
     ON {fq} (pii_cleaned_version);;
 
+    DROP TABLE IF EXISTS pii_cleanup_targets;;
+
+    CREATE TEMP TABLE pii_cleanup_targets ON COMMIT DROP AS
+    SELECT id
+    FROM {fq}
+    WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
+    AND data IS NOT NULL
+    AND data ? 'entries'
+    ORDER BY ingested_at DESC NULLS LAST, id DESC
+    LIMIT {PII_CLEANUP_BATCH_SIZE};;
+
     UPDATE {fq}
     SET data = jsonb_set(
     data,
@@ -1306,7 +1304,7 @@ def clean_known_confidential_columns(schema: str, table: str):
     (data->'entries') - ARRAY[{arr}]::text[],
     true
     )
-    WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
+    WHERE id IN (SELECT id FROM pii_cleanup_targets)
     AND jsonb_typeof(data->'entries') = 'object'
     AND (data->'entries') ?| ARRAY[{arr}]::text[];;
 
