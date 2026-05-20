@@ -5,7 +5,7 @@ from conf.common.sql_functions import inject_sql, inject_sql_with_return
 from conf.base.catalog import cron_log_file,generic_dedup_queries,cron_time,env
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
     insert_sessions_data,
-    clean_known_confidential_columns,
+    clean_known_confidential_and_pii_columns,
     pii_skipped_redaction_summary_query,
 )
 from conf.common.config import config
@@ -42,8 +42,11 @@ def deduplicate_data(data_import_output):
         if data_import_output is not None:
             logging.info("******START DATA CLEANING*********")
             inject_sql(insert_sessions_data(),"Sessions Data")
-            logging.info("******CLEANING KNOWN CONFIDENTIALITY COLUMNS ON CLEAN SESSIONS*********")
-            inject_sql(clean_known_confidential_columns("public","clean_sessions"),"confidential-clean-sessions")
+            logging.info("******CLEANING AND REDACTING PII ON CLEAN SESSIONS*********")
+            inject_sql(
+                clean_known_confidential_and_pii_columns("public","clean_sessions"),
+                "confidential-clean-sessions"
+            )
             log_pii_skip_summary("public", "clean_sessions")
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********") 
             regenerate_unique_key()

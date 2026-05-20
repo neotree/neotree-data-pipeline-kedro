@@ -1199,7 +1199,7 @@ def clean_pii_patterns(schema: str, table: str):
 
     DROP TABLE IF EXISTS pii_redaction_candidates;;
 
-    CREATE TEMP TABLE pii_redaction_candidates ON COMMIT DROP AS
+    CREATE TEMP TABLE pii_redaction_candidates AS
     SELECT
         t.id,
         data AS original_data,
@@ -1341,7 +1341,7 @@ def clean_known_confidential_columns(schema: str, table: str):
 
     DROP TABLE IF EXISTS pii_cleanup_targets;;
 
-    CREATE TEMP TABLE pii_cleanup_targets ON COMMIT DROP AS
+    CREATE TEMP TABLE pii_cleanup_targets AS
     SELECT id
     FROM {fq}
     WHERE COALESCE(pii_cleaned_version, CASE WHEN COALESCE(pii_cleaned, FALSE) THEN 1 ELSE 0 END, 0) < {PII_CLEANED_VERSION}
@@ -1363,3 +1363,11 @@ def clean_known_confidential_columns(schema: str, table: str):
     """.strip()
 
     return sql
+
+
+def clean_known_confidential_and_pii_columns(schema: str, table: str):
+    return f"""
+    {clean_known_confidential_columns(schema, table)}
+    ;;
+    {clean_pii_patterns(schema, table)}
+    """.strip()
