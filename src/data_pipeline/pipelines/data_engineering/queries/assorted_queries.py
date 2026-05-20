@@ -1363,3 +1363,11 @@ def clean_known_confidential_columns(schema: str, table: str):
     """.strip()
 
     return sql
+
+
+def clean_known_confidential_and_pii_columns(schema: str, table: str):
+    return f"""
+    {clean_known_confidential_columns(schema, table)}
+    ;;
+    {clean_pii_patterns(schema, table)}
+    """.strip()
