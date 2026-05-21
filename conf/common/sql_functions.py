@@ -784,6 +784,27 @@ def run_query_and_return_df(query) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def validate_sql_dataframe_columns(df: pd.DataFrame, context: str):
+    """Fail before SQL generation if a dataframe cannot map 1:1 to SQL columns."""
+    duplicate_mask = df.columns.duplicated(keep=False)
+    if duplicate_mask.any():
+        duplicates = list(dict.fromkeys(df.columns[duplicate_mask].tolist()))
+        raise ValueError(
+            f"Duplicate dataframe columns for {context}: {duplicates}. "
+            "SQL generation requires one value per unique target column."
+        )
+
+
+def assert_sql_value_alignment(context: str, columns, values):
+    """Ensure generated SQL values cannot frame-shift against their target columns."""
+    if len(columns) != len(values):
+        raise ValueError(
+            f"SQL column/value mismatch in {context}: "
+            f"{len(columns)} target columns but {len(values)} values. "
+            f"First columns: {list(columns)[:10]}"
+        )
+
+
 def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
     """Generate and execute UPSERT queries with automatic table/column creation and intelligent type detection."""
     if not engine or not sql or not PSYCOPG2_AVAILABLE:
@@ -791,6 +812,8 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
     if df.empty:
         return
+
+    validate_sql_dataframe_columns(df, table_name)
 
     schema = 'derived'
 
@@ -873,6 +896,11 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
                         values.append(None)
                     else:
                         values.append(val)
+                assert_sql_value_alignment(
+                    f"UPSERT {schema}.{table_name}",
+                    columns,
+                    values,
+                )
 
                 update_cols = [
                     col for col in columns
@@ -916,6 +944,8 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
     try:
         if table is None or df is None or df.empty:
             return
+
+        validate_sql_dataframe_columns(df, table)
 
         # OPTIMIZATION 1: Batch fetch all column types in a single query
         column_types = {}
@@ -1041,6 +1071,18 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
                 else:
                     row_values.append(f"'{escape_special_characters(str(val))}'")
 
+            expected_value_columns = ['uid', 'facility', 'unique_key']
+            if has_unique_key_dis:
+                expected_value_columns.append('unique_key_dis')
+            expected_value_columns.extend([
+                col for col in df.columns
+                if col not in ['uid', 'facility', 'unique_key', 'unique_key_dis', 'facility_dis']
+            ])
+            assert_sql_value_alignment(
+                f"BULK UPDATE {table}",
+                expected_value_columns,
+                row_values,
+            )
             values_rows.append(f"({', '.join(row_values)})")
 
         if not values_rows:
@@ -1049,7 +1091,7 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
         # Build SET clause for all columns except WHERE clause columns
         update_cols = [
             col for col in df.columns
-            if col not in ['uid', 'facility', 'unique_key']
+            if col not in ['uid', 'facility', 'unique_key', 'facility_dis']
             and (col != 'unique_key_dis' or has_unique_key_dis)
         ]
 
@@ -1340,6 +1382,8 @@ def generate_postgres_insert(df, schema, table_name):
     if df.empty:
         return
 
+    validate_sql_dataframe_columns(df, f"{schema}.{table_name}")
+
     logging.info("::::::::---ADMISSION DATA FRAME IS NOT NULL")
 
     # OPTIMIZATION 2: Build column list and ensure consistent ordering
@@ -1379,11 +1423,6 @@ def generate_postgres_insert(df, schema, table_name):
     except Exception as e:
         logging.warning(f"Could not fetch column types for insert preparation: {e}")
 
-    bool_map = {
-        'y': True, 'yes': True, 'true': True, '1': True, True: True,
-        'n': False, 'no': False, 'false': False, '0': False, False: False
-    }
-
     # Build values rows - MUST iterate in the same order as valid_columns
     values_rows = []
     for idx in df.index:
@@ -1391,60 +1430,13 @@ def generate_postgres_insert(df, schema, table_name):
         # Iterate through columns in the EXACT same order as valid_columns
         for col in valid_columns:
             val = df.at[idx, col]
-            col_type = column_types.get(col, 'unknown').lower()
-
-            # NULL handling (safe for arrays/lists)
-            if not isinstance(val, (list, dict)) and (
-                pd.isna(val) or str(val) in {'NaT', 'None', 'nan', '', '<NA>'}
-            ):
-                row_values.append("NULL")
-                continue
-
-            # Handle specific types
-            if col == 'unique_key' or col=='unique_key_dis':
-                row_values.append(f"'{str(val)}'")
-            elif isinstance(val, (list, dict)):
-                json_val = json.dumps(val)
-                row_values.append(f"'{escape_special_characters(json_val)}'")
-            elif 'bool' in col_type:
-                val_str = str(val).strip().lower()
-                mapped = bool_map.get(val_str, bool_map.get(val, None))
-                row_values.append("NULL" if mapped is None else ('TRUE' if mapped else 'FALSE'))
-            elif any(t in col_type for t in ['int', 'numeric', 'double', 'real', 'float', 'decimal']):
-                try:
-                    num_val = pd.to_numeric(val, errors='coerce')
-                    if pd.isna(num_val):
-                        row_values.append("NULL")
-                    else:
-                        row_values.append(str(float(num_val)))
-                except Exception:
-                    row_values.append("NULL")
-            elif 'timestamp' in col_type or 'date' in col_type:
-                if isinstance(val, (pd.Timestamp, pd.Timedelta)):
-                    # Handle timezone-aware timestamps by converting to naive
-                    if isinstance(val, pd.Timestamp) and val.tz is not None:
-                        val = val.tz_localize(None)  # Remove timezone info
-                    converted = f"'{clean_datetime_string(str(val))}'"
-                    row_values.append("NULL" if converted.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted)
-                elif is_date_prefix(str(val)) and col != 'unique_key':
-                    converted_date_like = f"'{clean_datetime_string(str(val))}'"
-                    row_values.append("NULL" if converted_date_like.strip("'") in {'NaT', 'None', 'nan', '', '<NA>'} else converted_date_like)
-                else:
-                    logging.warning(
-                        "Nulling invalid date-like value for %s.%s.%s at row %s. Value=%r",
-                        schema,
-                        table_name,
-                        col,
-                        idx,
-                        val,
-                    )
-                    row_values.append("NULL")
-            elif isinstance(val, str):
-                row_values.append(f"'{escape_special_characters(val)}'")
-            else:
-                row_values.append("NULL" if str(val) in {'NaT', 'None', 'nan', '', '<NA>'} else str(val))
             row_values.append(format_insert_value_for_column(val, col, column_types.get(col, '')))
 
+        assert_sql_value_alignment(
+            f"INSERT {schema}.{table_name} row {idx}",
+            valid_columns,
+            row_values,
+        )
         if row_values:
             values_rows.append(f"({', '.join(row_values)})")
 
