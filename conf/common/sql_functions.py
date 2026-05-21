@@ -1383,7 +1383,6 @@ def generate_postgres_insert(df, schema, table_name):
         'y': True, 'yes': True, 'true': True, '1': True, True: True,
         'n': False, 'no': False, 'false': False, '0': False, False: False
     }
-    logging.warning(f"Could not fetch column types for validation: {e}")
 
     # Build values rows - MUST iterate in the same order as valid_columns
     values_rows = []
