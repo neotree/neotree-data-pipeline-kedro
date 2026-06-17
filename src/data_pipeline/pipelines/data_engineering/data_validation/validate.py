@@ -401,6 +401,10 @@ def _write_validation_summary_logs(run_id: str) -> Dict[str, str]:
 
 
 def _insert_validation_issues(issues: list):
+    issues = [
+        issue for issue in issues
+        if int(issue.get("affected_records") or 0) > 0
+    ]
     if not issues:
         return
 
@@ -534,7 +538,7 @@ def finalize_validation():
         set_status("done", run_id=run_id)
 
 
-def get_safe_sample_uids(df: pd.DataFrame, mask: pd.Series, max_samples: int = 2) -> list:
+def get_safe_sample_uids(df: pd.DataFrame, mask: pd.Series, max_samples: int = 5) -> list:
     """
     Get sample UIDs from rows matching the mask, but only return non-NULL UIDs.
     This prevents the contradiction of showing NULL UIDs when reporting NULL values.
@@ -833,6 +837,9 @@ def _validate_subset(
         expected_value=None,
         actual_value_sample=None,
     ):
+        if int(affected_records or 0) <= 0:
+            return
+
         issues.append({
             "category": category,
             "script_name": script_name,
@@ -1027,12 +1034,12 @@ def _validate_subset(
                 # Instead, show unique_key or row indices
                 if base_key.lower() == 'uid':
                     if 'unique_key' in df.columns:
-                        sample_identifiers = df.loc[null_mask, 'unique_key'].head(2).tolist()
+                        sample_identifiers = df.loc[null_mask, 'unique_key'].head(5).tolist()
                     else:
                         # Fallback to row indices
-                        sample_identifiers = df[null_mask].head(2).index.tolist()
+                        sample_identifiers = df[null_mask].head(5).index.tolist()
                 else:
-                    sample_identifiers = get_safe_sample_uids(df, null_mask, 2)
+                    sample_identifiers = get_safe_sample_uids(df, null_mask, 5)
 
                 required_results.append({
                     'base_key': base_key,
@@ -1106,7 +1113,7 @@ def _validate_subset(
                     try:
                         non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                         invalid_mask = non_empty & ~df[value_col].astype(str).str.match(numeric_regex, na=False)
-                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
 
                         samples_list = []
                         if not invalid_samples.empty:
@@ -1139,7 +1146,7 @@ def _validate_subset(
                     try:
                         non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                         invalid_mask = non_empty & ~df[value_col].astype(str).str.match(datetime_regex, na=False)
-                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
 
                         samples_list = []
                         if not invalid_samples.empty:
@@ -1171,7 +1178,7 @@ def _validate_subset(
                     try:
                         non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                         invalid_mask = non_empty & ~df[value_col].astype(str).str.match(pattern, na=False)
-                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(2)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
 
                         samples_list = []
                         if not invalid_samples.empty:
@@ -1289,12 +1296,12 @@ def _validate_subset(
                 field_key=result["base_key"],
                 affected_neotree_ids=sample_ids,
                 sample_values={"samples": sample_values},
-                actual_value_sample=", ".join(sample_values[:2]) if sample_values else None,
+                actual_value_sample=", ".join(sample_values[:5]) if sample_values else None,
             )
 
     for result in label_results:
         mismatch_count = len(result['mismatched_rows'])
-        samples = [f"{m['uid']}:val={m['value']}/lbl={m['actual_label']}" for m in result['mismatched_rows'][:2]]
+        samples = [f"{m['uid']}:val={m['value']}/lbl={m['actual_label']}" for m in result['mismatched_rows'][:5]]
         tech_logger.error(f"❌ '{result['base_key']}': {mismatch_count} label mismatches | {samples}")
         errors.append(f"Field '{result['base_key']}': {mismatch_count} label mismatches")
         _add_issue(
@@ -1359,13 +1366,13 @@ def _validate_subset(
                     # Special handling for UID field
                     if base_key.lower() == 'uid':
                         if 'unique_key' in df.columns:
-                            sample_identifiers = df["unique_key"][inconsistent_mask].head(2).tolist()
+                            sample_identifiers = df["unique_key"][inconsistent_mask].head(5).tolist()
                             identifier_label = "unique_keys"
                         else:
-                            sample_identifiers = df[inconsistent_mask].head(2).index.tolist()
+                            sample_identifiers = df[inconsistent_mask].head(5).index.tolist()
                             identifier_label = "Row indices"
                     else:
-                        sample_identifiers = get_safe_sample_uids(df, inconsistent_mask, 2)
+                        sample_identifiers = get_safe_sample_uids(df, inconsistent_mask, 5)
                         identifier_label = "UIDs"
 
                     tech_logger.error(f"❌ '{base_key}': {inconsistent_count} NULL value but non-NULL label | {identifier_label}: {sample_identifiers}")
@@ -1474,7 +1481,7 @@ def _validate_subset(
         for result in range_results:
             violation_count = len(result['violations'])
             violation_pct = (violation_count / result['total']) * 100
-            samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in result['violations'][:2]])
+            samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in result['violations'][:5]])
             impl_logger.error(f"❌ '{result['base_key']}': {violation_count}/{result['total']} ({violation_pct:.1f}%) out of [{result['min_val']}, {result['max_val']}] | {samples_str}")
             errors.append(f"Field '{result['base_key']}': {violation_count} out-of-range values")
             _add_issue(
@@ -1493,7 +1500,7 @@ def _validate_subset(
                 },
                 min_value=result["min_val"],
                 max_value=result["max_val"],
-                actual_value_sample=", ".join([str(val) for _, _, val, _ in result["violations"][:2]]),
+                actual_value_sample=", ".join([str(val) for _, _, val, _ in result["violations"][:5]]),
             )
         impl_logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
     else:
@@ -1538,43 +1545,58 @@ def _validate_subset(
                     'has_label': label_col in df.columns
                 })
 
-    # Report both known keywords and schema-based confidential fields together
-    total_sensitive = len(found_sensitive_columns) + len(confidential_fields_found)
-
+    sensitive_columns_with_data = []
     if found_sensitive_columns:
-        comp_logger.error(f"❌ {len(found_sensitive_columns)} known sensitive column(s): {', '.join(found_sensitive_columns)}")
-        warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
-        _add_issue(
-            category="compliance",
-            issue_type="known_sensitive_columns",
-            issue_message="Known sensitive columns found in dataset",
-            affected_records=len(df),
-            severity="warning",
-            sample_values={"columns": found_sensitive_columns},
-        )
+        sensitive_mask = df[found_sensitive_columns].notna().any(axis=1)
+        affected_records = int(sensitive_mask.sum())
+        if affected_records > 0:
+            sensitive_columns_with_data = found_sensitive_columns
+            sample_uids = get_safe_sample_uids(df, sensitive_mask, 5)
+            comp_logger.error(
+                f"❌ {len(sensitive_columns_with_data)} known sensitive column(s) with data: "
+                f"{', '.join(sensitive_columns_with_data)} | Records: {affected_records} | UIDs: {sample_uids}"
+            )
+            warnings.append(
+                f"Found {len(sensitive_columns_with_data)} sensitive/unwanted columns with data: "
+                f"{', '.join(sensitive_columns_with_data)}"
+            )
+            _add_issue(
+                category="compliance",
+                issue_type="known_sensitive_columns",
+                issue_message="Known sensitive columns found in dataset",
+                affected_records=affected_records,
+                severity="warning",
+                affected_neotree_ids=sample_uids,
+                sample_values={"columns": sensitive_columns_with_data},
+            )
 
+    confidential_fields_with_data = []
     if confidential_fields_found:
-        comp_logger.error(f"❌ {len(confidential_fields_found)} schema-based confidential field(s):")
-        for field in confidential_fields_found[:3]:  # Show max 3
+        for field in confidential_fields_found:
             columns = []
+            affected_mask = pd.Series(False, index=df.index)
             if field['has_value']:
-                columns.append(f"{field['key']}.value")
-            if field['has_label']:
-                columns.append(f"{field['key']}.label")
-
-            # Show sample UIDs with data
-            sample_info = ""
-            sample_uids = []
-            affected_records = len(df)
-            if 'uid' in df.columns and field['has_value']:
                 value_col = f"{field['key']}.value"
-                non_null_mask = df[value_col].notna()
-                affected_records = int(non_null_mask.sum())
-                if non_null_mask.sum() > 0:
-                    sample_uids = get_safe_sample_uids(df, non_null_mask, 2)
-                    sample_info = f" | UIDs: {sample_uids}"
+                columns.append(value_col)
+                affected_mask |= df[value_col].notna()
+            if field['has_label']:
+                label_col = f"{field['key']}.label"
+                columns.append(label_col)
+                affected_mask |= df[label_col].notna()
 
-            comp_logger.error(f"   {field['key']} ({field['label']}): {', '.join(columns)}{sample_info}")
+            affected_records = int(affected_mask.sum())
+
+            if affected_records <= 0:
+                continue
+
+            sample_uids = get_safe_sample_uids(df, affected_mask, 5)
+            confidential_fields_with_data.append({
+                "field": field,
+                "columns": columns,
+                "affected_records": affected_records,
+                "sample_uids": sample_uids,
+            })
+
             _add_issue(
                 category="compliance",
                 issue_type="confidential_field_present",
@@ -1585,11 +1607,19 @@ def _validate_subset(
                 sample_values={"columns": columns},
             )
 
-        if len(confidential_fields_found) > 3:
-            comp_logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
-        errors.append(f"Found {len(confidential_fields_found)} confidential fields in dataset")
+        if confidential_fields_with_data:
+            comp_logger.error(f"❌ {len(confidential_fields_with_data)} schema-based confidential field(s) with data")
+            for issue in confidential_fields_with_data[:3]:
+                field = issue["field"]
+                comp_logger.error(
+                    f"   {field['key']} ({field['label']}): {', '.join(issue['columns'])} "
+                    f"| Records: {issue['affected_records']} | UIDs: {issue['sample_uids']}"
+                )
+            if len(confidential_fields_with_data) > 3:
+                comp_logger.error(f"   ... and {len(confidential_fields_with_data) - 3} more")
+            errors.append(f"Found {len(confidential_fields_with_data)} confidential fields with data in dataset")
 
-    if total_sensitive == 0:
+    if not sensitive_columns_with_data and not confidential_fields_with_data:
         comp_logger.info("✓ No sensitive/confidential data detected")
 
     _insert_validation_issues(issues)
