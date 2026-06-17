@@ -21,6 +21,16 @@ from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_
 from difflib import SequenceMatcher
 
 STATUS_FILE = "logs/validation_status.json"
+VALIDATION_LOG_FILES = {
+    "tech": "logs/validation_tech.log",
+    "implementation": "logs/validation_implementation.log",
+    "compliance": "logs/validation_compliance.log",
+}
+VALIDATION_MAIL_RECEIVERS = {
+    "tech": "tech_mail_receivers",
+    "implementation": "impl_mail_receivers",
+    "compliance": "comp_mail_receivers",
+}
 
 
 def _is_field_schema(schema) -> bool:
@@ -36,6 +46,20 @@ def _normalize_script_id(script_id) -> str:
     return str(script_id).strip()
 
 
+def _get_validation_loggers(log_file_path="logs/validation.log") -> Dict[str, logging.Logger]:
+    return {
+        "tech": setup_logger(VALIDATION_LOG_FILES["tech"], "validation_tech_logger"),
+        "implementation": setup_logger(VALIDATION_LOG_FILES["implementation"], "validation_implementation_logger"),
+        "compliance": setup_logger(VALIDATION_LOG_FILES["compliance"], "validation_compliance_logger"),
+        "legacy": setup_logger(log_file_path, "validation_logger"),
+    }
+
+
+def _log_to_all(loggers: Dict[str, logging.Logger], level: str, message: str) -> None:
+    for category in ("tech", "implementation", "compliance"):
+        getattr(loggers[category], level)(message)
+
+
 def set_status(status: str):
     with open(STATUS_FILE, "w") as f:
         json.dump({"status": status, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
@@ -49,8 +73,10 @@ def get_status():
 
 
 def reset_log(log_file_path="logs/validation.log"):
-    with open(log_file_path, "w") as f:
-        f.write("")
+    for path in [log_file_path, *VALIDATION_LOG_FILES.values()]:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write("")
 
 
 def begin_validation_run(log_file_path="logs/validation.log"):
@@ -61,11 +87,15 @@ def begin_validation_run(log_file_path="logs/validation.log"):
 def finalize_validation():
     if get_status() == "running":
         set_status("done")
-        log_file_path = "logs/validation.log"
-        if 'mail_receivers' in params:
-            email_recipients = params['MAIL_RECEIVERS'.lower()]
+        for category, log_file_path in VALIDATION_LOG_FILES.items():
+            receiver_key = VALIDATION_MAIL_RECEIVERS[category]
+            email_recipients = params.get(receiver_key)
             if email_recipients:
-                send_log_via_email(log_file_path, email_receivers=email_recipients)
+                send_log_via_email(
+                    log_file_path,
+                    email_receivers=email_recipients,
+                    category=category,
+                )
 
 
 def get_safe_sample_uids(df: pd.DataFrame, mask: pd.Series, max_samples: int = 2) -> list:
@@ -166,7 +196,8 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     - Data quality metrics
     """
     context = gx.get_context()
-    logger = setup_logger(log_file_path)
+    loggers = _get_validation_loggers(log_file_path)
+    logger = loggers["tech"]
 
     # Load metadata (could be new format {scriptId: [fields]} or legacy [fields])
     metadata = load_json_for_comparison(script)
@@ -175,9 +206,9 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         logger.warning(f"##### SCHEMA FOR SCRIPT {script} NOT FOUND - SKIPPING VALIDATION")
         return
 
-    logger.info(f"\n{'='*60}")
-    logger.info(f"VALIDATING: {script.upper()} | Rows: {len(df)} | Cols: {len(df.columns)}")
-    logger.info(f"{'='*60}")
+    _log_to_all(loggers, "info", f"\n{'='*60}")
+    _log_to_all(loggers, "info", f"VALIDATING: {script.upper()} | Rows: {len(df)} | Cols: {len(df.columns)}")
+    _log_to_all(loggers, "info", f"{'='*60}")
 
     is_scriptid_metadata = isinstance(metadata, dict) and not _is_field_schema(metadata)
 
@@ -220,13 +251,13 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 logger.warning(f"\n⚠ No metadata found for scriptid: {script_id_str} ({len(subset_df)} rows) - SKIPPING")
                 continue
 
-            logger.info(f"\n{'─'*60}")
-            logger.info(f"Validating scriptid: {script_id_str} | {len(subset_df)} rows")
+            _log_to_all(loggers, "info", f"\n{'─'*60}")
+            _log_to_all(loggers, "info", f"Validating scriptid: {script_id_str} | {len(subset_df)} rows")
             logger.info(f"Schema field count: {len(schema)} | sample fields: {list(schema.keys())[:10]}")
-            logger.info(f"{'─'*60}")
+            _log_to_all(loggers, "info", f"{'─'*60}")
 
             # Call the validation logic for this subset
-            _validate_subset(subset_df, schema, script_id_str, logger, context)
+            _validate_subset(subset_df, schema, script_id_str, loggers, context)
 
         # Handle rows with NULL scriptId
         null_script_id_df = df[df['scriptid'].isna()]
@@ -261,10 +292,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         return
 
     # Call validation logic for entire dataframe (legacy)
-    _validate_subset(df, schema, script, logger, context)
+    _validate_subset(df, schema, script, loggers, context)
 
 
-def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, context):
+def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[str, logging.Logger], context):
     """
     Validate a single dataframe subset against its schema.
 
@@ -275,9 +306,12 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
         df: DataFrame to validate
         schema: Dict of {fieldKey: field} or list of field definitions (legacy)
         script_or_id: Script name or scriptId for logging
-        logger: Logger instance
+        loggers: Category-specific logger instances
         context: Great Expectations context
     """
+    tech_logger = loggers["tech"]
+    impl_logger = loggers["implementation"]
+    comp_logger = loggers["compliance"]
     errors = []
     warnings = []
 
@@ -338,13 +372,10 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 return pd.Series(bool(result), index=df.index)
             return result.fillna(False)
         except Exception as exc:
-            logger.warning(f"⚠ Failed to evaluate condition '{condition}': {exc}")
+            impl_logger.warning(f"⚠ Failed to evaluate condition '{condition}': {exc}")
             return pd.Series(False, index=df.index)
 
-    # ============================================================================
-    # GROUP 1: TECH - Infrastructure, errors, data handling
-    # ============================================================================
-    logger.info("\n[TECH-1] UID SCHEMA & STRUCTURE")
+    tech_logger.info("\n[TECH] UID SCHEMA & STRUCTURE")
 
     # Scripts that allow multiple UIDs (e.g., review/follow-up scripts where multiple records per patient are expected)
     SCRIPTS_ALLOWING_MULTIPLE_UIDS = [
@@ -367,28 +398,25 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 if not duplicate_uids.empty:
                     dup_count = len(duplicate_uids)
                     unique_dup = duplicate_uids['uid'].nunique()
-                    logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {duplicate_uids['uid'].unique()[:3].tolist()}")
+                    tech_logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {duplicate_uids['uid'].unique()[:3].tolist()}")
                     errors.append(f"Duplicate UIDs found: {dup_count} rows")
                 else:
-                    logger.info("✓ All UIDs unique and non-null")
+                    tech_logger.info("✓ All UIDs unique and non-null")
             else:
                 # For scripts allowing multiple UIDs, just report stats
                 unique_uids = df['uid'].nunique()
                 total_rows = len(df)
                 avg_records = total_rows / unique_uids if unique_uids > 0 else 0
-                logger.info(f"✓ UIDs validated (multiple entries allowed) | {unique_uids} unique UIDs | {total_rows} total rows | Avg: {avg_records:.2f} records/UID")
+                tech_logger.info(f"✓ UIDs validated (multiple entries allowed) | {unique_uids} unique UIDs | {total_rows} total rows | Avg: {avg_records:.2f} records/UID")
         else:
-            logger.error("❌ UID column missing from dataset")
+            tech_logger.error("❌ UID column missing from dataset")
             errors.append("UID column missing")
     except Exception as e:
         err_msg = f"Error validating 'uid' column: {str(e)}\n{traceback.format_exc()}"
-        logger.error(err_msg)
+        tech_logger.error(err_msg)
         errors.append(err_msg)
 
-    # ============================================================================
-    # GROUP 2: IMPLEMENTATION - Business logic & validation rules
-    # ============================================================================
-    logger.info("\n[IMPLEMENTATION-1] FIELD VALIDATION")
+    impl_logger.info("\n[IMPLEMENTATION] FIELD VALIDATION")
 
     # Storage for results to be reported in sections
     required_results = []
@@ -659,50 +687,44 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                 'error': err_msg
             })
 
-    # ============================================================================
-    # TECH-2: DATA TYPE VALIDATION (Technical/format validation)
-    # ============================================================================
-    logger.info("\n[TECH-2] DATA TYPES")
+    tech_logger.info("\n[TECH] DATA TYPES")
     type_errors_count = len(type_results) + len(label_results)
 
     for result in type_results:
         if 'error' in result:
-            logger.error(f"❌ ERROR: {result['error']}")
+            tech_logger.error(f"❌ ERROR: {result['error']}")
         else:
             samples_str = f" | Samples: {result['samples']}" if result['samples'] else ""
-            logger.error(f"❌ '{result['base_key']}': {result['invalid_count']} {result['error_type']} values{samples_str}")
+            tech_logger.error(f"❌ '{result['base_key']}': {result['invalid_count']} {result['error_type']} values{samples_str}")
 
     for result in label_results:
         mismatch_count = len(result['mismatched_rows'])
         samples = [f"{m['uid']}:val={m['value']}/lbl={m['actual_label']}" for m in result['mismatched_rows'][:2]]
-        logger.error(f"❌ '{result['base_key']}': {mismatch_count} label mismatches | {samples}")
+        tech_logger.error(f"❌ '{result['base_key']}': {mismatch_count} label mismatches | {samples}")
         errors.append(f"Field '{result['base_key']}': {mismatch_count} label mismatches")
 
     if type_errors_count == 0:
-        logger.info(f"✓ All data types valid")
+        tech_logger.info(f"✓ All data types valid")
     else:
-        logger.info(f"Summary: {type_errors_count} fields with errors")
+        tech_logger.info(f"Summary: {type_errors_count} fields with errors")
 
-    # ============================================================================
-    # TECH-3: DATA QUALITY METRICS (Technical quality & integrity)
-    # ============================================================================
-    logger.info("\n[TECH-3] DATA QUALITY")
+    tech_logger.info("\n[TECH] DATA QUALITY")
 
     # TECH-3.1 Completeness & NULL Analysis
     total_cells = df.shape[0] * df.shape[1]
     null_cells = df.isnull().sum().sum()
     completeness_pct = ((total_cells - null_cells) / total_cells) * 100
-    logger.info(f"   Completeness: {completeness_pct:.2f}% ({total_cells - null_cells}/{total_cells} cells)")
+    tech_logger.info(f"   Completeness: {completeness_pct:.2f}% ({total_cells - null_cells}/{total_cells} cells)")
 
     # Show columns with high NULL rates
     null_rates = (df.isnull().sum() / len(df)) * 100
     high_null_cols = cast(pd.Series, null_rates[null_rates > 50].sort_values(ascending=False))
     if not high_null_cols.empty:
-        logger.warning(f"⚠ {len(high_null_cols)} columns >50% NULL:")
+        tech_logger.warning(f"⚠ {len(high_null_cols)} columns >50% NULL:")
         for col, rate in high_null_cols.head(5).items():
-            logger.warning(f"   {col}: {rate:.1f}%")
+            tech_logger.warning(f"   {col}: {rate:.1f}%")
         if len(high_null_cols) > 5:
-            logger.warning(f"   ... and {len(high_null_cols) - 5} more")
+            tech_logger.warning(f"   ... and {len(high_null_cols) - 5} more")
 
     # TECH-3.2 Consistency Checks (value-label pairs)
     inconsistencies = 0
@@ -733,13 +755,13 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                         sample_identifiers = get_safe_sample_uids(df, inconsistent_mask, 2)
                         identifier_label = "UIDs"
 
-                    logger.error(f"❌ '{base_key}': {inconsistent_count} NULL value but non-NULL label | {identifier_label}: {sample_identifiers}")
+                    tech_logger.error(f"❌ '{base_key}': {inconsistent_count} NULL value but non-NULL label | {identifier_label}: {sample_identifiers}")
                     errors.append(f"Required field '{base_key}' has {inconsistent_count} NULL values with non-NULL labels")
 
     if inconsistencies == 0:
-        logger.info("   ✓ No value-label inconsistencies in required fields")
+        tech_logger.info("   ✓ No value-label inconsistencies in required fields")
     else:
-        logger.error(f"   ❌ {inconsistencies} required fields with inconsistencies")
+        tech_logger.error(f"   ❌ {inconsistencies} required fields with inconsistencies")
 
     # TECH-3.3 Outlier Detection (for numeric fields)
     outlier_fields = 0
@@ -765,29 +787,24 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                     if len(outliers) > 0:
                         outlier_pct = (len(outliers) / len(numeric_values)) * 100
                         if outlier_pct > 5:
-                            logger.warning(f"⚠ '{base_key}': {len(outliers)} ({outlier_pct:.1f}%) outliers | Range: [{lower_bound:.2f}, {upper_bound:.2f}]")
+                            tech_logger.warning(f"⚠ '{base_key}': {len(outliers)} ({outlier_pct:.1f}%) outliers | Range: [{lower_bound:.2f}, {upper_bound:.2f}]")
                             outlier_fields += 1
             except Exception:
                 pass
 
     if outlier_fields == 0:
-        logger.info("   ✓ No significant outliers")
+        tech_logger.info("   ✓ No significant outliers")
     else:
-        logger.info(f"   {outlier_fields} fields with outliers")
+        tech_logger.info(f"   {outlier_fields} fields with outliers")
 
     # TECH-3.4 Referential Integrity & Record Distribution
     if 'uid' in df.columns:
         unique_uids = df['uid'].nunique()
         total_rows = len(df)
         avg_records_per_uid = total_rows / unique_uids if unique_uids > 0 else 0
-        logger.info(f"   UIDs: {unique_uids} unique | {total_rows} total rows | Avg: {avg_records_per_uid:.2f} records/UID")
+        tech_logger.info(f"   UIDs: {unique_uids} unique | {total_rows} total rows | Avg: {avg_records_per_uid:.2f} records/UID")
 
-    # ============================================================================
-    # REPORT RESULTS IN STRUCTURED SECTIONS
-    # ============================================================================
-
-    # IMPLEMENTATION-2: REQUIRED FIELDS (Business logic validation)
-    logger.info("\n[IMPLEMENTATION-2] REQUIRED FIELDS")
+    impl_logger.info("\n[IMPLEMENTATION] REQUIRED FIELDS")
     if required_results:
         for result in required_results:
             # Determine the label for sample identifiers
@@ -796,61 +813,33 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
             else:
                 identifier_label = "UIDs"
 
-            logger.error(f"❌ '{result['base_key']}': {result['null_count']}/{result['total_count']} ({result['null_pct']:.1f}%) NULL | {identifier_label}: {result['sample_identifiers']}")
+            impl_logger.error(f"❌ '{result['base_key']}': {result['null_count']}/{result['total_count']} ({result['null_pct']:.1f}%) NULL | {identifier_label}: {result['sample_identifiers']}")
             errors.append(f"Required field '{result['base_key']}' has {result['null_count']} NULL values")
-        logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
+        impl_logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
     else:
         # Count how many required fields were checked
         required_count = sum(1 for f in field_info.values() if not f.get('optional', True))
         if required_count > 0:
-            logger.info(f"✓ All {required_count} required fields populated")
+            impl_logger.info(f"✓ All {required_count} required fields populated")
 
-    # IMPLEMENTATION-3: VALUE RANGE VALIDATION (Business rules)
-    logger.info("\n[IMPLEMENTATION-3] VALUE RANGES")
+    impl_logger.info("\n[IMPLEMENTATION] VALUE RANGES")
     if range_results:
         for result in range_results:
             violation_count = len(result['violations'])
             violation_pct = (violation_count / result['total']) * 100
             samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in result['violations'][:2]])
-            logger.error(f"❌ '{result['base_key']}': {violation_count}/{result['total']} ({violation_pct:.1f}%) out of [{result['min_val']}, {result['max_val']}] | {samples_str}")
+            impl_logger.error(f"❌ '{result['base_key']}': {violation_count}/{result['total']} ({violation_pct:.1f}%) out of [{result['min_val']}, {result['max_val']}] | {samples_str}")
             errors.append(f"Field '{result['base_key']}': {violation_count} out-of-range values")
-        logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
+        impl_logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
     else:
         # Count fields with actual (non-empty) min or max values
         range_count = sum(1 for f in field_info.values()
                          if (f.get('minValue') is not None and str(f.get('minValue')).strip() != '') or
                             (f.get('maxValue') is not None and str(f.get('maxValue')).strip() != ''))
         if range_count > 0:
-            logger.info(f"✓ All {range_count} range-validated fields valid")
+            impl_logger.info(f"✓ All {range_count} range-validated fields valid")
 
-    # TECH-4: FINAL SUMMARY
-    logger.info(f"\n{'='*60}")
-    logger.info(f"SUMMARY: {script_or_id} | Rows: {len(df)} | Cols: {len(df.columns)}")
-    logger.info(f"Results: {len(errors)} errors, {len(warnings)} warnings")
-    logger.info(f"{'='*60}")
-
-    if errors:
-        logger.error(f"❌ VALIDATION FAILED - {len(errors)} ERRORS")
-        for i, error in enumerate(errors[:5], 1):  # Show first 5 errors
-            logger.error(f"  {i}. {error}")
-        if len(errors) > 5:
-            logger.error(f"  ... and {len(errors) - 5} more")
-    else:
-        logger.info("✓ VALIDATION PASSED")
-
-    if warnings:
-        logger.warning(f"⚠ {len(warnings)} WARNINGS:")
-        for i, warning in enumerate(warnings[:5], 1):  # Show first 5 warnings
-            logger.warning(f"  {i}. {warning}")
-        if len(warnings) > 5:
-            logger.warning(f"  ... and {len(warnings) - 5} more")
-
-    logger.info(f"{'='*60}\n")
-
-    # ============================================================================
-    # GROUP 3: COMPLIANCE - Sensitive data & security
-    # ============================================================================
-    logger.info("\n[COMPLIANCE-1] SENSITIVE/CONFIDENTIAL DATA CHECK")
+    comp_logger.info("\n[COMPLIANCE] SENSITIVE/CONFIDENTIAL DATA CHECK")
 
     # Known sensitive keywords (static list)
     drop_keywords = ['surname', 'firstname', 'dobtob', 'column_name', 'mothcell',
@@ -888,11 +877,11 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
     total_sensitive = len(found_sensitive_columns) + len(confidential_fields_found)
 
     if found_sensitive_columns:
-        logger.error(f"❌ {len(found_sensitive_columns)} known sensitive column(s): {', '.join(found_sensitive_columns)}")
+        comp_logger.error(f"❌ {len(found_sensitive_columns)} known sensitive column(s): {', '.join(found_sensitive_columns)}")
         warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
 
     if confidential_fields_found:
-        logger.error(f"❌ {len(confidential_fields_found)} schema-based confidential field(s):")
+        comp_logger.error(f"❌ {len(confidential_fields_found)} schema-based confidential field(s):")
         for field in confidential_fields_found[:3]:  # Show max 3
             columns = []
             if field['has_value']:
@@ -909,14 +898,14 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, logger, contex
                     sample_uids = get_safe_sample_uids(df, non_null_mask, 2)
                     sample_info = f" | UIDs: {sample_uids}"
 
-            logger.error(f"   {field['key']} ({field['label']}): {', '.join(columns)}{sample_info}")
+            comp_logger.error(f"   {field['key']} ({field['label']}): {', '.join(columns)}{sample_info}")
 
         if len(confidential_fields_found) > 3:
-            logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
+            comp_logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
         errors.append(f"Found {len(confidential_fields_found)} confidential fields in dataset")
 
     if total_sensitive == 0:
-        logger.info("✓ No sensitive/confidential data detected")
+        comp_logger.info("✓ No sensitive/confidential data detected")
 
 
 def not_90_percent_similar_to_label(x, reference_value):
@@ -927,7 +916,7 @@ def not_90_percent_similar_to_label(x, reference_value):
     return ratio < 0.9
 
 
-def send_log_via_email(log_file_path: str, email_receivers):
+def send_log_via_email(log_file_path: str, email_receivers, category: str = "validation"):
     """Send validation log via email with PDF attachment."""
     with open(log_file_path, 'r') as f:
         log_content = f.read()
@@ -951,7 +940,8 @@ def send_log_via_email(log_file_path: str, email_receivers):
         }
 
         msg = EmailMessage()
-        msg['Subject'] = f'Data Validation Error Log - {country}'
+        category_label = category.replace("_", " ").title()
+        msg['Subject'] = f'Data Validation {category_label} Log - {country}'
         msg['From'] = MAIL_FROM_ADDRESS
 
         if isinstance(email_receivers, list):
@@ -960,7 +950,7 @@ def send_log_via_email(log_file_path: str, email_receivers):
             msg['To'] = email_receivers
 
         html_body = get_html_validation_template(country, log_content)
-        pdf_path = "/tmp/validation_log.pdf"
+        pdf_path = f"/tmp/validation_{category}_log.pdf"
 
         try:
             pdfkit.from_string(html_body, pdf_path, options=pdf_options)
@@ -968,7 +958,7 @@ def send_log_via_email(log_file_path: str, email_receivers):
             logging.error(f"Failed to create PDF: {str(e)}")
             return
 
-        msg.set_content("Your VALIDATION LOG IS ATTACHED AS PDF.")
+        msg.set_content(f"Your {category_label} validation log is attached as PDF.")
         msg.add_alternative(html_body, subtype='html')
 
         try:
@@ -977,7 +967,7 @@ def send_log_via_email(log_file_path: str, email_receivers):
                     f.read(),
                     maintype='application',
                     subtype='pdf',
-                    filename='validation.pdf'
+                    filename=f'validation_{category}.pdf'
                 )
         except Exception as e:
             logging.error(f"Failed to attach PDF: {str(e)}")
