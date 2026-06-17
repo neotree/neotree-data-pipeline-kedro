@@ -13,10 +13,11 @@ from .templates import get_html_validation_template
 from conf.common.scripts import get_script, merge_script_data
 from conf.common.logger import setup_logger
 from typing import Dict, cast
-from datetime import datetime
+from datetime import datetime, timedelta
 from conf.base.catalog import params, hospital_conf
 import re
 import pdfkit
+import uuid
 from data_pipeline.pipelines.data_engineering.utils.field_info import (
     get_script_field_schemas,
     get_script_metadata_details,
@@ -30,11 +31,17 @@ VALIDATION_LOG_FILES = {
     "implementation": "logs/validation_implementation.log",
     "compliance": "logs/validation_compliance.log",
 }
+VALIDATION_SUMMARY_LOG_FILES = {
+    "tech": "logs/validation_tech_summary.log",
+    "implementation": "logs/validation_implementation_summary.log",
+    "compliance": "logs/validation_compliance_summary.log",
+}
 VALIDATION_MAIL_RECEIVERS = {
     "tech": "tech_mail_receivers",
     "implementation": "impl_mail_receivers",
     "compliance": "comp_mail_receivers",
 }
+DEFAULT_VALIDATION_EMAIL_INTERVAL_DAYS = 2
 
 
 def _is_field_schema(schema) -> bool:
@@ -81,9 +88,385 @@ def _log_to_all(loggers: Dict[str, logging.Logger], level: str, message: str) ->
         getattr(loggers[category], level)(message)
 
 
-def set_status(status: str):
+def _get_validation_email_interval_days() -> int:
+    try:
+        return max(1, int(params.get("validation_email_interval_days", DEFAULT_VALIDATION_EMAIL_INTERVAL_DAYS)))
+    except (TypeError, ValueError):
+        return DEFAULT_VALIDATION_EMAIL_INTERVAL_DAYS
+
+
+def _json_default(value):
+    if isinstance(value, (datetime, pd.Timestamp)):
+        return value.isoformat()
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        return float(value)
+    if pd.isna(value):
+        return None
+    return str(value)
+
+
+def _safe_json(value) -> str:
+    return json.dumps(value if value is not None else {}, default=_json_default)
+
+
+def _clean_text(value):
+    if value is None or pd.isna(value):
+        return None
+    return str(value)
+
+
+def _unique_text_values(values, max_items: int = 5) -> list:
+    if values is None:
+        return []
+    if isinstance(values, (str, int, float, bool)):
+        values = [values]
+    elif not isinstance(values, (list, tuple, set, np.ndarray, pd.Series)):
+        try:
+            if pd.isna(values):
+                return []
+        except (TypeError, ValueError):
+            pass
+        values = [values]
+
+    result = []
+    for value in values:
+        if value is None or pd.isna(value):
+            continue
+        text_value = str(value)
+        if text_value not in result:
+            result.append(text_value)
+        if len(result) >= max_items:
+            break
+    return result
+
+
+def ensure_validation_tracking_tables():
+    create_sql = """
+        CREATE SCHEMA IF NOT EXISTS derived;;
+
+        CREATE TABLE IF NOT EXISTS derived.validation_runs (
+            run_id TEXT PRIMARY KEY,
+            started_at TIMESTAMP NOT NULL,
+            completed_at TIMESTAMP,
+            status TEXT NOT NULL,
+            email_sent BOOLEAN NOT NULL DEFAULT FALSE,
+            email_sent_at TIMESTAMP,
+            email_interval_days INTEGER
+        );;
+
+        CREATE TABLE IF NOT EXISTS derived.validation_issues (
+            id BIGSERIAL PRIMARY KEY,
+            run_id TEXT NOT NULL REFERENCES derived.validation_runs(run_id),
+            identified_at TIMESTAMP NOT NULL DEFAULT now(),
+            identified_date DATE NOT NULL DEFAULT current_date,
+            category TEXT NOT NULL,
+            script_name TEXT NOT NULL,
+            scriptid TEXT,
+            script_title TEXT,
+            hospital_name TEXT,
+            issue_type TEXT NOT NULL,
+            field_key TEXT,
+            field_label TEXT,
+            severity TEXT NOT NULL DEFAULT 'error',
+            issue_message TEXT NOT NULL,
+            affected_records INTEGER NOT NULL DEFAULT 0,
+            affected_neotree_ids TEXT[],
+            sample_values JSONB,
+            min_value TEXT,
+            max_value TEXT,
+            expected_value TEXT,
+            actual_value_sample TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT now()
+        );;
+
+        CREATE INDEX IF NOT EXISTS idx_validation_issues_date
+        ON derived.validation_issues (identified_date);;
+
+        CREATE INDEX IF NOT EXISTS idx_validation_issues_category_script
+        ON derived.validation_issues (category, script_name, scriptid);;
+
+        CREATE INDEX IF NOT EXISTS idx_validation_issues_type_field
+        ON derived.validation_issues (issue_type, field_key);;
+
+        CREATE INDEX IF NOT EXISTS idx_validation_issues_run
+        ON derived.validation_issues (run_id);;
+    """
+    try:
+        from conf.common.sql_functions import inject_sql
+        inject_sql(create_sql, "CREATE validation tracking tables")
+    except Exception as exc:
+        logging.error(f"Failed to create validation tracking tables: {exc}")
+
+
+def _start_validation_run(run_id: str):
+    started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    interval_days = _get_validation_email_interval_days()
+    sql = f"""
+        INSERT INTO derived.validation_runs (run_id, started_at, status, email_interval_days)
+        VALUES ('{run_id}', '{started_at}', 'running', {interval_days})
+        ON CONFLICT (run_id) DO UPDATE SET
+            started_at = EXCLUDED.started_at,
+            status = EXCLUDED.status,
+            email_interval_days = EXCLUDED.email_interval_days;;
+    """
+    try:
+        from conf.common.sql_functions import inject_sql
+        inject_sql(sql, "START validation run")
+    except Exception as exc:
+        logging.error(f"Failed to start validation run tracking: {exc}")
+
+
+def _complete_validation_run(run_id: str, email_sent: bool = False):
+    completed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    email_sql = f", email_sent = TRUE, email_sent_at = '{completed_at}'" if email_sent else ""
+    sql = f"""
+        UPDATE derived.validation_runs
+        SET completed_at = '{completed_at}',
+            status = 'done'
+            {email_sql}
+        WHERE run_id = '{run_id}';;
+    """
+    try:
+        from conf.common.sql_functions import inject_sql
+        inject_sql(sql, "COMPLETE validation run")
+    except Exception as exc:
+        logging.error(f"Failed to complete validation run tracking: {exc}")
+
+
+def _last_validation_email_sent_at():
+    try:
+        from conf.common.sql_functions import run_query_and_return_df
+        result = run_query_and_return_df("""
+            SELECT max(email_sent_at) AS last_email_sent_at
+            FROM derived.validation_runs
+            WHERE email_sent IS TRUE AND email_sent_at IS NOT NULL;;
+        """)
+        if result is not None and not result.empty:
+            value = result.iloc[0]["last_email_sent_at"]
+            if pd.notna(value):
+                return pd.to_datetime(value).to_pydatetime()
+    except Exception as exc:
+        logging.error(f"Failed to read last validation email timestamp: {exc}")
+    return None
+
+
+def _is_validation_email_due() -> bool:
+    last_sent = _last_validation_email_sent_at()
+    if last_sent is None:
+        return True
+    return datetime.now() - last_sent >= timedelta(days=_get_validation_email_interval_days())
+
+
+def _load_validation_issues_for_email(run_id: str):
+    last_sent = _last_validation_email_sent_at()
+    if last_sent is None:
+        where_clause = "1 = 1"
+    else:
+        where_clause = f"identified_at > '{last_sent.strftime('%Y-%m-%d %H:%M:%S')}'"
+
+    query = f"""
+        SELECT
+            category,
+            script_name,
+            scriptid,
+            script_title,
+            hospital_name,
+            issue_type,
+            field_key,
+            field_label,
+            severity,
+            issue_message,
+            affected_records,
+            affected_neotree_ids,
+            sample_values,
+            min_value,
+            max_value,
+            expected_value,
+            actual_value_sample,
+            identified_date,
+            run_id
+        FROM derived.validation_issues
+        WHERE {where_clause}
+        ORDER BY category, script_name, scriptid, issue_type, field_key, issue_message;;
+    """
+    try:
+        from conf.common.sql_functions import run_query_and_return_df
+        result = run_query_and_return_df(query)
+        return result if result is not None else pd.DataFrame()
+    except Exception as exc:
+        logging.error(f"Failed to load validation issues for summary email: {exc}")
+        return pd.DataFrame()
+
+
+def _normalise_sample_ids(value) -> list:
+    if value is None or (not isinstance(value, (list, tuple, np.ndarray)) and pd.isna(value)):
+        return []
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                value = parsed
+            else:
+                value = [value]
+        except json.JSONDecodeError:
+            value = [value]
+    return _unique_text_values(list(value), 5)
+
+
+def _write_validation_summary_logs(run_id: str) -> Dict[str, str]:
+    issues = _load_validation_issues_for_email(run_id)
+    period_days = _get_validation_email_interval_days()
+    country = params.get("country", "")
+
+    for category, path in VALIDATION_SUMMARY_LOG_FILES.items():
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        category_issues = issues[issues["category"] == category] if not issues.empty else pd.DataFrame()
+
+        lines = [
+            f"Data Validation {category.title()} Summary - {country}",
+            f"Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Configured email interval: {period_days} day(s)",
+            f"Current run_id: {run_id}",
+            "",
+        ]
+
+        if category_issues.empty:
+            lines.append("No validation issues found for this category in the reporting period.")
+        else:
+            category_issues = category_issues.copy()
+            category_issues["affected_records"] = pd.to_numeric(category_issues["affected_records"], errors="coerce").fillna(0).astype(int)
+
+            group_cols = [
+                "script_name", "scriptid", "script_title", "hospital_name",
+                "issue_type", "field_key", "field_label", "severity", "issue_message",
+                "min_value", "max_value", "expected_value"
+            ]
+
+            for group_key, group_df in category_issues.groupby(group_cols, dropna=False):
+                group = dict(zip(group_cols, group_key))
+                sample_ids = []
+                for ids in group_df["affected_neotree_ids"].tolist():
+                    sample_ids.extend(_normalise_sample_ids(ids))
+                sample_ids = _unique_text_values(sample_ids, 5)
+                first_seen = group_df["identified_date"].min()
+                last_seen = group_df["identified_date"].max()
+                run_count = group_df["run_id"].nunique()
+                total_affected = int(group_df["affected_records"].sum())
+
+                lines.extend([
+                    f"{str(group['severity']).upper()}: {group['issue_message']}",
+                    f"Script: {group['script_name']}",
+                    f"Script ID: {group['scriptid']}",
+                ])
+                if pd.notna(group.get("script_title")) and group.get("script_title"):
+                    lines.append(f"Title: {group['script_title']}")
+                if pd.notna(group.get("hospital_name")) and group.get("hospital_name"):
+                    lines.append(f"Hospital: {group['hospital_name']}")
+                if pd.notna(group.get("field_key")) and group.get("field_key"):
+                    lines.append(f"Field: {group['field_key']}")
+                if pd.notna(group.get("field_label")) and group.get("field_label"):
+                    lines.append(f"Field label: {group['field_label']}")
+                if pd.notna(group.get("min_value")) or pd.notna(group.get("max_value")):
+                    lines.append(f"Configured range: [{group.get('min_value')}, {group.get('max_value')}]")
+                if pd.notna(group.get("expected_value")) and group.get("expected_value"):
+                    lines.append(f"Expected: {group['expected_value']}")
+                lines.extend([
+                    f"Affected records: {total_affected}",
+                    f"Runs seen: {run_count}",
+                    f"First seen: {first_seen}",
+                    f"Latest seen: {last_seen}",
+                    f"Sample NeoTree IDs: {sample_ids}",
+                    "",
+                ])
+
+        with open(path, "w") as f:
+            f.write("\n".join(lines))
+
+    return VALIDATION_SUMMARY_LOG_FILES
+
+
+def _insert_validation_issues(issues: list):
+    if not issues:
+        return
+
+    run_id = get_run_id()
+    if not run_id:
+        logging.warning("Validation issue tracking skipped because run_id is missing")
+        return
+
+    rows = []
+    now = datetime.now()
+    for issue in issues:
+        rows.append((
+            run_id,
+            now,
+            now.date(),
+            issue.get("category"),
+            issue.get("script_name"),
+            issue.get("scriptid"),
+            issue.get("script_title"),
+            issue.get("hospital_name"),
+            issue.get("issue_type"),
+            issue.get("field_key"),
+            issue.get("field_label"),
+            issue.get("severity", "error"),
+            issue.get("issue_message"),
+            int(issue.get("affected_records") or 0),
+            _unique_text_values(issue.get("affected_neotree_ids"), 5),
+            _safe_json(issue.get("sample_values")),
+            _clean_text(issue.get("min_value")),
+            _clean_text(issue.get("max_value")),
+            _clean_text(issue.get("expected_value")),
+            _clean_text(issue.get("actual_value_sample")),
+        ))
+
+    insert_sql = """
+        INSERT INTO derived.validation_issues (
+            run_id, identified_at, identified_date, category, script_name, scriptid,
+            script_title, hospital_name, issue_type, field_key, field_label, severity,
+            issue_message, affected_records, affected_neotree_ids, sample_values,
+            min_value, max_value, expected_value, actual_value_sample
+        )
+        VALUES %s
+    """
+
+    try:
+        from conf.common.sql_functions import engine, execute_values
+        if not engine or not execute_values:
+            raise RuntimeError("Database engine or execute_values is not initialized")
+        raw_conn = engine.raw_connection()
+        try:
+            cur = raw_conn.cursor()
+            try:
+                execute_values(
+                    cur,
+                    insert_sql,
+                    rows,
+                    template="""(
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s
+                    )"""
+                )
+                raw_conn.commit()
+            except Exception:
+                raw_conn.rollback()
+                raise
+            finally:
+                cur.close()
+        finally:
+            raw_conn.close()
+    except Exception as exc:
+        logging.error(f"Failed to persist validation issues: {exc}")
+
+
+def set_status(status: str, run_id: str = None):
+    payload = {"status": status, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    if run_id:
+        payload["run_id"] = run_id
     with open(STATUS_FILE, "w") as f:
-        json.dump({"status": status, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
+        json.dump(payload, f)
 
 
 def get_status():
@@ -93,30 +476,49 @@ def get_status():
         return json.load(f).get("status")
 
 
+def get_run_id():
+    if not os.path.exists(STATUS_FILE):
+        return None
+    with open(STATUS_FILE, "r") as f:
+        return json.load(f).get("run_id")
+
+
 def reset_log(log_file_path="logs/validation.log"):
-    for path in [log_file_path, *VALIDATION_LOG_FILES.values()]:
+    for path in [log_file_path, *VALIDATION_LOG_FILES.values(), *VALIDATION_SUMMARY_LOG_FILES.values()]:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as f:
             f.write("")
 
 
 def begin_validation_run(log_file_path="logs/validation.log"):
-    set_status("running")
+    run_id = datetime.now().strftime("%Y%m%d%H%M%S") + "-" + str(uuid.uuid4())
+    ensure_validation_tracking_tables()
+    set_status("running", run_id=run_id)
     reset_log(log_file_path)
+    _start_validation_run(run_id)
 
 
 def finalize_validation():
     if get_status() == "running":
-        set_status("done")
-        for category, log_file_path in VALIDATION_LOG_FILES.items():
-            receiver_key = VALIDATION_MAIL_RECEIVERS[category]
-            email_recipients = params.get(receiver_key)
-            if email_recipients:
-                send_log_via_email(
-                    log_file_path,
-                    email_receivers=email_recipients,
-                    category=category,
-                )
+        run_id = get_run_id()
+        email_sent = False
+
+        if run_id and _is_validation_email_due():
+            summary_logs = _write_validation_summary_logs(run_id)
+            for category, log_file_path in summary_logs.items():
+                receiver_key = VALIDATION_MAIL_RECEIVERS[category]
+                email_recipients = params.get(receiver_key)
+                if email_recipients:
+                    sent = send_log_via_email(
+                        log_file_path,
+                        email_receivers=email_recipients,
+                        category=category,
+                    )
+                    email_sent = sent or email_sent
+
+        if run_id:
+            _complete_validation_run(run_id, email_sent=email_sent)
+        set_status("done", run_id=run_id)
 
 
 def get_safe_sample_uids(df: pd.DataFrame, mask: pd.Series, max_samples: int = 2) -> list:
@@ -225,6 +627,15 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
     if not metadata:
         logger.warning(f"##### SCHEMA FOR SCRIPT {script} NOT FOUND - SKIPPING VALIDATION")
+        _insert_validation_issues([{
+            "category": "tech",
+            "script_name": script,
+            "scriptid": None,
+            "issue_type": "missing_validation_schema",
+            "severity": "warning",
+            "issue_message": f"Schema for script '{script}' not found; validation skipped",
+            "affected_records": len(df),
+        }])
         return
 
     _log_to_all(loggers, "info", f"\n{'='*60}")
@@ -271,6 +682,16 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
             if not schema:
                 logger.warning(f"\n⚠ No metadata found for scriptid: {script_id_str} ({len(subset_df)} rows) - SKIPPING")
+                _insert_validation_issues([{
+                    "category": "tech",
+                    "script_name": script,
+                    "scriptid": script_id_str,
+                    "issue_type": "missing_scriptid_metadata",
+                    "severity": "warning",
+                    "issue_message": f"No metadata found for scriptid '{script_id_str}'; validation skipped",
+                    "affected_records": len(subset_df),
+                    "affected_neotree_ids": get_safe_sample_uids(subset_df, pd.Series(True, index=subset_df.index), 5),
+                }])
                 continue
 
             script_details = get_script_metadata_details(metadata, script_id_str)
@@ -281,7 +702,16 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             _log_to_all(loggers, "info", f"{'─'*60}")
 
             # Call the validation logic for this subset
-            _validate_subset(subset_df, schema, script_id_str, loggers, context)
+            _validate_subset(
+                subset_df,
+                schema,
+                script_or_id=script_id_str,
+                loggers=loggers,
+                context=context,
+                script_name=script,
+                script_id=script_id_str,
+                script_details=script_details,
+            )
 
         # Handle rows with NULL scriptId
         null_script_id_df = df[df['scriptid'].isna()]
@@ -290,6 +720,16 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             if 'uid' in null_script_id_df.columns:
                 sample_uids = null_script_id_df['uid'].dropna().head(3).tolist()
                 logger.warning(f"   Sample UIDs: {sample_uids}")
+            _insert_validation_issues([{
+                "category": "tech",
+                "script_name": script,
+                "scriptid": None,
+                "issue_type": "null_scriptid",
+                "severity": "warning",
+                "issue_message": "Rows have NULL scriptid; validation skipped for those rows",
+                "affected_records": len(null_script_id_df),
+                "affected_neotree_ids": null_script_id_df['uid'].dropna().head(5).tolist() if 'uid' in null_script_id_df.columns else [],
+            }])
 
         logger.info(f"\n{'='*60}")
         logger.info(f"COMPLETED: {script.upper()} | All scriptIds validated")
@@ -317,10 +757,28 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         return
 
     # Call validation logic for entire dataframe (legacy)
-    _validate_subset(df, schema, script, loggers, context)
+    _validate_subset(
+        df,
+        schema,
+        script_or_id=script,
+        loggers=loggers,
+        context=context,
+        script_name=script,
+        script_id=script if 'scriptid' not in df.columns else None,
+        script_details={},
+    )
 
 
-def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[str, logging.Logger], context):
+def _validate_subset(
+    df: pd.DataFrame,
+    schema,
+    script_or_id: str,
+    loggers: Dict[str, logging.Logger],
+    context,
+    script_name: str,
+    script_id: str = None,
+    script_details: dict = None,
+):
     """
     Validate a single dataframe subset against its schema.
 
@@ -339,6 +797,48 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
     comp_logger = loggers["compliance"]
     errors = []
     warnings = []
+    issues = []
+    script_details = script_details or {}
+    script_title = script_details.get("title")
+    hospital_name = script_details.get("hospitalName")
+
+    def _field_label(field_key):
+        field = field_info.get(field_key, {}) if isinstance(field_info, dict) else {}
+        return field.get("label")
+
+    def _add_issue(
+        category: str,
+        issue_type: str,
+        issue_message: str,
+        affected_records: int,
+        field_key: str = None,
+        severity: str = "error",
+        affected_neotree_ids=None,
+        sample_values=None,
+        min_value=None,
+        max_value=None,
+        expected_value=None,
+        actual_value_sample=None,
+    ):
+        issues.append({
+            "category": category,
+            "script_name": script_name,
+            "scriptid": script_id or script_or_id,
+            "script_title": script_title,
+            "hospital_name": hospital_name,
+            "issue_type": issue_type,
+            "field_key": field_key,
+            "field_label": _field_label(field_key) if field_key else None,
+            "severity": severity,
+            "issue_message": issue_message,
+            "affected_records": affected_records,
+            "affected_neotree_ids": affected_neotree_ids or [],
+            "sample_values": sample_values or {},
+            "min_value": min_value,
+            "max_value": max_value,
+            "expected_value": expected_value,
+            "actual_value_sample": actual_value_sample,
+        })
 
     # Create validator
     validator = context.sources.pandas_default.read_dataframe(df)
@@ -423,8 +923,17 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
                 if not duplicate_uids.empty:
                     dup_count = len(duplicate_uids)
                     unique_dup = duplicate_uids['uid'].nunique()
-                    tech_logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {duplicate_uids['uid'].unique()[:3].tolist()}")
+                    sample_uids = duplicate_uids['uid'].dropna().unique()[:3].tolist()
+                    tech_logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {sample_uids}")
                     errors.append(f"Duplicate UIDs found: {dup_count} rows")
+                    _add_issue(
+                        category="tech",
+                        issue_type="duplicate_uid",
+                        issue_message="Duplicate UID entries found",
+                        affected_records=dup_count,
+                        affected_neotree_ids=sample_uids,
+                        sample_values={"unique_duplicate_uids": int(unique_dup)},
+                    )
                 else:
                     tech_logger.info("✓ All UIDs unique and non-null")
             else:
@@ -436,10 +945,23 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
         else:
             tech_logger.error("❌ UID column missing from dataset")
             errors.append("UID column missing")
+            _add_issue(
+                category="tech",
+                issue_type="missing_uid_column",
+                issue_message="UID column missing from dataset",
+                affected_records=len(df),
+            )
     except Exception as e:
         err_msg = f"Error validating 'uid' column: {str(e)}\n{traceback.format_exc()}"
         tech_logger.error(err_msg)
         errors.append(err_msg)
+        _add_issue(
+            category="tech",
+            issue_type="uid_validation_error",
+            issue_message=f"Error validating uid column: {str(e)}",
+            affected_records=len(df),
+            sample_values={"traceback": traceback.format_exc()},
+        )
 
     impl_logger.info("\n[IMPLEMENTATION] FIELD VALIDATION")
 
@@ -546,6 +1068,14 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
 
         if temp_base_series.isna().all():
             warnings.append(f"Field '{base_key}' has all NULL values")
+            _add_issue(
+                category="tech",
+                issue_type="field_all_null",
+                issue_message=f"Field '{base_key}' has all NULL values",
+                affected_records=len(df),
+                field_key=base_key,
+                severity="warning",
+            )
             continue
 
         # Validate based on data type
@@ -718,15 +1248,51 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
     for result in type_results:
         if 'error' in result:
             tech_logger.error(f"❌ ERROR: {result['error']}")
+            _add_issue(
+                category="tech",
+                issue_type="type_validation_error",
+                issue_message=result["error"],
+                affected_records=0,
+                field_key=result.get("base_key"),
+            )
         else:
             samples_str = f" | Samples: {result['samples']}" if result['samples'] else ""
             tech_logger.error(f"❌ '{result['base_key']}': {result['invalid_count']} {result['error_type']} values{samples_str}")
+            sample_ids = []
+            sample_values = []
+            for sample in result.get("samples", []):
+                sample_text = str(sample)
+                if "=" in sample_text:
+                    uid, value = sample_text.split("=", 1)
+                    sample_ids.append(uid)
+                    sample_values.append(value)
+                else:
+                    sample_values.append(sample_text)
+            _add_issue(
+                category="tech",
+                issue_type=result["error_type"].replace(" ", "_"),
+                issue_message=f"Field '{result['base_key']}' has {result['invalid_count']} {result['error_type']} values",
+                affected_records=result["invalid_count"],
+                field_key=result["base_key"],
+                affected_neotree_ids=sample_ids,
+                sample_values={"samples": sample_values},
+                actual_value_sample=", ".join(sample_values[:2]) if sample_values else None,
+            )
 
     for result in label_results:
         mismatch_count = len(result['mismatched_rows'])
         samples = [f"{m['uid']}:val={m['value']}/lbl={m['actual_label']}" for m in result['mismatched_rows'][:2]]
         tech_logger.error(f"❌ '{result['base_key']}': {mismatch_count} label mismatches | {samples}")
         errors.append(f"Field '{result['base_key']}': {mismatch_count} label mismatches")
+        _add_issue(
+            category="tech",
+            issue_type="label_mismatch",
+            issue_message=f"Field '{result['base_key']}' has label mismatches",
+            affected_records=mismatch_count,
+            field_key=result["base_key"],
+            affected_neotree_ids=[m["uid"] for m in result["mismatched_rows"][:5]],
+            sample_values={"samples": result["mismatched_rows"][:5]},
+        )
 
     if type_errors_count == 0:
         tech_logger.info(f"✓ All data types valid")
@@ -748,6 +1314,15 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
         tech_logger.warning(f"⚠ {len(high_null_cols)} columns >50% NULL:")
         for col, rate in high_null_cols.head(5).items():
             tech_logger.warning(f"   {col}: {rate:.1f}%")
+            _add_issue(
+                category="tech",
+                issue_type="high_null_rate",
+                issue_message=f"Column '{col}' has more than 50% NULL values",
+                affected_records=int(df[col].isna().sum()),
+                field_key=col[:-6] if str(col).endswith(".value") else str(col),
+                severity="warning",
+                sample_values={"null_rate_pct": float(rate)},
+            )
         if len(high_null_cols) > 5:
             tech_logger.warning(f"   ... and {len(high_null_cols) - 5} more")
 
@@ -782,6 +1357,14 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
 
                     tech_logger.error(f"❌ '{base_key}': {inconsistent_count} NULL value but non-NULL label | {identifier_label}: {sample_identifiers}")
                     errors.append(f"Required field '{base_key}' has {inconsistent_count} NULL values with non-NULL labels")
+                    _add_issue(
+                        category="tech",
+                        issue_type="value_label_inconsistency",
+                        issue_message=f"Field '{base_key}' has NULL value but non-NULL label",
+                        affected_records=int(inconsistent_count),
+                        field_key=base_key,
+                        affected_neotree_ids=sample_identifiers,
+                    )
 
     if inconsistencies == 0:
         tech_logger.info("   ✓ No value-label inconsistencies in required fields")
@@ -814,6 +1397,23 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
                         if outlier_pct > 5:
                             tech_logger.warning(f"⚠ '{base_key}': {len(outliers)} ({outlier_pct:.1f}%) outliers | Range: [{lower_bound:.2f}, {upper_bound:.2f}]")
                             outlier_fields += 1
+                            outlier_mask = pd.to_numeric(df[value_col], errors='coerce').isin(outliers)
+                            _add_issue(
+                                category="tech",
+                                issue_type="numeric_outliers",
+                                issue_message=f"Field '{base_key}' has significant numeric outliers",
+                                affected_records=len(outliers),
+                                field_key=base_key,
+                                severity="warning",
+                                affected_neotree_ids=get_safe_sample_uids(df, outlier_mask, 5),
+                                sample_values={
+                                    "outlier_pct": float(outlier_pct),
+                                    "lower_bound": float(lower_bound),
+                                    "upper_bound": float(upper_bound),
+                                },
+                                min_value=lower_bound,
+                                max_value=upper_bound,
+                            )
             except Exception:
                 pass
 
@@ -840,6 +1440,15 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
 
             impl_logger.error(f"❌ '{result['base_key']}': {result['null_count']}/{result['total_count']} ({result['null_pct']:.1f}%) NULL | {identifier_label}: {result['sample_identifiers']}")
             errors.append(f"Required field '{result['base_key']}' has {result['null_count']} NULL values")
+            _add_issue(
+                category="implementation",
+                issue_type="required_field_null",
+                issue_message=f"Required field '{result['base_key']}' has NULL values",
+                affected_records=result["null_count"],
+                field_key=result["base_key"],
+                affected_neotree_ids=result["sample_identifiers"],
+                sample_values={"null_pct": result["null_pct"], "eligible_records": result["total_count"]},
+            )
         impl_logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
     else:
         # Count how many required fields were checked
@@ -855,6 +1464,24 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
             samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in result['violations'][:2]])
             impl_logger.error(f"❌ '{result['base_key']}': {violation_count}/{result['total']} ({violation_pct:.1f}%) out of [{result['min_val']}, {result['max_val']}] | {samples_str}")
             errors.append(f"Field '{result['base_key']}': {violation_count} out-of-range values")
+            _add_issue(
+                category="implementation",
+                issue_type="range_violation",
+                issue_message=f"Field '{result['base_key']}' has out-of-range values",
+                affected_records=violation_count,
+                field_key=result["base_key"],
+                affected_neotree_ids=[uid for _, uid, _, _ in result["violations"][:5]],
+                sample_values={
+                    "samples": [
+                        {"uid": uid, "value": val, "error": error_msg}
+                        for _, uid, val, error_msg in result["violations"][:5]
+                    ],
+                    "violation_pct": violation_pct,
+                },
+                min_value=result["min_val"],
+                max_value=result["max_val"],
+                actual_value_sample=", ".join([str(val) for _, _, val, _ in result["violations"][:2]]),
+            )
         impl_logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
     else:
         # Count fields with actual (non-empty) min or max values
@@ -904,6 +1531,14 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
     if found_sensitive_columns:
         comp_logger.error(f"❌ {len(found_sensitive_columns)} known sensitive column(s): {', '.join(found_sensitive_columns)}")
         warnings.append(f"Found {len(found_sensitive_columns)} sensitive/unwanted columns: {', '.join(found_sensitive_columns)}")
+        _add_issue(
+            category="compliance",
+            issue_type="known_sensitive_columns",
+            issue_message="Known sensitive columns found in dataset",
+            affected_records=len(df),
+            severity="warning",
+            sample_values={"columns": found_sensitive_columns},
+        )
 
     if confidential_fields_found:
         comp_logger.error(f"❌ {len(confidential_fields_found)} schema-based confidential field(s):")
@@ -916,14 +1551,26 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
 
             # Show sample UIDs with data
             sample_info = ""
+            sample_uids = []
+            affected_records = len(df)
             if 'uid' in df.columns and field['has_value']:
                 value_col = f"{field['key']}.value"
                 non_null_mask = df[value_col].notna()
+                affected_records = int(non_null_mask.sum())
                 if non_null_mask.sum() > 0:
                     sample_uids = get_safe_sample_uids(df, non_null_mask, 2)
                     sample_info = f" | UIDs: {sample_uids}"
 
             comp_logger.error(f"   {field['key']} ({field['label']}): {', '.join(columns)}{sample_info}")
+            _add_issue(
+                category="compliance",
+                issue_type="confidential_field_present",
+                issue_message=f"Confidential field '{field['key']}' found in dataset",
+                affected_records=affected_records,
+                field_key=field["key"],
+                affected_neotree_ids=sample_uids,
+                sample_values={"columns": columns},
+            )
 
         if len(confidential_fields_found) > 3:
             comp_logger.error(f"   ... and {len(confidential_fields_found) - 3} more")
@@ -931,6 +1578,8 @@ def _validate_subset(df: pd.DataFrame, schema, script_or_id: str, loggers: Dict[
 
     if total_sensitive == 0:
         comp_logger.info("✓ No sensitive/confidential data detected")
+
+    _insert_validation_issues(issues)
 
 
 def not_90_percent_similar_to_label(x, reference_value):
@@ -981,7 +1630,7 @@ def send_log_via_email(log_file_path: str, email_receivers, category: str = "val
             pdfkit.from_string(html_body, pdf_path, options=pdf_options)
         except Exception as e:
             logging.error(f"Failed to create PDF: {str(e)}")
-            return
+            return False
 
         msg.set_content(f"Your {category_label} validation log is attached as PDF.")
         msg.add_alternative(html_body, subtype='html')
@@ -996,6 +1645,7 @@ def send_log_via_email(log_file_path: str, email_receivers, category: str = "val
                 )
         except Exception as e:
             logging.error(f"Failed to attach PDF: {str(e)}")
+            return False
 
         try:
             with smtplib.SMTP(MAIL_HOST, 587) as server:
@@ -1003,5 +1653,9 @@ def send_log_via_email(log_file_path: str, email_receivers, category: str = "val
                 server.login(MAIL_USERNAME, MAIL_PASSWORD)
                 server.send_message(msg)
             logging.info("Error log emailed successfully.")
+            return True
         except Exception as e:
             logging.error(f"Failed to send email: {str(e)}")
+            return False
+
+    return False
