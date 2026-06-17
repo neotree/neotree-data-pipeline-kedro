@@ -17,7 +17,11 @@ from datetime import datetime
 from conf.base.catalog import params, hospital_conf
 import re
 import pdfkit
-from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
+from data_pipeline.pipelines.data_engineering.utils.field_info import (
+    get_script_field_schemas,
+    get_script_metadata_details,
+    load_json_for_comparison,
+)
 from difflib import SequenceMatcher
 
 STATUS_FILE = "logs/validation_status.json"
@@ -44,6 +48,23 @@ def _is_field_schema(schema) -> bool:
 
 def _normalize_script_id(script_id) -> str:
     return str(script_id).strip()
+
+
+def _format_script_details(details: dict) -> str:
+    if not details:
+        return ""
+
+    parts = []
+    if details.get("title"):
+        parts.append(f"Title: {details['title']}")
+    if details.get("hospitalName"):
+        parts.append(f"Hospital: {details['hospitalName']}")
+    api_script_id = details.get("scriptId")
+    metadata_key = details.get("metadataKey")
+    if api_script_id and api_script_id != metadata_key:
+        parts.append(f"API scriptId: {api_script_id}")
+
+    return f" | {' | '.join(parts)}" if parts else ""
 
 
 def _get_validation_loggers(log_file_path="logs/validation.log") -> Dict[str, logging.Logger]:
@@ -210,13 +231,14 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     _log_to_all(loggers, "info", f"VALIDATING: {script.upper()} | Rows: {len(df)} | Cols: {len(df.columns)}")
     _log_to_all(loggers, "info", f"{'='*60}")
 
-    is_scriptid_metadata = isinstance(metadata, dict) and not _is_field_schema(metadata)
+    script_field_schemas = get_script_field_schemas(metadata)
+    is_scriptid_metadata = isinstance(script_field_schemas, dict) and not _is_field_schema(script_field_schemas)
 
     if isinstance(metadata, dict):
         logger.info(
             "Metadata shape: %s | top-level keys: %s",
             "scriptid-based" if is_scriptid_metadata else "field-based",
-            list(metadata.keys())[:10],
+            list(script_field_schemas.keys())[:10] if isinstance(script_field_schemas, dict) else [],
         )
 
     # Check if we have new scriptId-based structure and scriptId column
@@ -226,7 +248,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
         metadata_by_script_id = {
             _normalize_script_id(script_id): schema
-            for script_id, schema in metadata.items()
+            for script_id, schema in script_field_schemas.items()
         }
         script_id_keys = df['scriptid'].map(
             lambda value: pd.NA if pd.isna(value) else _normalize_script_id(value)
@@ -251,8 +273,10 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 logger.warning(f"\n⚠ No metadata found for scriptid: {script_id_str} ({len(subset_df)} rows) - SKIPPING")
                 continue
 
+            script_details = get_script_metadata_details(metadata, script_id_str)
+            details_suffix = _format_script_details(script_details)
             _log_to_all(loggers, "info", f"\n{'─'*60}")
-            _log_to_all(loggers, "info", f"Validating scriptid: {script_id_str} | {len(subset_df)} rows")
+            _log_to_all(loggers, "info", f"Validating scriptid: {script_id_str} | {len(subset_df)} rows{details_suffix}")
             logger.info(f"Schema field count: {len(schema)} | sample fields: {list(schema.keys())[:10]}")
             _log_to_all(loggers, "info", f"{'─'*60}")
 
@@ -281,12 +305,13 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         else:
             # This is scriptId-based format but no scriptId column
             logger.warning(f"No scriptId column in dataframe - using first available schema")
-            if len(metadata) == 1:
-                schema = list(metadata.values())[0]
-                logger.info(f"Using single available schema: {list(metadata.keys())[0]}")
+            if len(script_field_schemas) == 1:
+                first_script_id = next(iter(script_field_schemas.keys()))
+                schema = script_field_schemas[first_script_id]
+                logger.info(f"Using single available schema: {first_script_id}")
             else:
                 logger.warning(f"Multiple schemas available but no scriptId column - using first schema")
-                schema = list(metadata.values())[0]
+                schema = next(iter(script_field_schemas.values()))
     else:
         logger.error(f"Unexpected metadata type: {type(metadata)}")
         return

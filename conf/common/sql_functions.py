@@ -490,7 +490,10 @@ def is_date_column_by_name(column_name: str, table_name: str = '') -> bool:
     # Check field metadata if available and table_name provided
     if table_name:
         try:
-            from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
+            from data_pipeline.pipelines.data_engineering.utils.field_info import (
+                get_script_field_schemas,
+                load_json_for_comparison,
+            )
 
             schema = load_json_for_comparison(table_name)
             if schema:
@@ -499,11 +502,14 @@ def is_date_column_by_name(column_name: str, table_name: str = '') -> bool:
                 if isinstance(schema, list):
                     field_info = {f['key']: f for f in schema}
                 elif isinstance(schema, dict):
-                    first_value = next(iter(schema.values()), None)
+                    script_schemas = get_script_field_schemas(schema)
+                    first_value = next(iter(script_schemas.values()), None)
                     if isinstance(first_value, list):
                         field_info = {f['key']: f for f in first_value}
+                    elif isinstance(first_value, dict) and 'key' not in first_value:
+                        field_info = first_value
                     else:
-                        field_info = schema
+                        field_info = script_schemas
 
                 # Check both exact match and without .value/.label suffix
                 base_key = column_name
@@ -1169,7 +1175,10 @@ def transform_dataframe_with_field_info(df, table_name):
     """
 
     # Load field info using table_name as script
-    from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
+    from data_pipeline.pipelines.data_engineering.utils.field_info import (
+        get_script_field_schemas,
+        load_json_for_comparison,
+    )
 
     schema = load_json_for_comparison(table_name)
     if not schema:
@@ -1177,7 +1186,18 @@ def transform_dataframe_with_field_info(df, table_name):
         return df
 
     # Create field lookup
-    field_info = {f['key']: f for f in schema}
+    if isinstance(schema, list):
+        field_info = {f['key']: f for f in schema}
+    elif isinstance(schema, dict):
+        script_schemas = get_script_field_schemas(schema)
+        first_value = next(iter(script_schemas.values()), None)
+        if isinstance(first_value, dict) and 'key' not in first_value:
+            field_info = first_value
+        else:
+            field_info = script_schemas
+    else:
+        logging.info(f"Unexpected field info format for {table_name}, skipping transformation")
+        return df
 
     # Create a copy for transformation
     transformed_df = df.copy()

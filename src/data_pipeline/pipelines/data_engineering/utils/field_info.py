@@ -6,12 +6,68 @@ import pandas as pd
 import logging
 
 
+SCRIPT_METADATA_KEY = "__script_metadata__"
+
+
+def get_script_field_schemas(metadata):
+    """Return only scriptid -> field schema entries, excluding file-level metadata."""
+    if not isinstance(metadata, dict):
+        return metadata
+    return {
+        script_id: schema
+        for script_id, schema in metadata.items()
+        if script_id != SCRIPT_METADATA_KEY
+    }
+
+
+def get_script_metadata_details(metadata, script_id):
+    """Return stored script-level details for a scriptid, if present."""
+    if not isinstance(metadata, dict):
+        return {}
+    metadata_by_script = metadata.get(SCRIPT_METADATA_KEY, {})
+    if not isinstance(metadata_by_script, dict):
+        return {}
+    return metadata_by_script.get(str(script_id).strip(), {})
+
+
+def _is_field_schema(schema) -> bool:
+    if not isinstance(schema, dict) or not schema:
+        return False
+    first_value = next(iter(schema.values()))
+    return isinstance(first_value, dict) and "key" in first_value
+
+
+def _first_script_schema(metadata):
+    script_schemas = get_script_field_schemas(metadata)
+    if not isinstance(script_schemas, dict) or not script_schemas:
+        return None, None
+    first_key = next(iter(script_schemas.keys()))
+    return first_key, script_schemas[first_key]
+
+
+def _extract_script_details(script_entry, script_id):
+    return {
+        "scriptId": script_entry.get("scriptId") or script_entry.get("scriptid"),
+        "metadataKey": script_id,
+        "title": script_entry.get("title"),
+        "hospitalName": script_entry.get("hospitalName"),
+    }
+
+
 def process_and_save_field_info(script, json_data, script_id_to_use=None):
     """
     Process and save field metadata organized by scriptid.
 
     NEW STRUCTURE:
     {
+        "__script_metadata__": {
+            "scriptid1": {
+                "scriptId": "api-script-id",
+                "metadataKey": "scriptid1",
+                "title": "Script title",
+                "hospitalName": "Hospital name"
+            }
+        },
         "scriptid1": {
             "fieldKey1": {field metadata},
             "fieldKey2": {field metadata},
@@ -45,6 +101,8 @@ def process_and_save_field_info(script, json_data, script_id_to_use=None):
     else:
         all_scripts = {}
 
+    all_scripts.setdefault(SCRIPT_METADATA_KEY, {})
+
     # Process screens from the input data
     for script_entry in json_data.get('data', []):
         # Use the passed script_id if provided (this is the OLD Firebase ID from database),
@@ -64,6 +122,7 @@ def process_and_save_field_info(script, json_data, script_id_to_use=None):
 
         # ALWAYS replace the metadata for this scriptid with fresh data from API
         # This ensures we get the latest schema and don't accumulate stale data
+        all_scripts[SCRIPT_METADATA_KEY][script_id] = _extract_script_details(script_entry, script_id)
         all_scripts[script_id] = {}
         result = all_scripts[script_id]
 
@@ -113,7 +172,8 @@ def process_and_save_field_info(script, json_data, script_id_to_use=None):
     with open(filename, 'w') as f:
         json.dump(all_scripts, f, indent=2)
 
-    logging.info(f"Saved metadata for {len(all_scripts)} scriptid(s) to {filename}")
+    script_count = len(get_script_field_schemas(all_scripts))
+    logging.info(f"Saved metadata for {script_count} scriptid(s) to {filename}")
 
 def update_fields_info(script: str):
     hospital_scripts = hospital_conf()
@@ -144,6 +204,7 @@ def load_json_for_comparison(filename, script_id=None):
     Load field metadata from JSON file.
 
     NEW STRUCTURE SUPPORT:
+    - Script details are stored under reserved top-level key "__script_metadata__"
     - If script_id is provided: returns field dict for that specific scriptid
     - If script_id is None: returns entire dict of {scriptid: {fieldKey: field}}
     - Handles legacy format (array) by converting to dict
@@ -173,7 +234,7 @@ def load_json_for_comparison(filename, script_id=None):
             # New format: dict of {scriptid: {fieldKey: field}}
             if script_id:
                 # Return field dict for specific scriptid
-                return data.get(script_id)
+                return data.get(str(script_id).strip())
             else:
                 # Return entire structure
                 return data
@@ -244,6 +305,7 @@ def transform_matching_labels(df, script):
 
     # Check if we have new scriptid-based structure and scriptid column
     if isinstance(metadata, dict) and 'scriptid' in df.columns:
+        script_schemas = get_script_field_schemas(metadata)
         # NEW FORMAT: Split by scriptid and transform each subset
         logging.info(f"Using scriptid-based transformation for {script}")
 
@@ -253,7 +315,7 @@ def transform_matching_labels(df, script):
         for script_id in unique_script_ids:
             script_id_str = str(script_id)
             subset_df = df[df['scriptid'] == script_id].copy()
-            schema = metadata.get(script_id_str)
+            schema = script_schemas.get(script_id_str)
 
             if not schema:
                 logging.warning(f"No metadata found for scriptid: {script_id_str} - skipping transformation")
@@ -277,23 +339,23 @@ def transform_matching_labels(df, script):
 
     # LEGACY FORMAT or no scriptid column
     if isinstance(metadata, dict):
-        # Check if this is a flat field dict (legacy converted) or scriptid-based dict
-        first_key = next(iter(metadata.keys()))
-        first_value = metadata[first_key]
-
-        if isinstance(first_value, dict) and 'key' in first_value:
+        if _is_field_schema(metadata):
             # This is a legacy format converted to dict {fieldKey: field}
             logging.info(f"Using legacy transformation format (converted from array)")
             field_info = metadata
         else:
             # This is scriptid-based format but no scriptid column
             logging.warning(f"No scriptid column in dataframe - using first available schema")
-            if len(metadata) == 1:
-                field_info = list(metadata.values())[0]
-                logging.info(f"Using single available schema: {list(metadata.keys())[0]}")
+            script_schemas = get_script_field_schemas(metadata)
+            if len(script_schemas) == 1:
+                first_key, field_info = _first_script_schema(metadata)
+                logging.info(f"Using single available schema: {first_key}")
             else:
                 logging.warning(f"Multiple schemas available but no scriptid column - using first schema")
-                field_info = list(metadata.values())[0]
+                _, field_info = _first_script_schema(metadata)
+            if field_info is None:
+                logging.error(f"No script field schemas found for script '{script}'")
+                return df
     else:
         logging.error(f"Unexpected metadata type: {type(metadata)}")
         return df
@@ -415,6 +477,7 @@ def transform_matching_labels_for_update_queries(df, script):
 
     # Check if we have new scriptid-based structure and scriptid column
     if isinstance(metadata, dict) and 'scriptid' in df.columns:
+        script_schemas = get_script_field_schemas(metadata)
         # NEW FORMAT: Split by scriptid and transform each subset
         logging.info(f"Using scriptid-based update queries for {script}")
 
@@ -424,7 +487,7 @@ def transform_matching_labels_for_update_queries(df, script):
         for script_id in unique_script_ids:
             script_id_str = str(script_id)
             subset_df = df[df['scriptid'] == script_id].copy()
-            schema = metadata.get(script_id_str)
+            schema = script_schemas.get(script_id_str)
 
             if not schema:
                 logging.warning(f"No metadata found for scriptid: {script_id_str} - skipping")
@@ -438,23 +501,23 @@ def transform_matching_labels_for_update_queries(df, script):
 
     # LEGACY FORMAT or no scriptid column
     if isinstance(metadata, dict):
-        # Check if this is a flat field dict (legacy converted) or scriptid-based dict
-        first_key = next(iter(metadata.keys()))
-        first_value = metadata[first_key]
-
-        if isinstance(first_value, dict) and 'key' in first_value:
+        if _is_field_schema(metadata):
             # This is a legacy format converted to dict {fieldKey: field}
             logging.info(f"Using legacy update queries format (converted from array)")
             field_info = metadata
         else:
             # This is scriptid-based format but no scriptid column
             logging.warning(f"No scriptid column in dataframe - using first available schema")
-            if len(metadata) == 1:
-                field_info = list(metadata.values())[0]
-                logging.info(f"Using single available schema: {list(metadata.keys())[0]}")
+            script_schemas = get_script_field_schemas(metadata)
+            if len(script_schemas) == 1:
+                first_key, field_info = _first_script_schema(metadata)
+                logging.info(f"Using single available schema: {first_key}")
             else:
                 logging.warning(f"Multiple schemas available but no scriptid column - using first schema")
-                field_info = list(metadata.values())[0]
+                _, field_info = _first_script_schema(metadata)
+            if field_info is None:
+                logging.error(f"No script field schemas found for script '{script}'")
+                return []
     else:
         logging.error(f"Unexpected metadata type: {type(metadata)}")
         return []

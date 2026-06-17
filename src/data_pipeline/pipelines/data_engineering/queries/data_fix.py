@@ -27,7 +27,7 @@ from conf.common.sql_functions import (
 )
 from data_pipeline.constants import KNOWN_TEST_UIDS, SOURCE_UID_CLEANUP_TABLES
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
-from data_pipeline.pipelines.data_engineering.utils.field_info import load_json_for_comparison
+from data_pipeline.pipelines.data_engineering.utils.field_info import get_script_field_schemas, load_json_for_comparison
 import re
 
 
@@ -1215,13 +1215,16 @@ def _is_actually_date_column(column_name: str, data_type: str, table_name: str) 
             field_info = {}
             if isinstance(metadata, dict):
                 # Could be {scriptId: [fields]} or {fieldKey: field}
-                first_value = next(iter(metadata.values()), None)
+                script_schemas = get_script_field_schemas(metadata)
+                first_value = next(iter(script_schemas.values()), None)
                 if isinstance(first_value, list):
                     # scriptId format - use first script's fields
                     field_info = {f['key']: f for f in first_value}
+                elif isinstance(first_value, dict) and 'key' not in first_value:
+                    field_info = first_value
                 elif isinstance(first_value, dict) and 'key' in first_value:
                     # Already a field dict
-                    field_info = metadata
+                    field_info = script_schemas
             else:
                 # List format
                 field_info = {f['key']: f for f in metadata}
