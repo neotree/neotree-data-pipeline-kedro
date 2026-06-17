@@ -927,7 +927,7 @@ def _validate_subset(
             validator.expect_column_values_to_not_be_null(column="uid")
 
             # Determine if this script allows multiple UIDs
-            script_name_lower = str(script_or_id).lower()
+            script_name_lower = str(script_name or script_or_id).lower()
             allows_multiple_uids = any(allowed_script in script_name_lower for allowed_script in SCRIPTS_ALLOWING_MULTIPLE_UIDS)
 
             # Check for duplicate UIDs (only if script doesn't allow multiple UIDs)

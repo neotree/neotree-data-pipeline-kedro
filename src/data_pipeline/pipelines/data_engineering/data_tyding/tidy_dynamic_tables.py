@@ -11,14 +11,16 @@ from conf.common.sql_functions import (
     get_table_column_names,
     generate_upsert_queries_and_create_table,
     generate_create_insert_sql,
-    generate_timestamp_conversion_query
+    generate_timestamp_conversion_query,
+    inject_sql,
 )
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import convert_false_numbers_to_text
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge
 from data_pipeline.pipelines.data_engineering.utils.field_info import update_fields_info, transform_matching_labels
-from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table,date_data_type_fix
+from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table, date_data_type_fix, drop_confidential_columns
+from data_pipeline.pipelines.data_engineering.queries.assorted_queries import renumber_review_table_query
 
 
 def safe_load(dataset_name: str) -> pd.DataFrame:
@@ -188,6 +190,16 @@ def process_script_repeatables(script_raw: pd.DataFrame, script_name: str) -> No
         logging.error(formatError(e))
 
 
+def is_multi_review_script(script_name: str) -> bool:
+    return script_name in ('daily_review', 'infections')
+
+
+def repair_multi_review_table(script_name: str) -> None:
+    if is_multi_review_script(script_name):
+        inject_sql(renumber_review_table_query(script_name), f"RENUMBER {script_name} reviews")
+        drop_confidential_columns(script_name)
+
+
 def process_single_script(script: str) -> None:
     """Process a single dynamic script."""
     catalog_query = f'read_{script}'
@@ -237,7 +249,10 @@ def process_single_script(script: str) -> None:
         # Finalize dataframe
         script_df = finalize_script_dataframe(script_df, script)
         generate_create_insert_sql(script_df, 'derived', script)
-        deduplicate_table(script)
+        if is_multi_review_script(script):
+            repair_multi_review_table(script)
+        else:
+            deduplicate_table(script)
 
         # Create MCL tables
         logging.info(f"... Creating MCL count tables for {script}")
