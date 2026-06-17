@@ -142,6 +142,19 @@ def _unique_text_values(values, max_items: int = 5) -> list:
     return result
 
 
+def _normalise_email_receivers(email_receivers) -> list:
+    if isinstance(email_receivers, list):
+        raw_receivers = email_receivers
+    else:
+        raw_receivers = str(email_receivers).split(",")
+
+    return [
+        receiver.strip()
+        for receiver in raw_receivers
+        if receiver and receiver.strip()
+    ]
+
+
 def ensure_validation_tracking_tables():
     create_sql = """
         CREATE SCHEMA IF NOT EXISTS derived;;
@@ -1618,10 +1631,12 @@ def send_log_via_email(log_file_path: str, email_receivers, category: str = "val
         msg['Subject'] = f'Data Validation {category_label} Log - {country}'
         msg['From'] = MAIL_FROM_ADDRESS
 
-        if isinstance(email_receivers, list):
-            msg['To'] = ', '.join(email_receivers)
-        else:
-            msg['To'] = email_receivers
+        recipients = _normalise_email_receivers(email_receivers)
+        if not recipients:
+            logging.warning(f"No valid email recipients configured for {category} validation log")
+            return False
+
+        msg['To'] = ', '.join(recipients)
 
         html_body = get_html_validation_template(country, log_content)
         pdf_path = f"/tmp/validation_{category}_log.pdf"
