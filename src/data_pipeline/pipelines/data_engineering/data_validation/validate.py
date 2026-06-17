@@ -23,6 +23,19 @@ from difflib import SequenceMatcher
 STATUS_FILE = "logs/validation_status.json"
 
 
+def _is_field_schema(schema) -> bool:
+    """Return True for a field metadata dict keyed by field key."""
+    if not isinstance(schema, dict) or not schema:
+        return False
+
+    first_value = next(iter(schema.values()))
+    return isinstance(first_value, dict) and "key" in first_value
+
+
+def _normalize_script_id(script_id) -> str:
+    return str(script_id).strip()
+
+
 def set_status(status: str):
     with open(STATUS_FILE, "w") as f:
         json.dump({"status": status, "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f)
@@ -166,20 +179,42 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     logger.info(f"VALIDATING: {script.upper()} | Rows: {len(df)} | Cols: {len(df.columns)}")
     logger.info(f"{'='*60}")
 
+    is_scriptid_metadata = isinstance(metadata, dict) and not _is_field_schema(metadata)
+
+    if isinstance(metadata, dict):
+        logger.info(
+            "Metadata shape: %s | top-level keys: %s",
+            "scriptid-based" if is_scriptid_metadata else "field-based",
+            list(metadata.keys())[:10],
+        )
+
     # Check if we have new scriptId-based structure and scriptId column
-    if isinstance(metadata, dict) and 'scriptid' in df.columns:
+    if is_scriptid_metadata and 'scriptid' in df.columns:
         # NEW FORMAT: Split by scriptId and validate each subset
         logger.info(f"\nUsing scriptId-based validation")
 
-        # Get unique scriptIds from dataframe
-        unique_script_ids = df['scriptid'].dropna().unique()
-        logger.info(f"Found {len(unique_script_ids)} unique scriptid(s): {unique_script_ids.tolist()}")
+        metadata_by_script_id = {
+            _normalize_script_id(script_id): schema
+            for script_id, schema in metadata.items()
+        }
+        script_id_keys = df['scriptid'].map(
+            lambda value: pd.NA if pd.isna(value) else _normalize_script_id(value)
+        )
+        unique_script_ids = script_id_keys.dropna().unique()
+        logger.info(f"Found {len(unique_script_ids)} unique dataframe scriptid(s): {unique_script_ids.tolist()}")
+        logger.info(f"Metadata scriptid(s) available: {list(metadata_by_script_id.keys())}")
+
+        missing_metadata_ids = sorted(set(unique_script_ids) - set(metadata_by_script_id.keys()))
+        unused_metadata_ids = sorted(set(metadata_by_script_id.keys()) - set(unique_script_ids))
+        if missing_metadata_ids:
+            logger.warning(f"Dataframe scriptid(s) without metadata: {missing_metadata_ids}")
+        if unused_metadata_ids:
+            logger.info(f"Metadata scriptid(s) not present in dataframe: {unused_metadata_ids}")
 
         # Validate each scriptId subset
-        for script_id in unique_script_ids:
-            script_id_str = str(script_id)
-            subset_df = df[df['scriptid'] == script_id].copy()
-            schema = metadata.get(script_id_str)
+        for script_id_str in unique_script_ids:
+            subset_df = df[script_id_keys == script_id_str].copy()
+            schema = metadata_by_script_id.get(script_id_str)
 
             if not schema:
                 logger.warning(f"\n⚠ No metadata found for scriptid: {script_id_str} ({len(subset_df)} rows) - SKIPPING")
@@ -187,6 +222,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
             logger.info(f"\n{'─'*60}")
             logger.info(f"Validating scriptid: {script_id_str} | {len(subset_df)} rows")
+            logger.info(f"Schema field count: {len(schema)} | sample fields: {list(schema.keys())[:10]}")
             logger.info(f"{'─'*60}")
 
             # Call the validation logic for this subset
@@ -207,12 +243,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
 
     # LEGACY FORMAT or no scriptId column: Use existing validation
     if isinstance(metadata, dict):
-        # Check if this is a flat field dict (legacy converted) or scriptId-based dict
-        # Legacy converted format will have 'key' in the dict values
-        first_key = next(iter(metadata.keys()))
-        first_value = metadata[first_key]
-
-        if isinstance(first_value, dict) and 'key' in first_value:
+        if _is_field_schema(metadata):
             # This is a legacy format converted to dict {fieldKey: field}
             logger.info(f"Using legacy validation format (converted from array)")
             schema = metadata

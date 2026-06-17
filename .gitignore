@@ -157,5 +157,7 @@ venv.bak/
 # mypy
 .mypy_cache/
 metadata.json 
+# AI TOOLS
+.codex
 
 
