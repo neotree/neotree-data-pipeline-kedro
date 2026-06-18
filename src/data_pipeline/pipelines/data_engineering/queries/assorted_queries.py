@@ -579,9 +579,13 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             '''
     return sql
 
-def get_dynamic_condition(destination_table) :
+def get_dynamic_condition(destination_table, source_is_derived=False):
     if('daily_review' in destination_table or 'infections' in destination_table):
-        source_completed_at = review_completed_at_expr('cs')
+        source_completed_at = (
+            derived_review_completed_at_expr('cs')
+            if source_is_derived
+            else review_completed_at_expr('cs')
+        )
         destination_completed_at = derived_review_completed_at_expr('ds')
         return f''' and NOT EXISTS (
             SELECT 1
@@ -601,7 +605,10 @@ def read_derived_data_query(source_table, destination_table=None):
     if destination_table:
         exists = table_exists('derived', destination_table.strip())
         if exists:
-            condition = get_dynamic_condition(destination_table.strip())
+            condition = get_dynamic_condition(
+                destination_table.strip(),
+                source_is_derived=True,
+            )
 
     # Clean the source_table to remove extra quotes/braces
     source_table_clean = str(source_table).strip().strip('"').strip("'").strip("{}")

@@ -8,11 +8,10 @@ from difflib import SequenceMatcher
 import smtplib
 from email.message import EmailMessage
 import logging
-import traceback
 from .templates import get_html_validation_template
 from conf.common.scripts import get_script, merge_script_data
 from conf.common.logger import setup_logger
-from typing import Dict, cast
+from typing import Any, Dict, Optional, cast
 from datetime import datetime, timedelta
 from conf.base.catalog import params, hospital_conf
 import re
@@ -23,7 +22,6 @@ from data_pipeline.pipelines.data_engineering.utils.field_info import (
     get_script_metadata_details,
     load_json_for_comparison,
 )
-from difflib import SequenceMatcher
 
 STATUS_FILE = "logs/validation_status.json"
 VALIDATION_LOG_FILES = {
@@ -351,46 +349,67 @@ def _write_validation_summary_logs(run_id: str) -> Dict[str, str]:
             category_issues = category_issues.copy()
             category_issues["affected_records"] = pd.to_numeric(category_issues["affected_records"], errors="coerce").fillna(0).astype(int)
 
-            group_cols = [
+            script_cols = [
                 "script_name", "scriptid", "script_title", "hospital_name",
+            ]
+            issue_cols = [
                 "issue_type", "field_key", "field_label", "severity", "issue_message",
                 "min_value", "max_value", "expected_value"
             ]
 
-            for group_key, group_df in category_issues.groupby(group_cols, dropna=False):
-                group = dict(zip(group_cols, group_key))
-                sample_ids = []
-                for ids in group_df["affected_neotree_ids"].tolist():
-                    sample_ids.extend(_normalise_sample_ids(ids))
-                sample_ids = _unique_text_values(sample_ids, 5)
-                first_seen = group_df["identified_date"].min()
-                last_seen = group_df["identified_date"].max()
-                run_count = group_df["run_id"].nunique()
-                total_affected = int(group_df["affected_records"].sum())
+            for script_key, script_df in category_issues.groupby(script_cols, dropna=False):
+                script_group = dict(zip(script_cols, script_key))
+                header_parts = [
+                    f"Script: {script_group['script_name']}",
+                    f"Script ID: {script_group['scriptid']}",
+                ]
+                if pd.notna(script_group.get("script_title")) and script_group.get("script_title"):
+                    header_parts.append(f"Title: {script_group['script_title']}")
+                if pd.notna(script_group.get("hospital_name")) and script_group.get("hospital_name"):
+                    header_parts.append(f"Hospital: {script_group['hospital_name']}")
 
                 lines.extend([
-                    f"{str(group['severity']).upper()}: {group['issue_message']}",
-                    f"Script: {group['script_name']}",
-                    f"Script ID: {group['scriptid']}",
+                    "SCRIPT_HEADER: " + " | ".join(header_parts),
+                    "",
                 ])
-                if pd.notna(group.get("script_title")) and group.get("script_title"):
-                    lines.append(f"Title: {group['script_title']}")
-                if pd.notna(group.get("hospital_name")) and group.get("hospital_name"):
-                    lines.append(f"Hospital: {group['hospital_name']}")
-                if pd.notna(group.get("field_key")) and group.get("field_key"):
-                    lines.append(f"Field: {group['field_key']}")
-                if pd.notna(group.get("field_label")) and group.get("field_label"):
-                    lines.append(f"Field label: {group['field_label']}")
-                if pd.notna(group.get("min_value")) or pd.notna(group.get("max_value")):
-                    lines.append(f"Configured range: [{group.get('min_value')}, {group.get('max_value')}]")
-                if pd.notna(group.get("expected_value")) and group.get("expected_value"):
-                    lines.append(f"Expected: {group['expected_value']}")
+
+                for issue_key, group_df in script_df.groupby(issue_cols, dropna=False):
+                    group = dict(zip(issue_cols, issue_key))
+                    sample_ids = []
+                    for ids in group_df["affected_neotree_ids"].tolist():
+                        sample_ids.extend(_normalise_sample_ids(ids))
+                    sample_ids = _unique_text_values(sample_ids, 5)
+                    first_seen = group_df["identified_date"].min()
+                    last_seen = group_df["identified_date"].max()
+                    run_count = group_df["run_id"].nunique()
+                    total_affected = int(group_df["affected_records"].sum())
+
+                    lines.append(f"{str(group['severity']).upper()}: {group['issue_message']}")
+                    if pd.notna(group.get("field_key")) and group.get("field_key"):
+                        field_text = f"Field: {group['field_key']}"
+                        if pd.notna(group.get("field_label")) and group.get("field_label"):
+                            field_text += f" ({group['field_label']})"
+                        lines.append(field_text)
+                    if pd.notna(group.get("min_value")) or pd.notna(group.get("max_value")):
+                        lines.append(f"Configured range: [{group.get('min_value')}, {group.get('max_value')}]")
+                    if pd.notna(group.get("expected_value")) and group.get("expected_value"):
+                        lines.append(f"Expected: {group['expected_value']}")
+
+                    actual_samples = _unique_text_values(
+                        group_df["actual_value_sample"].dropna().tolist(),
+                        5,
+                    )
+                    if actual_samples:
+                        lines.append(f"Recorded value samples: {actual_samples}")
+
+                    lines.extend([
+                        f"Affected: {total_affected} | Runs: {run_count} | First: {first_seen} | Latest: {last_seen}",
+                        f"Sample NeoTree IDs: {sample_ids}",
+                        "",
+                    ])
+
                 lines.extend([
-                    f"Affected records: {total_affected}",
-                    f"Runs seen: {run_count}",
-                    f"First seen: {first_seen}",
-                    f"Latest seen: {last_seen}",
-                    f"Sample NeoTree IDs: {sample_ids}",
+                    f"SCRIPT_END: End validation for {script_group['script_name']} ({script_group['scriptid']})",
                     "",
                 ])
 
@@ -798,8 +817,8 @@ def _validate_subset(
     loggers: Dict[str, logging.Logger],
     context,
     script_name: str,
-    script_id: str = None,
-    script_details: dict = None,
+    script_id: Optional[str] = None,
+    script_details: Optional[Dict[str, Any]] = None,
 ):
     """
     Validate a single dataframe subset against its schema.

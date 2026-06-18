@@ -20,6 +20,15 @@ VALIDATE = (
     / "data_validation"
     / "validate.py"
 )
+TEMPLATES = (
+    PROJECT_ROOT
+    / "src"
+    / "data_pipeline"
+    / "pipelines"
+    / "data_engineering"
+    / "data_validation"
+    / "templates.py"
+)
 
 
 def test_field_metadata_preserves_screen_and_field_conditions():
@@ -80,3 +89,22 @@ def test_range_validation_ignores_empty_bounds_and_rejects_invalid_dates():
     assert "is not a valid {data_type}" in source
     assert "(has_min or has_max) and not is_confidential" in source
     assert "non_null_mask = visibility_mask & df[value_col].notna()" in source
+
+
+def test_summary_log_groups_metadata_once_per_script():
+    source = VALIDATE.read_text()
+
+    assert "for script_key, script_df in category_issues.groupby(script_cols" in source
+    assert '"SCRIPT_HEADER: " + " | ".join(header_parts)' in source
+    assert "for issue_key, group_df in script_df.groupby(issue_cols" in source
+    assert 'f"SCRIPT_END: End validation for' in source
+
+
+def test_email_and_pdf_render_script_section_colours():
+    source = TEMPLATES.read_text()
+
+    assert "def _format_validation_log_html" in source
+    assert 'class="script-header"' in source
+    assert 'class="script-end"' in source
+    assert "color: #135f9c" in source
+    assert "color: #16823b" in source

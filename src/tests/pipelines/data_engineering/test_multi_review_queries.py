@@ -75,6 +75,19 @@ def test_multi_review_existing_row_check_uses_completed_minute():
     assert "cs.unique_key = ds.unique_key" not in condition_source
 
 
+def test_derived_multi_review_filter_does_not_reference_json_data_column():
+    source = ASSORTED_QUERIES.read_text()
+
+    condition_start = source.index("def get_dynamic_condition")
+    condition_end = source.index("def read_all_from_derived_table")
+    condition_source = source[condition_start:condition_end]
+
+    assert "def get_dynamic_condition(destination_table, source_is_derived=False)" in condition_source
+    assert "if source_is_derived" in condition_source
+    assert "source_is_derived=True" in condition_source
+    assert "derived_review_completed_at_expr('cs')" in condition_source
+
+
 def test_multi_review_repeatables_use_canonical_parent_rows():
     source = TIDY_DYNAMIC_TABLES.read_text()
 
