@@ -941,7 +941,23 @@ def _validate_subset(
             result = pd.eval(expr, engine="python", local_dict=local_dict)
             if isinstance(result, (bool, np.bool_)):
                 return pd.Series(bool(result), index=df.index)
-            return result.fillna(False)
+
+            if isinstance(result, pd.Series):
+                if not result.index.equals(df.index):
+                    result = result.reindex(df.index)
+                return result.fillna(False).astype(bool)
+
+            if isinstance(result, (np.ndarray, list, tuple)):
+                if len(result) != len(df.index):
+                    raise ValueError(
+                        "Condition result length "
+                        f"{len(result)} does not match dataframe length {len(df.index)}"
+                    )
+                return pd.Series(result, index=df.index).fillna(False).astype(bool)
+
+            raise TypeError(
+                f"Unsupported condition result type: {type(result).__name__}"
+            )
         except Exception as exc:
             impl_logger.warning(f"⚠ Failed to evaluate condition '{condition}': {exc}")
             return pd.Series(False, index=df.index)
@@ -1528,8 +1544,12 @@ def _validate_subset(
                                 min_value=lower_bound,
                                 max_value=upper_bound,
                             )
-            except Exception:
-                pass
+            except Exception as exc:
+                tech_logger.warning(
+                    "⚠ Could not evaluate numeric outliers for '%s': %s",
+                    base_key,
+                    exc,
+                )
 
     if outlier_fields == 0:
         tech_logger.info("   ✓ No significant outliers")

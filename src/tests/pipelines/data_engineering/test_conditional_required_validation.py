@@ -61,6 +61,17 @@ def test_required_validation_combines_screen_and_field_conditions():
     assert "null_mask = visibility_mask & temp_series.isna()" in source
 
 
+def test_condition_results_are_normalized_to_aligned_boolean_series():
+    source = VALIDATE.read_text()
+
+    assert "if isinstance(result, pd.Series):" in source
+    assert "result.reindex(df.index)" in source
+    assert "return result.fillna(False).astype(bool)" in source
+    assert "if isinstance(result, (np.ndarray, list, tuple)):" in source
+    assert "does not match dataframe length" in source
+    assert "Unsupported condition result type" in source
+
+
 def test_high_null_analysis_is_condition_and_confidentiality_aware():
     source = VALIDATE.read_text()
 

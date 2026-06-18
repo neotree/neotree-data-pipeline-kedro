@@ -56,11 +56,21 @@ def fix_facility_phc_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def fix_feed_assessment_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Fix feed assessment column naming."""
-    if "How is the baby being fed?.label" in df.columns:
-        df.rename(columns={'FeedAsse.label': 'How is the baby being fed?.label'}, inplace=True)
+    if (
+        "FeedAsse.label" in df.columns
+        and "How is the baby being fed?.label" not in df.columns
+    ):
+        df = df.rename(
+            columns={'FeedAsse.label': 'How is the baby being fed?.label'}
+        )
 
-    if "How is the baby being fed?.value" in df.columns:
-        df.rename(columns={'FeedAsse.value': 'How is the baby being fed?.value'}, inplace=True)
+    if (
+        "FeedAsse.value" in df.columns
+        and "How is the baby being fed?.value" not in df.columns
+    ):
+        df = df.rename(
+            columns={'FeedAsse.value': 'How is the baby being fed?.value'}
+        )
 
     return df
 
@@ -267,7 +277,7 @@ def repair_multi_review_table(script_name: str) -> None:
         drop_confidential_columns(script_name)
 
 
-def process_single_script(script: str) -> None:
+def process_single_script(script: str) -> bool:
     """Process a single dynamic script."""
     catalog_query = f'read_{script}'
 
@@ -277,14 +287,14 @@ def process_single_script(script: str) -> None:
         if is_multi_review_script(script):
             process_multi_review_repeatables(script)
         logging.warning(f"No data loaded for script: {script}")
-        return
+        return True
 
     try:
         # Extract key values
         script_new_entries, script_mcl = get_key_values(script_raw)
     except Exception as e:
         logging.error(f"!!! Error extracting keys for {script}: {formatError(e)}")
-        return
+        return False
 
     try:
         # Create normalized dataframe
@@ -294,7 +304,7 @@ def process_single_script(script: str) -> None:
             if is_multi_review_script(script):
                 process_multi_review_repeatables(script)
             logging.info(f"No entries to process for script: {script}")
-            return
+            return True
 
         # Apply fixes
         script_df = fix_facility_phc_columns(script_df)
@@ -341,9 +351,11 @@ def process_single_script(script: str) -> None:
                                    ,'DateTimeDischarge.value','DateTimeDeath.value','DateAdmission.value'])
 
         logging.info(f"Successfully processed script: {script}")
+        return True
 
     except Exception as e:
         logging.error(f"!!! Error processing script {script}: {formatError(e)}")
+        return False
 
 
 def tidy_dynamic_tables():
@@ -359,8 +371,10 @@ def tidy_dynamic_tables():
 
     for script in new_scripts:
         try:
-            process_single_script(script)
-            success_count += 1
+            if process_single_script(script):
+                success_count += 1
+            else:
+                error_count += 1
         except Exception as e:
             error_count += 1
             logging.error(f"!!! Failed to process script {script}: {formatError(e)}")

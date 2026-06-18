@@ -13,7 +13,10 @@ def regenerate_unique_key():
         #Read Data From The Kedro Catalog
         raw_data = run_query_and_return_df(read_data_with_no_unique_key())
         if isinstance(raw_data, dict):
-            raw_data = list(raw_data.items())
+            raw_data = pd.DataFrame.from_dict(raw_data, orient="index")
+        if not isinstance(raw_data, pd.DataFrame) or raw_data.empty:
+            fix_regenerated_unique_keys()
+            return
         for index, row in raw_data.iterrows():
            
             id = row['id']

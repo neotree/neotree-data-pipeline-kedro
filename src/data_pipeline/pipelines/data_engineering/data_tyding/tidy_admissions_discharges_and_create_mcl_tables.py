@@ -82,7 +82,12 @@ def calculate_time_spent(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def safely_update_age_hours(adm_df: pd.DataFrame) -> pd.DataFrame:
-    if not {"DateTimeAdmission.value", "DOBTOB.value"}.issubset(adm_df.columns):
+    required_columns = {
+        "DateTimeAdmission.value",
+        "DOBTOB.value",
+        "Age.value",
+    }
+    if not required_columns.issubset(adm_df.columns):
         return adm_df
 
     try:
@@ -177,7 +182,10 @@ def process_age_column_vectorized(df: pd.DataFrame) -> pd.DataFrame:
 
         # Fix bug where DOB > admission date
         mask_fix = admission_dates < birth_dates
-        birth_dates[mask_fix] = birth_dates[mask_fix] - pd.Timedelta(hours=24)
+        birth_dates = birth_dates.copy()
+        birth_dates.loc[mask_fix] = (
+            birth_dates.loc[mask_fix] - pd.Timedelta(hours=24)
+        )
 
         age_hours = (admission_dates - birth_dates) / pd.Timedelta(hours=1)
         age_hours = age_hours.clip(lower=1).round()
@@ -886,6 +894,11 @@ def tidy_tables():
     except Exception as e:
         logging.error("!!! An error occurred fetching the data")
         logging.error(formatError(e))
+        try:
+            finalize_validation()
+        except Exception as finalize_error:
+            logging.error("!!! An error occurred finalizing validation")
+            logging.error(formatError(finalize_error))
         return
 
     logging.info("Extracting keys from raw data")
@@ -904,6 +917,11 @@ def tidy_tables():
     except Exception as e:
         logging.error("!!! An error occurred extracting keys")
         logging.error(formatError(e))
+        try:
+            finalize_validation()
+        except Exception as finalize_error:
+            logging.error("!!! An error occurred finalizing validation")
+            logging.error(formatError(finalize_error))
         return
 
     # Process all data tables using helper functions
