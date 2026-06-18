@@ -589,6 +589,9 @@ def check_value_range(value, min_val, max_val, data_type):
     if pd.isna(value) or value == '' or str(value).strip() == '':
         return True, None
 
+    min_val = min_val if min_val is not None and str(min_val).strip() != '' else None
+    max_val = max_val if max_val is not None and str(max_val).strip() != '' else None
+
     # Convert min/max to appropriate type
     try:
         if data_type in ['number', 'integer', 'float', 'timer']:
@@ -610,6 +613,8 @@ def check_value_range(value, min_val, max_val, data_type):
                 max_val = pd.to_datetime(max_val, errors='coerce')
             value_dt = pd.to_datetime(value, errors='coerce')
 
+            if pd.isna(value_dt):
+                return False, f"Recorded value '{value}' is not a valid {data_type}"
             if pd.notna(min_val) and value_dt < min_val:
                 return False, f"Date {value_dt} is before minimum {min_val}"
             if pd.notna(max_val) and value_dt > max_val:
@@ -888,6 +893,8 @@ def _validate_subset(
             return pd.Series(True, index=df.index)
 
         expr = condition.strip()
+        if not expr:
+            return pd.Series(True, index=df.index)
         keys = re.findall(r"\$([A-Za-z0-9_]+)", expr)
 
         for key in keys:
@@ -919,6 +926,37 @@ def _validate_subset(
         except Exception as exc:
             impl_logger.warning(f"⚠ Failed to evaluate condition '{condition}': {exc}")
             return pd.Series(False, index=df.index)
+
+    def _field_visibility_mask(field: dict) -> pd.Series:
+        """
+        Return rows where a field should be displayed.
+
+        A field placement is eligible only when both its screen and field
+        conditions are met. When a field appears in multiple places, any
+        eligible placement makes the field visible.
+        """
+        visibility_rules = field.get("visibilityConditions")
+        if not isinstance(visibility_rules, list) or not visibility_rules:
+            visibility_rules = [{
+                "screenCondition": field.get("screenCondition", ""),
+                "fieldCondition": field.get("condition", ""),
+            }]
+
+        visible_mask = pd.Series(False, index=df.index)
+        for rule in visibility_rules:
+            if not isinstance(rule, dict):
+                continue
+            screen_mask = _evaluate_condition_mask(rule.get("screenCondition", ""))
+            field_mask = _evaluate_condition_mask(rule.get("fieldCondition", ""))
+            visible_mask = visible_mask | (screen_mask & field_mask)
+
+        return visible_mask.fillna(False)
+
+    def _is_confidential(field: dict) -> bool:
+        value = field.get("confidential", False)
+        if isinstance(value, str):
+            return value.strip().lower() in {"true", "1", "yes", "y"}
+        return bool(value)
 
     tech_logger.info("\n[TECH] UID SCHEMA & STRUCTURE")
 
@@ -1003,16 +1041,16 @@ def _validate_subset(
         field_type = field.get('type', '')
         data_type = field.get('dataType', '')
         is_optional = field.get('optional', True)
+        is_confidential = _is_confidential(field)
+        visibility_mask = _field_visibility_mask(field)
         min_val = field.get('minValue')
         max_val = field.get('maxValue')
         expected_label = field.get('label')
         field_options = field.get('options', [])
 
         # --- REQUIRED FIELDS VALIDATION ---
-        if not is_optional:
-            condition = field.get("condition")
-            condition_mask = _evaluate_condition_mask(condition)
-            eligible_count = int(condition_mask.sum())
+        if not is_optional and not is_confidential:
+            eligible_count = int(visibility_mask.sum())
             if eligible_count == 0:
                 continue
 
@@ -1025,7 +1063,7 @@ def _validate_subset(
                 .replace('', np.nan)
             )
 
-            null_mask = condition_mask & temp_series.isna()
+            null_mask = visibility_mask & temp_series.isna()
             null_count = int(null_mask.sum())
             if null_count > 0:
                 null_pct = (null_count / eligible_count) * 100
@@ -1055,8 +1093,8 @@ def _validate_subset(
         has_min = min_val is not None and str(min_val).strip() != ''
         has_max = max_val is not None and str(max_val).strip() != ''
 
-        if has_min or has_max:
-            non_null_mask = df[value_col].notna()
+        if (has_min or has_max) and not is_confidential:
+            non_null_mask = visibility_mask & df[value_col].notna()
             non_null_values = df.loc[non_null_mask, value_col]
 
             if len(non_null_values) > 0:
@@ -1064,8 +1102,19 @@ def _validate_subset(
                 for idx, val in non_null_values.items():
                     is_valid, error_msg = check_value_range(val, min_val, max_val, data_type)
                     if not is_valid:
-                        uid = df.loc[idx, 'uid'] if 'uid' in df.columns else idx
-                        out_of_range_values.append((idx, uid, val, error_msg))
+                        uid = df.loc[idx, 'uid'] if 'uid' in df.columns else None
+                        unique_key = df.loc[idx, 'unique_key'] if 'unique_key' in df.columns else None
+                        identifier = uid if pd.notna(uid) else unique_key
+                        if identifier is None or pd.isna(identifier):
+                            identifier = idx
+                        out_of_range_values.append({
+                            "row_index": idx,
+                            "uid": uid,
+                            "unique_key": unique_key,
+                            "identifier": identifier,
+                            "recorded_value": val,
+                            "reason": error_msg,
+                        })
 
                 if out_of_range_values:
                     range_results.append({
@@ -1086,13 +1135,18 @@ def _validate_subset(
             .replace('', np.nan)
         )
 
-        if temp_base_series.isna().all():
+        visible_values = temp_base_series.loc[visibility_mask]
+        if (
+            not is_confidential
+            and not visible_values.empty
+            and visible_values.isna().all()
+        ):
             warnings.append(f"Field '{base_key}' has all NULL values")
             _add_issue(
                 category="tech",
                 issue_type="field_all_null",
                 issue_message=f"Field '{base_key}' has all NULL values",
-                affected_records=len(df),
+                affected_records=int(visibility_mask.sum()),
                 field_key=base_key,
                 severity="warning",
             )
@@ -1327,24 +1381,52 @@ def _validate_subset(
     completeness_pct = ((total_cells - null_cells) / total_cells) * 100
     tech_logger.info(f"   Completeness: {completeness_pct:.2f}% ({total_cells - null_cells}/{total_cells} cells)")
 
-    # Show columns with high NULL rates
-    null_rates = (df.isnull().sum() / len(df)) * 100
-    high_null_cols = cast(pd.Series, null_rates[null_rates > 50].sort_values(ascending=False))
-    if not high_null_cols.empty:
-        tech_logger.warning(f"⚠ {len(high_null_cols)} columns >50% NULL:")
-        for col, rate in high_null_cols.head(5).items():
+    # Show columns with high NULL rates. For schema fields, only count rows
+    # where the field should be visible and exclude confidential fields.
+    high_null_columns = []
+    for col in df.columns:
+        base_key = None
+        if str(col).endswith(".value"):
+            base_key = str(col)[:-6]
+        elif str(col).endswith(".label"):
+            base_key = str(col)[:-6]
+
+        field = field_info.get(base_key) if base_key else None
+        if isinstance(field, dict):
+            if _is_confidential(field):
+                continue
+            eligible_mask = _field_visibility_mask(field)
+            eligible_count = int(eligible_mask.sum())
+            if eligible_count == 0:
+                continue
+            null_count = int(df.loc[eligible_mask, col].isna().sum())
+        else:
+            eligible_count = len(df)
+            null_count = int(df[col].isna().sum())
+
+        null_rate = (null_count / eligible_count) * 100 if eligible_count else 0
+        if null_rate > 50:
+            high_null_columns.append((col, null_rate, null_count, eligible_count))
+
+    high_null_columns.sort(key=lambda item: item[1], reverse=True)
+    if high_null_columns:
+        tech_logger.warning(f"⚠ {len(high_null_columns)} columns >50% NULL:")
+        for col, rate, null_count, eligible_count in high_null_columns[:5]:
             tech_logger.warning(f"   {col}: {rate:.1f}%")
             _add_issue(
                 category="tech",
                 issue_type="high_null_rate",
                 issue_message=f"Column '{col}' has more than 50% NULL values",
-                affected_records=int(df[col].isna().sum()),
+                affected_records=null_count,
                 field_key=col[:-6] if str(col).endswith(".value") else str(col),
                 severity="warning",
-                sample_values={"null_rate_pct": float(rate)},
+                sample_values={
+                    "null_rate_pct": float(rate),
+                    "eligible_records": eligible_count,
+                },
             )
-        if len(high_null_cols) > 5:
-            tech_logger.warning(f"   ... and {len(high_null_cols) - 5} more")
+        if len(high_null_columns) > 5:
+            tech_logger.warning(f"   ... and {len(high_null_columns) - 5} more")
 
     # TECH-3.2 Consistency Checks (value-label pairs)
     inconsistencies = 0
@@ -1355,10 +1437,15 @@ def _validate_subset(
         if label_col in df.columns and base_key in field_info:
             field = field_info[base_key]
             is_optional = field.get('optional', True)
+            is_confidential = _is_confidential(field)
 
             # Only check consistency for required fields
-            if not is_optional:
-                inconsistent_mask = cast(pd.Series, df[value_col].isna() & df[label_col].notna())
+            if not is_optional and not is_confidential:
+                visibility_mask = _field_visibility_mask(field)
+                inconsistent_mask = cast(
+                    pd.Series,
+                    visibility_mask & df[value_col].isna() & df[label_col].notna()
+                )
                 if inconsistent_mask.sum() > 0:
                     inconsistencies += 1
                     inconsistent_count = inconsistent_mask.sum()
@@ -1472,7 +1559,11 @@ def _validate_subset(
         impl_logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
     else:
         # Count how many required fields were checked
-        required_count = sum(1 for f in field_info.values() if not f.get('optional', True))
+        required_count = sum(
+            1
+            for f in field_info.values()
+            if not f.get('optional', True) and not _is_confidential(f)
+        )
         if required_count > 0:
             impl_logger.info(f"✓ All {required_count} required fields populated")
 
@@ -1481,7 +1572,11 @@ def _validate_subset(
         for result in range_results:
             violation_count = len(result['violations'])
             violation_pct = (violation_count / result['total']) * 100
-            samples_str = ", ".join([f"UID:{uid}={val}" for _, uid, val, _ in result['violations'][:5]])
+            samples = result["violations"][:5]
+            samples_str = ", ".join(
+                f"{sample['identifier']}={sample['recorded_value']} ({sample['reason']})"
+                for sample in samples
+            )
             impl_logger.error(f"❌ '{result['base_key']}': {violation_count}/{result['total']} ({violation_pct:.1f}%) out of [{result['min_val']}, {result['max_val']}] | {samples_str}")
             errors.append(f"Field '{result['base_key']}': {violation_count} out-of-range values")
             _add_issue(
@@ -1490,17 +1585,29 @@ def _validate_subset(
                 issue_message=f"Field '{result['base_key']}' has out-of-range values",
                 affected_records=violation_count,
                 field_key=result["base_key"],
-                affected_neotree_ids=[uid for _, uid, _, _ in result["violations"][:5]],
+                affected_neotree_ids=[
+                    sample["identifier"]
+                    for sample in samples
+                ],
                 sample_values={
                     "samples": [
-                        {"uid": uid, "value": val, "error": error_msg}
-                        for _, uid, val, error_msg in result["violations"][:5]
+                        {
+                            "uid": sample["uid"],
+                            "unique_key": sample["unique_key"],
+                            "row_index": sample["row_index"],
+                            "recorded_value": sample["recorded_value"],
+                            "reason": sample["reason"],
+                        }
+                        for sample in samples
                     ],
                     "violation_pct": violation_pct,
                 },
                 min_value=result["min_val"],
                 max_value=result["max_val"],
-                actual_value_sample=", ".join([str(val) for _, _, val, _ in result["violations"][:5]]),
+                actual_value_sample=", ".join(
+                    str(sample["recorded_value"])
+                    for sample in samples
+                ),
             )
         impl_logger.info(f"Summary: {len(range_results)} fields checked, {len(range_results)} with violations")
     else:

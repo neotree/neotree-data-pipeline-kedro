@@ -130,6 +130,7 @@ def process_and_save_field_info(script, json_data, script_id_to_use=None):
             if "fields" not in screen:
                 continue
 
+            screen_condition = screen.get("condition", "")
             for field in screen["fields"]:
                 key = field["key"]
                 field_type = field.get("type")
@@ -139,6 +140,11 @@ def process_and_save_field_info(script, json_data, script_id_to_use=None):
                 min_value = field.get("minValue")
                 max_value = field.get("maxValue")
                 confidential = field.get("confidential", False)
+                field_condition = field.get("condition", "")
+                visibility_rule = {
+                    "screenCondition": screen_condition,
+                    "fieldCondition": field_condition,
+                }
 
                 # Initialize field if it doesn't exist yet
                 if key not in result:
@@ -151,8 +157,15 @@ def process_and_save_field_info(script, json_data, script_id_to_use=None):
                         "minValue": min_value,
                         "maxValue": max_value,
                         "confidential": confidential,
+                        "condition": field_condition,
+                        "screenCondition": screen_condition,
+                        "visibilityConditions": [visibility_rule],
                         "options": []
                     }
+                elif visibility_rule not in result[key].setdefault("visibilityConditions", []):
+                    # A field may appear on more than one screen. It is visible
+                    # when any one of its screen/field condition pairs is met.
+                    result[key]["visibilityConditions"].append(visibility_rule)
 
                 # Add option if it exists (fields can have multiple option entries in the API response)
                 if "value" in field and "valueLabel" in field:
