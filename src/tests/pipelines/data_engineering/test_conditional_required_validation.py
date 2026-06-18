@@ -70,6 +70,14 @@ def test_high_null_analysis_is_condition_and_confidentiality_aware():
     assert '"eligible_records": eligible_count' in source
 
 
+def test_all_null_fields_do_not_create_standalone_warnings():
+    source = VALIDATE.read_text()
+
+    assert 'issue_type="field_all_null"' not in source
+    assert "has all NULL values" not in source
+    assert "if not visible_values.empty and visible_values.isna().all():" in source
+
+
 def test_range_validation_records_actual_values_and_record_identity():
     source = VALIDATE.read_text()
 

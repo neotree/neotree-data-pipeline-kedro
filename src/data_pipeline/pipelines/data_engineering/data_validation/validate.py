@@ -1145,7 +1145,8 @@ def _validate_subset(
                     })
 
         # --- DATA TYPE VALIDATION ---
-        # Check for all NULL values (WARNING not ERROR)
+        # All-NULL fields are handled by required-field validation when the
+        # field is required and visible. Do not emit a duplicate warning.
         temp_base_series = (
             df[value_col]
             .astype(str)
@@ -1155,20 +1156,7 @@ def _validate_subset(
         )
 
         visible_values = temp_base_series.loc[visibility_mask]
-        if (
-            not is_confidential
-            and not visible_values.empty
-            and visible_values.isna().all()
-        ):
-            warnings.append(f"Field '{base_key}' has all NULL values")
-            _add_issue(
-                category="tech",
-                issue_type="field_all_null",
-                issue_message=f"Field '{base_key}' has all NULL values",
-                affected_records=int(visibility_mask.sum()),
-                field_key=base_key,
-                severity="warning",
-            )
+        if not visible_values.empty and visible_values.isna().all():
             continue
 
         # Validate based on data type
