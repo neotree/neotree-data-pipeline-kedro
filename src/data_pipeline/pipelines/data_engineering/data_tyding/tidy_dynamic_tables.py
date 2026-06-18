@@ -13,6 +13,7 @@ from conf.common.sql_functions import (
     generate_create_insert_sql,
     generate_timestamp_conversion_query,
     inject_sql,
+    run_query_and_return_df,
 )
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date_without_timezone
@@ -194,6 +195,72 @@ def is_multi_review_script(script_name: str) -> bool:
     return script_name in ('daily_review', 'infections')
 
 
+def load_multi_review_repeatables(script_name: str) -> pd.DataFrame:
+    """
+    Load repeatables from canonical source rows with final parent review numbers.
+
+    The normal script dataset is incremental and can exclude a parent row after
+    it has been inserted, even if its repeatable child rows still need writing.
+    Joining by the parent identity also avoids carrying a stale review_number
+    after the parent table has been deduplicated and renumbered.
+    """
+    if not is_multi_review_script(script_name):
+        return pd.DataFrame()
+
+    repeatables = run_query_and_return_df(f'''
+        WITH ranked_source AS (
+            SELECT
+                source.*,
+                NULLIF(TRIM(source.data->>'completed_at'), '')::timestamp
+                    AS source_completed_at,
+                ROW_NUMBER() OVER (
+                    PARTITION BY
+                        source.scriptid,
+                        source.uid,
+                        DATE_TRUNC(
+                            'minute',
+                            NULLIF(TRIM(source.data->>'completed_at'), '')::timestamp
+                        )
+                    ORDER BY source.id DESC, source.ingested_at DESC NULLS LAST
+                ) AS source_rank
+            FROM scratch."deduplicated_{script_name}" AS source
+            WHERE NULLIF(TRIM(source.data->>'completed_at'), '') IS NOT NULL
+        )
+        SELECT
+            parent.uid,
+            parent.facility,
+            parent.review_number,
+            source.data->'entries'->'repeatables' AS repeatables
+        FROM ranked_source AS source
+        JOIN derived."{script_name}" AS parent
+          ON parent.scriptid = source.scriptid
+         AND parent.uid = source.uid
+         AND DATE_TRUNC(
+                'minute',
+                COALESCE(
+                    NULLIF(TRIM(parent.completed_time::text), '')::timestamp,
+                    parent.completed_at::timestamp
+                )
+             ) = DATE_TRUNC('minute', source.source_completed_at)
+        WHERE source.source_rank = 1
+          AND source.data->'entries'->'repeatables' IS NOT NULL
+          AND source.data->'entries'->'repeatables' <> '{{}}'::jsonb;;
+    ''')
+    logging.info(
+        "Loaded %s canonical repeatable parent row(s) for %s",
+        len(repeatables),
+        script_name,
+    )
+    return repeatables
+
+
+def process_multi_review_repeatables(script_name: str) -> None:
+    process_script_repeatables(
+        load_multi_review_repeatables(script_name),
+        script_name,
+    )
+
+
 def repair_multi_review_table(script_name: str) -> None:
     if is_multi_review_script(script_name):
         inject_sql(renumber_review_table_query(script_name), f"RENUMBER {script_name} reviews")
@@ -207,6 +274,8 @@ def process_single_script(script: str) -> None:
     # Load raw data
     script_raw = safe_load(catalog_query)
     if script_raw.empty:
+        if is_multi_review_script(script):
+            process_multi_review_repeatables(script)
         logging.warning(f"No data loaded for script: {script}")
         return
 
@@ -222,6 +291,8 @@ def process_single_script(script: str) -> None:
         script_df = pd.json_normalize(script_new_entries)
 
         if script_df.empty:
+            if is_multi_review_script(script):
+                process_multi_review_repeatables(script)
             logging.info(f"No entries to process for script: {script}")
             return
 
@@ -260,7 +331,10 @@ def process_single_script(script: str) -> None:
         generate_timestamp_conversion_query(f'derived.{script}', ['completed_at', 'started_at'])
 
         # Process repeatables
-        process_script_repeatables(script_raw, script)
+        if is_multi_review_script(script):
+            process_multi_review_repeatables(script)
+        else:
+            process_script_repeatables(script_raw, script)
 
         #Enforce TimeStamp Columns
         date_data_type_fix(script,['completed_at','started_at','DateTimeAdmission.value'

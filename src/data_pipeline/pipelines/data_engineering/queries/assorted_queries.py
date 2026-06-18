@@ -17,92 +17,61 @@ def escape_special_characters(input_string):
     return str(input_string).replace("\\","\\\\").replace("'","")
 
 
-def review_completed_date_expr(alias: str) -> str:
-    """
-    Robust date expression for dynamic review tables.
+def review_completed_at_expr(alias: str) -> str:
+    """Return the session completion timestamp used to identify a review."""
+    return f"NULLIF(TRIM({alias}.data->>'completed_at'), '')::timestamp"
 
-    daily_review and infections allow multiple records per UID. The review date
-    is the ordering key used to assign review_number.
-    """
+
+def derived_review_completed_at_expr(alias: str) -> str:
+    """Return the best available completion timestamp from a derived review."""
     return f"""COALESCE(
-        CASE
-            WHEN NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), '')
-                ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}T'
-                THEN LEFT(NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), ''), 10)::date
-            WHEN NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), '')
-                ~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}$'
-                THEN NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), '')::date
-            WHEN REGEXP_REPLACE(
-                    REPLACE(NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
-                    '\\s+',
-                    ' ',
-                    'g'
-                ) ~ '^\\d{{1,2}} [A-Za-z]{{3}} \\d{{4}}$'
-                THEN TO_DATE(
-                    REGEXP_REPLACE(
-                        REPLACE(NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
-                        '\\s+',
-                        ' ',
-                        'g'
-                    ),
-                    'DD Mon YYYY'
-                )
-            WHEN REGEXP_REPLACE(
-                    REPLACE(NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
-                    '\\s+',
-                    ' ',
-                    'g'
-                ) ~ '^\\d{{1,2}} [A-Za-z]+ \\d{{4}}$'
-                THEN TO_DATE(
-                    REGEXP_REPLACE(
-                        REPLACE(NULLIF(TRIM({alias}.data->'entries'->'TodDate'->'values'->'value'->>0), ''), ',', ''),
-                        '\\s+',
-                        ' ',
-                        'g'
-                    ),
-                    'DD FMMonth YYYY'
-                )
-            ELSE NULL
-        END,
-        LEFT({alias}.data->>'completed_at', 10)::date
+        NULLIF(TRIM({alias}.completed_time::text), '')::timestamp,
+        {alias}.completed_at::timestamp
     )"""
 
 
 def renumber_review_table_query(table: str) -> str:
+    completed_at = derived_review_completed_at_expr('review')
     return f"""
         WITH duplicate_rows AS (
-            SELECT ctid
+            SELECT ranked.row_ctid
             FROM (
                 SELECT
-                    ctid,
+                    review.ctid AS row_ctid,
                     ROW_NUMBER() OVER (
-                        PARTITION BY scriptid, uid, unique_key
-                        ORDER BY id DESC, ingested_at DESC NULLS LAST
+                        PARTITION BY
+                            review.scriptid,
+                            review.uid,
+                            DATE_TRUNC('minute', {completed_at})
+                        ORDER BY review.id DESC, review.ingested_at DESC NULLS LAST
                     ) AS rn
-                FROM derived."{table}"
-                WHERE scriptid IS NOT NULL
-                  AND uid IS NOT NULL
-                  AND unique_key IS NOT NULL
+                FROM derived."{table}" AS review
+                WHERE review.scriptid IS NOT NULL
+                  AND review.uid IS NOT NULL
+                  AND {completed_at} IS NOT NULL
             ) ranked
-            WHERE rn > 1
+            WHERE ranked.rn > 1
         )
-        DELETE FROM derived."{table}"
-        WHERE ctid IN (SELECT ctid FROM duplicate_rows);;
+        DELETE FROM derived."{table}" AS review
+        WHERE review.ctid IN (
+            SELECT duplicate_rows.row_ctid
+            FROM duplicate_rows
+        );;
 
         WITH numbered AS (
             SELECT
-                ctid,
+                review.ctid AS row_ctid,
                 ROW_NUMBER() OVER (
-                    PARTITION BY uid
-                    ORDER BY completed_at::date, id, unique_key
+                    PARTITION BY review.uid
+                    ORDER BY {completed_at}, review.id, review.unique_key
                 ) AS new_review_number
-            FROM derived."{table}"
-            WHERE uid IS NOT NULL
+            FROM derived."{table}" AS review
+            WHERE review.uid IS NOT NULL
         )
         UPDATE derived."{table}" target
         SET review_number = numbered.new_review_number
         FROM numbered
-        WHERE target.ctid = numbered.ctid
+        WHERE target.ctid = numbered.row_ctid
           AND COALESCE(target.review_number, -1) <> numbered.new_review_number;;
     """
 
@@ -191,7 +160,8 @@ def deduplicate_data_query(condition, destination_table):
     elif 'daily_review' in destination_table or 'infections' in destination_table:
         schema, table = destination_table.split('.')
         exists = table_exists(schema, table)
-        completed_date = review_completed_date_expr('cs')
+        completed_at = review_completed_at_expr('cs')
+        existing_completed_at = review_completed_at_expr('ds')
 
         if exists:
             operation = f'''
@@ -211,9 +181,10 @@ def deduplicate_data_query(condition, destination_table):
                     FROM {schema}."{table}" ds
                     WHERE cs.uid = ds.uid
                       AND cs.scriptid = ds.scriptid
-                      AND cs.unique_key IS NOT NULL
-                      AND ds.unique_key IS NOT NULL
-                      AND cs.unique_key = ds.unique_key
+                      AND {completed_at} IS NOT NULL
+                      AND {existing_completed_at} IS NOT NULL
+                      AND DATE_TRUNC('minute', {completed_at})
+                          = DATE_TRUNC('minute', {existing_completed_at})
                 )
                 '''
 
@@ -224,31 +195,40 @@ def deduplicate_data_query(condition, destination_table):
                         cs.uid,
                         cs.id,
                         cs.ingested_at,
-                        {completed_date} AS completed_date,
+                        {completed_at} AS completed_at,
                         cs.data,
                         cs.unique_key
                     FROM public.clean_sessions cs
                     WHERE cs.scriptid {condition}
                 ),
                 deduplicated AS (
-                    SELECT DISTINCT ON (scriptid, uid, unique_key)
+                    SELECT DISTINCT ON (
+                        scriptid,
+                        uid,
+                        DATE_TRUNC('minute', completed_at)
+                    )
                         scriptid,
                         uid,
                         id,
                         ingested_at,
-                        completed_date,
+                        completed_at,
                         data,
                         unique_key
                     FROM filtered
-                    WHERE unique_key IS NOT NULL
-                    ORDER BY scriptid, uid, unique_key, id DESC
+                    WHERE completed_at IS NOT NULL
+                    ORDER BY
+                        scriptid,
+                        uid,
+                        DATE_TRUNC('minute', completed_at),
+                        id DESC,
+                        ingested_at DESC NULLS LAST
                 )
                 SELECT
                     scriptid,
                     uid,
                     id,
                     ingested_at,
-                    completed_date AS completed_at,
+                    completed_at,
                     data,
                     unique_key,
                     NULL::integer AS review_number
@@ -265,24 +245,33 @@ def deduplicate_data_query(condition, destination_table):
                         cs.uid,
                         cs.id,
                         cs.ingested_at,
-                        {completed_date} AS completed_date,
+                        {completed_at} AS completed_at,
                         cs.data,
                         cs.unique_key
                     FROM public.clean_sessions cs
                     WHERE cs.scriptid {condition}
                 ),
                 deduplicated AS (
-                    SELECT DISTINCT ON (scriptid, uid, unique_key)
+                    SELECT DISTINCT ON (
+                        scriptid,
+                        uid,
+                        DATE_TRUNC('minute', completed_at)
+                    )
                         scriptid,
                         uid,
                         id,
                         ingested_at,
-                        completed_date,
+                        completed_at,
                         data,
                         unique_key
                     FROM filtered
-                    WHERE unique_key IS NOT NULL
-                    ORDER BY scriptid, uid, unique_key, id DESC
+                    WHERE completed_at IS NOT NULL
+                    ORDER BY
+                        scriptid,
+                        uid,
+                        DATE_TRUNC('minute', completed_at),
+                        id DESC,
+                        ingested_at DESC NULLS LAST
                 ),
                 numbered AS (
                     SELECT
@@ -290,12 +279,12 @@ def deduplicate_data_query(condition, destination_table):
                         uid,
                         id,
                         ingested_at,
-                        completed_date AS completed_at,
+                        completed_at,
                         data,
                         unique_key,
                         ROW_NUMBER() OVER (
                             PARTITION BY uid
-                            ORDER BY completed_date, id, unique_key
+                            ORDER BY completed_at, id, unique_key
                         ) AS review_number
                     FROM deduplicated
                 )
@@ -418,6 +407,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     
     if destination_table == 'daily_review' or destination_table == 'infections':
         if exists and env != 'demo':
+            existing_completed_at = derived_review_completed_at_expr('ds')
             sql = f'''
             WITH incoming AS (
                 SELECT
@@ -440,26 +430,24 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                   AND cs.uid IS NOT NULL
                   AND cs.uid != 'null'
                   AND cs.uid != 'Unknown'
-                  AND cs.unique_key IS NOT NULL
                   {condition}
             ),
             existing AS (
                 SELECT
                     ds.uid,
                     ds.scriptid,
-                    ds.completed_at::date AS completed_at,
+                    {existing_completed_at} AS completed_at,
                     ds.unique_key,
                     ds.id,
                     FALSE AS is_incoming
                 FROM derived."{destination_table}" ds
                 WHERE ds.uid IS NOT NULL
-                  AND ds.unique_key IS NOT NULL
             ),
             combined AS (
                 SELECT
                     uid,
                     scriptid,
-                    completed_at::date AS completed_at,
+                    completed_at,
                     unique_key,
                     id,
                     TRUE AS is_incoming
@@ -476,6 +464,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             ),
             numbered AS (
                 SELECT
+                    id,
                     uid,
                     scriptid,
                     unique_key,
@@ -502,9 +491,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                 incoming.facility
             FROM incoming
             JOIN numbered
-              ON incoming.uid = numbered.uid
-             AND incoming.scriptid = numbered.scriptid
-             AND incoming.unique_key = numbered.unique_key
+              ON incoming.id = numbered.id
              AND numbered.is_incoming IS TRUE;;
             '''
             return sql
@@ -531,7 +518,6 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
               AND cs.uid IS NOT NULL
               AND cs.uid != 'null'
               AND cs.uid != 'Unknown'
-              AND cs.unique_key IS NOT NULL
         ),
         numbered AS (
             SELECT
@@ -595,12 +581,15 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
 
 def get_dynamic_condition(destination_table) :
     if('daily_review' in destination_table or 'infections' in destination_table):
+        source_completed_at = review_completed_at_expr('cs')
+        destination_completed_at = derived_review_completed_at_expr('ds')
         return f''' and NOT EXISTS (
             SELECT 1
             FROM derived."{destination_table}" ds
-            WHERE cs.unique_key IS NOT NULL
-              AND ds.unique_key IS NOT NULL
-              AND cs.unique_key = ds.unique_key
+            WHERE {source_completed_at} IS NOT NULL
+              AND {destination_completed_at} IS NOT NULL
+              AND DATE_TRUNC('minute', {source_completed_at})
+                  = DATE_TRUNC('minute', {destination_completed_at})
               AND cs.uid = ds.uid
               AND cs.scriptid = ds.scriptid
         )'''
