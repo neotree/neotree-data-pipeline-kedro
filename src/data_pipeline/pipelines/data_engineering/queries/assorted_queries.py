@@ -402,7 +402,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
     sql=''
     exists = table_exists('derived',destination_table)
     if exists and env!='demo':
-       condition= get_dynamic_condition(destination_table)
+       condition = get_raw_session_dynamic_condition(destination_table)
     facility_select = case_condition if str(case_condition).strip() else ', NULL::text AS "facility"'
     
     if destination_table == 'daily_review' or destination_table == 'infections':
@@ -579,13 +579,9 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
             '''
     return sql
 
-def get_dynamic_condition(destination_table, source_is_derived=False):
+def get_raw_session_dynamic_condition(destination_table):
     if('daily_review' in destination_table or 'infections' in destination_table):
-        source_completed_at = (
-            derived_review_completed_at_expr('cs')
-            if source_is_derived
-            else review_completed_at_expr('cs')
-        )
+        source_completed_at = review_completed_at_expr('cs')
         destination_completed_at = derived_review_completed_at_expr('ds')
         return f''' and NOT EXISTS (
             SELECT 1
@@ -600,15 +596,40 @@ def get_dynamic_condition(destination_table, source_is_derived=False):
     
     return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid and cs.uid is not null and ds.uid is not null and cs.unique_key is not null and ds.unique_key is not null)'''
 
+
+def get_derived_dynamic_condition(destination_table):
+    if('daily_review' in destination_table or 'infections' in destination_table):
+        source_completed_at = derived_review_completed_at_expr('cs')
+        destination_completed_at = derived_review_completed_at_expr('ds')
+        return f''' and NOT EXISTS (
+            SELECT 1
+            FROM derived."{destination_table}" ds
+            WHERE {source_completed_at} IS NOT NULL
+              AND {destination_completed_at} IS NOT NULL
+              AND DATE_TRUNC('minute', {source_completed_at})
+                  = DATE_TRUNC('minute', {destination_completed_at})
+              AND cs.uid = ds.uid
+              AND cs.scriptid = ds.scriptid
+        )'''
+
+    return f''' and NOT EXISTS (
+        SELECT 1
+        FROM derived.{destination_table} ds
+        WHERE LEFT(cs.unique_key, 10) = LEFT(ds.unique_key, 10)
+          AND cs.uid = ds.uid
+          AND cs.uid IS NOT NULL
+          AND ds.uid IS NOT NULL
+          AND cs.unique_key IS NOT NULL
+          AND ds.unique_key IS NOT NULL
+    )'''
+
+
 def read_derived_data_query(source_table, destination_table=None):
     condition = ''
     if destination_table:
         exists = table_exists('derived', destination_table.strip())
         if exists:
-            condition = get_dynamic_condition(
-                destination_table.strip(),
-                source_is_derived=True,
-            )
+            condition = get_derived_dynamic_condition(destination_table.strip())
 
     # Clean the source_table to remove extra quotes/braces
     source_table_clean = str(source_table).strip().strip('"').strip("'").strip("{}")

@@ -47,6 +47,45 @@ def safe_load(dataset_name: str) -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def coalesce_duplicate_columns(df: pd.DataFrame, context: str) -> pd.DataFrame:
+    """
+    Collapse duplicate column names using the first non-null value per row.
+
+    Duplicate names make ``df[column]`` return a DataFrame instead of a Series,
+    which breaks validation masks and SQL generation.
+    """
+    duplicate_names = list(
+        dict.fromkeys(df.columns[df.columns.duplicated(keep=False)].tolist())
+    )
+    if not duplicate_names:
+        return df
+
+    logging.warning(
+        "Coalescing duplicate columns in %s: %s",
+        context,
+        duplicate_names,
+    )
+    coalesced_columns = []
+    seen = set()
+    for position, column_name in enumerate(df.columns):
+        if column_name in seen:
+            continue
+        seen.add(column_name)
+        matching_positions = [
+            index
+            for index, name in enumerate(df.columns)
+            if name == column_name
+        ]
+        if len(matching_positions) == 1:
+            series = df.iloc[:, position]
+        else:
+            duplicate_values = df.iloc[:, matching_positions]
+            series = duplicate_values.bfill(axis=1).iloc[:, 0]
+        coalesced_columns.append(series.rename(column_name))
+
+    return pd.concat(coalesced_columns, axis=1)
+
+
 def calculate_time_spent(df: pd.DataFrame) -> pd.DataFrame:
     if "started_at" not in df.columns or "completed_at" not in df.columns:
         df["time_spent"] = None
@@ -411,6 +450,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
     """Process admissions dataframe with all transformations and save to database."""
     # Always use json_normalize to flatten nested dictionaries into .value and .label columns
     adm_df = pd.json_normalize(adm_new_entries)
+    adm_df = coalesce_duplicate_columns(adm_df, "admissions normalization")
 
     if adm_df.empty:
         return
@@ -468,6 +508,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
     # Create derived columns
     adm_df = create_columns(adm_df)
     if adm_df is not None and not adm_df.empty:
+        adm_df = coalesce_duplicate_columns(adm_df, "admissions derived columns")
         adm_df = adm_df[adm_df['uid'] != 'Unknown']
 
         # Clean column names
@@ -529,6 +570,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
 def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, dis_mcl: Any) -> None:
     """Process discharges dataframe with all transformations and save to database."""
     dis_df = pd.json_normalize(dis_new_entries)
+    dis_df = coalesce_duplicate_columns(dis_df, "discharges normalization")
 
     if dis_df.empty:
         return
@@ -567,6 +609,7 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
     # Create derived columns and filter
     dis_df = create_columns(dis_df)
     if dis_df is not None and not dis_df.empty:
+        dis_df = coalesce_duplicate_columns(dis_df, "discharges derived columns")
         dis_df = dis_df[dis_df['uid'] != 'Unknown']
         # Convert Series to DataFrame if needed
         if isinstance(dis_df, pd.Series):
@@ -597,6 +640,10 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
 def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outcomes_new_entries: Any, mat_outcomes_mcl: Any) -> pd.DataFrame:
     """Process maternal outcomes dataframe with all transformations and save to database."""
     mat_outcomes_df = pd.json_normalize(mat_outcomes_new_entries)
+    mat_outcomes_df = coalesce_duplicate_columns(
+        mat_outcomes_df,
+        "maternal outcomes normalization",
+    )
 
     if mat_outcomes_df.empty:
         return pd.DataFrame()
@@ -627,6 +674,10 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
     # Create derived columns and filter
     mat_outcomes_df = create_columns(mat_outcomes_df)
     if mat_outcomes_df is not None and not mat_outcomes_df.empty:
+        mat_outcomes_df = coalesce_duplicate_columns(
+            mat_outcomes_df,
+            "maternal outcomes derived columns",
+        )
         mat_outcomes_df = mat_outcomes_df[mat_outcomes_df['uid'] != 'Unknown']
         # Convert Series to DataFrame if needed
         if isinstance(mat_outcomes_df, pd.Series):
@@ -659,6 +710,10 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
 def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any) -> None:
     """Process vital signs dataframe with all transformations and save to database."""
     vit_signs_df = pd.json_normalize(vit_signs_new_entries)
+    vit_signs_df = coalesce_duplicate_columns(
+        vit_signs_df,
+        "vital signs normalization",
+    )
 
     if vit_signs_df.empty:
         return
@@ -704,6 +759,7 @@ def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any)
 def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) -> None:
     """Process neolab dataframe with all transformations and save to database."""
     neolab_df = pd.json_normalize(neolab_new_entries)
+    neolab_df = coalesce_duplicate_columns(neolab_df, "neolab normalization")
 
     if neolab_df.empty:
         return
@@ -790,9 +846,10 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
         return
 
     if baseline_df.columns.duplicated().any():
-        dupes = baseline_df.columns[baseline_df.columns.duplicated()]
-        logging.warning(f"Duplicate columns detected: {dupes.tolist()}")
-        baseline_df = baseline_df.loc[:, ~baseline_df.columns.duplicated()]
+        baseline_df = coalesce_duplicate_columns(
+            baseline_df,
+            "baseline normalization",
+        )
 
     if baseline_df.empty:
         return

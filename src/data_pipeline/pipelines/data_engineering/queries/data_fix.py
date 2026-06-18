@@ -1883,6 +1883,17 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
         logging.info(f"Skipping date fix for {dest_table} from {source_table} (this is expected in some environments)")
         return
 
+    destination_columns_query = f"""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'derived'
+          AND table_name = '{dest_table}';
+    """
+    destination_columns_result = inject_sql_with_return(destination_columns_query)
+    destination_columns = {
+        row[0] for row in destination_columns_result
+    } if destination_columns_result else set()
+
     # Process each date column separately
     for col_info in date_columns:
         dest_col = col_info[0]
@@ -1910,6 +1921,9 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
         # For .value columns, also update the corresponding .label column
         if dest_col.endswith('.value'):
             label_col = f"{variable_name}.label"
+            label_assignment = ""
+            if label_col in destination_columns:
+                label_assignment = f', "{label_col}" = f.label_val'
 
             update_query = f"""
                 WITH cleaned AS (
@@ -1941,8 +1955,8 @@ def _fix_dates_from_clean_sessions(source_table: str, dest_table: str, date_colu
                 ),
                 updated AS (
                     UPDATE derived."{dest_table}" d
-                    SET "{dest_col}" = f.date_val,
-                        "{label_col}" = f.label_val
+                    SET "{dest_col}" = f.date_val
+                        {label_assignment}
                     FROM formatted f
                     WHERE d.uid = f.uid
                     AND d.unique_key = f.unique_key

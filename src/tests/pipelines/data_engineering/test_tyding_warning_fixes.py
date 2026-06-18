@@ -41,6 +41,8 @@ def test_dynamic_script_processing_reports_failure_status():
     source = (DATA_TYDING / "tidy_dynamic_tables.py").read_text()
 
     assert "def process_single_script(script: str) -> bool:" in source
+    assert "if script_raw is None:" in source
+    assert "dataset '%s' failed to load" in source
     assert "if process_single_script(script):" in source
     assert "error_count += 1" in source
 
@@ -67,3 +69,21 @@ def test_outlier_failures_are_logged_instead_of_silenced():
     source = VALIDATE.read_text()
 
     assert "Could not evaluate numeric outliers" in source
+
+
+def test_duplicate_columns_are_coalesced_before_validation():
+    source = (
+        DATA_TYDING / "tidy_admissions_discharges_and_create_mcl_tables.py"
+    ).read_text()
+
+    assert "def coalesce_duplicate_columns" in source
+    assert 'coalesce_duplicate_columns(dis_df, "discharges normalization")' in source
+    assert 'coalesce_duplicate_columns(dis_df, "discharges derived columns")' in source
+    assert "duplicate_values.bfill(axis=1).iloc[:, 0]" in source
+
+
+def test_repeatable_backfill_cannot_block_parent_table_creation():
+    source = (DATA_TYDING / "tidy_dynamic_tables.py").read_text()
+
+    assert "if not table_exists('derived', script_name):" in source
+    assert "Skipping %s repeatable backfill until derived.%s exists" in source

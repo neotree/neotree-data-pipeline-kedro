@@ -1,6 +1,7 @@
 # Import created modules
 import pandas as pd
 import logging
+from typing import Optional
 
 from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, format_repeatables_to_rows
@@ -24,13 +25,13 @@ from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicat
 from data_pipeline.pipelines.data_engineering.queries.assorted_queries import renumber_review_table_query
 
 
-def safe_load(dataset_name: str) -> pd.DataFrame:
-    """Safely load a dataset from catalog, returning empty DataFrame on failure."""
+def safe_load(dataset_name: str) -> Optional[pd.DataFrame]:
+    """Load a dataset, returning None when the query itself fails."""
     try:
         return catalog.load(dataset_name)
     except Exception as e:
-        logging.warning(f"Failed to load dataset '{dataset_name}': {formatError(e)}")
-        return pd.DataFrame()
+        logging.error(f"Failed to load dataset '{dataset_name}': {formatError(e)}")
+        return None
 
 
 def fix_facility_phc_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -216,6 +217,13 @@ def load_multi_review_repeatables(script_name: str) -> pd.DataFrame:
     """
     if not is_multi_review_script(script_name):
         return pd.DataFrame()
+    if not table_exists('derived', script_name):
+        logging.info(
+            "Skipping %s repeatable backfill until derived.%s exists",
+            script_name,
+            script_name,
+        )
+        return pd.DataFrame()
 
     repeatables = run_query_and_return_df(f'''
         WITH ranked_source AS (
@@ -283,6 +291,13 @@ def process_single_script(script: str) -> bool:
 
     # Load raw data
     script_raw = safe_load(catalog_query)
+    if script_raw is None:
+        logging.error(
+            "Cannot process %s because dataset '%s' failed to load",
+            script,
+            catalog_query,
+        )
+        return False
     if script_raw.empty:
         if is_multi_review_script(script):
             process_multi_review_repeatables(script)
