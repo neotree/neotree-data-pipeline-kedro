@@ -63,6 +63,23 @@ def test_derived_review_timestamp_prefers_original_completed_time():
     assert "completed_at::timestamp" in source
 
 
+def test_multi_review_queries_do_not_assume_derived_tables_have_an_id_column():
+    source = ASSORTED_QUERIES.read_text()
+
+    cleanup_start = source.index("def renumber_review_table_query")
+    cleanup_end = source.index("def deduplicate_neolab_query")
+    cleanup_source = source[cleanup_start:cleanup_end]
+
+    read_start = source.index("def read_deduplicated_data_query")
+    read_end = source.index("elif 'neolab' in destination_table", read_start)
+    read_source = source[read_start:read_end]
+
+    assert "review.id" not in cleanup_source
+    assert "ds.id" not in read_source
+    assert "review.ctid" in cleanup_source
+    assert "ds.ctid::text AS source_row_id" in read_source
+
+
 def test_multi_review_existing_row_check_uses_completed_minute():
     source = ASSORTED_QUERIES.read_text()
 

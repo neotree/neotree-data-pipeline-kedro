@@ -43,7 +43,7 @@ def renumber_review_table_query(table: str) -> str:
                             review.scriptid,
                             review.uid,
                             DATE_TRUNC('minute', {completed_at})
-                        ORDER BY review.id DESC, review.ingested_at DESC NULLS LAST
+                        ORDER BY review.ingested_at DESC NULLS LAST, review.ctid DESC
                     ) AS rn
                 FROM derived."{table}" AS review
                 WHERE review.scriptid IS NOT NULL
@@ -63,7 +63,7 @@ def renumber_review_table_query(table: str) -> str:
                 review.ctid AS row_ctid,
                 ROW_NUMBER() OVER (
                     PARTITION BY review.uid
-                    ORDER BY {completed_at}, review.id, review.unique_key
+                    ORDER BY {completed_at}, review.scriptid, review.unique_key, review.ctid
                 ) AS new_review_number
             FROM derived."{table}" AS review
             WHERE review.uid IS NOT NULL
@@ -423,7 +423,8 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                     cs.unique_key,
                     cs."data"->>'completed_at' as "completed_time"
                     {facility_select},
-                    cs.id
+                    cs.id,
+                    cs.id::text AS source_row_id
                 FROM {source_table} cs
                 WHERE cs.scriptid {where_condition}
                   AND cs."data"->>'completed_at' is NOT NULL
@@ -438,7 +439,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                     ds.scriptid,
                     {existing_completed_at} AS completed_at,
                     ds.unique_key,
-                    ds.id,
+                    ds.ctid::text AS source_row_id,
                     FALSE AS is_incoming
                 FROM derived."{destination_table}" ds
                 WHERE ds.uid IS NOT NULL
@@ -449,7 +450,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                     scriptid,
                     completed_at,
                     unique_key,
-                    id,
+                    source_row_id,
                     TRUE AS is_incoming
                 FROM incoming
                 UNION ALL
@@ -458,20 +459,20 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                     scriptid,
                     completed_at,
                     unique_key,
-                    id,
+                    source_row_id,
                     is_incoming
                 FROM existing
             ),
             numbered AS (
                 SELECT
-                    id,
+                    source_row_id,
                     uid,
                     scriptid,
                     unique_key,
                     is_incoming,
                     ROW_NUMBER() OVER (
                         PARTITION BY uid
-                        ORDER BY completed_at, id, unique_key
+                        ORDER BY completed_at, scriptid, unique_key, source_row_id
                     ) AS review_number
                 FROM combined
             )
@@ -491,7 +492,7 @@ def read_deduplicated_data_query(case_condition, where_condition, source_table,d
                 incoming.facility
             FROM incoming
             JOIN numbered
-              ON incoming.id = numbered.id
+              ON incoming.source_row_id = numbered.source_row_id
              AND numbered.is_incoming IS TRUE;;
             '''
             return sql
