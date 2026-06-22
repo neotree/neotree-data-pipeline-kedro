@@ -542,7 +542,7 @@ def process_admissions_dataframe(adm_raw: pd.DataFrame, adm_new_entries: Any, ad
         add_new_columns_if_needed(adm_df, 'admissions')
 
         # Validate BEFORE transformation to log raw data issues
-        validate_dataframe_with_ge(adm_df, 'admissions')
+        adm_df = validate_dataframe_with_ge(adm_df, 'admissions')
 
         # Final transformations (fixes issues after validation)
         adm_df = finalize_dataframe(adm_df, 'admissions')
@@ -618,7 +618,7 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
         add_new_columns_if_needed(dis_df, 'discharges')
 
         # Validate BEFORE transformation to log raw data issues
-        validate_dataframe_with_ge(dis_df, 'discharges')
+        dis_df = validate_dataframe_with_ge(dis_df, 'discharges')
 
         # Final transformations (fixes issues after validation)
         dis_df = finalize_dataframe(dis_df, 'discharges')
@@ -686,7 +686,7 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
         add_new_columns_if_needed(mat_outcomes_df, 'maternal_outcomes')
 
         # Validate BEFORE transformation to log raw data issues
-        validate_dataframe_with_ge(mat_outcomes_df, 'maternal_outcomes')
+        mat_outcomes_df = validate_dataframe_with_ge(mat_outcomes_df, 'maternal_outcomes')
 
         # Final transformations (fixes issues after validation)
         mat_outcomes_df = finalize_dataframe(mat_outcomes_df, 'maternal_outcomes')
@@ -743,7 +743,7 @@ def process_vitalsigns_dataframe(vit_signs_new_entries: Any, vit_signs_mcl: Any)
     add_new_columns_if_needed(vit_signs_df, 'vitalsigns')
 
     # Validate BEFORE transformation to log raw data issues
-    validate_dataframe_with_ge(vit_signs_df, 'vitalsigns')
+    vit_signs_df = validate_dataframe_with_ge(vit_signs_df, 'vitalsigns')
 
     # Final transformations (fixes issues after validation)
     vit_signs_df = finalize_dataframe(vit_signs_df, 'vitalsigns')
@@ -822,7 +822,7 @@ def process_neolab_dataframe(neolab_raw: pd.DataFrame, neolab_new_entries: Any) 
             neolab_df = neolab_df.to_frame().T
         add_new_columns_if_needed(neolab_df, 'neolab')
         # Validate BEFORE transformation to log raw data issues
-        validate_dataframe_with_ge(neolab_df, 'neolab')
+        neolab_df = validate_dataframe_with_ge(neolab_df, 'neolab')
 
         # Final transformations (fixes issues after validation)
         neolab_df = neolab_df.loc[:, ~neolab_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
@@ -909,7 +909,7 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
         add_new_columns_if_needed(baseline_df, 'baseline')
 
         # Validate BEFORE transformation to log raw data issues
-        validate_dataframe_with_ge(baseline_df, 'baseline')
+        baseline_df = validate_dataframe_with_ge(baseline_df, 'baseline')
 
         # Final transformations (fixes issues after validation)
         baseline_df = baseline_df.loc[:, ~baseline_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]

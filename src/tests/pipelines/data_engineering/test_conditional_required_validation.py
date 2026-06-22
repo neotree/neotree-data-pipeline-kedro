@@ -29,6 +29,24 @@ TEMPLATES = (
     / "data_validation"
     / "templates.py"
 )
+TIDY_DYNAMIC = (
+    PROJECT_ROOT
+    / "src"
+    / "data_pipeline"
+    / "pipelines"
+    / "data_engineering"
+    / "data_tyding"
+    / "tidy_dynamic_tables.py"
+)
+TIDY_CORE = (
+    PROJECT_ROOT
+    / "src"
+    / "data_pipeline"
+    / "pipelines"
+    / "data_engineering"
+    / "data_tyding"
+    / "tidy_admissions_discharges_and_create_mcl_tables.py"
+)
 
 
 def test_field_metadata_preserves_screen_and_field_conditions():
@@ -46,6 +64,19 @@ def test_required_validation_excludes_confidential_fields():
 
     assert "def _is_confidential(field: dict)" in source
     assert "if not is_optional and not is_confidential:" in source
+
+
+def test_validation_drops_confidential_columns_before_downstream_processing():
+    validation_source = VALIDATE.read_text()
+    dynamic_source = TIDY_DYNAMIC.read_text()
+    core_source = TIDY_CORE.read_text()
+
+    assert "def _drop_confidential_columns(" in validation_source
+    assert 'for suffix in (".value", ".label"):' in validation_source
+    assert "metadata_by_script_id.values()," in validation_source
+    assert "return _drop_confidential_columns(df, [schema], logger)" in validation_source
+    assert "script_df = validate_dataframe_with_ge(script_df, script)" in dynamic_source
+    assert core_source.count("= validate_dataframe_with_ge(") == 6
 
 
 def test_required_validation_combines_screen_and_field_conditions():

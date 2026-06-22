@@ -55,6 +55,48 @@ def _normalize_script_id(script_id) -> str:
     return str(script_id).strip()
 
 
+def _is_confidential(field: dict) -> bool:
+    value = field.get("confidential", False)
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "y"}
+    return bool(value)
+
+
+def _drop_confidential_columns(
+    df: pd.DataFrame,
+    schemas,
+    logger: logging.Logger,
+) -> pd.DataFrame:
+    """Return a dataframe without schema-defined confidential columns."""
+    columns_to_drop = set()
+
+    for schema in schemas:
+        fields = schema.values() if isinstance(schema, dict) else schema
+        for field in fields or []:
+            if not isinstance(field, dict) or not _is_confidential(field):
+                continue
+
+            field_key = field.get("key")
+            if not field_key:
+                continue
+
+            for suffix in (".value", ".label"):
+                column = f"{field_key}{suffix}"
+                if column in df.columns:
+                    columns_to_drop.add(column)
+
+    if not columns_to_drop:
+        return df
+
+    ordered_columns = sorted(columns_to_drop)
+    logger.info(
+        "Dropping %s confidential column(s) before downstream processing: %s",
+        len(ordered_columns),
+        ordered_columns,
+    )
+    return df.drop(columns=ordered_columns)
+
+
 def _format_script_details(details: dict) -> str:
     if not details:
         return ""
@@ -645,7 +687,11 @@ def check_value_range(value, min_val, max_val, data_type):
         return False, f"Cannot validate range: {str(e)}"
 
 
-def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="logs/validation.log"):
+def validate_dataframe_with_ge(
+    df: pd.DataFrame,
+    script: str,
+    log_file_path="logs/validation.log",
+) -> pd.DataFrame:
     """
     Comprehensive validation using Great Expectations with schema-based rules.
     Optimized to minimize redundant dataframe iterations.
@@ -658,6 +704,9 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
     - Value ranges (minValue, maxValue)
     - Data types
     - Data quality metrics
+
+    Returns:
+        The validated dataframe with schema-defined confidential columns removed.
     """
     context = gx.get_context()
     loggers = _get_validation_loggers(log_file_path)
@@ -677,7 +726,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
             "issue_message": f"Schema for script '{script}' not found; validation skipped",
             "affected_records": len(df),
         }])
-        return
+        return df
 
     _log_to_all(loggers, "info", f"\n{'='*60}")
     _log_to_all(loggers, "info", f"VALIDATING: {script.upper()} | Rows: {len(df)} | Cols: {len(df.columns)}")
@@ -775,7 +824,11 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         logger.info(f"\n{'='*60}")
         logger.info(f"COMPLETED: {script.upper()} | All scriptIds validated")
         logger.info(f"{'='*60}\n")
-        return
+        return _drop_confidential_columns(
+            df,
+            metadata_by_script_id.values(),
+            logger,
+        )
 
     # LEGACY FORMAT or no scriptId column: Use existing validation
     if isinstance(metadata, dict):
@@ -795,7 +848,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
                 schema = next(iter(script_field_schemas.values()))
     else:
         logger.error(f"Unexpected metadata type: {type(metadata)}")
-        return
+        return df
 
     # Call validation logic for entire dataframe (legacy)
     _validate_subset(
@@ -808,6 +861,7 @@ def validate_dataframe_with_ge(df: pd.DataFrame, script: str, log_file_path="log
         script_id=script if 'scriptid' not in df.columns else None,
         script_details={},
     )
+    return _drop_confidential_columns(df, [schema], logger)
 
 
 def _validate_subset(
@@ -986,12 +1040,6 @@ def _validate_subset(
             visible_mask = visible_mask | (screen_mask & field_mask)
 
         return visible_mask.fillna(False)
-
-    def _is_confidential(field: dict) -> bool:
-        value = field.get("confidential", False)
-        if isinstance(value, str):
-            return value.strip().lower() in {"true", "1", "yes", "y"}
-        return bool(value)
 
     tech_logger.info("\n[TECH] UID SCHEMA & STRUCTURE")
 
@@ -1663,7 +1711,7 @@ def _validate_subset(
     schema_fields = field_info.values() if isinstance(field_info, dict) else schema
     for field in schema_fields:
         field_key = field.get('key')
-        is_confidential = field.get('confidential', False)
+        is_confidential = _is_confidential(field)
 
         if is_confidential:
             # Check if this field exists in the dataset

@@ -341,7 +341,7 @@ def process_single_script(script: str) -> bool:
         # Add new columns if needed
         add_new_columns_if_needed(script_df, script)
           # Validate and save
-        validate_dataframe_with_ge(script_df, script)
+        script_df = validate_dataframe_with_ge(script_df, script)
         # Finalize dataframe
         script_df = finalize_script_dataframe(script_df, script)
         generate_create_insert_sql(script_df, 'derived', script)
