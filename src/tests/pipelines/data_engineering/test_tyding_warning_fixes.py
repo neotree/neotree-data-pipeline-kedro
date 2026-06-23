@@ -65,10 +65,11 @@ def test_validation_is_finalized_on_early_pipeline_returns():
     assert source.count("finalize_validation()") >= 3
 
 
-def test_outlier_failures_are_logged_instead_of_silenced():
+def test_statistical_outliers_are_not_reported_as_metadata_ranges():
     source = VALIDATE.read_text()
 
-    assert "Could not evaluate numeric outliers" in source
+    assert 'issue_type="numeric_outliers"' not in source
+    assert "numeric_values.quantile" not in source
 
 
 def test_duplicate_columns_are_coalesced_before_validation():

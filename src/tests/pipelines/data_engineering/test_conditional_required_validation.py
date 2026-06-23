@@ -89,7 +89,7 @@ def test_required_validation_combines_screen_and_field_conditions():
     assert 'rule.get("screenCondition", "")' in source
     assert 'rule.get("fieldCondition", "")' in source
     assert "screen_mask & field_mask" in source
-    assert "null_mask = visibility_mask & temp_series.isna()" in source
+    assert "null_mask = visibility_mask & normalized_values.isna()" in source
 
 
 def test_condition_results_are_normalized_to_aligned_boolean_series():
@@ -103,13 +103,41 @@ def test_condition_results_are_normalized_to_aligned_boolean_series():
     assert "Unsupported condition result type" in source
 
 
-def test_high_null_analysis_is_condition_and_confidentiality_aware():
+def test_sparse_columns_are_not_reported_as_technical_failures():
     source = VALIDATE.read_text()
 
-    assert "if _is_confidential(field):" in source
-    assert "eligible_mask = _field_visibility_mask(field)" in source
-    assert "df.loc[eligible_mask, col].isna().sum()" in source
-    assert '"eligible_records": eligible_count' in source
+    assert 'issue_type="high_null_rate"' not in source
+    assert "has more than 50% NULL values" not in source
+    assert "visible_schema_cells" in source
+    assert "populated_schema_cells" in source
+    assert "Visible schema values populated" in source
+    assert "Required visible values populated" in source
+    assert "for base_key, field in field_info.items():" in source
+    assert 'value_col = f"{base_key}.value"' in source
+    assert "if value_col in df.columns:" in source
+
+
+def test_duplicate_uids_are_not_checked_within_only_the_current_dataframe():
+    source = VALIDATE.read_text()
+
+    assert 'issue_type="duplicate_uid"' not in source
+    assert "df.duplicated(subset=['uid']" not in source
+    assert "SCRIPTS_ALLOWING_MULTIPLE_UIDS" not in source
+
+
+def test_label_validation_is_limited_to_fields_with_options():
+    source = VALIDATE.read_text()
+
+    assert "and field_options" in source
+    assert "expected_label = field.get('label')" not in source
+    assert "For fields without options" not in source
+
+
+def test_datetime_validation_flags_non_iso_format_changes():
+    source = VALIDATE.read_text()
+
+    assert r"^\d{4}-\d{2}-\d{2}" in source
+    assert "'invalid datetime'" in source
 
 
 def test_all_null_fields_do_not_create_standalone_warnings():
@@ -148,6 +176,7 @@ def test_summary_log_groups_metadata_once_per_script():
     assert '"SCRIPT_HEADER: " + " | ".join(header_parts)' in source
     assert "for issue_key, group_df in script_df.groupby(issue_cols" in source
     assert 'f"SCRIPT_END: End validation for' in source
+    assert '"Sample NeoTree IDs: unavailable"' in source
 
 
 def test_email_and_pdf_render_script_section_colours():

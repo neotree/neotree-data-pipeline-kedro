@@ -446,7 +446,11 @@ def _write_validation_summary_logs(run_id: str) -> Dict[str, str]:
 
                     lines.extend([
                         f"Affected: {total_affected} | Runs: {run_count} | First: {first_seen} | Latest: {last_seen}",
-                        f"Sample NeoTree IDs: {sample_ids}",
+                        (
+                            f"Sample NeoTree IDs: {sample_ids}"
+                            if sample_ids
+                            else "Sample NeoTree IDs: unavailable"
+                        ),
                         "",
                     ])
 
@@ -1043,46 +1047,41 @@ def _validate_subset(
 
     tech_logger.info("\n[TECH] UID SCHEMA & STRUCTURE")
 
-    # Scripts that allow multiple UIDs (e.g., review/follow-up scripts where multiple records per patient are expected)
-    SCRIPTS_ALLOWING_MULTIPLE_UIDS = [
-        'daily_review',
-        'infections',
-        'neolab'
-    ]
-
     try:
         if 'uid' in df.columns:
-            validator.expect_column_values_to_not_be_null(column="uid")
-
-            # Determine if this script allows multiple UIDs
-            script_name_lower = str(script_name or script_or_id).lower()
-            allows_multiple_uids = any(allowed_script in script_name_lower for allowed_script in SCRIPTS_ALLOWING_MULTIPLE_UIDS)
-
-            # Check for duplicate UIDs (only if script doesn't allow multiple UIDs)
-            if not allows_multiple_uids:
-                duplicate_uids = df[df.duplicated(subset=['uid'], keep=False)]
-                if not duplicate_uids.empty:
-                    dup_count = len(duplicate_uids)
-                    unique_dup = duplicate_uids['uid'].nunique()
-                    sample_uids = duplicate_uids['uid'].dropna().unique()[:3].tolist()
-                    tech_logger.error(f"❌ {dup_count} duplicate UID entries ({unique_dup} unique UIDs) | Samples: {sample_uids}")
-                    errors.append(f"Duplicate UIDs found: {dup_count} rows")
-                    _add_issue(
-                        category="tech",
-                        issue_type="duplicate_uid",
-                        issue_message="Duplicate UID entries found",
-                        affected_records=dup_count,
-                        affected_neotree_ids=sample_uids,
-                        sample_values={"unique_duplicate_uids": int(unique_dup)},
+            uid_missing_mask = (
+                df["uid"].isna()
+                | df["uid"].astype(str).str.strip().eq("")
+            )
+            missing_uid_count = int(uid_missing_mask.sum())
+            if missing_uid_count:
+                if "unique_key" in df.columns:
+                    sample_identifiers = (
+                        df.loc[uid_missing_mask, "unique_key"]
+                        .dropna()
+                        .head(5)
+                        .tolist()
                     )
                 else:
-                    tech_logger.info("✓ All UIDs unique and non-null")
+                    sample_identifiers = df.index[uid_missing_mask].tolist()[:5]
+                tech_logger.error(
+                    "❌ %s rows have a missing UID | Record identifiers: %s",
+                    missing_uid_count,
+                    sample_identifiers,
+                )
+                _add_issue(
+                    category="tech",
+                    issue_type="null_uid",
+                    issue_message="Rows have a missing UID",
+                    affected_records=missing_uid_count,
+                    sample_values={"record_identifiers": sample_identifiers},
+                    actual_value_sample=", ".join(
+                        str(identifier)
+                        for identifier in sample_identifiers
+                    ) or None,
+                )
             else:
-                # For scripts allowing multiple UIDs, just report stats
-                unique_uids = df['uid'].nunique()
-                total_rows = len(df)
-                avg_records = total_rows / unique_uids if unique_uids > 0 else 0
-                tech_logger.info(f"✓ UIDs validated (multiple entries allowed) | {unique_uids} unique UIDs | {total_rows} total rows | Avg: {avg_records:.2f} records/UID")
+                tech_logger.info("✓ All rows have a UID")
         else:
             tech_logger.error("❌ UID column missing from dataset")
             errors.append("UID column missing")
@@ -1111,6 +1110,36 @@ def _validate_subset(
     range_results = []
     type_results = []
     label_results = []
+    visible_schema_cells = 0
+    populated_schema_cells = 0
+    required_visible_cells = 0
+    populated_required_cells = 0
+
+    for base_key, field in field_info.items():
+        if not isinstance(field, dict) or _is_confidential(field):
+            continue
+
+        visibility_mask = _field_visibility_mask(field)
+        eligible_count = int(visibility_mask.sum())
+        value_col = f"{base_key}.value"
+        populated_count = 0
+        if value_col in df.columns:
+            normalized_values = (
+                df[value_col]
+                .astype(str)
+                .replace(['nan', '<NA>', 'None', 'null', 'NAT', 'NaT'], '')
+                .str.strip()
+                .replace('', np.nan)
+            )
+            populated_count = int(
+                (visibility_mask & normalized_values.notna()).sum()
+            )
+
+        visible_schema_cells += eligible_count
+        populated_schema_cells += populated_count
+        if not field.get('optional', True):
+            required_visible_cells += eligible_count
+            populated_required_cells += populated_count
 
     # Single loop through all .value columns
     for value_col in [col for col in df.columns if col.endswith('.value')]:
@@ -1128,8 +1157,14 @@ def _validate_subset(
         visibility_mask = _field_visibility_mask(field)
         min_val = field.get('minValue')
         max_val = field.get('maxValue')
-        expected_label = field.get('label')
         field_options = field.get('options', [])
+        normalized_values = (
+            df[value_col]
+            .astype(str)
+            .replace(['nan', '<NA>', 'None', 'null', 'NAT', 'NaT'], '')
+            .str.strip()
+            .replace('', np.nan)
+        )
 
         # --- REQUIRED FIELDS VALIDATION ---
         if not is_optional and not is_confidential:
@@ -1138,15 +1173,7 @@ def _validate_subset(
                 continue
 
             # Check for NULL/empty values
-            temp_series = (
-                df[value_col]
-                .astype(str)
-                .replace(['nan', '<NA>', 'None', 'null', 'NAT', 'NaT'], '')
-                .str.strip()
-                .replace('', np.nan)
-            )
-
-            null_mask = visibility_mask & temp_series.isna()
+            null_mask = visibility_mask & normalized_values.isna()
             null_count = int(null_mask.sum())
             if null_count > 0:
                 null_pct = (null_count / eligible_count) * 100
@@ -1211,15 +1238,7 @@ def _validate_subset(
         # --- DATA TYPE VALIDATION ---
         # All-NULL fields are handled by required-field validation when the
         # field is required and visible. Do not emit a duplicate warning.
-        temp_base_series = (
-            df[value_col]
-            .astype(str)
-            .replace(['nan', '<NA>', 'None', 'null', 'NAT'], '')
-            .str.strip()
-            .replace('', np.nan)
-        )
-
-        visible_values = temp_base_series.loc[visibility_mask]
+        visible_values = normalized_values.loc[visibility_mask]
         if not visible_values.empty and visible_values.isna().all():
             continue
 
@@ -1323,61 +1342,57 @@ def _validate_subset(
                     })
 
             # --- LABEL VALIDATION ---
-            if label_col in df.columns:
-                # Only validate labels if options array is not empty AND field type is one of the select types
-                if field_options and len(field_options) > 0 and field_type in ('single_select_option', 'dropdown', 'multi_select_option'):
-                    # Build a mapping of value -> valueLabel from options
-                    value_to_label = {str(opt.get('value', '')).strip(): str(opt.get('valueLabel', '')).strip()
-                                     for opt in field_options if opt.get('value') is not None}
+            if (
+                label_col in df.columns
+                and field_options
+                and field_type in (
+                    'single_select_option',
+                    'dropdown',
+                    'multi_select_option',
+                )
+            ):
+                value_to_label = {
+                    str(opt.get('value', '')).strip():
+                    str(opt.get('valueLabel', '')).strip()
+                    for opt in field_options
+                    if opt.get('value') is not None
+                }
 
-                    # Check each row's value-label pair
-                    mismatched_rows = []
-                    for idx in df.index:
-                        row_value = df.loc[idx, value_col]
-                        row_label = df.loc[idx, label_col]
+                mismatched_rows = []
+                for idx in df.index[visibility_mask]:
+                    row_value = df.loc[idx, value_col]
+                    row_label = df.loc[idx, label_col]
 
-                        # Skip if both are null/empty
-                        if (pd.isna(row_value) or str(row_value).strip() == '') and \
-                           (pd.isna(row_label) or str(row_label).strip() == ''):
-                            continue
+                    if (pd.isna(row_value) or str(row_value).strip() == '') and \
+                       (pd.isna(row_label) or str(row_label).strip() == ''):
+                        continue
 
-                        # Skip if value is null/empty
-                        if pd.isna(row_value) or str(row_value).strip() == '':
-                            continue
+                    if pd.isna(row_value) or str(row_value).strip() == '':
+                        continue
 
-                        # Get expected label for this value
-                        row_value_str = str(row_value).strip()
-                        expected_label_for_value = value_to_label.get(row_value_str)
+                    row_value_str = str(row_value).strip()
+                    expected_label_for_value = value_to_label.get(row_value_str)
 
-                        if expected_label_for_value is not None:
-                            row_label_str = str(row_label).strip() if pd.notna(row_label) else ''
-                            # Case-insensitive comparison
-                            if row_label_str.lower() != expected_label_for_value.lower():
-                                uid = df.loc[idx, 'uid'] if 'uid' in df.columns else idx
-                                mismatched_rows.append({
-                                    'uid': uid,
-                                    'value': row_value_str,
-                                    'actual_label': row_label_str,
-                                    'expected_label': expected_label_for_value
-                                })
+                    if expected_label_for_value is not None:
+                        row_label_str = (
+                            str(row_label).strip()
+                            if pd.notna(row_label)
+                            else ''
+                        )
+                        if row_label_str.lower() != expected_label_for_value.lower():
+                            uid = df.loc[idx, 'uid'] if 'uid' in df.columns else idx
+                            mismatched_rows.append({
+                                'uid': uid,
+                                'value': row_value_str,
+                                'actual_label': row_label_str,
+                                'expected_label': expected_label_for_value
+                            })
 
-                    if mismatched_rows:
-                        label_results.append({
-                            'base_key': base_key,
-                            'mismatched_rows': mismatched_rows
-                        })
-                elif expected_label is not None:
-                    # For fields without options, validate against expected_label
-                    pattern = rf"(?i)^\s*$|^{re.escape(expected_label)}$"
-                    result = validator.expect_column_values_to_match_regex(
-                        column=label_col,
-                        regex=pattern,
-                        mostly=1.0
-                    )
-
-                    if not result['success']:
-                        invalid_count = result['result'].get('unexpected_count', 0)
-                        warnings.append(f"Field '{base_key}' label mismatch in {invalid_count} rows")
+                if mismatched_rows:
+                    label_results.append({
+                        'base_key': base_key,
+                        'mismatched_rows': mismatched_rows
+                    })
 
         except Exception as e:
             err_msg = f"Type validation failed for {base_key}: {str(e)}"
@@ -1446,58 +1461,29 @@ def _validate_subset(
 
     tech_logger.info("\n[TECH] DATA QUALITY")
 
-    # TECH-3.1 Completeness & NULL Analysis
-    total_cells = df.shape[0] * df.shape[1]
-    null_cells = df.isnull().sum().sum()
-    completeness_pct = ((total_cells - null_cells) / total_cells) * 100
-    tech_logger.info(f"   Completeness: {completeness_pct:.2f}% ({total_cells - null_cells}/{total_cells} cells)")
-
-    # Show columns with high NULL rates. For schema fields, only count rows
-    # where the field should be visible and exclude confidential fields.
-    high_null_columns = []
-    for col in df.columns:
-        base_key = None
-        if str(col).endswith(".value"):
-            base_key = str(col)[:-6]
-        elif str(col).endswith(".label"):
-            base_key = str(col)[:-6]
-
-        field = field_info.get(base_key) if base_key else None
-        if isinstance(field, dict):
-            if _is_confidential(field):
-                continue
-            eligible_mask = _field_visibility_mask(field)
-            eligible_count = int(eligible_mask.sum())
-            if eligible_count == 0:
-                continue
-            null_count = int(df.loc[eligible_mask, col].isna().sum())
-        else:
-            eligible_count = len(df)
-            null_count = int(df[col].isna().sum())
-
-        null_rate = (null_count / eligible_count) * 100 if eligible_count else 0
-        if null_rate > 50:
-            high_null_columns.append((col, null_rate, null_count, eligible_count))
-
-    high_null_columns.sort(key=lambda item: item[1], reverse=True)
-    if high_null_columns:
-        tech_logger.warning(f"⚠ {len(high_null_columns)} columns >50% NULL:")
-        for col, rate, null_count, eligible_count in high_null_columns[:5]:
-            tech_logger.warning(f"   {col}: {rate:.1f}%")
-            _add_issue(
-                category="tech",
-                issue_type="high_null_rate",
-                issue_message=f"Column '{col}' has more than 50% NULL values",
-                affected_records=null_count,
-                field_key=col[:-6] if str(col).endswith(".value") else str(col),
-                severity="warning",
-                sample_values={
-                    "null_rate_pct": float(rate),
-                    "eligible_records": eligible_count,
-                },
-            )
-        if len(high_null_columns) > 5:
-            tech_logger.warning(f"   ... and {len(high_null_columns) - 5} more")
+    # TECH-3.1 Schema-aware completeness metrics
+    schema_completeness_pct = (
+        (populated_schema_cells / visible_schema_cells) * 100
+        if visible_schema_cells
+        else 100.0
+    )
+    required_completeness_pct = (
+        (populated_required_cells / required_visible_cells) * 100
+        if required_visible_cells
+        else 100.0
+    )
+    tech_logger.info(
+        "   Visible schema values populated: %.2f%% (%s/%s)",
+        schema_completeness_pct,
+        populated_schema_cells,
+        visible_schema_cells,
+    )
+    tech_logger.info(
+        "   Required visible values populated: %.2f%% (%s/%s)",
+        required_completeness_pct,
+        populated_required_cells,
+        required_visible_cells,
+    )
 
     # TECH-3.2 Consistency Checks (value-label pairs)
     inconsistencies = 0
@@ -1549,62 +1535,7 @@ def _validate_subset(
     else:
         tech_logger.error(f"   ❌ {inconsistencies} required fields with inconsistencies")
 
-    # TECH-3.3 Outlier Detection (for numeric fields)
-    outlier_fields = 0
-    for value_col in [col for col in df.columns if col.endswith('.value')]:
-        base_key = value_col[:-6]
-        if base_key not in field_info:
-            continue
-
-        field = field_info[base_key]
-        data_type = field.get('dataType', field.get('type', ''))
-
-        if data_type in ['number', 'integer', 'float', 'timer']:
-            try:
-                numeric_values = cast(pd.Series, pd.to_numeric(df[value_col], errors='coerce')).dropna()
-                if len(numeric_values) > 10:
-                    Q1 = numeric_values.quantile(0.25)
-                    Q3 = numeric_values.quantile(0.75)
-                    IQR = Q3 - Q1
-                    lower_bound = Q1 - 3 * IQR
-                    upper_bound = Q3 + 3 * IQR
-                    outliers = numeric_values[(numeric_values < lower_bound) | (numeric_values > upper_bound)]
-
-                    if len(outliers) > 0:
-                        outlier_pct = (len(outliers) / len(numeric_values)) * 100
-                        if outlier_pct > 5:
-                            tech_logger.warning(f"⚠ '{base_key}': {len(outliers)} ({outlier_pct:.1f}%) outliers | Range: [{lower_bound:.2f}, {upper_bound:.2f}]")
-                            outlier_fields += 1
-                            outlier_mask = pd.to_numeric(df[value_col], errors='coerce').isin(outliers)
-                            _add_issue(
-                                category="tech",
-                                issue_type="numeric_outliers",
-                                issue_message=f"Field '{base_key}' has significant numeric outliers",
-                                affected_records=len(outliers),
-                                field_key=base_key,
-                                severity="warning",
-                                affected_neotree_ids=get_safe_sample_uids(df, outlier_mask, 5),
-                                sample_values={
-                                    "outlier_pct": float(outlier_pct),
-                                    "lower_bound": float(lower_bound),
-                                    "upper_bound": float(upper_bound),
-                                },
-                                min_value=lower_bound,
-                                max_value=upper_bound,
-                            )
-            except Exception as exc:
-                tech_logger.warning(
-                    "⚠ Could not evaluate numeric outliers for '%s': %s",
-                    base_key,
-                    exc,
-                )
-
-    if outlier_fields == 0:
-        tech_logger.info("   ✓ No significant outliers")
-    else:
-        tech_logger.info(f"   {outlier_fields} fields with outliers")
-
-    # TECH-3.4 Referential Integrity & Record Distribution
+    # TECH-3.3 Referential Integrity & Record Distribution
     if 'uid' in df.columns:
         unique_uids = df['uid'].nunique()
         total_rows = len(df)
