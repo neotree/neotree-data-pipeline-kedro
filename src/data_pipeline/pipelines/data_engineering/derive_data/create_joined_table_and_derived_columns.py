@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime as dt
-from typing import Optional, List, Tuple
+from typing import Callable, List, Optional, Tuple
 
 import pandas as pd  # type: ignore
 
@@ -76,6 +76,286 @@ def get_query_for_table(table_name: str, joined_table_name: str, not_joined_quer
         return not_joined_query_fn()
     else:
         return all_query_fn(table_name)
+
+
+def quote_identifier(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def qualified_table(schema: str, table_name: str) -> str:
+    return f"{quote_identifier(schema)}.{quote_identifier(table_name)}"
+
+
+def sql_literal(value) -> str:
+    if pd.isna(value):
+        return "NULL"
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def read_records_not_already_joined(
+    source_table: str,
+    joined_table: str,
+    join_columns: List[str],
+    source_unique_key_col: str = "unique_key",
+    joined_unique_key_col: str = "unique_key",
+    schema: str = "derived",
+) -> Optional[str]:
+    if not table_exists(schema, source_table):
+        logging.warning(f"Skipping join input {schema}.{source_table}: table does not exist")
+        return None
+
+    if not table_exists(schema, joined_table):
+        return read_all_from_derived_table(source_table)
+
+    if not column_exists(schema, joined_table, joined_unique_key_col):
+        logging.info(
+            f"Column '{joined_unique_key_col}' missing on {schema}.{joined_table}; "
+            f"reading all rows from {schema}.{source_table}"
+        )
+        return read_all_from_derived_table(source_table)
+
+    source_alias = "src"
+    joined_alias = "j"
+    predicates = [
+        (
+            f"{source_alias}.{quote_identifier(column)} = "
+            f"{joined_alias}.{quote_identifier(column)}"
+        )
+        for column in join_columns
+    ]
+    predicates.append(
+        f"{source_alias}.{quote_identifier(source_unique_key_col)} = "
+        f"{joined_alias}.{quote_identifier(joined_unique_key_col)}"
+    )
+    predicate_sql = "\n      AND ".join(predicates)
+
+    return f"""SELECT *
+FROM {qualified_table(schema, source_table)} {source_alias}
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM {qualified_table(schema, joined_table)} {joined_alias}
+    WHERE {predicate_sql}
+);"""
+
+
+def read_peads_admissions_not_joined() -> Optional[str]:
+    return read_records_not_already_joined(
+        source_table="peads_admissions",
+        joined_table="joined_peads_admissions_discharges",
+        join_columns=["uid"],
+        joined_unique_key_col="unique_key",
+    )
+
+
+def read_peads_discharges_not_joined() -> Optional[str]:
+    return read_records_not_already_joined(
+        source_table="peads_discharges",
+        joined_table="joined_peads_admissions_discharges",
+        join_columns=["uid"],
+        joined_unique_key_col="unique_key_discharge",
+    )
+
+
+def read_one_sided_joined_records(
+    joined_table: str,
+    present_key_col: str,
+    missing_key_col: str,
+    schema: str = "derived",
+) -> Optional[str]:
+    if not table_exists(schema, joined_table):
+        return None
+
+    for column in [present_key_col, missing_key_col]:
+        if not column_exists(schema, joined_table, column):
+            logging.info(
+                f"Skipping one-sided reconciliation for {schema}.{joined_table}: "
+                f"column '{column}' does not exist"
+            )
+            return None
+
+    return f"""SELECT *
+FROM {qualified_table(schema, joined_table)}
+WHERE {quote_identifier(present_key_col)} IS NOT NULL
+  AND {quote_identifier(present_key_col)}::TEXT <> ''
+  AND (
+      {quote_identifier(missing_key_col)} IS NULL
+      OR {quote_identifier(missing_key_col)}::TEXT = ''
+  );"""
+
+
+def present_values(df: pd.DataFrame, column: str) -> pd.Series:
+    if column not in df.columns:
+        return pd.Series(False, index=df.index)
+
+    value_text = df[column].astype(str).str.strip()
+    return (
+        df[column].notna()
+        & (value_text != "")
+        & (~value_text.str.lower().isin({"nan", "none", "nat", "<na>"}))
+    )
+
+
+def key_set(df: pd.DataFrame, column: str) -> set:
+    if df.empty or column not in df.columns:
+        return set()
+
+    values = df.loc[present_values(df, column), column]
+    return set(values.astype(str))
+
+
+def drop_rows_by_keys(df: pd.DataFrame, column: str, keys: set) -> pd.DataFrame:
+    if df.empty or not keys or column not in df.columns:
+        return df
+
+    return df[~df[column].astype(str).isin(keys)].copy()
+
+
+def drop_empty_placeholder_columns(
+    df: pd.DataFrame,
+    columns_to_keep: List[str],
+) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    keep = set(columns_to_keep)
+    columns_to_drop = [
+        column for column in df.columns
+        if column not in keep and not present_values(df, column).any()
+    ]
+    return df.drop(columns=columns_to_drop, errors="ignore")
+
+
+def delete_one_sided_joined_rows(
+    joined_table: str,
+    key_column: str,
+    keys: set,
+    missing_key_column: str,
+    schema: str = "derived",
+    batch_size: int = 1000,
+) -> None:
+    if not keys:
+        return
+
+    key_list = list(keys)
+    for index in range(0, len(key_list), batch_size):
+        batch = key_list[index:index + batch_size]
+        key_values = ", ".join(sql_literal(value) for value in batch)
+        delete_query = f"""DELETE FROM {qualified_table(schema, joined_table)}
+WHERE {quote_identifier(key_column)} IN ({key_values})
+  AND (
+      {quote_identifier(missing_key_column)} IS NULL
+      OR {quote_identifier(missing_key_column)}::TEXT = ''
+  );;"""
+        inject_sql(delete_query, f"DELETE STALE ONE-SIDED {schema}.{joined_table}")
+
+
+def delete_placeholders_with_joined_counterparts(
+    joined_table: str,
+    schema: str = "derived",
+) -> None:
+    if not table_exists(schema, joined_table):
+        return
+
+    for column in ["unique_key", "unique_key_discharge"]:
+        if not column_exists(schema, joined_table, column):
+            return
+
+    table_sql = qualified_table(schema, joined_table)
+    cleanup_query = f"""
+DELETE FROM {table_sql} stale
+WHERE stale."unique_key" IS NOT NULL
+  AND stale."unique_key"::TEXT <> ''
+  AND (stale."unique_key_discharge" IS NULL OR stale."unique_key_discharge"::TEXT = '')
+  AND EXISTS (
+      SELECT 1
+      FROM {table_sql} joined
+      WHERE joined."unique_key" = stale."unique_key"
+        AND joined."unique_key_discharge" IS NOT NULL
+        AND joined."unique_key_discharge"::TEXT <> ''
+  );;
+
+DELETE FROM {table_sql} stale
+WHERE stale."unique_key_discharge" IS NOT NULL
+  AND stale."unique_key_discharge"::TEXT <> ''
+  AND (stale."unique_key" IS NULL OR stale."unique_key"::TEXT = '')
+  AND EXISTS (
+      SELECT 1
+      FROM {table_sql} joined
+      WHERE joined."unique_key_discharge" = stale."unique_key_discharge"
+        AND joined."unique_key" IS NOT NULL
+        AND joined."unique_key"::TEXT <> ''
+  );;
+"""
+    inject_sql(cleanup_query, f"DELETE JOINED PLACEHOLDERS {schema}.{joined_table}")
+
+
+def prepare_joined_dataset_for_write(
+    joined_df: pd.DataFrame,
+    table_name: str,
+    schema: str = "derived",
+) -> pd.DataFrame:
+    add_missing_columns(joined_df, table_name, schema)
+
+    date_column_types = pd.DataFrame(get_date_column_names(table_name, schema))
+    if not date_column_types.empty:
+        joined_df = format_date_without_timezone(joined_df, date_column_types)
+
+    joined_df.columns = joined_df.columns.astype(str)
+    return joined_df.loc[:, ~joined_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+
+
+def write_joined_dataset(joined_df: pd.DataFrame, table_name: str, schema: str = "derived") -> None:
+    if joined_df is None or joined_df.empty:
+        logging.info(f"No rows to save for {schema}.{table_name}")
+        return
+
+    joined_df = prepare_joined_dataset_for_write(joined_df, table_name, schema)
+    logging.info(f"Saving joined dataset to {schema}.{table_name}: {len(joined_df)} rows")
+    generate_create_insert_sql(joined_df, schema, table_name)
+
+
+def build_reconciled_one_sided_matches(
+    existing_one_sided_df: pd.DataFrame,
+    counterpart_df: pd.DataFrame,
+    joined_table: str,
+    join_columns: List[str],
+    existing_key_col: str,
+    counterpart_key_col: str,
+    existing_is_left: bool,
+) -> Tuple[pd.DataFrame, set, set]:
+    if existing_one_sided_df.empty or counterpart_df.empty:
+        return pd.DataFrame(), set(), set()
+
+    existing_one_sided_df = drop_empty_placeholder_columns(
+        existing_one_sided_df,
+        columns_to_keep=join_columns + [existing_key_col],
+    )
+    left_df = existing_one_sided_df if existing_is_left else counterpart_df
+    right_df = counterpart_df if existing_is_left else existing_one_sided_df
+    reconciled_df = createJoinedDataSet(
+        left_df,
+        right_df,
+        joined_table_name=joined_table,
+        join_columns=join_columns,
+    )
+    if reconciled_df.empty:
+        return pd.DataFrame(), set(), set()
+
+    matched_mask = present_values(reconciled_df, existing_key_col) & present_values(
+        reconciled_df,
+        counterpart_key_col,
+    )
+    matched_df = reconciled_df[matched_mask].copy()
+    if matched_df.empty:
+        return pd.DataFrame(), set(), set()
+
+    existing_keys = key_set(matched_df, existing_key_col)
+    counterpart_keys = key_set(matched_df, counterpart_key_col)
+    logging.info(
+        f"Reconciled {len(matched_df)} existing one-sided rows in {joined_table}"
+    )
+
+    return matched_df, existing_keys, counterpart_keys
 
 
 def calculate_date_differences_vectorized(df: pd.DataFrame) -> pd.DataFrame:
@@ -155,6 +435,127 @@ def ensure_index(schema: str, table: str, columns: List[str], index_name: str) -
     inject_sql(create_index, f"CREATE INDEX {schema}.{index_name}")
 
 
+def create_and_write_joined_table(
+    left_table: str,
+    right_table: str,
+    joined_table: str,
+    join_columns: List[str],
+    left_not_joined_query_fn: Optional[Callable[[], str]] = None,
+    right_not_joined_query_fn: Optional[Callable[[], str]] = None,
+    calculate_derived_columns: bool = True,
+) -> None:
+    logging.info(f"... Creating {joined_table} from {left_table} and {right_table}")
+
+    if not table_exists("derived", left_table) or not table_exists("derived", right_table):
+        logging.warning(
+            f"Skipping {joined_table}: source tables {left_table} and/or {right_table} do not exist"
+        )
+        return
+
+    ensure_index("derived", joined_table, join_columns + ["unique_key"], f"idx_{joined_table}_left_join")
+    ensure_index("derived", joined_table, join_columns + ["unique_key_discharge"], f"idx_{joined_table}_right_join")
+    ensure_index("derived", left_table, join_columns + ["unique_key"], f"idx_{left_table}_join")
+    ensure_index("derived", right_table, join_columns + ["unique_key"], f"idx_{right_table}_join")
+
+    if table_exists("derived", joined_table) and left_not_joined_query_fn is not None:
+        left_query = left_not_joined_query_fn()
+    else:
+        left_query = read_records_not_already_joined(
+            left_table,
+            joined_table,
+            join_columns,
+            joined_unique_key_col="unique_key",
+        )
+
+    if table_exists("derived", joined_table) and right_not_joined_query_fn is not None:
+        right_query = right_not_joined_query_fn()
+    else:
+        right_query = read_records_not_already_joined(
+            right_table,
+            joined_table,
+            join_columns,
+            joined_unique_key_col="unique_key_discharge",
+        )
+
+    left_df = run_query_and_return_df(left_query) if left_query else pd.DataFrame()
+    logging.info(f"{left_table} loaded: {len(left_df)} rows")
+
+    right_df = run_query_and_return_df(right_query) if right_query else pd.DataFrame()
+    logging.info(f"{right_table} loaded: {len(right_df)} rows")
+
+    output_frames = []
+    stale_left_keys = set()
+    stale_right_keys = set()
+
+    existing_left_query = read_one_sided_joined_records(
+        joined_table=joined_table,
+        present_key_col="unique_key",
+        missing_key_col="unique_key_discharge",
+    )
+    existing_left_df = run_query_and_return_df(existing_left_query) if existing_left_query else pd.DataFrame()
+    reconciled_left_df, matched_left_keys, consumed_right_keys = build_reconciled_one_sided_matches(
+        existing_one_sided_df=existing_left_df,
+        counterpart_df=right_df,
+        joined_table=joined_table,
+        join_columns=join_columns,
+        existing_key_col="unique_key",
+        counterpart_key_col="unique_key_discharge",
+        existing_is_left=True,
+    )
+    if not reconciled_left_df.empty:
+        output_frames.append(reconciled_left_df)
+        stale_left_keys.update(matched_left_keys)
+        right_df = drop_rows_by_keys(right_df, "unique_key", consumed_right_keys)
+
+    existing_right_query = read_one_sided_joined_records(
+        joined_table=joined_table,
+        present_key_col="unique_key_discharge",
+        missing_key_col="unique_key",
+    )
+    existing_right_df = run_query_and_return_df(existing_right_query) if existing_right_query else pd.DataFrame()
+    reconciled_right_df, matched_right_keys, consumed_left_keys = build_reconciled_one_sided_matches(
+        existing_one_sided_df=existing_right_df,
+        counterpart_df=left_df,
+        joined_table=joined_table,
+        join_columns=join_columns,
+        existing_key_col="unique_key_discharge",
+        counterpart_key_col="unique_key",
+        existing_is_left=False,
+    )
+    if not reconciled_right_df.empty:
+        output_frames.append(reconciled_right_df)
+        stale_right_keys.update(matched_right_keys)
+        left_df = drop_rows_by_keys(left_df, "unique_key", consumed_left_keys)
+
+    new_joined_df = createJoinedDataSet(
+        left_df,
+        right_df,
+        joined_table_name=joined_table,
+        join_columns=join_columns,
+        calculate_derived_columns=calculate_derived_columns,
+    )
+    if not new_joined_df.empty:
+        output_frames.append(new_joined_df)
+
+    joined_df = pd.concat(output_frames, ignore_index=True, sort=False) if output_frames else pd.DataFrame()
+    logging.info(f"{joined_table} dataset created: {len(joined_df)} rows")
+
+    write_joined_dataset(joined_df, joined_table)
+    delete_one_sided_joined_rows(
+        joined_table=joined_table,
+        key_column="unique_key",
+        keys=stale_left_keys,
+        missing_key_column="unique_key_discharge",
+    )
+    delete_one_sided_joined_rows(
+        joined_table=joined_table,
+        key_column="unique_key_discharge",
+        keys=stale_right_keys,
+        missing_key_column="unique_key",
+    )
+    delete_placeholders_with_joined_counterparts(joined_table)
+
+
 def join_table():
     logging.info("... Starting script to create joined table")
 
@@ -163,48 +564,23 @@ def join_table():
     reset_log('logs/queries.log')
 
     try:
-        # Ensure indexes for join performance (only if table + columns exist)
-        ensure_index(
-            "derived",
-            "joined_admissions_discharges",
-            ["uid", "unique_key"],
-            "idx_joined_adm_dis_uid_uk",
-        )
-        ensure_index(
-            "derived",
-            "admissions",
-            ["uid", "unique_key"],
-            "idx_admissions_uid_uk",
-        )
-        ensure_index(
-            "derived",
-            "discharges",
-            ["uid","unique_key"],
-            "idx_discharges_uid_uk",
+        create_and_write_joined_table(
+            left_table="admissions",
+            right_table="discharges",
+            joined_table="joined_admissions_discharges",
+            join_columns=["uid", "facility"],
+            left_not_joined_query_fn=read_admissions_not_joined,
+            right_not_joined_query_fn=read_dicharges_not_joined,
         )
 
-        # Load Derived Admissions and Discharges
-        read_admissions_query = get_query_for_table(
-            'admissions',
-            'joined_admissions_discharges',
-            read_admissions_not_joined,
-            read_all_from_derived_table
+        create_and_write_joined_table(
+            left_table="peads_admissions",
+            right_table="peads_discharges",
+            joined_table="joined_peads_admissions_discharges",
+            join_columns=["uid"],
+            left_not_joined_query_fn=read_peads_admissions_not_joined,
+            right_not_joined_query_fn=read_peads_discharges_not_joined,
         )
-        read_discharges_query = get_query_for_table(
-            'discharges',
-            'joined_admissions_discharges',
-            read_dicharges_not_joined,
-            read_all_from_derived_table
-        )
-
-        adm_df = run_query_and_return_df(read_admissions_query)
-        logging.info(f"Admissions loaded: {len(adm_df)} rows")
-
-        dis_df = run_query_and_return_df(read_discharges_query)
-        logging.info(f"Discharges loaded: {len(dis_df)} rows")
-
-        jn_adm_dis = createJoinedDataSet(adm_df, dis_df)
-        logging.info(f"Joined dataset created: {len(jn_adm_dis)} rows")
 
     except Exception as e:
         logging.error("!!! An error occurred creating joined dataframe")
@@ -213,23 +589,6 @@ def join_table():
     # Now write the table back to the database
     logging.info("... Writing the output back to the database")
     try:
-        # Create Table Using Kedro
-        if jn_adm_dis is not None and not jn_adm_dis.empty:
-            # Add missing columns
-            add_missing_columns(jn_adm_dis, 'joined_admissions_discharges')
-
-            # Format date columns
-            date_column_types = pd.DataFrame(get_date_column_names('joined_admissions_discharges', 'derived'))
-            if not date_column_types.empty:
-                jn_adm_dis = format_date_without_timezone(jn_adm_dis, date_column_types)
-
-            # Clean column names and remove invalid columns
-            jn_adm_dis.columns = jn_adm_dis.columns.astype(str)
-            jn_adm_dis = jn_adm_dis.loc[:, ~jn_adm_dis.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
-
-            logging.info(f"Saving joined dataset: {len(jn_adm_dis)} rows")
-            generate_create_insert_sql(jn_adm_dis, "derived", "joined_admissions_discharges")
-
         # MERGE DISCHARGES CURRENTLY ADDED TO THE NEW DATA SET
         discharge_exists = table_exists('derived', 'discharges')
         joined_exists = table_exists('derived', 'joined_admissions_discharges')
@@ -327,6 +686,34 @@ def calculate_match_score(row: pd.Series) -> float:
     return score
 
 
+def calculate_match_scores_vectorized(df: pd.DataFrame) -> pd.Series:
+    scores = pd.Series(0.0, index=df.index)
+    comparisons = pd.Series(0, index=df.index)
+
+    score_specs = [
+        ('OFC.value', 'OFCDis.value', 10.0, 1.0),
+        ('Gestation.value', 'Gestation.value_discharge', 10.0, 1.0),
+        ('BirthWeight.value', 'BirthWeight.value_discharge', 5.0, 500.0),
+    ]
+
+    for left_col, right_col, max_score, divisor in score_specs:
+        if left_col not in df.columns or right_col not in df.columns:
+            continue
+
+        left_values = pd.to_numeric(df[left_col], errors='coerce')
+        right_values = pd.to_numeric(df[right_col], errors='coerce')
+        valid = left_values.notna() & right_values.notna()
+        if not valid.any():
+            continue
+
+        diffs = (left_values[valid] - right_values[valid]).abs() / divisor
+        scores.loc[valid] += (max_score - diffs).clip(lower=0)
+        comparisons.loc[valid] += 1
+
+    scores.loc[comparisons == 0] = -1.0
+    return scores
+
+
 def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_adm_idx') -> pd.DataFrame:
     """
     Resolve duplicate matches by selecting best discharge match for EACH individual admission.
@@ -359,8 +746,8 @@ def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_a
         result = non_duplicates.drop(columns=['_match_count'])
         return result
 
-    # Calculate match scores for all duplicate matches
-    duplicates['_match_score'] = duplicates.apply(calculate_match_score, axis=1)
+    # Calculate match scores for all duplicate matches.
+    duplicates['_match_score'] = calculate_match_scores_vectorized(duplicates)
 
     # For each individual admission, keep the discharge with the highest match score
     def select_best_discharge_for_admission(group):
@@ -394,14 +781,21 @@ def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_a
     return result
 
 
-def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFrame:
+def createJoinedDataSet(
+    adm_df: pd.DataFrame,
+    dis_df: pd.DataFrame,
+    joined_table_name: str = "joined_admissions_discharges",
+    join_columns: Optional[List[str]] = None,
+    calculate_derived_columns: bool = True,
+) -> pd.DataFrame:
     """
     Create joined admissions-discharges dataset with intelligent duplicate resolution.
 
     Uses clinical measurements (OFC, Gestation, BirthWeight) to match each admission
     with its most appropriate discharge record when duplicates exist.
     """
-    logging.info("Creating joined dataset")
+    join_columns = join_columns or ['uid', 'facility']
+    logging.info(f"Creating joined dataset {joined_table_name} on {join_columns}")
 
     if adm_df.empty and dis_df.empty:
         logging.warning("Empty input dataframes - returning empty result")
@@ -409,17 +803,27 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
 
     adm_df = adm_df.copy()
     dis_df = dis_df.copy()
+    available_join_columns = [
+        column for column in join_columns
+        if column in adm_df.columns and column in dis_df.columns
+    ]
+
+    if not available_join_columns:
+        logging.warning(
+            f"None of the requested join columns {join_columns} are present in both inputs"
+        )
+        return pd.concat([adm_df, dis_df], ignore_index=True, sort=False)
 
     if not adm_df.empty:
         # Preserve each admission identity so duplicate discharge matches can be resolved safely.
         adm_df['_adm_idx'] = range(len(adm_df))
 
-    # Merge admissions and discharges on uid+facility.
+    # Merge admissions and discharges on the configured join columns.
     # Use a full outer join so unmatched admissions and unmatched discharges are both retained.
     jn_adm_dis = adm_df.merge(
         dis_df,
         how='outer',
-        on=['uid', 'facility'],
+        on=available_join_columns,
         suffixes=('', '_discharge'),
         indicator=True
     )
@@ -443,7 +847,8 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
     # `_merge` is not part of the business schema; remove merge bookkeeping now.
     jn_adm_dis = jn_adm_dis.drop(columns=['_adm_idx', '_merge'], errors='ignore')
 
-    dedup_subset = [col for col in ['uid', 'facility', 'unique_key', 'unique_key_discharge'] if col in jn_adm_dis.columns]
+    dedup_candidates = available_join_columns + ['unique_key', 'unique_key_discharge']
+    dedup_subset = [col for col in dedup_candidates if col in jn_adm_dis.columns]
     if dedup_subset:
         jn_adm_dis = jn_adm_dis.drop_duplicates(
             subset=dedup_subset,
@@ -453,7 +858,7 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
     logging.info(f"After all deduplication: {len(jn_adm_dis)} rows")
 
     # Add missing columns to database table
-    add_missing_columns(jn_adm_dis, 'joined_admissions_discharges')
+    add_missing_columns(jn_adm_dis, joined_table_name)
 
     # Convert Gestation to numeric
     if 'Gestation.value' in jn_adm_dis.columns:
@@ -462,16 +867,15 @@ def createJoinedDataSet(adm_df: pd.DataFrame, dis_df: pd.DataFrame) -> pd.DataFr
             errors='coerce'
         )
 
-    # Format dates
-    jn_adm_dis = format_date_without_timezone(
-        jn_adm_dis,
-        ['DateTimeAdmission.value', 'DateTimeDischarge.value']
-    )
+    if calculate_derived_columns:
+        # Format dates
+        jn_adm_dis = format_date_without_timezone(
+            jn_adm_dis,
+            ['DateTimeAdmission.value', 'DateTimeDischarge.value']
+        )
 
-    # OPTIMIZATION: Use vectorized date calculations instead of iterrows()
-    jn_adm_dis = calculate_date_differences_vectorized(jn_adm_dis)
+        # OPTIMIZATION: Use vectorized date calculations instead of iterrows()
+        jn_adm_dis = calculate_date_differences_vectorized(jn_adm_dis)
 
     logging.info(f"Finished creating joined dataset: {len(jn_adm_dis)} rows")
     return jn_adm_dis
-
-
