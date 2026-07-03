@@ -92,6 +92,14 @@ def sql_literal(value) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
+def join_predicate(left_alias: str, right_alias: str, column: str) -> str:
+    left_col = f"{left_alias}.{quote_identifier(column)}"
+    right_col = f"{right_alias}.{quote_identifier(column)}"
+    if column == "uid":
+        return f"UPPER(TRIM({left_col}::text)) = UPPER(TRIM({right_col}::text))"
+    return f"{left_col} = {right_col}"
+
+
 def read_records_not_already_joined(
     source_table: str,
     joined_table: str,
@@ -117,10 +125,7 @@ def read_records_not_already_joined(
     source_alias = "src"
     joined_alias = "j"
     predicates = [
-        (
-            f"{source_alias}.{quote_identifier(column)} = "
-            f"{joined_alias}.{quote_identifier(column)}"
-        )
+        join_predicate(source_alias, joined_alias, column)
         for column in join_columns
     ]
     predicates.append(
@@ -207,7 +212,10 @@ def drop_rows_by_keys(df: pd.DataFrame, column: str, keys: set) -> pd.DataFrame:
     if df.empty or not keys or column not in df.columns:
         return df
 
-    return df[~df[column].astype(str).isin(keys)].copy()
+    values = df[column].astype(str)
+    if column == "uid":
+        values = values.str.strip().str.upper()
+    return df[~values.isin(keys)].copy()
 
 
 def drop_empty_placeholder_columns(
@@ -818,15 +826,38 @@ def createJoinedDataSet(
         # Preserve each admission identity so duplicate discharge matches can be resolved safely.
         adm_df['_adm_idx'] = range(len(adm_df))
 
+    merge_left_on = available_join_columns
+    merge_right_on = available_join_columns
+    temp_join_columns = []
+    if 'uid' in available_join_columns:
+        uid_join_col = '_join_uid'
+        adm_df[uid_join_col] = adm_df['uid'].astype(str).str.strip().str.upper()
+        dis_df[uid_join_col] = dis_df['uid'].astype(str).str.strip().str.upper()
+        merge_left_on = [
+            uid_join_col if column == 'uid' else column
+            for column in available_join_columns
+        ]
+        merge_right_on = merge_left_on
+        temp_join_columns.append(uid_join_col)
+
     # Merge admissions and discharges on the configured join columns.
     # Use a full outer join so unmatched admissions and unmatched discharges are both retained.
     jn_adm_dis = adm_df.merge(
         dis_df,
         how='outer',
-        on=available_join_columns,
+        left_on=merge_left_on,
+        right_on=merge_right_on,
         suffixes=('', '_discharge'),
         indicator=True
     )
+    if 'uid_discharge' in jn_adm_dis.columns:
+        if 'uid' in jn_adm_dis.columns:
+            jn_adm_dis['uid'] = jn_adm_dis['uid'].combine_first(
+                jn_adm_dis['uid_discharge']
+            )
+            jn_adm_dis = jn_adm_dis.drop(columns=['uid_discharge'])
+        else:
+            jn_adm_dis = jn_adm_dis.rename(columns={'uid_discharge': 'uid'})
 
     logging.info(
         f"Initial merge created {len(jn_adm_dis)} rows from "
@@ -845,7 +876,10 @@ def createJoinedDataSet(
     jn_adm_dis = pd.concat([left_and_matched_rows, right_only_rows], ignore_index=True, sort=False)
 
     # `_merge` is not part of the business schema; remove merge bookkeeping now.
-    jn_adm_dis = jn_adm_dis.drop(columns=['_adm_idx', '_merge'], errors='ignore')
+    jn_adm_dis = jn_adm_dis.drop(
+        columns=['_adm_idx', '_merge', *temp_join_columns],
+        errors='ignore',
+    )
 
     dedup_candidates = available_join_columns + ['unique_key', 'unique_key_discharge']
     dedup_subset = [col for col in dedup_candidates if col in jn_adm_dis.columns]

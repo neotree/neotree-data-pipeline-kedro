@@ -182,6 +182,30 @@ def _unique_text_values(values, max_items: int = 5) -> list:
     return result
 
 
+def _all_unique_text_values(values) -> list:
+    """Return all unique non-empty scalar values as strings."""
+    if values is None:
+        return []
+    if isinstance(values, (str, int, float, bool)):
+        values = [values]
+    elif not isinstance(values, (list, tuple, set, np.ndarray, pd.Series)):
+        try:
+            if pd.isna(values):
+                return []
+        except (TypeError, ValueError):
+            pass
+        values = [values]
+
+    result = []
+    for value in values:
+        if value is None or pd.isna(value):
+            continue
+        text_value = str(value).strip()
+        if text_value and text_value not in result:
+            result.append(text_value)
+    return result
+
+
 def _normalise_email_receivers(email_receivers) -> list:
     if isinstance(email_receivers, list):
         raw_receivers = email_receivers
@@ -245,6 +269,66 @@ def ensure_validation_tracking_tables():
 
         CREATE INDEX IF NOT EXISTS idx_validation_issues_run
         ON derived.validation_issues (run_id);;
+
+        CREATE TABLE IF NOT EXISTS derived.validation_logged_records (
+            id BIGSERIAL PRIMARY KEY,
+            uid TEXT NOT NULL,
+            scriptid TEXT NOT NULL DEFAULT '',
+            facility TEXT NOT NULL DEFAULT '',
+            first_logged_at TIMESTAMP NOT NULL DEFAULT now(),
+            UNIQUE (uid, scriptid, facility)
+        );;
+
+        UPDATE derived.validation_logged_records
+        SET scriptid = COALESCE(scriptid, ''),
+            facility = COALESCE(facility, '');;
+
+        ALTER TABLE derived.validation_logged_records
+        ALTER COLUMN scriptid SET DEFAULT '',
+        ALTER COLUMN facility SET DEFAULT '';;
+
+        CREATE INDEX IF NOT EXISTS idx_validation_logged_records_lookup
+        ON derived.validation_logged_records (uid, scriptid, facility);;
+
+        CREATE TABLE IF NOT EXISTS derived.validation_maintenance_state (
+            state_key TEXT PRIMARY KEY,
+            completed_at TIMESTAMP NOT NULL DEFAULT now()
+        );;
+
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM derived.validation_maintenance_state
+                WHERE state_key = 'validation_logged_records_backfill_v1'
+            ) THEN
+                INSERT INTO derived.validation_logged_records (
+                    uid,
+                    scriptid,
+                    facility,
+                    first_logged_at
+                )
+                SELECT DISTINCT
+                    NULLIF(TRIM(record_uid), '') AS uid,
+                    COALESCE(issue.scriptid, '') AS scriptid,
+                    COALESCE(issue.hospital_name, '') AS facility,
+                    MIN(COALESCE(issue.identified_at, issue.created_at, now())) AS first_logged_at
+                FROM derived.validation_issues issue
+                CROSS JOIN LATERAL unnest(
+                    COALESCE(issue.affected_neotree_ids, ARRAY[]::text[])
+                ) AS record_uid
+                WHERE NULLIF(TRIM(record_uid), '') IS NOT NULL
+                GROUP BY
+                    NULLIF(TRIM(record_uid), ''),
+                    COALESCE(issue.scriptid, ''),
+                    COALESCE(issue.hospital_name, '')
+                ON CONFLICT (uid, scriptid, facility) DO NOTHING;
+
+                INSERT INTO derived.validation_maintenance_state (state_key)
+                VALUES ('validation_logged_records_backfill_v1')
+                ON CONFLICT (state_key) DO NOTHING;
+            END IF;
+        END $$;;
     """
     try:
         from conf.common.sql_functions import inject_sql
@@ -478,10 +562,63 @@ def _insert_validation_issues(issues: list):
         logging.warning("Validation issue tracking skipped because run_id is missing")
         return
 
-    rows = []
-    now = datetime.now()
-    for issue in issues:
-        rows.append((
+    def _tracker_value(value) -> str:
+        if value is None or pd.isna(value):
+            return ""
+        return str(value).strip()
+
+    def _record_keys_for_issue(issue: dict) -> list:
+        identifiers = _all_unique_text_values(issue.get("affected_record_ids"))
+        if not identifiers:
+            identifiers = _all_unique_text_values(issue.get("affected_neotree_ids"))
+        if not identifiers:
+            return []
+
+        scriptid = _tracker_value(issue.get("scriptid"))
+        facility = _tracker_value(issue.get("hospital_name"))
+        keys = []
+        for identifier in identifiers:
+            uid = _tracker_value(identifier)
+            if uid:
+                keys.append((uid, scriptid, facility))
+        return list(dict.fromkeys(keys))
+
+    def _fetch_existing_record_keys(cur, record_keys: list) -> set:
+        if not record_keys:
+            return set()
+
+        values_sql = ",".join(["(%s, %s, %s)"] * len(record_keys))
+        params = [
+            value
+            for record_key in record_keys
+            for value in record_key
+        ]
+        cur.execute(
+            f"""
+                SELECT logged.uid, logged.scriptid, logged.facility
+                FROM derived.validation_logged_records logged
+                JOIN (VALUES {values_sql}) AS incoming(uid, scriptid, facility)
+                  ON logged.uid = incoming.uid
+                 AND logged.scriptid = incoming.scriptid
+                 AND logged.facility = incoming.facility
+            """,
+            params,
+        )
+        return set(cur.fetchall())
+
+    def _build_issue_row(issue: dict, now, record_keys: list = None):
+        affected_record_ids = [record_key[0] for record_key in record_keys or []]
+        affected_records = (
+            len(affected_record_ids)
+            if affected_record_ids
+            else int(issue.get("affected_records") or 0)
+        )
+        affected_sample_ids = (
+            _unique_text_values(affected_record_ids, 5)
+            if affected_record_ids
+            else _unique_text_values(issue.get("affected_neotree_ids"), 5)
+        )
+        return (
             run_id,
             now,
             now.date(),
@@ -495,14 +632,14 @@ def _insert_validation_issues(issues: list):
             issue.get("field_label"),
             issue.get("severity", "error"),
             issue.get("issue_message"),
-            int(issue.get("affected_records") or 0),
-            _unique_text_values(issue.get("affected_neotree_ids"), 5),
+            affected_records,
+            affected_sample_ids,
             _safe_json(issue.get("sample_values")),
             _clean_text(issue.get("min_value")),
             _clean_text(issue.get("max_value")),
             _clean_text(issue.get("expected_value")),
             _clean_text(issue.get("actual_value_sample")),
-        ))
+        )
 
     insert_sql = """
         INSERT INTO derived.validation_issues (
@@ -513,6 +650,15 @@ def _insert_validation_issues(issues: list):
         )
         VALUES %s
     """
+    insert_record_sql = """
+        INSERT INTO derived.validation_logged_records (
+            uid,
+            scriptid,
+            facility
+        )
+        VALUES %s
+        ON CONFLICT (uid, scriptid, facility) DO NOTHING
+    """
 
     try:
         from conf.common.sql_functions import engine, execute_values
@@ -522,6 +668,32 @@ def _insert_validation_issues(issues: list):
         try:
             cur = raw_conn.cursor()
             try:
+                rows = []
+                record_rows = []
+                now = datetime.now()
+
+                for issue in issues:
+                    record_keys = _record_keys_for_issue(issue)
+                    if record_keys:
+                        existing_keys = _fetch_existing_record_keys(cur, record_keys)
+                        new_keys = [
+                            record_key
+                            for record_key in record_keys
+                            if record_key not in existing_keys
+                        ]
+
+                        if not new_keys:
+                            continue
+
+                        rows.append(_build_issue_row(issue, now, new_keys))
+                        record_rows.extend(new_keys)
+                    else:
+                        rows.append(_build_issue_row(issue, now))
+
+                if not rows:
+                    raw_conn.commit()
+                    return
+
                 execute_values(
                     cur,
                     insert_sql,
@@ -531,6 +703,12 @@ def _insert_validation_issues(issues: list):
                         %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s
                     )"""
                 )
+                if record_rows:
+                    execute_values(
+                        cur,
+                        insert_record_sql,
+                        record_rows,
+                    )
                 raw_conn.commit()
             except Exception:
                 raw_conn.rollback()
@@ -614,6 +792,35 @@ def get_safe_sample_uids(df: pd.DataFrame, mask: pd.Series, max_samples: int = 5
     # Get UIDs from matching rows, but filter out NULL UIDs
     sample_uids = df.loc[mask, 'uid'].dropna().head(max_samples).tolist()
     return sample_uids
+
+
+def get_record_identifiers(df: pd.DataFrame, mask: pd.Series) -> list:
+    """
+    Return stable record identifiers for every row matching a validation mask.
+
+    UID is preferred. If UID is unavailable, fall back to unique_key and then to
+    the dataframe index so repeated DB-backed issue logging can still be deduped.
+    """
+    if mask is None:
+        return []
+
+    identifiers = []
+    matching = df.loc[mask]
+    for idx, row in matching.iterrows():
+        identifier = None
+        if 'uid' in matching.columns:
+            value = row.get('uid')
+            if pd.notna(value) and str(value).strip():
+                identifier = value
+        if identifier is None and 'unique_key' in matching.columns:
+            value = row.get('unique_key')
+            if pd.notna(value) and str(value).strip():
+                identifier = value
+        if identifier is None:
+            identifier = idx
+        identifiers.append(identifier)
+
+    return _all_unique_text_values(identifiers)
 
 
 def convert_value_to_type(value, data_type, min_val, max_val):
@@ -918,6 +1125,7 @@ def _validate_subset(
         max_value=None,
         expected_value=None,
         actual_value_sample=None,
+        affected_record_ids=None,
     ):
         if int(affected_records or 0) <= 0:
             return
@@ -940,6 +1148,7 @@ def _validate_subset(
             "max_value": max_value,
             "expected_value": expected_value,
             "actual_value_sample": actual_value_sample,
+            "affected_record_ids": affected_record_ids or affected_neotree_ids or [],
         })
 
     # Create validator
@@ -1079,6 +1288,7 @@ def _validate_subset(
                         str(identifier)
                         for identifier in sample_identifiers
                     ) or None,
+                    affected_record_ids=get_record_identifiers(df, uid_missing_mask),
                 )
             else:
                 tech_logger.info("✓ All rows have a UID")
@@ -1195,7 +1405,8 @@ def _validate_subset(
                     'total_count': eligible_count,
                     'null_pct': null_pct,
                     'sample_identifiers': sample_identifiers,
-                    'is_uid_field': base_key.lower() == 'uid'
+                    'is_uid_field': base_key.lower() == 'uid',
+                    'record_identifiers': get_record_identifiers(df, null_mask),
                 })
 
         # --- VALUE RANGE VALIDATION ---
@@ -1257,23 +1468,26 @@ def _validate_subset(
                     try:
                         non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                         invalid_mask = non_empty & ~df[value_col].astype(str).str.match(numeric_regex, na=False)
-                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])]
 
                         samples_list = []
                         if not invalid_samples.empty:
-                            for idx, row in invalid_samples.iterrows():
+                            for idx, row in invalid_samples.head(5).iterrows():
                                 uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
                                 samples_list.append(uid_val)
+                        invalid_record_ids = get_record_identifiers(df, invalid_mask)
                     except (ValueError, TypeError) as mask_error:
                         # Handle array comparison errors
                         samples_list = []
+                        invalid_record_ids = []
                         logging.warning(f"Could not extract samples for {base_key}: {str(mask_error)}")
 
                     type_results.append({
                         'base_key': base_key,
                         'invalid_count': invalid_count,
                         'samples': samples_list,
-                        'error_type': 'non-numeric'
+                        'error_type': 'non-numeric',
+                        'record_identifiers': invalid_record_ids,
                     })
 
             elif data_type in ['datetime', 'timestamp', 'date']:
@@ -1290,23 +1504,26 @@ def _validate_subset(
                     try:
                         non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                         invalid_mask = non_empty & ~df[value_col].astype(str).str.match(datetime_regex, na=False)
-                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])]
 
                         samples_list = []
                         if not invalid_samples.empty:
-                            for idx, row in invalid_samples.iterrows():
+                            for idx, row in invalid_samples.head(5).iterrows():
                                 uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
                                 samples_list.append(uid_val)
+                        invalid_record_ids = get_record_identifiers(df, invalid_mask)
                     except (ValueError, TypeError) as mask_error:
                         # Handle array comparison errors
                         samples_list = []
+                        invalid_record_ids = []
                         logging.warning(f"Could not extract samples for {base_key}: {str(mask_error)}")
 
                     type_results.append({
                         'base_key': base_key,
                         'invalid_count': invalid_count,
                         'samples': samples_list,
-                        'error_type': 'invalid datetime'
+                        'error_type': 'invalid datetime',
+                        'record_identifiers': invalid_record_ids,
                     })
 
             elif data_type in ['boolean', 'yesno']:
@@ -1322,23 +1539,26 @@ def _validate_subset(
                     try:
                         non_empty = df[value_col].astype(str).str.strip().replace('', np.nan).notna()
                         invalid_mask = non_empty & ~df[value_col].astype(str).str.match(pattern, na=False)
-                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])].head(5)
+                        invalid_samples = df.loc[invalid_mask, [value_col] + (['uid'] if 'uid' in df.columns else [])]
 
                         samples_list = []
                         if not invalid_samples.empty:
-                            for idx, row in invalid_samples.iterrows():
+                            for idx, row in invalid_samples.head(5).iterrows():
                                 uid_val = f"{row['uid']}={row[value_col]}" if 'uid' in invalid_samples.columns else row[value_col]
                                 samples_list.append(uid_val)
+                        invalid_record_ids = get_record_identifiers(df, invalid_mask)
                     except (ValueError, TypeError) as mask_error:
                         # Handle array comparison errors
                         samples_list = []
+                        invalid_record_ids = []
                         logging.warning(f"Could not extract samples for {base_key}: {str(mask_error)}")
 
                     type_results.append({
                         'base_key': base_key,
                         'invalid_count': invalid_count,
                         'samples': samples_list,
-                        'error_type': 'invalid boolean'
+                        'error_type': 'invalid boolean',
+                        'record_identifiers': invalid_record_ids,
                     })
 
             # --- LABEL VALIDATION ---
@@ -1381,8 +1601,14 @@ def _validate_subset(
                         )
                         if row_label_str.lower() != expected_label_for_value.lower():
                             uid = df.loc[idx, 'uid'] if 'uid' in df.columns else idx
+                            unique_key = df.loc[idx, 'unique_key'] if 'unique_key' in df.columns else None
+                            record_identifier = uid if pd.notna(uid) else unique_key
+                            if record_identifier is None or pd.isna(record_identifier):
+                                record_identifier = idx
                             mismatched_rows.append({
                                 'uid': uid,
+                                'unique_key': unique_key,
+                                'record_identifier': record_identifier,
                                 'value': row_value_str,
                                 'actual_label': row_label_str,
                                 'expected_label': expected_label_for_value
@@ -1435,6 +1661,7 @@ def _validate_subset(
                 affected_records=result["invalid_count"],
                 field_key=result["base_key"],
                 affected_neotree_ids=sample_ids,
+                affected_record_ids=result.get("record_identifiers"),
                 sample_values={"samples": sample_values},
                 actual_value_sample=", ".join(sample_values[:5]) if sample_values else None,
             )
@@ -1451,6 +1678,10 @@ def _validate_subset(
             affected_records=mismatch_count,
             field_key=result["base_key"],
             affected_neotree_ids=[m["uid"] for m in result["mismatched_rows"][:5]],
+            affected_record_ids=[
+                m["record_identifier"]
+                for m in result["mismatched_rows"]
+            ],
             sample_values={"samples": result["mismatched_rows"][:5]},
         )
 
@@ -1528,6 +1759,7 @@ def _validate_subset(
                         affected_records=int(inconsistent_count),
                         field_key=base_key,
                         affected_neotree_ids=sample_identifiers,
+                        affected_record_ids=get_record_identifiers(df, inconsistent_mask),
                     )
 
     if inconsistencies == 0:
@@ -1560,6 +1792,7 @@ def _validate_subset(
                 affected_records=result["null_count"],
                 field_key=result["base_key"],
                 affected_neotree_ids=result["sample_identifiers"],
+                affected_record_ids=result["record_identifiers"],
                 sample_values={"null_pct": result["null_pct"], "eligible_records": result["total_count"]},
             )
         impl_logger.info(f"Summary: {len([r for r in required_results])} fields checked, {len(required_results)} with errors")
@@ -1594,6 +1827,10 @@ def _validate_subset(
                 affected_neotree_ids=[
                     sample["identifier"]
                     for sample in samples
+                ],
+                affected_record_ids=[
+                    sample["identifier"]
+                    for sample in result["violations"]
                 ],
                 sample_values={
                     "samples": [
@@ -1680,6 +1917,7 @@ def _validate_subset(
                 affected_records=affected_records,
                 severity="warning",
                 affected_neotree_ids=sample_uids,
+                affected_record_ids=get_record_identifiers(df, sensitive_mask),
                 sample_values={"columns": sensitive_columns_with_data},
             )
 
@@ -1708,6 +1946,7 @@ def _validate_subset(
                 "columns": columns,
                 "affected_records": affected_records,
                 "sample_uids": sample_uids,
+                "record_identifiers": get_record_identifiers(df, affected_mask),
             })
 
             _add_issue(
@@ -1717,6 +1956,7 @@ def _validate_subset(
                 affected_records=affected_records,
                 field_key=field["key"],
                 affected_neotree_ids=sample_uids,
+                affected_record_ids=get_record_identifiers(df, affected_mask),
                 sample_values={"columns": columns},
             )
 

@@ -179,7 +179,7 @@ def deduplicate_data_query(condition, destination_table):
                 AND NOT EXISTS (
                     SELECT 1
                     FROM {schema}."{table}" ds
-                    WHERE cs.uid = ds.uid
+                    WHERE UPPER(TRIM(cs.uid::text)) = UPPER(TRIM(ds.uid::text))
                       AND cs.scriptid = ds.scriptid
                       AND {completed_at} IS NOT NULL
                       AND {existing_completed_at} IS NOT NULL
@@ -316,7 +316,7 @@ def deduplicate_data_query(condition, destination_table):
                         month,
                         data
                         )'''
-            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}"  ds where cs.unique_key is not null and cs.uid=ds.uid and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
+            condition = script_condition+ f''' and NOT EXISTS (SELECT 1 FROM {schema}."{table}"  ds where cs.unique_key is not null and UPPER(TRIM(cs.uid::text))=UPPER(TRIM(ds.uid::text)) and cs.unique_key=ds.unique_key and cs.scriptid=ds.scriptid) '''
             
         return f'''{operation}
             (
@@ -591,11 +591,11 @@ def get_raw_session_dynamic_condition(destination_table):
               AND {destination_completed_at} IS NOT NULL
               AND DATE_TRUNC('minute', {source_completed_at})
                   = DATE_TRUNC('minute', {destination_completed_at})
-              AND cs.uid = ds.uid
+              AND UPPER(TRIM(cs.uid::text)) = UPPER(TRIM(ds.uid::text))
               AND cs.scriptid = ds.scriptid
         )'''
     
-    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  cs.uid=ds.uid and cs.uid is not null and ds.uid is not null and cs.unique_key is not null and ds.unique_key is not null)'''
+    return   f''' and NOT EXISTS (SELECT 1 FROM derived.{destination_table} ds where  LEFT(cs.unique_key,10)=LEFT(ds.unique_key,10) and  UPPER(TRIM(cs.uid::text))=UPPER(TRIM(ds.uid::text)) and cs.uid is not null and ds.uid is not null and cs.unique_key is not null and ds.unique_key is not null)'''
 
 
 def get_derived_dynamic_condition(destination_table):
@@ -609,7 +609,7 @@ def get_derived_dynamic_condition(destination_table):
               AND {destination_completed_at} IS NOT NULL
               AND DATE_TRUNC('minute', {source_completed_at})
                   = DATE_TRUNC('minute', {destination_completed_at})
-              AND cs.uid = ds.uid
+              AND UPPER(TRIM(cs.uid::text)) = UPPER(TRIM(ds.uid::text))
               AND cs.scriptid = ds.scriptid
         )'''
 
@@ -617,7 +617,7 @@ def get_derived_dynamic_condition(destination_table):
         SELECT 1
         FROM derived.{destination_table} ds
         WHERE LEFT(cs.unique_key, 10) = LEFT(ds.unique_key, 10)
-          AND cs.uid = ds.uid
+          AND UPPER(TRIM(cs.uid::text)) = UPPER(TRIM(ds.uid::text))
           AND cs.uid IS NOT NULL
           AND ds.uid IS NOT NULL
           AND cs.unique_key IS NOT NULL

@@ -20,6 +20,15 @@ TIDY_DYNAMIC_TABLES = (
     / "data_tyding"
     / "tidy_dynamic_tables.py"
 )
+CREATE_JOINED = (
+    PROJECT_ROOT
+    / "src"
+    / "data_pipeline"
+    / "pipelines"
+    / "data_engineering"
+    / "derive_data"
+    / "create_joined_table_and_derived_columns.py"
+)
 
 
 def test_multi_review_cleanup_deduplicates_completion_times_to_the_minute():
@@ -90,6 +99,26 @@ def test_multi_review_existing_row_check_uses_completed_minute():
     assert "DATE_TRUNC('minute', {source_completed_at})" in condition_source
     assert "DATE_TRUNC('minute', {destination_completed_at})" in condition_source
     assert "cs.unique_key = ds.unique_key" not in condition_source
+
+
+def test_incremental_uid_checks_are_case_insensitive():
+    source = ASSORTED_QUERIES.read_text()
+
+    assert "UPPER(TRIM(cs.uid::text))=UPPER(TRIM(ds.uid::text))" in source
+    assert "UPPER(TRIM(cs.uid::text)) = UPPER(TRIM(ds.uid::text))" in source
+    assert "cs.uid=ds.uid" not in source
+    assert "cs.uid = ds.uid" not in source
+
+
+def test_joined_admission_discharge_uid_matching_is_case_insensitive():
+    source = CREATE_JOINED.read_text()
+
+    assert 'def join_predicate(' in source
+    assert 'if column == "uid":' in source
+    assert "UPPER(TRIM({left_col}::text)) = UPPER(TRIM({right_col}::text))" in source
+    assert "adm_df[uid_join_col] = adm_df['uid'].astype(str).str.strip().str.upper()" in source
+    assert "dis_df[uid_join_col] = dis_df['uid'].astype(str).str.strip().str.upper()" in source
+    assert "jn_adm_dis['uid'] = jn_adm_dis['uid'].combine_first(" in source
 
 
 def test_derived_multi_review_filter_does_not_reference_json_data_column():

@@ -79,6 +79,18 @@ def test_validation_drops_confidential_columns_before_downstream_processing():
     assert core_source.count("= validate_dataframe_with_ge(") == 6
 
 
+def test_validation_tracks_logged_records_once_by_uid_script_and_facility():
+    source = VALIDATE.read_text()
+
+    assert "CREATE TABLE IF NOT EXISTS derived.validation_logged_records" in source
+    assert "CREATE TABLE IF NOT EXISTS derived.validation_maintenance_state" in source
+    assert "validation_logged_records_backfill_v1" in source
+    assert "UNIQUE (uid, scriptid, facility)" in source
+    assert "ON CONFLICT (uid, scriptid, facility) DO NOTHING" in source
+    assert "if not new_keys:" in source
+    assert "continue" in source
+
+
 def test_required_validation_combines_screen_and_field_conditions():
     source = VALIDATE.read_text()
 
