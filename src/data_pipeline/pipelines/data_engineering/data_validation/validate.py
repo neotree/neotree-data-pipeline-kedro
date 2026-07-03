@@ -297,7 +297,8 @@ def ensure_validation_tracking_tables():
 
         DO $$
         BEGIN
-            IF NOT EXISTS (
+            IF to_regclass('derived.validation_issues') IS NOT NULL
+               AND NOT EXISTS (
                 SELECT 1
                 FROM derived.validation_maintenance_state
                 WHERE state_key = 'validation_logged_records_backfill_v1'

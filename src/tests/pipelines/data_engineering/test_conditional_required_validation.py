@@ -85,6 +85,7 @@ def test_validation_tracks_logged_records_once_by_uid_script_and_facility():
     assert "CREATE TABLE IF NOT EXISTS derived.validation_logged_records" in source
     assert "CREATE TABLE IF NOT EXISTS derived.validation_maintenance_state" in source
     assert "validation_logged_records_backfill_v1" in source
+    assert "IF to_regclass('derived.validation_issues') IS NOT NULL" in source
     assert "UNIQUE (uid, scriptid, facility)" in source
     assert "ON CONFLICT (uid, scriptid, facility) DO NOTHING" in source
     assert "if not new_keys:" in source
