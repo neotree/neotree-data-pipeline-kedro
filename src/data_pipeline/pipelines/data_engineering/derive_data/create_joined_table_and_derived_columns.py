@@ -30,6 +30,64 @@ from data_pipeline.pipelines.data_engineering.data_validation.validate import re
 from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table, count_table_columns, fix_column_limit_error
 
 
+def coalesce_duplicate_columns(df: pd.DataFrame, context: str) -> pd.DataFrame:
+    duplicate_names = list(
+        dict.fromkeys(df.columns[df.columns.duplicated(keep=False)].tolist())
+    )
+    if not duplicate_names:
+        return df
+
+    logging.warning(
+        "Coalescing duplicate columns in %s: %s",
+        context,
+        duplicate_names,
+    )
+    coalesced_columns = []
+    seen = set()
+    for position, column_name in enumerate(df.columns):
+        if column_name in seen:
+            continue
+        seen.add(column_name)
+        matching_positions = [
+            index
+            for index, name in enumerate(df.columns)
+            if name == column_name
+        ]
+        if len(matching_positions) == 1:
+            series = df.iloc[:, position]
+        else:
+            duplicate_values = df.iloc[:, matching_positions]
+            series = duplicate_values.bfill(axis=1).iloc[:, 0]
+        coalesced_columns.append(series.rename(column_name))
+
+    return pd.concat(coalesced_columns, axis=1)
+
+
+def first_column_values(rows) -> List[str]:
+    if rows is None:
+        return []
+    if isinstance(rows, pd.DataFrame):
+        if rows.empty:
+            return []
+        values = rows["column_name"] if "column_name" in rows.columns else rows.iloc[:, 0]
+        return [str(value) for value in values.dropna().tolist()]
+
+    values = []
+    for row in rows:
+        if isinstance(row, dict):
+            value = row.get("column_name")
+        elif isinstance(row, (list, tuple)):
+            value = row[0] if row else None
+        elif hasattr(row, "_mapping"):
+            mapping = row._mapping
+            value = mapping.get("column_name") if "column_name" in mapping else row[0]
+        else:
+            value = row
+        if value is not None:
+            values.append(str(value))
+    return values
+
+
 def add_missing_columns(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> None:
     """
     Add any new columns from dataframe to existing table.
@@ -60,8 +118,10 @@ def add_missing_columns(df: pd.DataFrame, table_name: str, schema: str = 'derive
             logging.warning(f"⚠ No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
 
     # Now proceed with adding new columns
-    adm_cols = pd.DataFrame(get_table_column_names(table_name, schema))
-    new_columns = set(df.columns) - set(adm_cols.columns)
+    df = coalesce_duplicate_columns(df, f"{schema}.{table_name} column check")
+    existing_col_names = set(first_column_values(get_table_column_names(table_name, schema)))
+
+    new_columns = set(df.columns) - existing_col_names
 
     if new_columns:
         logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
@@ -302,10 +362,11 @@ def prepare_joined_dataset_for_write(
     table_name: str,
     schema: str = "derived",
 ) -> pd.DataFrame:
+    joined_df = coalesce_duplicate_columns(joined_df, f"{schema}.{table_name} write")
     add_missing_columns(joined_df, table_name, schema)
 
-    date_column_types = pd.DataFrame(get_date_column_names(table_name, schema))
-    if not date_column_types.empty:
+    date_column_types = first_column_values(get_date_column_names(table_name, schema))
+    if date_column_types:
         joined_df = format_date_without_timezone(joined_df, date_column_types)
 
     joined_df.columns = joined_df.columns.astype(str)
@@ -334,6 +395,14 @@ def build_reconciled_one_sided_matches(
     if existing_one_sided_df.empty or counterpart_df.empty:
         return pd.DataFrame(), set(), set()
 
+    existing_one_sided_df = coalesce_duplicate_columns(
+        existing_one_sided_df,
+        f"{joined_table} existing one-sided records",
+    )
+    counterpart_df = coalesce_duplicate_columns(
+        counterpart_df,
+        f"{joined_table} counterpart records",
+    )
     existing_one_sided_df = drop_empty_placeholder_columns(
         existing_one_sided_df,
         columns_to_keep=join_columns + [existing_key_col],
@@ -811,6 +880,8 @@ def createJoinedDataSet(
 
     adm_df = adm_df.copy()
     dis_df = dis_df.copy()
+    adm_df = coalesce_duplicate_columns(adm_df, f"{joined_table_name} left input")
+    dis_df = coalesce_duplicate_columns(dis_df, f"{joined_table_name} right input")
     available_join_columns = [
         column for column in join_columns
         if column in adm_df.columns and column in dis_df.columns
@@ -874,6 +945,7 @@ def createJoinedDataSet(
         left_and_matched_rows = resolve_duplicate_matches(left_and_matched_rows, adm_unique_col='_adm_idx')
 
     jn_adm_dis = pd.concat([left_and_matched_rows, right_only_rows], ignore_index=True, sort=False)
+    jn_adm_dis = coalesce_duplicate_columns(jn_adm_dis, f"{joined_table_name} merged result")
 
     # `_merge` is not part of the business schema; remove merge bookkeeping now.
     jn_adm_dis = jn_adm_dis.drop(

@@ -86,6 +86,32 @@ def coalesce_duplicate_columns(df: pd.DataFrame, context: str) -> pd.DataFrame:
     return pd.concat(coalesced_columns, axis=1)
 
 
+def first_column_values(rows: Any) -> List[str]:
+    """Extract column names from DB helper results."""
+    if rows is None:
+        return []
+    if isinstance(rows, pd.DataFrame):
+        if rows.empty:
+            return []
+        values = rows["column_name"] if "column_name" in rows.columns else rows.iloc[:, 0]
+        return [str(value) for value in values.dropna().tolist()]
+
+    values = []
+    for row in rows:
+        if isinstance(row, dict):
+            value = row.get("column_name")
+        elif isinstance(row, (list, tuple)):
+            value = row[0] if row else None
+        elif hasattr(row, "_mapping"):
+            mapping = row._mapping
+            value = mapping.get("column_name") if "column_name" in mapping else row[0]
+        else:
+            value = row
+        if value is not None:
+            values.append(str(value))
+    return values
+
+
 def calculate_time_spent(df: pd.DataFrame) -> pd.DataFrame:
     if "started_at" not in df.columns or "completed_at" not in df.columns:
         df["time_spent"] = None
@@ -318,6 +344,7 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
 
 def coerce_numeric_columns(df: pd.DataFrame, columns: List[str], table_name: str) -> pd.DataFrame:
     """Force known numeric columns to numeric/null and log dropped invalid values."""
+    df = coalesce_duplicate_columns(df, f"{table_name} numeric coercion")
     for col in columns:
         if col not in df.columns:
             continue
@@ -414,6 +441,7 @@ def process_neolab_episodes(neolab_df: pd.DataFrame) -> pd.DataFrame:
 
 def process_baseline_dates(baseline_df: pd.DataFrame) -> pd.DataFrame:
     """Calculate LengthOfStay and LengthOfLife for baseline dataframe."""
+    baseline_df = coalesce_duplicate_columns(baseline_df, "baseline date calculations")
     baseline_df['LengthOfStay.value'] = None
     baseline_df['LengthOfStay.label'] = "Length of Stay"
     baseline_df['LengthOfLife.value'] = None
@@ -858,10 +886,11 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
     update_fields_info("baseline")
 
     # Format dates
-    date_column_types = get_date_column_names('baseline', 'derived')
+    date_column_types = first_column_values(get_date_column_names('baseline', 'derived'))
     result = format_date_without_timezone(baseline_df, date_column_types)
     if result is not None:
         baseline_df = result
+    baseline_df = coalesce_duplicate_columns(baseline_df, "baseline date formatting")
     if isinstance(baseline_df, pd.Series):
         baseline_df = baseline_df.to_frame().T  # Converts Series to single-row DataFrame
     baseline_df = calculate_time_spent(baseline_df)
@@ -881,6 +910,7 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
     result = format_date(baseline_df, ['DateTimeAdmission.value', 'DateTimeDischarge.value', 'DateTimeDeath.value'])
     if result is not None:
         baseline_df = result
+    baseline_df = coalesce_duplicate_columns(baseline_df, "baseline final date formatting")
 
     # Set specific keys to None
     result = set_key_to_none(baseline_df, [
@@ -891,9 +921,11 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
     ])
     if result is not None:
         baseline_df = result
+    baseline_df = coalesce_duplicate_columns(baseline_df, "baseline set_key_to_none")
 
     # Create derived columns
     baseline_df = create_columns(baseline_df)
+    baseline_df = coalesce_duplicate_columns(baseline_df, "baseline derived columns")
 
     if baseline_df is not None and not baseline_df.empty:
 
