@@ -88,6 +88,13 @@ def first_column_values(rows) -> List[str]:
     return values
 
 
+def column_as_series(df: pd.DataFrame, column: str) -> pd.Series:
+    values = df[column]
+    if isinstance(values, pd.DataFrame):
+        return values.bfill(axis=1).iloc[:, 0]
+    return values
+
+
 def add_missing_columns(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> None:
     """
     Add any new columns from dataframe to existing table.
@@ -252,9 +259,10 @@ def present_values(df: pd.DataFrame, column: str) -> pd.Series:
     if column not in df.columns:
         return pd.Series(False, index=df.index)
 
-    value_text = df[column].astype(str).str.strip()
+    values = column_as_series(df, column)
+    value_text = values.astype(str).str.strip()
     return (
-        df[column].notna()
+        values.notna()
         & (value_text != "")
         & (~value_text.str.lower().isin({"nan", "none", "nat", "<na>"}))
     )
@@ -264,7 +272,7 @@ def key_set(df: pd.DataFrame, column: str) -> set:
     if df.empty or column not in df.columns:
         return set()
 
-    values = df.loc[present_values(df, column), column]
+    values = column_as_series(df, column).loc[present_values(df, column)]
     return set(values.astype(str))
 
 
@@ -272,7 +280,7 @@ def drop_rows_by_keys(df: pd.DataFrame, column: str, keys: set) -> pd.DataFrame:
     if df.empty or not keys or column not in df.columns:
         return df
 
-    values = df[column].astype(str)
+    values = column_as_series(df, column).astype(str)
     if column == "uid":
         values = values.str.strip().str.upper()
     return df[~values.isin(keys)].copy()
@@ -442,6 +450,7 @@ def calculate_date_differences_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     OPTIMIZATION: Replaces iterrows() loop with pandas vectorized operations.
     Performance: ~100-1000x faster for large datasets.
     """
+    df = coalesce_duplicate_columns(df, "joined date calculations")
     # Initialize columns
     df['LengthOfStay.label'] = 'Length of Stay'
     df['LengthOfLife.label'] = 'Length of Life'
@@ -455,14 +464,14 @@ def calculate_date_differences_vectorized(df: pd.DataFrame) -> pd.DataFrame:
 
     for col in date_cols:
         if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce')
+            df[col] = pd.to_datetime(column_as_series(df, col), errors='coerce')
 
     # Calculate Length of Stay (vectorized)
     if 'DateTimeDischarge.value' in df.columns and 'DateTimeAdmission.value' in df.columns:
         # Create mask for valid dates
         valid_dates = (
-            df['DateTimeDischarge.value'].notna() &
-            df['DateTimeAdmission.value'].notna()
+            column_as_series(df, 'DateTimeDischarge.value').notna() &
+            column_as_series(df, 'DateTimeAdmission.value').notna()
         )
         # Calculate days difference
         df.loc[valid_dates, 'LengthOfStay.value'] = (
@@ -473,8 +482,8 @@ def calculate_date_differences_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     # Calculate Length of Life (vectorized)
     if 'DateTimeDeath.value' in df.columns and 'DateTimeAdmission.value' in df.columns:
         valid_death_dates = (
-            df['DateTimeDeath.value'].notna() &
-            df['DateTimeAdmission.value'].notna()
+            column_as_series(df, 'DateTimeDeath.value').notna() &
+            column_as_series(df, 'DateTimeAdmission.value').notna()
         )
         df.loc[valid_death_dates, 'LengthOfLife.value'] = (
             df.loc[valid_death_dates, 'DateTimeDeath.value'] -
@@ -660,7 +669,7 @@ def join_table():
         )
 
     except Exception as e:
-        logging.error("!!! An error occurred creating joined dataframe")
+        logging.exception("!!! An error occurred creating joined dataframe")
         raise e
 
     # Now write the table back to the database
@@ -686,10 +695,14 @@ def join_table():
 
                 if not jn_adm_dis_2.empty:
                     # Filter for rows with NeoTreeOutcome
-                    filtered_df = jn_adm_dis_2[
-                        jn_adm_dis_2['NeoTreeOutcome.value'].notna() &
-                        (jn_adm_dis_2['NeoTreeOutcome.value'] != '')
-                    ]
+                    if 'NeoTreeOutcome.value' not in jn_adm_dis_2.columns:
+                        filtered_df = pd.DataFrame()
+                    else:
+                        outcome_values = column_as_series(jn_adm_dis_2, 'NeoTreeOutcome.value')
+                        filtered_df = jn_adm_dis_2[
+                            outcome_values.notna() &
+                            (outcome_values != '')
+                        ]
                     if isinstance(filtered_df, pd.Series):
                         filtered_df = filtered_df.to_frame().T
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges', filtered_df)
@@ -777,8 +790,8 @@ def calculate_match_scores_vectorized(df: pd.DataFrame) -> pd.Series:
         if left_col not in df.columns or right_col not in df.columns:
             continue
 
-        left_values = pd.to_numeric(df[left_col], errors='coerce')
-        right_values = pd.to_numeric(df[right_col], errors='coerce')
+        left_values = pd.to_numeric(column_as_series(df, left_col), errors='coerce')
+        right_values = pd.to_numeric(column_as_series(df, right_col), errors='coerce')
         valid = left_values.notna() & right_values.notna()
         if not valid.any():
             continue
@@ -969,7 +982,7 @@ def createJoinedDataSet(
     # Convert Gestation to numeric
     if 'Gestation.value' in jn_adm_dis.columns:
         jn_adm_dis['Gestation.value'] = pd.to_numeric(
-            jn_adm_dis['Gestation.value'],
+            column_as_series(jn_adm_dis, 'Gestation.value'),
             errors='coerce'
         )
 
@@ -978,6 +991,10 @@ def createJoinedDataSet(
         jn_adm_dis = format_date_without_timezone(
             jn_adm_dis,
             ['DateTimeAdmission.value', 'DateTimeDischarge.value']
+        )
+        jn_adm_dis = coalesce_duplicate_columns(
+            jn_adm_dis,
+            f"{joined_table_name} formatted dates",
         )
 
         # OPTIMIZATION: Use vectorized date calculations instead of iterrows()
