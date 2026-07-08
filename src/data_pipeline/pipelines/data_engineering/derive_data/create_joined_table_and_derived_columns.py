@@ -956,6 +956,11 @@ def createJoinedDataSet(
         else:
             jn_adm_dis = jn_adm_dis.rename(columns={'uid_discharge': 'uid'})
 
+    jn_adm_dis = coalesce_duplicate_columns(
+        jn_adm_dis,
+        f"{joined_table_name} merged result before match split",
+    )
+
     logging.info(
         f"Initial merge created {len(jn_adm_dis)} rows from "
         f"{len(adm_df)} admissions and {len(dis_df)} discharges"

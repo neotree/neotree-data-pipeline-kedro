@@ -134,6 +134,18 @@ def test_duplicate_match_resolution_coalesces_columns_before_concat():
     assert "pd.concat([non_duplicates, resolved_duplicates]" in resolver_source
 
 
+def test_joined_dataset_coalesces_merge_suffix_collisions_before_concat():
+    source = CREATE_JOINED.read_text()
+
+    create_start = source.index("def createJoinedDataSet")
+    create_source = source[create_start:]
+
+    coalesce_position = create_source.index("merged result before match split")
+    split_position = create_source.index("right_only_rows =")
+
+    assert coalesce_position < split_position
+
+
 def test_derived_multi_review_filter_does_not_reference_json_data_column():
     source = ASSORTED_QUERIES.read_text()
 
