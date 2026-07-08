@@ -863,6 +863,9 @@ def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_a
     logging.info(f"Resolved {len(duplicates)} duplicate matches down to {len(resolved_duplicates)} best matches")
 
     # Combine resolved duplicates with non-duplicates
+    # Reset indices to ensure no duplicate index values during concatenation
+    non_duplicates = non_duplicates.reset_index(drop=True)
+    resolved_duplicates = resolved_duplicates.reset_index(drop=True)
     result = pd.concat([non_duplicates, resolved_duplicates], ignore_index=True)
 
     # Clean up temporary columns
