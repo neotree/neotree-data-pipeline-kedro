@@ -820,6 +820,10 @@ def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_a
         DataFrame with duplicates resolved by keeping best discharge match per admission
     """
     logging.info("Resolving duplicate admission-discharge matches using clinical measurement comparison")
+    merged_df = coalesce_duplicate_columns(
+        merged_df.copy(),
+        "duplicate admission-discharge match resolution",
+    )
 
     # Count how many discharge matches each admission has
     merged_df['_match_count'] = merged_df.groupby(adm_unique_col)[adm_unique_col].transform('count')
@@ -864,8 +868,14 @@ def resolve_duplicate_matches(merged_df: pd.DataFrame, adm_unique_col: str = '_a
 
     # Combine resolved duplicates with non-duplicates
     # Reset indices to ensure no duplicate index values during concatenation
-    non_duplicates = non_duplicates.reset_index(drop=True)
-    resolved_duplicates = resolved_duplicates.reset_index(drop=True)
+    non_duplicates = coalesce_duplicate_columns(
+        non_duplicates.reset_index(drop=True),
+        "non-duplicate admission-discharge matches",
+    )
+    resolved_duplicates = coalesce_duplicate_columns(
+        resolved_duplicates.reset_index(drop=True),
+        "resolved duplicate admission-discharge matches",
+    )
     result = pd.concat([non_duplicates, resolved_duplicates], ignore_index=True)
 
     # Clean up temporary columns

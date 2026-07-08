@@ -121,6 +121,19 @@ def test_joined_admission_discharge_uid_matching_is_case_insensitive():
     assert "jn_adm_dis['uid'] = jn_adm_dis['uid'].combine_first(" in source
 
 
+def test_duplicate_match_resolution_coalesces_columns_before_concat():
+    source = CREATE_JOINED.read_text()
+
+    resolver_start = source.index("def resolve_duplicate_matches")
+    resolver_end = source.index("def createJoinedDataSet")
+    resolver_source = source[resolver_start:resolver_end]
+
+    assert "duplicate admission-discharge match resolution" in resolver_source
+    assert "non-duplicate admission-discharge matches" in resolver_source
+    assert "resolved duplicate admission-discharge matches" in resolver_source
+    assert "pd.concat([non_duplicates, resolved_duplicates]" in resolver_source
+
+
 def test_derived_multi_review_filter_does_not_reference_json_data_column():
     source = ASSORTED_QUERIES.read_text()
 
