@@ -13,6 +13,7 @@ from .explode_mcl_columns import explode_column
 from .create_derived_columns import create_columns
 from conf.common.sql_functions import (
     create_new_columns,
+    drop_all_null_dataframe_columns,
     get_date_column_names,
     get_table_column_names,
     generate_create_insert_sql,
@@ -300,6 +301,10 @@ def add_new_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = '
         df = df.to_frame().T
 
     if table_exists(schema, table_name):
+        df, _ = drop_all_null_dataframe_columns(
+            df,
+            f"{schema}.{table_name} schema check",
+        )
         # PROACTIVE COLUMN LIMIT CHECK
         # Check current column usage and rebuild if > 1200 to prevent hitting the 1600 limit
         col_info = count_table_columns(table_name, schema)

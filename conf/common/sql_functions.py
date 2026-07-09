@@ -2,7 +2,7 @@ import logging
 import sys
 import json
 import re
-from typing import TYPE_CHECKING, Optional, Dict
+from typing import TYPE_CHECKING, Optional, Dict, Iterable, List, Tuple
 from collections import defaultdict
 from datetime import datetime, date
 
@@ -64,6 +64,34 @@ if SQLALCHEMY_AVAILABLE and create_engine:
 #Inject SQL Procedures
 QUERY_LOG_PATH="logs/queries.log"
 query_logger = setup_logger(QUERY_LOG_PATH,'queries')
+
+DEFAULT_PROTECTED_COLUMNS = {
+    "uid",
+    "facility",
+    "unique_key",
+    "unique_key_discharge",
+    "scriptid",
+    "started_at",
+    "completed_at",
+    "completed_time",
+    "ingested_at",
+    "review_number",
+    "transformed",
+}
+
+
+def quote_identifier(identifier: str) -> str:
+    return '"' + str(identifier).replace('"', '""') + '"'
+
+
+def qualified_table(schema: str, table_name: str) -> str:
+    return f"{quote_identifier(schema)}.{quote_identifier(table_name)}"
+
+
+def sql_literal(value) -> str:
+    if pd.isna(value):
+        return "NULL"
+    return "'" + str(value).replace("'", "''") + "'"
 
 def inject_sql_procedure(sql_script, file_name):
     """Execute a SQL procedure using raw psycopg2 connection."""
@@ -445,6 +473,313 @@ def get_confidential_columns(table_name,table_schema):
     return inject_sql_with_return(query);
 
 
+def first_column_values(rows) -> List[str]:
+    if rows is None:
+        return []
+    if isinstance(rows, pd.DataFrame):
+        if rows.empty:
+            return []
+        values = rows["column_name"] if "column_name" in rows.columns else rows.iloc[:, 0]
+        return [str(value) for value in values.dropna().tolist()]
+
+    values = []
+    for row in rows:
+        if isinstance(row, dict):
+            value = row.get("column_name")
+        elif isinstance(row, (list, tuple)):
+            value = row[0] if row else None
+        elif hasattr(row, "_mapping"):
+            mapping = row._mapping
+            value = mapping.get("column_name") if "column_name" in mapping else row[0]
+        else:
+            value = row
+        if value is not None:
+            values.append(str(value))
+    return values
+
+
+def dataframe_column_has_non_null_values(df: pd.DataFrame, column: str) -> bool:
+    values = df[column]
+    if isinstance(values, pd.DataFrame):
+        return bool(values.notna().any().any())
+    return bool(values.notna().any())
+
+
+def normalize_column_name_for_safety(column: str) -> str:
+    return re.sub(r"\s+", "", str(column)).lower()
+
+
+def drop_all_null_dataframe_columns(
+    df: pd.DataFrame,
+    context: str,
+    protected_columns: Optional[Iterable[str]] = None,
+) -> Tuple[pd.DataFrame, List[str]]:
+    if df is None or df.empty:
+        return df, []
+
+    protected = set(protected_columns or DEFAULT_PROTECTED_COLUMNS)
+    null_columns = [
+        column
+        for column in df.columns
+        if column not in protected
+        and not dataframe_column_has_non_null_values(df, column)
+    ]
+
+    if null_columns:
+        logging.info(
+            "Dropping %s all-null dataframe column(s) before writing %s. "
+            "Examples: %s",
+            len(null_columns),
+            context,
+            null_columns[:20],
+        )
+        df = df.drop(columns=null_columns, errors="ignore")
+
+    return df, null_columns
+
+
+def compact_table_to_reclaim_dropped_columns(
+    table_name: str,
+    schema: str = "derived",
+) -> bool:
+    if not table_exists(schema, table_name):
+        return False
+
+    rebuild_query = f'''
+        DO $$
+        DECLARE
+            original_row_count BIGINT;
+            rebuild_row_count BIGINT;
+            backup_exists BOOLEAN := FALSE;
+        BEGIN
+            SELECT COUNT(*) INTO original_row_count
+            FROM {qualified_table(schema, table_name)};
+
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_schema = {sql_literal(schema)}
+                AND table_name = {sql_literal(table_name + "_backup")}
+            ) INTO backup_exists;
+
+            IF backup_exists THEN
+                RAISE EXCEPTION 'Backup table already exists for %.%',
+                    {sql_literal(schema)}, {sql_literal(table_name)};
+            END IF;
+
+            CREATE TABLE {qualified_table(schema, table_name + "_rebuild")}
+            (LIKE {qualified_table(schema, table_name)} INCLUDING ALL);
+
+            INSERT INTO {qualified_table(schema, table_name + "_rebuild")}
+            SELECT * FROM {qualified_table(schema, table_name)};
+
+            SELECT COUNT(*) INTO rebuild_row_count
+            FROM {qualified_table(schema, table_name + "_rebuild")};
+
+            IF rebuild_row_count != original_row_count THEN
+                RAISE EXCEPTION 'Row count mismatch while rebuilding %.%: % vs %',
+                    {sql_literal(schema)}, {sql_literal(table_name)}, original_row_count,
+                    rebuild_row_count;
+            END IF;
+
+            ALTER TABLE {qualified_table(schema, table_name)}
+            RENAME TO {quote_identifier(table_name + "_backup")};
+
+            ALTER TABLE {qualified_table(schema, table_name + "_rebuild")}
+            RENAME TO {quote_identifier(table_name)};
+
+            DROP TABLE {qualified_table(schema, table_name + "_backup")};
+        EXCEPTION
+            WHEN OTHERS THEN
+                DROP TABLE IF EXISTS {qualified_table(schema, table_name + "_rebuild")};
+                IF EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_schema = {sql_literal(schema)}
+                    AND table_name = {sql_literal(table_name + "_backup")}
+                ) THEN
+                    DROP TABLE IF EXISTS {qualified_table(schema, table_name)};
+                    ALTER TABLE {qualified_table(schema, table_name + "_backup")}
+                    RENAME TO {quote_identifier(table_name)};
+                END IF;
+                RAISE;
+        END $$;
+    '''
+
+    try:
+        if not engine:
+            raise RuntimeError("Database engine not initialized")
+
+        raw_conn = engine.raw_connection()  # type: ignore[union-attr]
+        try:
+            cur = raw_conn.cursor()  # type: ignore[union-attr]
+            try:
+                cur.execute(rebuild_query)
+                raw_conn.commit()  # type: ignore[union-attr]
+            except Exception:
+                raw_conn.rollback()  # type: ignore[union-attr]
+                raise
+            finally:
+                cur.close()
+        finally:
+            raw_conn.close()  # type: ignore[union-attr]
+
+        logging.info("Compacted %s.%s to reclaim dropped column slots", schema, table_name)
+        return True
+    except Exception as exc:
+        logging.warning(
+            "Could not compact %s.%s after dropping all-null columns: %s",
+            schema,
+            table_name,
+            exc,
+        )
+        return False
+
+
+def drop_all_null_table_columns(
+    table_name: str,
+    schema: str = "derived",
+    protected_columns: Optional[Iterable[str]] = None,
+    compact_after_drop: bool = True,
+) -> List[str]:
+    if not table_exists(schema, table_name):
+        return []
+
+    protected = set(protected_columns or DEFAULT_PROTECTED_COLUMNS)
+    all_table_columns = first_column_values(get_table_column_names(table_name, schema))
+    normalized_column_groups = defaultdict(list)
+    for column in all_table_columns:
+        normalized_column_groups[normalize_column_name_for_safety(column)].append(column)
+
+    table_columns = [
+        column
+        for column in all_table_columns
+        if column not in protected
+    ]
+    dropped_columns = []
+    checked_columns = set()
+
+    def _null_counts(column: str) -> Optional[Tuple[int, int]]:
+        null_count_query = f'''
+            SELECT
+                COUNT(*) AS total_count,
+                COUNT(*) FILTER (
+                    WHERE {quote_identifier(column)} IS NULL
+                ) AS null_count
+            FROM {qualified_table(schema, table_name)};;
+        '''
+        result = inject_sql_with_return(null_count_query)
+        if not result or not result[0]:
+            return None
+        total_count, null_count = result[0]
+        return int(total_count), int(null_count)
+
+    def _drop_column(column: str) -> None:
+        drop_query = (
+            f"ALTER TABLE {qualified_table(schema, table_name)} "
+            f"DROP COLUMN IF EXISTS {quote_identifier(column)};;"
+        )
+        inject_sql(drop_query, f"DROP ALL-NULL COLUMN {schema}.{table_name}.{column}")
+        dropped_columns.append(column)
+
+    for column in table_columns:
+        if column in checked_columns or column in dropped_columns:
+            continue
+        checked_columns.add(column)
+
+        counts = _null_counts(column)
+        if counts is None:
+            continue
+
+        total_count, null_count = counts
+        if total_count == 0:
+            logging.info(
+                "Skipping all-null cleanup for %s.%s.%s because table has no rows",
+                schema,
+                table_name,
+                column,
+            )
+            continue
+
+        if null_count != total_count:
+            continue
+
+        normalized_name = normalize_column_name_for_safety(column)
+        near_duplicate_columns = [
+            candidate
+            for candidate in normalized_column_groups.get(normalized_name, [])
+            if candidate != column
+        ]
+        if near_duplicate_columns:
+            logging.warning(
+                "Column %s.%s.%r is all-null and has visually similar "
+                "column(s) after whitespace normalization: %s. Candidate "
+                "length=%s normalized=%r",
+                schema,
+                table_name,
+                column,
+                near_duplicate_columns,
+                len(column),
+                normalized_name,
+            )
+
+            for near_duplicate in near_duplicate_columns:
+                if near_duplicate in checked_columns or near_duplicate in dropped_columns:
+                    continue
+                checked_columns.add(near_duplicate)
+                near_counts = _null_counts(near_duplicate)
+                if near_counts is None:
+                    continue
+                near_total_count, near_null_count = near_counts
+                logging.info(
+                    "Whitespace-normalized sibling %s.%s.%r has "
+                    "null_count=%s total_count=%s length=%s",
+                    schema,
+                    table_name,
+                    near_duplicate,
+                    near_null_count,
+                    near_total_count,
+                    len(near_duplicate),
+                )
+                if near_total_count > 0 and near_null_count == near_total_count:
+                    logging.info(
+                        "Confirmed sibling %s.%s.%r is also all null; "
+                        "dropping it with %r",
+                        schema,
+                        table_name,
+                        near_duplicate,
+                        column,
+                    )
+                    _drop_column(near_duplicate)
+
+        logging.info(
+            "Confirmed %s.%s.%r is all null: null_count=%s total_count=%s",
+            schema,
+            table_name,
+            column,
+            null_count,
+            total_count,
+        )
+        _drop_column(column)
+
+    if dropped_columns:
+        logging.warning(
+            "Dropped %s all-null column(s) from %s.%s. Examples: %s",
+            len(dropped_columns),
+            schema,
+            table_name,
+            dropped_columns[:20],
+        )
+        if compact_after_drop:
+            logging.info(
+                "Reclaiming column slots for %s.%s after all droppable columns "
+                "were dropped",
+                schema,
+                table_name,
+            )
+            compact_table_to_reclaim_dropped_columns(table_name, schema)
+
+    return dropped_columns
+
+
 def insert_old_adm_query(target_table, source_table, columns):
     # Join the column names with commas
     columns_str = '","'.join(columns)
@@ -741,6 +1076,8 @@ def verify_and_fix_column_type(table_name, schema, column, expected_type):
 
 def create_new_columns(table_name, schema, columns):
     """Create new columns with intelligent type detection for dates."""
+    drop_all_null_table_columns(table_name, schema)
+
     for column, col_type in columns:
         # Pass column name and table name for intelligent date detection
         expected_sql_type = get_expected_sql_type(col_type, column_name=column, table_name=table_name)
@@ -1402,6 +1739,14 @@ def generate_postgres_insert(df, schema, table_name):
     if df.empty:
         return
 
+    df, _ = drop_all_null_dataframe_columns(
+        df,
+        f"{schema}.{table_name} insert",
+    )
+    if df.empty:
+        logging.info("No non-null columns to insert into %s.%s", schema, table_name)
+        return
+
     validate_sql_dataframe_columns(df, f"{schema}.{table_name}")
 
     logging.info("::::::::---ADMISSION DATA FRAME IS NOT NULL")
@@ -1722,6 +2067,14 @@ def generate_create_insert_sql(df,schema, table_name):
             logging.info(f"Removing {len(columns_to_drop)} confidential columns: {list(columns_to_drop)}")
         df = df.drop(columns=columns_to_drop)
 
+        df, _ = drop_all_null_dataframe_columns(
+            df,
+            f"{schema}.{table_name}",
+        )
+        if df.empty:
+            logging.info("No non-null columns to write for %s.%s", schema, table_name)
+            return
+
         logging.info(f"Column filtering: {original_columns} -> {len(df.columns)} columns for {table_name}")
 
         # STEP 2: Add 'transformed' column BEFORE table creation
@@ -1729,6 +2082,7 @@ def generate_create_insert_sql(df,schema, table_name):
 
         # STEP 3: Ensure 'transformed' column exists in table (for existing tables from old runs)
         if table_exists(schema,table_name):
+            drop_all_null_table_columns(table_name, schema)
             # Check if 'transformed' column exists in the existing table
             if not column_exists(schema, table_name, 'transformed'):
                 logging.info(f"Adding missing 'transformed' column to existing table {schema}.{table_name}")

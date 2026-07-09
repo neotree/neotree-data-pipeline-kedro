@@ -9,6 +9,7 @@ from .explode_mcl_columns import explode_column
 from conf.base.catalog import catalog, new_scripts
 from conf.common.sql_functions import (
     create_new_columns,
+    drop_all_null_dataframe_columns,
     get_table_column_names,
     generate_upsert_queries_and_create_table,
     generate_create_insert_sql,
@@ -133,6 +134,10 @@ def add_new_columns_if_needed(df: pd.DataFrame, script_name: str) -> None:
     This prevents column limit errors by reclaiming dropped columns before adding new ones.
     """
     if table_exists('derived', script_name):
+        df, _ = drop_all_null_dataframe_columns(
+            df,
+            f"derived.{script_name} schema check",
+        )
         # PROACTIVE COLUMN LIMIT CHECK
         # Import here to avoid circular dependency
         from data_pipeline.pipelines.data_engineering.queries.data_fix import count_table_columns, fix_column_limit_error

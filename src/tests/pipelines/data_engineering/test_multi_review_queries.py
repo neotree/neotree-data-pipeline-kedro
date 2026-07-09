@@ -29,6 +29,7 @@ CREATE_JOINED = (
     / "derive_data"
     / "create_joined_table_and_derived_columns.py"
 )
+SQL_FUNCTIONS = PROJECT_ROOT / "conf" / "common" / "sql_functions.py"
 
 
 def test_multi_review_cleanup_deduplicates_completion_times_to_the_minute():
@@ -144,6 +145,85 @@ def test_joined_dataset_coalesces_merge_suffix_collisions_before_concat():
     split_position = create_source.index("right_only_rows =")
 
     assert coalesce_position < split_position
+
+
+def test_joined_dataset_routes_overflow_columns_before_add_columns():
+    source = CREATE_JOINED.read_text()
+
+    assert "POSTGRES_COLUMN_LIMIT = 1600" in source
+    assert (
+        "JOINED_TABLE_MAX_COLUMNS = POSTGRES_COLUMN_LIMIT - "
+        "JOINED_TABLE_COLUMN_HEADROOM"
+    ) in source
+    assert "def split_joined_dataframe_for_column_limit" in source
+    assert "def write_overflow_columns" in source
+    assert 'return f"{table_name}_extra_columns"' in source
+    assert "fix_column_limit_error(table_name, schema, auto_rebuild=True)" in source
+    assert "Routing %s new column(s) from %s.%s to overflow storage" in source
+
+    create_start = source.index("def createJoinedDataSet")
+    create_source = source[create_start:]
+    split_position = create_source.index("split_joined_dataframe_for_column_limit(")
+    add_position = create_source.index("add_missing_columns(main_jn_adm_dis")
+
+    assert split_position < add_position
+
+
+def test_joined_dataset_write_path_writes_overflow_columns():
+    source = CREATE_JOINED.read_text()
+
+    prepare_start = source.index("def prepare_joined_dataset_for_write")
+    prepare_end = source.index("def write_joined_dataset")
+    prepare_source = source[prepare_start:prepare_end]
+
+    assert "full_joined_df = joined_df.copy()" in prepare_source
+    assert "overflow_columns = split_joined_dataframe_for_column_limit(" in prepare_source
+    assert "add_missing_columns(joined_df, table_name, schema)" in prepare_source
+
+    write_start = source.index("def write_joined_dataset")
+    write_end = source.index("def build_reconciled_one_sided_matches")
+    write_source = source[write_start:write_end]
+
+    assert "write_overflow_columns(full_joined_df, overflow_columns" in write_source
+
+
+def test_all_null_columns_are_pruned_before_schema_expansion():
+    sql_source = SQL_FUNCTIONS.read_text()
+    joined_source = CREATE_JOINED.read_text()
+
+    assert "def drop_all_null_dataframe_columns" in sql_source
+    assert "def drop_all_null_table_columns" in sql_source
+    assert "def compact_table_to_reclaim_dropped_columns" in sql_source
+    assert "COUNT(*) AS total_count" in sql_source
+    assert "AS null_count" in sql_source
+    assert "if total_count == 0:" in sql_source
+    assert "if null_count != total_count:" in sql_source
+    assert "def normalize_column_name_for_safety" in sql_source
+    assert "near_duplicate_columns" in sql_source
+    assert "whitespace normalization" in sql_source
+    assert "Whitespace-normalized sibling" in sql_source
+    assert "Confirmed sibling" in sql_source
+    assert "Reclaiming column slots" in sql_source
+    assert "drop_all_null_table_columns(table_name, schema)" in sql_source
+    assert "df, _ = drop_all_null_dataframe_columns(" in sql_source
+
+    assert "drop_all_null_dataframe_columns" in joined_source
+    assert "drop_all_null_table_columns" in joined_source
+
+
+def test_join_table_attempts_peads_join_after_admissions_failure():
+    source = CREATE_JOINED.read_text()
+
+    join_start = source.index("def join_table")
+    join_end = source.index("def calculate_match_score")
+    join_source = source[join_start:join_end]
+
+    assert "join_tasks = [" in join_source
+    assert '"joined_table": "joined_admissions_discharges"' in join_source
+    assert '"joined_table": "joined_peads_admissions_discharges"' in join_source
+    assert "for join_task in join_tasks:" in join_source
+    assert "join_errors.append((joined_table, exc))" in join_source
+    assert "Failed creating joined table(s)" in join_source
 
 
 def test_derived_multi_review_filter_does_not_reference_json_data_column():

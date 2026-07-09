@@ -15,6 +15,7 @@ from conf.common.sql_functions import (
     generate_create_insert_sql,
     get_table_column_names,
     create_new_columns,
+    drop_all_null_dataframe_columns,
     table_exists,
     generateAndRunUpdateQuery,
     store_field_metadata
@@ -76,6 +77,11 @@ def add_columns_if_needed(df: pd.DataFrame, table_name: str, schema: str = 'deri
     """
     if not table_exists(schema, table_name):
         return
+
+    df, _ = drop_all_null_dataframe_columns(
+        df,
+        f"{schema}.{table_name} cleanup schema check",
+    )
 
     # PROACTIVE COLUMN LIMIT CHECK
     # Import here to avoid circular dependency
@@ -353,7 +359,3 @@ def clean_all_dates():
       ('phc_admissions','clean_phc_admissions'),
       ('phc_discharges','clean_phc_discharges')
   ])
-
-   
-
-    

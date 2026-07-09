@@ -16,6 +16,8 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
 )
 from conf.common.sql_functions import (
     create_new_columns,
+    drop_all_null_dataframe_columns,
+    drop_all_null_table_columns,
     get_table_column_names,
     generateAndRunUpdateQuery,
     generate_create_insert_sql,
@@ -28,6 +30,21 @@ from conf.common.sql_functions import (
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.data_validation.validate import reset_log
 from data_pipeline.pipelines.data_engineering.queries.data_fix import deduplicate_table, count_table_columns, fix_column_limit_error
+
+
+POSTGRES_COLUMN_LIMIT = 1600
+JOINED_TABLE_COLUMN_HEADROOM = 10
+JOINED_TABLE_MAX_COLUMNS = POSTGRES_COLUMN_LIMIT - JOINED_TABLE_COLUMN_HEADROOM
+JOINED_TABLE_PROTECTED_COLUMNS = {
+    "uid",
+    "facility",
+    "unique_key",
+    "unique_key_discharge",
+    "scriptid",
+    "completed_at",
+    "completed_time",
+    "transformed",
+}
 
 
 def coalesce_duplicate_columns(df: pd.DataFrame, context: str) -> pd.DataFrame:
@@ -95,6 +112,311 @@ def column_as_series(df: pd.DataFrame, column: str) -> pd.Series:
     return values
 
 
+def ordered_new_columns_for_main_table(
+    df: pd.DataFrame,
+    new_columns: List[str],
+) -> List[str]:
+    protected_columns = [
+        column
+        for column in new_columns
+        if column in JOINED_TABLE_PROTECTED_COLUMNS
+    ]
+    populated_columns = []
+    all_null_columns = []
+
+    for column in new_columns:
+        if column in JOINED_TABLE_PROTECTED_COLUMNS:
+            continue
+
+        values = column_as_series(df, column)
+        if values.notna().sum() == 0:
+            all_null_columns.append(column)
+        else:
+            populated_columns.append(column)
+
+    return protected_columns + populated_columns + all_null_columns
+
+
+def split_joined_dataframe_for_column_limit(
+    df: pd.DataFrame,
+    table_name: str,
+    schema: str = "derived",
+    max_columns: int = JOINED_TABLE_MAX_COLUMNS,
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Split a joined dataframe into main-table and overflow-table columns.
+
+    Existing database columns are always kept in the main table. New columns
+    that fit are added to the main table. New columns that do not fit are
+    returned as overflow columns so they can be stored losslessly in a
+    long/narrow side table instead of being dropped.
+    """
+    if df is None or df.empty:
+        return df, []
+
+    df = coalesce_duplicate_columns(df, f"{schema}.{table_name} column limit")
+    df.columns = df.columns.astype(str)
+
+    if table_exists(schema, table_name):
+        drop_all_null_table_columns(table_name, schema)
+        col_info = count_table_columns(table_name, schema)
+        projected_total = col_info["total"]
+
+        existing_col_names = set(
+            first_column_values(get_table_column_names(table_name, schema))
+        )
+        if col_info["total"] == 0 and existing_col_names:
+            col_info = {
+                "active": len(existing_col_names),
+                "dropped": 0,
+                "total": len(existing_col_names),
+            }
+        new_columns = [
+            column for column in df.columns if column not in existing_col_names
+        ]
+        projected_total += len(new_columns)
+
+        if projected_total > max_columns and col_info["dropped"] > 0:
+            logging.warning(
+                "%s.%s would reach %s PostgreSQL column slots; attempting rebuild "
+                "to reclaim %s dropped slots",
+                schema,
+                table_name,
+                projected_total,
+                col_info["dropped"],
+            )
+            fix_column_limit_error(table_name, schema, auto_rebuild=True)
+            col_info = count_table_columns(table_name, schema)
+            existing_col_names = set(
+                first_column_values(get_table_column_names(table_name, schema))
+            )
+            if col_info["total"] == 0 and existing_col_names:
+                col_info = {
+                    "active": len(existing_col_names),
+                    "dropped": 0,
+                    "total": len(existing_col_names),
+                }
+            new_columns = [
+                column for column in df.columns if column not in existing_col_names
+            ]
+
+        available_new_column_slots = max(max_columns - col_info["total"], 0)
+        if len(new_columns) <= available_new_column_slots:
+            return df, []
+
+        ordered_new_columns = ordered_new_columns_for_main_table(df, new_columns)
+        protected_new_columns = [
+            column
+            for column in ordered_new_columns
+            if column in JOINED_TABLE_PROTECTED_COLUMNS
+        ]
+        if len(protected_new_columns) > available_new_column_slots:
+            raise RuntimeError(
+                f"{schema}.{table_name} cannot fit required protected "
+                f"columns under PostgreSQL's 1600 column limit: "
+                f"{protected_new_columns}"
+            )
+
+        selected_new_columns = ordered_new_columns[:available_new_column_slots]
+        overflow_columns = [
+            column for column in new_columns if column not in selected_new_columns
+        ]
+        main_columns = [
+            column
+            for column in df.columns
+            if column in existing_col_names or column in selected_new_columns
+        ]
+
+        logging.warning(
+            "Routing %s new column(s) from %s.%s to overflow storage to stay "
+            "below PostgreSQL's 1600 column limit. Existing column slots: %s, "
+            "new columns requested: %s, main-table slots available: %s. "
+            "Examples: %s",
+            len(overflow_columns),
+            schema,
+            table_name,
+            col_info["total"],
+            len(new_columns),
+            available_new_column_slots,
+            overflow_columns[:20],
+        )
+        return df[main_columns], overflow_columns
+
+    if len(df.columns) <= max_columns:
+        return df, []
+
+    ordered_columns = ordered_new_columns_for_main_table(df, list(df.columns))
+    protected_columns = [
+        column
+        for column in ordered_columns
+        if column in JOINED_TABLE_PROTECTED_COLUMNS
+    ]
+    if len(protected_columns) > max_columns:
+        raise RuntimeError(
+            f"{schema}.{table_name} cannot fit required protected columns "
+            f"under PostgreSQL's 1600 column limit: {protected_columns}"
+        )
+
+    selected_columns = ordered_columns[:max_columns]
+    overflow_columns = [
+        column for column in df.columns if column not in selected_columns
+    ]
+    main_columns = [column for column in df.columns if column in selected_columns]
+
+    logging.warning(
+        "Routing %s column(s) from new table %s.%s to overflow storage to stay "
+        "below PostgreSQL's 1600 column limit. Examples: %s",
+        len(overflow_columns),
+        schema,
+        table_name,
+        overflow_columns[:20],
+    )
+    return df[main_columns], overflow_columns
+
+
+def overflow_table_name(table_name: str) -> str:
+    return f"{table_name}_extra_columns"
+
+
+def ensure_overflow_table(table_name: str, schema: str = "derived") -> None:
+    overflow_table = overflow_table_name(table_name)
+    create_table_sql = f"""
+        CREATE TABLE IF NOT EXISTS {qualified_table(schema, overflow_table)} (
+            "joined_table" TEXT NOT NULL,
+            "joined_row_key" TEXT NOT NULL,
+            "uid" TEXT,
+            "facility" TEXT,
+            "unique_key" TEXT,
+            "unique_key_discharge" TEXT,
+            "column_name" TEXT NOT NULL,
+            "column_value" TEXT,
+            "updated_at" TIMESTAMP NOT NULL DEFAULT NOW(),
+            PRIMARY KEY ("joined_table", "joined_row_key", "column_name")
+        );;
+    """
+    inject_sql(create_table_sql, f"CREATE OVERFLOW TABLE {schema}.{overflow_table}")
+
+
+def joined_row_key(row: pd.Series) -> str:
+    key_parts = []
+    for column in ["unique_key", "unique_key_discharge", "uid", "facility"]:
+        value = row.get(column)
+        key_parts.append("" if pd.isna(value) else str(value))
+    return "|".join(key_parts)
+
+
+def write_overflow_columns(
+    full_df: pd.DataFrame,
+    overflow_columns: List[str],
+    table_name: str,
+    schema: str = "derived",
+) -> None:
+    if full_df is None or full_df.empty or not overflow_columns:
+        return
+
+    ensure_overflow_table(table_name, schema)
+    overflow_table = overflow_table_name(table_name)
+    rows = []
+    row_keys = []
+
+    for _, row in full_df.iterrows():
+        row_key = joined_row_key(row)
+        if not row_key.strip("|"):
+            logging.warning(
+                "Skipping overflow values for %s.%s row without join keys",
+                schema,
+                table_name,
+            )
+            continue
+
+        row_keys.append(row_key)
+        for column in overflow_columns:
+            if column not in full_df.columns:
+                continue
+
+            value = row.get(column)
+            if pd.isna(value):
+                continue
+
+            rows.append(
+                [
+                    table_name,
+                    row_key,
+                    row.get("uid"),
+                    row.get("facility"),
+                    row.get("unique_key"),
+                    row.get("unique_key_discharge"),
+                    column,
+                    str(value),
+                ]
+            )
+
+    if row_keys:
+        delete_sql = f"""
+            DELETE FROM {qualified_table(schema, overflow_table)}
+            WHERE "joined_table" = {sql_literal(table_name)}
+            AND "joined_row_key" IN (
+                {", ".join(sql_literal(row_key) for row_key in sorted(set(row_keys)))}
+            )
+            AND "column_name" IN (
+                {", ".join(sql_literal(column) for column in overflow_columns)}
+            );;
+        """
+        inject_sql(
+            delete_sql,
+            f"DELETE STALE OVERFLOW VALUES FOR {schema}.{table_name}",
+        )
+
+    if not rows:
+        logging.info(
+            "No non-null overflow values to write for %s.%s",
+            schema,
+            table_name,
+        )
+        return
+
+    values_sql = ",\n".join(
+        "(" + ", ".join(sql_literal(value) for value in row) + ", NOW())"
+        for row in rows
+    )
+    insert_sql = f"""
+        INSERT INTO {qualified_table(schema, overflow_table)}
+            (
+                "joined_table",
+                "joined_row_key",
+                "uid",
+                "facility",
+                "unique_key",
+                "unique_key_discharge",
+                "column_name",
+                "column_value",
+                "updated_at"
+            )
+        VALUES
+            {values_sql}
+        ON CONFLICT ("joined_table", "joined_row_key", "column_name")
+        DO UPDATE SET
+            "uid" = EXCLUDED."uid",
+            "facility" = EXCLUDED."facility",
+            "unique_key" = EXCLUDED."unique_key",
+            "unique_key_discharge" = EXCLUDED."unique_key_discharge",
+            "column_value" = EXCLUDED."column_value",
+            "updated_at" = NOW();;
+    """
+    inject_sql(
+        insert_sql,
+        f"UPSERT {len(rows)} OVERFLOW VALUES FOR {schema}.{table_name}",
+    )
+    logging.warning(
+        "Wrote %s overflow value(s) for %s.%s into %s.%s",
+        len(rows),
+        schema,
+        table_name,
+        schema,
+        overflow_table,
+    )
+
+
 def add_missing_columns(df: pd.DataFrame, table_name: str, schema: str = 'derived') -> None:
     """
     Add any new columns from dataframe to existing table.
@@ -125,10 +447,14 @@ def add_missing_columns(df: pd.DataFrame, table_name: str, schema: str = 'derive
             logging.warning(f"⚠ No dropped columns to reclaim. Table genuinely has {col_info['active']} active columns")
 
     # Now proceed with adding new columns
-    df = coalesce_duplicate_columns(df, f"{schema}.{table_name} column check")
+    df, _ = drop_all_null_dataframe_columns(
+        df,
+        f"{schema}.{table_name} joined schema check",
+    )
+    df, _ = split_joined_dataframe_for_column_limit(df, table_name, schema)
     existing_col_names = set(first_column_values(get_table_column_names(table_name, schema)))
 
-    new_columns = set(df.columns) - existing_col_names
+    new_columns = sorted(set(df.columns) - existing_col_names)
 
     if new_columns:
         logging.info(f"Adding {len(new_columns)} new column(s) to {schema}.{table_name}")
@@ -369,8 +695,18 @@ def prepare_joined_dataset_for_write(
     joined_df: pd.DataFrame,
     table_name: str,
     schema: str = "derived",
-) -> pd.DataFrame:
+) -> Tuple[pd.DataFrame, List[str], pd.DataFrame]:
     joined_df = coalesce_duplicate_columns(joined_df, f"{schema}.{table_name} write")
+    joined_df, _ = drop_all_null_dataframe_columns(
+        joined_df,
+        f"{schema}.{table_name} joined write",
+    )
+    full_joined_df = joined_df.copy()
+    joined_df, overflow_columns = split_joined_dataframe_for_column_limit(
+        joined_df,
+        table_name,
+        schema,
+    )
     add_missing_columns(joined_df, table_name, schema)
 
     date_column_types = first_column_values(get_date_column_names(table_name, schema))
@@ -378,7 +714,11 @@ def prepare_joined_dataset_for_write(
         joined_df = format_date_without_timezone(joined_df, date_column_types)
 
     joined_df.columns = joined_df.columns.astype(str)
-    return joined_df.loc[:, ~joined_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False)]
+    joined_df = joined_df.loc[
+        :,
+        ~joined_df.columns.str.match(r'^\d+$|^[a-zA-Z]$', na=False),
+    ]
+    return joined_df, overflow_columns, full_joined_df
 
 
 def write_joined_dataset(joined_df: pd.DataFrame, table_name: str, schema: str = "derived") -> None:
@@ -386,7 +726,12 @@ def write_joined_dataset(joined_df: pd.DataFrame, table_name: str, schema: str =
         logging.info(f"No rows to save for {schema}.{table_name}")
         return
 
-    joined_df = prepare_joined_dataset_for_write(joined_df, table_name, schema)
+    joined_df, overflow_columns, full_joined_df = prepare_joined_dataset_for_write(
+        joined_df,
+        table_name,
+        schema,
+    )
+    write_overflow_columns(full_joined_df, overflow_columns, table_name, schema)
     logging.info(f"Saving joined dataset to {schema}.{table_name}: {len(joined_df)} rows")
     generate_create_insert_sql(joined_df, schema, table_name)
 
@@ -649,28 +994,40 @@ def join_table():
     logging.info("... Fetching admissions and discharges data")
     reset_log('logs/queries.log')
 
-    try:
-        create_and_write_joined_table(
-            left_table="admissions",
-            right_table="discharges",
-            joined_table="joined_admissions_discharges",
-            join_columns=["uid", "facility"],
-            left_not_joined_query_fn=read_admissions_not_joined,
-            right_not_joined_query_fn=read_dicharges_not_joined,
-        )
+    join_tasks = [
+        {
+            "left_table": "admissions",
+            "right_table": "discharges",
+            "joined_table": "joined_admissions_discharges",
+            "join_columns": ["uid", "facility"],
+            "left_not_joined_query_fn": read_admissions_not_joined,
+            "right_not_joined_query_fn": read_dicharges_not_joined,
+        },
+        {
+            "left_table": "peads_admissions",
+            "right_table": "peads_discharges",
+            "joined_table": "joined_peads_admissions_discharges",
+            "join_columns": ["uid"],
+            "left_not_joined_query_fn": read_peads_admissions_not_joined,
+            "right_not_joined_query_fn": read_peads_discharges_not_joined,
+        },
+    ]
+    join_errors = []
 
-        create_and_write_joined_table(
-            left_table="peads_admissions",
-            right_table="peads_discharges",
-            joined_table="joined_peads_admissions_discharges",
-            join_columns=["uid"],
-            left_not_joined_query_fn=read_peads_admissions_not_joined,
-            right_not_joined_query_fn=read_peads_discharges_not_joined,
-        )
+    for join_task in join_tasks:
+        joined_table = join_task["joined_table"]
+        try:
+            create_and_write_joined_table(**join_task)
+        except Exception as exc:
+            logging.exception(
+                "!!! An error occurred creating %s; continuing to next join",
+                joined_table,
+            )
+            join_errors.append((joined_table, exc))
 
-    except Exception as e:
-        logging.exception("!!! An error occurred creating joined dataframe")
-        raise e
+    if join_errors:
+        failed_tables = ", ".join(table for table, _ in join_errors)
+        raise RuntimeError(f"Failed creating joined table(s): {failed_tables}")
 
     # Now write the table back to the database
     logging.info("... Writing the output back to the database")
@@ -705,6 +1062,17 @@ def join_table():
                         ]
                     if isinstance(filtered_df, pd.Series):
                         filtered_df = filtered_df.to_frame().T
+                    filtered_df, overflow_columns, full_filtered_df = (
+                        prepare_joined_dataset_for_write(
+                            filtered_df,
+                            "joined_admissions_discharges",
+                        )
+                    )
+                    write_overflow_columns(
+                        full_filtered_df,
+                        overflow_columns,
+                        "joined_admissions_discharges",
+                    )
                     generateAndRunUpdateQuery('derived.joined_admissions_discharges', filtered_df)
                     deduplicate_table('joined_admissions_discharges')
 
@@ -995,7 +1363,11 @@ def createJoinedDataSet(
     logging.info(f"After all deduplication: {len(jn_adm_dis)} rows")
 
     # Add missing columns to database table
-    add_missing_columns(jn_adm_dis, joined_table_name)
+    main_jn_adm_dis, _ = split_joined_dataframe_for_column_limit(
+        jn_adm_dis,
+        joined_table_name,
+    )
+    add_missing_columns(main_jn_adm_dis, joined_table_name)
 
     # Convert Gestation to numeric
     if 'Gestation.value' in jn_adm_dis.columns:
@@ -1017,6 +1389,11 @@ def createJoinedDataSet(
 
         # OPTIMIZATION: Use vectorized date calculations instead of iterrows()
         jn_adm_dis = calculate_date_differences_vectorized(jn_adm_dis)
+        main_jn_adm_dis, _ = split_joined_dataframe_for_column_limit(
+            jn_adm_dis,
+            joined_table_name,
+        )
+        add_missing_columns(main_jn_adm_dis, joined_table_name)
 
     logging.info(f"Finished creating joined dataset: {len(jn_adm_dis)} rows")
     return jn_adm_dis
