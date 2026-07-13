@@ -46,14 +46,14 @@ def summary_maternal_outcomes_query():
         WHEN derived.maternal_outcomes."DateAdmission.value" IS NULL THEN NULL
         WHEN derived.maternal_outcomes."DateAdmission.value"::TEXT ='NaT' THEN NULL
         ELSE
-        DATE(derived.maternal_outcomes."DateAdmission.value") 
+        DATE(derived.maternal_outcomes."DateAdmission.value")
         END AS "Date of Admission",
-        CASE 
-        WHEN derived.maternal_outcomes."BirthDateDis.value" IS NULL THEN NULL
-        WHEN derived.maternal_outcomes."BirthDateDis.value" = '' THEN NULL
-        WHEN derived.maternal_outcomes."BirthDateDis.value"::TEXT ='NaT' THEN NULL
+        CASE
+        WHEN derived.maternal_outcomes."DateAdmission.value" IS NULL THEN NULL
+        WHEN derived.maternal_outcomes."DateAdmission.value" = '' THEN NULL
+        WHEN derived.maternal_outcomes."DateAdmission.value"::TEXT ='NaT' THEN NULL
         ELSE
-        DATE(derived.maternal_outcomes."BirthDateDis.value") 
+        DATE(derived.maternal_outcomes."DateAdmission.value")
         END AS "Birth Date",
         derived.maternal_outcomes."SexDis.label" AS "Gender",
         derived.maternal_outcomes."TypeBirth.label" AS "Type of Birth",
