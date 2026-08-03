@@ -8,8 +8,44 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (
     clean_known_confidential_and_pii_columns,
     pii_skipped_redaction_summary_query,
 )
+from data_pipeline.pipelines.data_engineering.queries.data_fix import purge_uid_records
 from conf.common.config import config
 from data_pipeline.pipelines.data_engineering.data_tyding.regenerate_unique_key import regenerate_unique_key
+
+
+def get_configured_purge_uids(params):
+    purge_uid = params.get("purge_uid", "")
+    return [
+        uid.strip()
+        for uid in str(purge_uid).split(",")
+        if uid and uid.strip()
+    ]
+
+
+def purge_configured_uids(params):
+    purge_uids = get_configured_purge_uids(params)
+    if not purge_uids:
+        return
+
+    logging.info("******START PURGING CONFIGURED UID(S)*********")
+    for uid in purge_uids:
+        scan_result = purge_uid_records(uid=uid, dry_run=True)
+        if not scan_result["matches"]:
+            logging.info("No rows found for configured purge UID '%s'", uid)
+            continue
+
+        delete_result = purge_uid_records(
+            uid=uid,
+            dry_run=False,
+            table_matches=scan_result["matches"],
+        )
+        logging.info(
+            "Purged %s row(s) across %s table(s) for configured UID '%s'",
+            delete_result["affected_rows"],
+            delete_result["affected_tables"],
+            uid,
+        )
+    logging.info("******DONE PURGING CONFIGURED UID(S)*********")
 
 
 def log_pii_skip_summary(schema: str, table: str):
@@ -49,6 +85,7 @@ def deduplicate_data(data_import_output):
             )
             log_pii_skip_summary("public", "clean_sessions")
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********") 
+            purge_configured_uids(params)
             regenerate_unique_key()
             ###DEDUPLICATE DYNAMICALLY
             for index,dedup_query in enumerate(generic_dedup_queries):  

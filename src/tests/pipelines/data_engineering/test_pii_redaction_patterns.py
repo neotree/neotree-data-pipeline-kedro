@@ -146,7 +146,7 @@ CORRUPTED_SESSIONS_FIXTURE = (
 def redact(value: str) -> str:
     redacted = value
     normalized = redacted.strip()
-    if re.fullmatch(r"[A-Z][A-Z0-9]{7}", normalized):
+    if re.fuopenai modelllmatch(r"[A-Z][A-Z0-9]{7}", normalized):
         return "[PII_REMOVED]"
     for _ in range(10):
         previous = redacted

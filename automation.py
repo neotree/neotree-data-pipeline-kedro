@@ -7,25 +7,12 @@ import sys
 
 
 DEFAULT_PIPELINE_INTERVAL_HOURS = 6
-DEFAULT_SOURCE_UID_PREFLIGHT_MAX_ROWS = 100
-
 
 def _build_kedro_command(project_dir, env, subcommand, extra_args=""):
     command = f"cd {project_dir} && env/bin/python -m kedro {subcommand} --env={env}"
     if extra_args:
         command = f"{command} {extra_args}"
     return command
-
-
-def _build_pipeline_preflight_command(project_dir, env, max_rows_per_uid):
-    preflight_command = _build_kedro_command(
-        project_dir,
-        env,
-        "purge-known-test-uids-source-only",
-        f"--max-rows-per-uid {max_rows_per_uid}",
-    )
-    pipeline_command = _build_kedro_command(project_dir, env, "run")
-    return f"{preflight_command} && {pipeline_command}"
 
 
 def _replace_job(cron, comment, command, interval_hours):
@@ -39,9 +26,6 @@ params = config()
 
 mode = params["env"]
 pipeline_interval = int(params.get("cron_interval", DEFAULT_PIPELINE_INTERVAL_HOURS))
-source_preflight_max_rows = int(
-    params.get("known_test_uid_cleanup_max_rows", DEFAULT_SOURCE_UID_PREFLIGHT_MAX_ROWS)
-)
 cron_dir = os.getcwd()
 
 try:
@@ -54,11 +38,7 @@ try:
         sys.exit()
 
     pipeline_comment = f"neotree-pipeline-{mode}"
-    pipeline_command = _build_pipeline_preflight_command(
-        cron_dir,
-        mode,
-        source_preflight_max_rows,
-    )
+    pipeline_command = _build_kedro_command(cron_dir, mode, "run")
     _replace_job(cron, pipeline_comment, pipeline_command, pipeline_interval)
 
     cron.write(user=True)

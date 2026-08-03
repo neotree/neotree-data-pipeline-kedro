@@ -60,7 +60,7 @@ The `hospitals.ini` file contains hospitals script ids configurations
 8. files_dir:  Works hand in hand with the `mode` field. It is the path to the directory containing scripts that                     need to be imported into the database. The path should be specified using the path pattern of the                     operating system being in use. By Default it is `OPTIONAL` however it becomes `REQUIRED` the moment we                set `mode` to `import`
 
 9. cron_interval: An `OPTIONAL` number value used to determine the number of hours to be used before the next running                   of the automated data pipeline. If not specified, the automation script will default to `6 hours`
-10. known_test_uid_cleanup_max_rows: An `OPTIONAL` number value used as a safety cutoff for the automatic source-table preflight cleanup. Before each scheduled pipeline run, the automation script runs a known test UID cleanup against `public.sessions` and `public.clean_sessions`. If a dry run for a known test UID exceeds this number, deletion is skipped. The default is `100`
+10. purge_uid: An `OPTIONAL` comma-separated list of UID/NUID values to purge automatically during the main pipeline run before step 1 deduplication starts. Example: `purge_uid = AAAA-1111111,BBCD-18989899`
 11. tech_mail_receivers: An `OPTIONAL` comma-separated email list for recipients who should receive the Tech validation summary log.
 12. impl_mail_receivers: An `OPTIONAL` comma-separated email list for recipients who should receive the Implementation validation summary log.
 13. comp_mail_receivers: An `OPTIONAL` comma-separated email list for recipients who should receive the Compliance validation summary log.
@@ -76,6 +76,7 @@ The `hospitals.ini` file contains hospitals script ids configurations
     country = zimbabwe
     mode = import
     validation_email_interval_days = 2
+    purge_uid = AAAA-1111111,BBCD-18989899
     tech_mail_receivers = tech-team@example.org
     impl_mail_receivers = implementation-team@example.org
     comp_mail_receivers = compliance-team@example.org
@@ -166,7 +167,7 @@ After running the above command, logs should start appearing on your screen, det
 4. To confirm that your entries have been written to the crontab file, run `crontab -e` then check if your entries are available
 >It is important to specify the time zone in the `crontab` file before starting to run the automation script so that you won't have challenges with differences in server time against the time zone that you want the automation script to run.
 >To set the time zone append the following line at the top of your `crontab` file: `TZ="SPECIFY_TIMEZONE` e.g `TZ= "Africa/Harare"`
->Before each scheduled pipeline run, the automation script runs a source-only preflight cleanup using `kedro purge-known-test-uids-source-only --env=...` so known test UIDs are removed from the sessions tables before the pipeline spreads them into downstream schemas and tables.
+>If `purge_uid` is configured in the selected `database.ini` section, the main pipeline purges those UID/NUID values during the deduplication stage before dynamic deduplication starts.
 
 ## ALTERNATIVELY ##
 > If you have knowledge with the linux operating system, you can write the automation command directly to the cron service by following the the steps below:
@@ -216,41 +217,43 @@ Notes:
 4. Deletion is transactional, meaning the matching deletes are committed together or rolled back together if there is an error.
 5. The cleanup checks both standard UID columns and raw JSON-backed session data where NeoTree IDs may be stored.
 
-### AUTOMATIC SOURCE-TABLE PREFLIGHT CLEANUP
-Use this when you want a low-cost automatic cleanup for fixed known test UIDs before the pipeline runs.
+### AUTOMATIC PIPELINE UID CLEANUP
+Use this when you want the main pipeline to purge configured UID/NUID values every time it runs.
 
-The source-only preflight command is:
-`kedro purge-known-test-uids-source-only --env=prod`
+Set the comma-separated `purge_uid` value in the relevant `conf/local/database.ini` section:
 
-This command:
-1. Uses a fixed allowlist of known test UIDs defined in the codebase.
-2. Only checks the source session tables: `public.sessions` and `public.clean_sessions`.
-3. Runs a dry run internally before deleting anything.
-4. Skips deletion if the number of matches for a known test UID exceeds the configured safety threshold.
-5. Only deletes allowlisted test UIDs; it does not accept arbitrary UIDs.
+```ini
+[postgresql_prod]
+purge_uid = AAAA-1111111,BBCD-18989899
+```
+
+During step 1, the pipeline:
+1. Reads `purge_uid` from the active environment section.
+2. Runs a dry run for each configured UID/NUID.
+3. Deletes matches using the existing purge implementation before dynamic deduplication starts.
+4. Checks standard UID columns and raw JSON-backed session data where NeoTree IDs may be stored.
 
 ### AUTOMATIC PREFLIGHT IN AUTOMATION
-To enable the source-table preflight before each scheduled pipeline run, add the following optional values to `conf/local/database.ini`:
+For scheduled runs, add the same `purge_uid` value to the selected `conf/local/database.ini` section:
 
 ```ini
 [postgresql_prod]
 cron_interval = 6
-known_test_uid_cleanup_max_rows = 100
+purge_uid = AAAA-1111111,BBCD-18989899
 ```
 
 Then run:
 `python automation.py kedro --env=prod`
 
-The scheduled pipeline cron entry will run the source-only preflight first, then run the pipeline:
-`kedro purge-known-test-uids-source-only --env=prod --max-rows-per-uid 100`
-followed by
+The scheduled pipeline cron entry runs:
 `kedro run --env=prod`
+
+The configured UID purge happens inside the pipeline's deduplication stage.
 
 Recommended usage:
 1. Use manual cleanup for one-off production support actions.
-2. Use automatic preflight only for approved known test UIDs such as `AAAA-111111`.
-3. Let the automatic preflight clean the sessions tables before each scheduled pipeline run.
-4. Keep the safety threshold low enough to catch unexpected broad matches.
+2. Use `purge_uid` only for approved UID/NUID values that should be removed on every pipeline run.
+3. Keep the configured list short and environment-specific.
 
 ## LOGS
 There are 3 (three) main log files that are generated by the data pipeline when it runs:
