@@ -38,6 +38,51 @@ except ImportError:
     sql = None  # type: ignore
     execute_values = None  # type: ignore
 
+# Columns shortened via limit_key_length before being written to the database.
+LENGTH_LIMITED_KEYS = [
+    "HCWID.value",
+    "HCWID.label",
+    "HCWSig.label",
+    "HCWSig.value",
+    "HCWIDDIS.value",
+    "HCWIDDIS.value",
+]
+
+
+def limit_key_length(df: pd.DataFrame, keys):
+    """
+    Shortens each value of the given dataframe columns to 4 characters or less.
+
+    - Single word, <=4 chars: kept as is.
+    - Single word, >=5 chars: first 4 characters.
+    - Two or more words: first 2 characters of the first word + first 2
+      characters of the second word.
+    Result is uppercased.
+    """
+    def format_value(value):
+        if pd.isna(value):
+            return value
+
+        words = str(value).strip().split()
+        if not words:
+            return value
+
+        if len(words) >= 2:
+            formatted = words[0][:2] + words[1][:2]
+        else:
+            formatted = words[0][:4]
+
+        return formatted.upper()
+
+    column_lookup = {col.lower(): col for col in df.columns}
+    for key in keys:
+        actual_col = column_lookup.get(str(key).lower())
+        if actual_col is not None:
+            df[actual_col] = df[actual_col].apply(format_value)
+
+    return df
+
+
 params = config()
 # Postgres Connection String
 con = 'postgresql+psycopg2://' + \
@@ -1158,6 +1203,8 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
     validate_sql_dataframe_columns(df, table_name)
 
+    df = limit_key_length(df, LENGTH_LIMITED_KEYS)
+
     schema = 'derived'
 
     # Helper function to get column type
@@ -2076,6 +2123,8 @@ def generate_create_insert_sql(df,schema, table_name):
             return
 
         logging.info(f"Column filtering: {original_columns} -> {len(df.columns)} columns for {table_name}")
+
+        df = limit_key_length(df, LENGTH_LIMITED_KEYS)
 
         # STEP 2: Add 'transformed' column BEFORE table creation
         df['transformed'] = False

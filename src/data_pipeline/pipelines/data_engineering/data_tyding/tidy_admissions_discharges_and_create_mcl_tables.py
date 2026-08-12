@@ -38,7 +38,6 @@ from data_pipeline.pipelines.data_engineering.queries.data_fix import (deduplica
 from data_pipeline.pipelines.data_engineering.data_validation.validate import validate_dataframe_with_ge, begin_validation_run, finalize_validation
 
 
-
 def safe_load(dataset_name: str) -> pd.DataFrame:
     """Safely load a dataset from catalog, returning empty DataFrame on failure."""
     try:
