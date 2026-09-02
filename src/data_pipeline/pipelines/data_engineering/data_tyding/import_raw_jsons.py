@@ -219,8 +219,8 @@ def checkDuplicateDatabaseRecord(uids):
         #Query To Check If The Specified UID Exists
         #PD = Possible Duplicates
         pd_list = []
-        query = '''SELECT "uid" as "uid","data"->'script' as "script" from public.sessions where "uid" in ({}) '''.format(str(uids)[1:-1].replace("\"","\'"))
-        possible_duplicates = inject_sql_with_return(query);
+        query = '''SELECT "uid" as "uid","data"->'script' as "script" from public.sessions where "uid" in :uids '''
+        possible_duplicates = inject_sql_with_return(query, bind_params={"uids": uids}, expanding_params=["uids"]);
         for value in possible_duplicates:
             value_dict = dict(uid=value[0],script=value[1]);
             pd_list.append(value_dict)

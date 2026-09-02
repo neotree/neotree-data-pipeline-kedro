@@ -6,6 +6,11 @@ from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql imp
 from  conf.common.config import config
 from datetime import datetime
 
+
+def _escape_sql_literal(value) -> str:
+    """Escape a value for safe interpolation inside a single-quoted SQL literal."""
+    return str(value).replace("'", "''")
+
 params = config()
 env = params['env']
 PII_CLEANED_VERSION = 2
@@ -947,7 +952,16 @@ def get_duplicate_maternal_query():
            '''
 
 
-def update_maternal_uid_query_new(uid, date_condition, old_uid):
+def _admission_date_condition(admission_date):
+    if admission_date is None:
+        return "is null"
+    return f"= '{_escape_sql_literal(admission_date)}'"
+
+
+def update_maternal_uid_query_new(uid, admission_date, old_uid):
+    safe_uid = _escape_sql_literal(uid)
+    safe_old_uid = _escape_sql_literal(old_uid)
+    date_condition = _admission_date_condition(admission_date)
     return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
              '{{entries,NeoTreeID}}',
@@ -958,14 +972,17 @@ def update_maternal_uid_query_new(uid, date_condition, old_uid):
                     "NeoTree ID number"
                 ],
                 "value": ["{0}"]
-                
+
                 }}
                 }}'::TEXT::jsonb,
                true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
-            '''.format(uid, date_condition, old_uid)
+            '''.format(safe_uid, date_condition, safe_old_uid)
 
 
-def update_maternal_uid_query_old(uid, date_condition, old_uid):
+def update_maternal_uid_query_old(uid, admission_date, old_uid):
+    safe_uid = _escape_sql_literal(uid)
+    safe_old_uid = _escape_sql_literal(old_uid)
+    date_condition = _admission_date_condition(admission_date)
     return '''update public.clean_sessions set uid = '{0}',data = JSONB_SET(
              data,
              '{{entries,0}}',
@@ -980,15 +997,16 @@ def update_maternal_uid_query_old(uid, date_condition, old_uid):
                 ]
                 }}'::TEXT::jsonb,
                true) where scriptid='-MDPYzHcFVHt02D1Tz4Z' and "uid" = '{2}' and "data"->'entries'->'DateAdmission'->'values'->'value'::text->>0 {1};;
-            '''.format(uid, date_condition, old_uid)
+            '''.format(safe_uid, date_condition, safe_old_uid)
 
 
 def update_maternal_outer_uid(uid):
+    safe_uid = _escape_sql_literal(uid)
     return ''' update public.clean_sessions set data= JSONB_SET(
              data,
             '{{uid}}',
              to_json(uid)::TEXT::JSONB,
-             true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';;'''.format(uid)
+             true) where  uid='{0}' and scriptid= '-MDPYzHcFVHt02D1Tz4Z';;'''.format(safe_uid)
 
 
 def get_discharges_tofix_query():
@@ -1033,18 +1051,21 @@ def update_eronous_label(uid, script_id, type, key, label, value):
         }
     })
 
-    # logging.info(jsonb_data)
+    safe_uid = _escape_sql_literal(uid)
+    safe_script_id = _escape_sql_literal(script_id)
+    safe_key = _escape_sql_literal(key)
+    safe_jsonb_data = _escape_sql_literal(jsonb_data)
 
     # Construct the update query string
     query = f"""
         UPDATE public.clean_sessions
         SET data = JSONB_SET(
             data,
-            '{{entries,{key}}}',
-            '{jsonb_data}'::jsonb,
+            '{{entries,{safe_key}}}',
+            '{safe_jsonb_data}'::jsonb,
             true
         )
-        WHERE uid = '{uid}' AND scriptid = '{script_id}';;
+        WHERE uid = '{safe_uid}' AND scriptid = '{safe_script_id}';;
     """
     # logging.info(query)
     return query
@@ -1117,14 +1138,15 @@ def insert_sessions_data():
 
 
 def regenerate_unique_key_query(id, unique_key):
-    
+
     formatted= unique_key
-    try: 
+    try:
         formatted = datetime.strptime(unique_key, "%d %b, %Y %H:%M")
     except:
-       formatted= unique_key 
+       formatted= unique_key
 
-    return f''' UPDATE public.clean_sessions SET cleaned=true, unique_key = '{formatted}' WHERE  id ={id} AND unique_key !~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}.*';;
+    safe_value = _escape_sql_literal(formatted)
+    return f''' UPDATE public.clean_sessions SET cleaned=true, unique_key = '{safe_value}' WHERE  id ={int(id)} AND unique_key !~ '^\\d{{4}}-\\d{{2}}-\\d{{2}}.*';;
               '''
 
 

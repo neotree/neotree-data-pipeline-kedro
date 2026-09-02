@@ -1,6 +1,6 @@
 import pandas as pd
 import json
-import logging 
+import logging
 import requests
 import os
 from conf.common.config import config
@@ -8,6 +8,19 @@ import json
 from collections import OrderedDict
 from pathlib import Path
 from typing import Optional, OrderedDict as OrderedDictType,Dict
+
+
+def _safe_script_filename(script_type: str) -> str:
+    """
+    Build the local cache path for a script's metadata, rejecting any
+    script identifier that could escape the `conf/local/scripts/` directory
+    (e.g. containing "/" or "..") -- defense in depth even though today's
+    callers only ever pass trusted, hardcoded or locally-configured values.
+    """
+    name = Path(str(script_type)).name
+    if not name or name in (".", "..") or name != str(script_type):
+        raise ValueError(f"invalid script identifier: {script_type!r}")
+    return f'conf/local/scripts/{name}.json'
 
 
 # def download_file(url: str, filename: str) -> bool:
@@ -48,6 +61,10 @@ def download_file(url: str, filename: str, api_key: str) -> bool:
         # Save pretty-printed JSON to file
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(json_data, f, indent=2, ensure_ascii=False)
+        try:
+            os.chmod(filename, 0o600)
+        except OSError:
+            pass
 
         return True
 
@@ -59,7 +76,11 @@ def download_file(url: str, filename: str, api_key: str) -> bool:
 
 
 def load_processed_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
-    filename = f'conf/local/scripts/{script_type}.json'
+    try:
+        filename = _safe_script_filename(script_type)
+    except ValueError as e:
+        logging.error(f"Invalid script identifier '{script_type}': {e}")
+        return OrderedDict()
     if os.path.exists(filename):
         with open(filename, 'r') as file:
             items = json.load(file)
@@ -70,7 +91,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType[str, Dict[str, str]]:
-    filename = f'conf/local/scripts/{script_type}.json'
+    try:
+        filename = _safe_script_filename(script_type)
+    except ValueError as e:
+        logger.error(f"Invalid script identifier '{script_type}': {e}")
+        return OrderedDict()
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     
     # Process the data
@@ -101,6 +126,10 @@ def process_and_save_script(script_type: str, raw_data: dict) -> OrderedDictType
         # Save to file
         with open(filename, 'w') as file:
             file.write(json_string)
+        try:
+            os.chmod(filename, 0o600)
+        except OSError:
+            pass
         logger.info(f"Successfully saved script data to {filename}")
         
     except ValueError as e:
@@ -132,7 +161,11 @@ def download_script(script_type: str) -> OrderedDictType[str, Dict[str, str]]:
    }
     api_key = params['webeditor_api_key']
     url = f"{params['webeditor']}/api/scripts/metadata?data={json.dumps(data)}"
-    filename = f'conf/local/scripts/{script_type}.json'
+    try:
+        filename = _safe_script_filename(script_type)
+    except ValueError as e:
+        logging.error(f"Invalid script identifier '{script_type}': {e}")
+        return OrderedDict()
     # Download directly to the file
     download_file(url, filename,api_key)
 

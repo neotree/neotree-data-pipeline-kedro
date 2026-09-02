@@ -1,4 +1,6 @@
 import os
+import ast
+import operator
 import json
 import pandas as pd
 import numpy as np
@@ -1076,6 +1078,114 @@ def validate_dataframe_with_ge(
     return _drop_confidential_columns(df, [schema], logger)
 
 
+# Screen/field visibility "condition" expressions (e.g. "__age > 5 and __gender == 'Male'")
+# are sourced from externally fetched script metadata, so they are interpreted with a small
+# hand-rolled evaluator below instead of eval()/pd.eval() — attribute access, calls, imports,
+# and any name outside of `local_dict` are simply never reachable, rather than merely
+# blocklisted, so condition strings can never execute arbitrary code.
+_CONDITION_COMPARE_OPS = {
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+}
+
+
+def _condition_logical_and(left, right):
+    if isinstance(left, (pd.Series, np.ndarray)) or isinstance(right, (pd.Series, np.ndarray)):
+        return left & right
+    return bool(left) and bool(right)
+
+
+def _condition_logical_or(left, right):
+    if isinstance(left, (pd.Series, np.ndarray)) or isinstance(right, (pd.Series, np.ndarray)):
+        return left | right
+    return bool(left) or bool(right)
+
+
+def _condition_logical_not(value):
+    if isinstance(value, (pd.Series, np.ndarray)):
+        return ~value
+    return not value
+
+
+def _eval_condition_node(node, local_dict: dict):
+    if isinstance(node, ast.Expression):
+        return _eval_condition_node(node.body, local_dict)
+    if isinstance(node, ast.BoolOp):
+        values = [_eval_condition_node(value, local_dict) for value in node.values]
+        if isinstance(node.op, ast.And):
+            combine = _condition_logical_and
+        elif isinstance(node.op, ast.Or):
+            combine = _condition_logical_or
+        else:
+            raise ValueError(f"boolean operator '{type(node.op).__name__}' is not allowed in condition")
+        result = values[0]
+        for value in values[1:]:
+            result = combine(result, value)
+        return result
+    if isinstance(node, ast.UnaryOp):
+        operand = _eval_condition_node(node.operand, local_dict)
+        if isinstance(node.op, ast.Not):
+            return _condition_logical_not(operand)
+        if isinstance(node.op, ast.USub):
+            return -operand
+        if isinstance(node.op, ast.UAdd):
+            return operand
+        raise ValueError(f"unary operator '{type(node.op).__name__}' is not allowed in condition")
+    if isinstance(node, ast.Compare):
+        if len(node.ops) != 1 or type(node.ops[0]) not in _CONDITION_COMPARE_OPS:
+            raise ValueError("only a single ==, !=, <, <=, >, >= comparison is allowed in condition")
+        left = _eval_condition_node(node.left, local_dict)
+        right = _eval_condition_node(node.comparators[0], local_dict)
+        return _CONDITION_COMPARE_OPS[type(node.ops[0])](left, right)
+    if isinstance(node, ast.Name):
+        if node.id not in local_dict:
+            raise ValueError(f"name '{node.id}' is not allowed in condition")
+        return local_dict[node.id]
+    if isinstance(node, ast.Constant):
+        if node.value is not None and not isinstance(node.value, (str, int, float, bool)):
+            raise ValueError("unsupported literal in condition")
+        return node.value
+    raise ValueError(f"expression element '{type(node).__name__}' is not allowed in condition")
+
+
+def _normalize_condition_operators(expr: str) -> str:
+    """
+    Normalize boolean/comparison syntax ("and"/"or" words, "&"/"|" symbols,
+    "true"/"false", and a bare "=") to Python's native spelling -- but only
+    outside of single-quoted string literals. A naive whole-string replace
+    would silently corrupt a compared value that happens to contain one of
+    these tokens (e.g. "M&B", "A&E", "salt and pepper", "a=b").
+    """
+    parts = re.split(r"('(?:[^']|'')*')", expr)
+    for i in range(0, len(parts), 2):  # even indices are the non-literal spans
+        part = parts[i]
+        part = part.replace("&", " and ").replace("|", " or ")
+        part = re.sub(r"\band\b", "and", part, flags=re.I)
+        part = re.sub(r"\bor\b", "or", part, flags=re.I)
+        part = re.sub(r"\btrue\b", "True", part, flags=re.I)
+        part = re.sub(r"\bfalse\b", "False", part, flags=re.I)
+        part = re.sub(r"(?<![<>=!])=(?!=)", "==", part)
+        parts[i] = part
+    return "".join(parts)
+
+
+def _safe_eval_condition(expr: str, local_dict: dict):
+    """
+    Evaluate a screen/field visibility condition without ever calling
+    eval()/pd.eval() on it — condition strings originate from externally
+    fetched script metadata and must never reach a real Python evaluator.
+    Only boolean combination (and/or/not), a single comparison, field
+    lookups from `local_dict`, and literal constants are supported; nothing
+    else in the parsed expression is ever executed.
+    """
+    tree = ast.parse(expr, mode="eval")
+    return _eval_condition_node(tree, local_dict)
+
+
 def _validate_subset(
     df: pd.DataFrame,
     schema,
@@ -1187,11 +1297,14 @@ def _validate_subset(
         for key in keys:
             expr = expr.replace(f"${key}", f"__{key}")
 
-        expr = re.sub(r"\band\b", "&", expr, flags=re.I)
-        expr = re.sub(r"\bor\b", "|", expr, flags=re.I)
-        expr = re.sub(r"\btrue\b", "True", expr, flags=re.I)
-        expr = re.sub(r"\bfalse\b", "False", expr, flags=re.I)
-        expr = re.sub(r"(?<![<>=!])=(?!=)", "==", expr)
+        # Normalize both spellings ("and"/"or" words and "&"/"|" symbols) to
+        # Python's native `and`/`or` keywords so ast.parse groups them around
+        # the comparisons on either side with correct (low) precedence --
+        # unlike bitwise &/|, which Python would otherwise bind tighter than
+        # ==, <, >, etc., splitting a compound condition apart incorrectly.
+        # Done outside of quoted literals so a compared value like 'M&B' or
+        # 'salt and pepper' is never mangled by the substitution.
+        expr = _normalize_condition_operators(expr)
 
         local_dict = {}
         for key in keys:
@@ -1206,7 +1319,7 @@ def _validate_subset(
             local_dict[f"__{key}"] = series
 
         try:
-            result = pd.eval(expr, engine="python", local_dict=local_dict)
+            result = _safe_eval_condition(expr, local_dict)
             if isinstance(result, (bool, np.bool_)):
                 return pd.Series(bool(result), index=df.index)
 
@@ -2023,10 +2136,12 @@ def send_log_via_email(log_file_path: str, email_receivers, category: str = "val
         msg['To'] = ', '.join(recipients)
 
         html_body = get_html_validation_template(country, log_content)
-        pdf_path = f"/tmp/validation_{category}_log.pdf"
 
         try:
-            pdfkit.from_string(html_body, pdf_path, options=pdf_options)
+            # output_path=None returns the rendered PDF as bytes instead of
+            # writing it to a (predictable, world-readable) file under /tmp --
+            # the report can contain patient identifiers/field values.
+            pdf_bytes = pdfkit.from_string(html_body, None, options=pdf_options)
         except Exception as e:
             logging.error(f"Failed to create PDF: {str(e)}")
             return False
@@ -2035,13 +2150,12 @@ def send_log_via_email(log_file_path: str, email_receivers, category: str = "val
         msg.add_alternative(html_body, subtype='html')
 
         try:
-            with open(pdf_path, 'rb') as f:
-                msg.add_attachment(
-                    f.read(),
-                    maintype='application',
-                    subtype='pdf',
-                    filename=f'validation_{category}.pdf'
-                )
+            msg.add_attachment(
+                pdf_bytes,
+                maintype='application',
+                subtype='pdf',
+                filename=f'validation_{category}.pdf'
+            )
         except Exception as e:
             logging.error(f"Failed to attach PDF: {str(e)}")
             return False

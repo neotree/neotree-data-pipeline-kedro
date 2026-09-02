@@ -28,15 +28,12 @@ def maternal_data_duplicates_cleanup():
                                 else:
                                     neotree_id = generateNeotreeId()
                                     admission_date = fRow['DA']
-                                    date_condition =f'''='{admission_date}' '''
-                                    if admission_date is None:
-                                        date_condition= 'is null'
                                     update_query =''
                                     if type(fRow['entries']) is list:
-                                        update_query = update_maternal_uid_query_old(neotree_id,date_condition,fRow['uid'])
+                                        update_query = update_maternal_uid_query_old(neotree_id,admission_date,fRow['uid'])
                                         inject_sql(update_query,'UPDATE DUPLICATE OLD STRUCTURE')
                                     else:
-                                        update_query = update_maternal_uid_query_new(neotree_id,date_condition,fRow['uid'])
+                                        update_query = update_maternal_uid_query_new(neotree_id,admission_date,fRow['uid'])
                                         inject_sql(update_query,'UPDATE DUPLICATE NEW STRUCTURE')
                                     outer_uid_update_query = update_maternal_outer_uid(neotree_id);
                                     inject_sql(outer_uid_update_query,'UPDATE OUTER NEOTREE ID')

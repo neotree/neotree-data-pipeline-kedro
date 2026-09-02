@@ -1,7 +1,7 @@
 import json
 import os
 from conf.base.catalog import hospital_conf
-from conf.common.scripts import get_raw_json
+from conf.common.scripts import get_raw_json, _safe_script_filename
 import pandas as pd
 import logging
 
@@ -88,7 +88,7 @@ def process_and_save_field_info(script, json_data, script_id_to_use=None):
     # Ensure directory exists
     os.makedirs('conf/local/scripts', exist_ok=True)
 
-    filename = f'conf/local/scripts/{script}.json'
+    filename = _safe_script_filename(script)
 
     # Load existing data (dict of scriptid -> field dicts)
     if os.path.exists(filename):
@@ -232,7 +232,7 @@ def load_json_for_comparison(filename, script_id=None):
         None: if file not found or error
     """
     try:
-        file_path = f'conf/local/scripts/{filename}.json'
+        file_path = _safe_script_filename(filename)
 
         if os.path.exists(file_path):
             with open(file_path, 'r') as f:
@@ -259,11 +259,18 @@ def load_json_for_comparison(filename, script_id=None):
     except json.JSONDecodeError:
         logging.error(f"Error: File '{filename}' contains invalid JSON.")
         return None
+    except ValueError as e:
+        logging.error(f"Error: {e}")
+        return None
 
 
 def merge_json_files(file1_path, file2_path):
-    file_path1= f'conf/local/scripts/{file1_path}.json'
-    file_path2= f'conf/local/scripts/{file2_path}.json'
+    try:
+        file_path1 = _safe_script_filename(file1_path)
+        file_path2 = _safe_script_filename(file2_path)
+    except ValueError as e:
+        logging.error(f"Invalid script identifier: {e}")
+        return None
 
     # Fix: Check the correct file path variable
     if os.path.exists(file_path1) and os.path.exists(file_path2):

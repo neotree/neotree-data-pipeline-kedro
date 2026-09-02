@@ -2,6 +2,7 @@ from kedro.extras.datasets.pandas import (
     SQLQueryDataSet,SQLTableDataSet)
 from kedro.io.data_catalog import DataCatalog
 from pathlib import Path
+from sqlalchemy.engine import URL
 from  conf.common.config import config
 from conf.common.hospital_config import hospital_conf
 import sys,os
@@ -17,9 +18,17 @@ from data_pipeline.pipelines.data_engineering.queries.assorted_queries import (g
                             deduplicate_baseline_query,get_script_ids_query,read_data_with_no_unique_key, read_drugs_query,read_fluids_query)
 
 params = config()
-con = 'postgresql+psycopg2://' + \
-params["user"] + ':' + params["password"] + '@' + \
-params["host"] + ':' + '5432' + '/' + params["database"]
+# Built via URL.create() rather than string concatenation so that special
+# characters in the username/password/database (":", "@", "/", "%", ...)
+# are percent-encoded instead of corrupting the connection string.
+con = URL.create(
+    "postgresql+psycopg2",
+    username=params["user"],
+    password=params["password"],
+    host=params["host"],
+    port=5432,
+    database=params["database"],
+).render_as_string(hide_password=False)
 env = params['env']
 cron_time = datetime.today().strftime('%Y-%m-%d-%H:%M:%S')
 start = time.time()
@@ -32,6 +41,18 @@ ubuntu_log_dir = "/var/log"
 if Path(ubuntu_log_dir).exists():
     logs_dir = ubuntu_log_dir
 cron_log_file = Path(logs_dir+'/data_pipeline_cron.log');
+# Restrict to the owner up front so the many `open(cron_log_file, "a+")` call
+# sites across the pipeline never rely on the process umask default.
+if not cron_log_file.exists():
+    try:
+        cron_log_file.touch(mode=0o600)
+    except OSError:
+        pass
+else:
+    try:
+        os.chmod(cron_log_file, 0o600)
+    except OSError:
+        pass
 
 generic_dedup_queries = []
 

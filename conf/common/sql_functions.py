@@ -2,6 +2,7 @@ import logging
 import sys
 import json
 import re
+import hashlib
 from typing import TYPE_CHECKING, Optional, Dict, Iterable, List, Tuple
 from collections import defaultdict
 from datetime import datetime, date
@@ -13,6 +14,20 @@ from conf.common.logger import setup_logger
 from conf.common.format_error import formatError
 from .config import config
 
+
+def _redact_sql_for_log(sql_text, limit: int = 500) -> str:
+    """
+    Return a version of a SQL statement (or exception message containing one)
+    safe to write to a log file. Query builders in this module interpolate
+    values -- including patient data -- directly into SQL text rather than
+    binding them as parameters, so every single-quoted literal is replaced
+    with a placeholder before truncating, rather than logging it verbatim.
+    """
+    redacted = re.sub(r"'(?:[^']|'')*'", "'<redacted>'", str(sql_text))
+    if len(redacted) > limit:
+        return redacted[:limit] + "...<truncated>"
+    return redacted
+
 if TYPE_CHECKING:
     from sqlalchemy.engine import Engine
     from sqlalchemy.engine import Connection
@@ -20,13 +35,16 @@ if TYPE_CHECKING:
     from psycopg2.extras import execute_values as psycopg2_execute_values
 
 try:
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import create_engine, text, bindparam
+    from sqlalchemy.engine import URL
     from sqlalchemy.types import TEXT
     SQLALCHEMY_AVAILABLE = True
 except ImportError:
     SQLALCHEMY_AVAILABLE = False
     create_engine = None  # type: ignore
     text = None  # type: ignore
+    bindparam = None  # type: ignore
+    URL = None  # type: ignore
     TEXT = None  # type: ignore
 
 try:
@@ -84,12 +102,17 @@ def limit_key_length(df: pd.DataFrame, keys):
 
 
 params = config()
-# Postgres Connection String
-con = 'postgresql+psycopg2://' + \
-params["user"] + ':' + params["password"] + '@' + \
-params["host"] + ':' + '5432' + '/' + params["database"]
-
-con_string = f'''postgresql://{params["user"]}:{params["password"]}@{params["host"]}:5432/{params["database"]}'''
+# Postgres Connection String -- built via URL.create() rather than string
+# concatenation so that special characters in the username/password/database
+# (":", "@", "/", "%", ...) are percent-encoded instead of corrupting the URL.
+con = URL.create(
+    "postgresql+psycopg2",
+    username=params["user"],
+    password=params["password"],
+    host=params["host"],
+    port=5432,
+    database=params["database"],
+).render_as_string(hide_password=False)
 
 # Create SQLAlchemy engine with connection pooling
 if TYPE_CHECKING:
@@ -103,7 +126,8 @@ if SQLALCHEMY_AVAILABLE and create_engine:
         pool_size=5,        # Maximum number of connections in the pool
         max_overflow=10,    # Maximum number of connections to allow in excess of pool_size
         pool_timeout=30,    # Maximum number of seconds to wait for a connection to become available
-        pool_recycle=1800   # Number of seconds a connection can persist before being recycled
+        pool_recycle=1800,  # Number of seconds a connection can persist before being recycled
+        hide_parameters=True,  # Don't let SQLAlchemy echo bound parameter values (patient data) into exception messages/logs
     )
 #Useful functions to inject sql queries
 #Inject SQL Procedures
@@ -221,19 +245,11 @@ def inject_sql(sql_script, file_name):
                     logging.error(f"Error executing command in {file_name}")
                     logging.error(f"Command {idx + 1}/{len(sql_commands)}")
                     logging.error(f"Error type: {type(e)}")
-                    logging.error(f"Full error: {str(e)}")
-
-                    # Log the problematic SQL (truncated to avoid huge logs)
-                    if len(command) > 500:
-                        logging.error(f"Failed SQL (first 500 chars): {command[:500]}...")
-                        # Try to extract the VALUES line that failed
-                        lines = command.split('\n')
-                        for i, line in enumerate(lines):
-                            if 'VALUES' in line.upper() and i + 1 < len(lines):
-                                logging.error(f"First VALUES line: {lines[i+1][:200]}")
-                                break
-                    else:
-                        logging.error(f"Failed SQL: {command}")
+                    # These queries interpolate values (including patient data) directly
+                    # into the SQL text rather than binding them, so both the error
+                    # message and the failed command are redacted before logging.
+                    logging.error(f"Full error: {_redact_sql_for_log(str(e))}")
+                    logging.error(f"Failed SQL: {_redact_sql_for_log(command)}")
 
                     logging.error(f"Note: Previously executed commands were already committed")
                     raise
@@ -394,7 +410,9 @@ def create_exploded_table(df: pd.DataFrame, table_name):
 
         df.to_sql(table_name, con=engine, schema='derived', if_exists='append', index=False, dtype={col_name: TEXT for col_name in df})
     except Exception as ex:
-        logging.error(f"FAILED DF:\n{df.to_string()}")
+        # Do not log df.to_string() here -- these rows are patient data and this
+        # is a routine failure path (schema drift/type mismatches), not an edge case.
+        logging.error(f"FAILED to append to derived.{table_name}: {len(df)} rows, columns={list(df.columns)}")
         logging.error(f'ERR DF=={ex}')
 
 def append_data(df: pd.DataFrame, table_name):
@@ -439,8 +457,17 @@ def append_data(df: pd.DataFrame, table_name):
 #         raise e
 
 
-def inject_sql_with_return(sql_script):
-    """Execute SQL and return results as list of tuples."""
+def inject_sql_with_return(sql_script, bind_params=None, expanding_params=None):
+    """
+    Execute SQL and return results as list of tuples.
+
+    `bind_params` is an optional dict of bind values for named placeholders
+    (e.g. ":uid") in `sql_script`. `expanding_params` names which of those
+    keys hold a list that should be expanded into a bound `IN (...)` clause
+    (e.g. `WHERE "uid" IN :uids` with `bind_params={"uids": [...]}` and
+    `expanding_params=["uids"]`), instead of interpolating the list into the
+    SQL text.
+    """
     if not engine or not text:
         raise RuntimeError("Database engine not initialized")
 
@@ -448,14 +475,19 @@ def inject_sql_with_return(sql_script):
         return []
 
     try:
+        statement = text(sql_script)
+        if expanding_params:
+            statement = statement.bindparams(
+                *(bindparam(name, expanding=True) for name in expanding_params)
+            )
         # Use connect() for read operations - no transaction needed
         with engine.connect() as conn:  # type: ignore[union-attr]
-            result = conn.execute(text(sql_script))
+            result = conn.execute(statement, bind_params or {})
             data = list(result.fetchall())  #  type: ignore[union-attr]
             return data
 
     except Exception as e:
-        logging.error(f"Error executing SQL: {e}")
+        logging.error(f"Error executing SQL: {_redact_sql_for_log(str(e))}")
         raise
 
     
@@ -476,15 +508,15 @@ def inject_bulk_sql(queries, batch_size=1000):
                     try:
                         conn.execute(text(command))
                     except Exception as e:
-                        logging.error(f"Error executing command: {command}")
-                        logging.error(e)
+                        logging.error(f"Error executing command: {_redact_sql_for_log(command)}")
+                        logging.error(_redact_sql_for_log(str(e)))
                         raise e
 
         logging.info("########################### DONE BULK PROCESSING ################")
 
     except Exception as e:
         logging.error("Something went wrong with the SQL batch processing")
-        logging.error(e)
+        logging.error(_redact_sql_for_log(str(e)))
         raise
 
 def get_table_columns(table_name,table_schema):
@@ -1168,7 +1200,7 @@ def run_query_and_return_df(query) -> pd.DataFrame:
         return df
     except Exception as ex:
         logging.error(f"Error in run_query_and_return_df: {formatError(ex)}")
-        logging.error(f"Query that caused error: {query}")
+        logging.error(f"Query that caused error: {_redact_sql_for_log(query)}")
         return pd.DataFrame()
 
 
@@ -1883,7 +1915,9 @@ def generate_postgres_insert(df, schema, table_name):
                 logging.error("="*80)
                 logging.error(f"Table: {schema}.{table_name}")
                 logging.error(f"Error Type: {error_type}")
-                logging.error(f"Invalid Value Attempting Insert: '{invalid_value}'")
+                # The invalid value is patient data pulled straight out of the
+                # dataframe -- log only its shape, never its content.
+                logging.error(f"Invalid value length: {len(invalid_value)} chars (value redacted)")
                 logging.error("="*80)
 
                 # Find which columns are the problematic type
@@ -1891,11 +1925,10 @@ def generate_postgres_insert(df, schema, table_name):
                 logging.error(f"Columns with type '{error_type}': {problem_columns}")
 
                 # Search through the batch rows to find which row has this value
-                logging.error(f"\nSearching batch rows for value '{invalid_value}'...")
+                logging.error(f"\nSearching batch rows for the invalid value (redacted)...")
                 for batch_idx, row_str in enumerate(batch):
                     if invalid_value in row_str:
-                        logging.error(f"\n>>> FOUND IN BATCH ROW {batch_idx + i//batch_size}:")
-                        logging.error(f"    Row string: {row_str}")
+                        logging.error(f"\n>>> FOUND IN BATCH ROW {batch_idx + i//batch_size}")
 
                         # Try to extract uid from the row if it exists
                         try:
@@ -1904,16 +1937,21 @@ def generate_postgres_insert(df, schema, table_name):
                             if actual_row_idx < len(df):
                                 actual_row = df.iloc[actual_row_idx]
                                 uid = actual_row.get('uid', 'NOT FOUND')
-                                logging.error(f"    UID: {uid}")
-                                logging.error(f"\n    Full row values:")
+                                uid_hash = (
+                                    hashlib.sha256(str(uid).encode()).hexdigest()[:12]
+                                    if uid != 'NOT FOUND' else 'NOT FOUND'
+                                )
+                                logging.error(f"    Record uid hash: {uid_hash}")
+                                logging.error(f"\n    Column shapes (values redacted):")
 
-                                # Print all column names with their values
+                                # Print column names with type/length only -- never the value
                                 for col_idx, col_name in enumerate(valid_columns):
                                     col_value = actual_row.get(col_name, 'NOT FOUND')
-                                    if str(col_value) == invalid_value:
-                                        logging.error(f"      [{col_idx}] {col_name}: '{col_value}' ⚠️ MATCHES ERROR VALUE")
-                                    else:
-                                        logging.error(f"      [{col_idx}] {col_name}: '{col_value}'")
+                                    marker = " ⚠️ MATCHES ERROR VALUE" if str(col_value) == invalid_value else ""
+                                    logging.error(
+                                        f"      [{col_idx}] {col_name}: type={type(col_value).__name__}, "
+                                        f"len={len(str(col_value))}{marker}"
+                                    )
                         except Exception as detail_err:
                             logging.error(f"    Could not extract full row details: {detail_err}")
 
@@ -2059,14 +2097,14 @@ def format_value(col, value, col_type):
                             clean_value = clean_value.split('.')[0]
                         clean_value = clean_value.replace('T', ' ')
                         return f"\"{col}\" = '{clean_value}'"
-                    logging.error(f"I REDEMPTION FAILED I DON'T MATCH::::::{value}")
+                    logging.error(f"Unrecognized timestamp format for column '{col}' (value redacted, len={len(str(value))})")
                     return f"\"{col}\" = NULL"
 
             else:
                 return f"\"{col}\" = NULL"
-                    
+
         except Exception:
-            logging.info(f"I HAVE EXCEPTIONED====={value}")
+            logging.info(f"Failed to parse timestamp for column '{col}' (value redacted, len={len(str(value))})")
             return f"\"{col}\" = NULL"
             
     elif 'date' in col_type_lower:
