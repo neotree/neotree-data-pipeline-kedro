@@ -50,7 +50,7 @@ def summary_maternal_outcomes_query():
         END AS "Date of Admission",
         CASE
         WHEN derived.maternal_outcomes."DateAdmission.value" IS NULL THEN NULL
-        WHEN derived.maternal_outcomes."DateAdmission.value" = '' THEN NULL
+        WHEN derived.maternal_outcomes."DateAdmission.value"::TEXT = '' THEN NULL
         WHEN derived.maternal_outcomes."DateAdmission.value"::TEXT ='NaT' THEN NULL
         ELSE
         DATE(derived.maternal_outcomes."DateAdmission.value")
