@@ -1,12 +1,17 @@
 import logging
 
 from conf.base.catalog import params
+from conf.common.sql_functions import column_exists
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 #Query to create summary_maternala_outcomes table
 def summary_maternal_outcomes_query():
     prefix = f''' DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
                 CREATE TABLE derived.summary_maternal_outcomes AS   '''
     where = ''
+
+    type_of_birth = 'NULL'
+    if column_exists('derived', 'maternal_outcomes', 'TypeBirth.label'):
+        type_of_birth = 'derived.maternal_outcomes."TypeBirth.label"'
     #Defaulting to Malawi Case 
     if(table_exists("derived","summary_maternal_outcomes")):
         prefix= f'''INSERT INTO "derived"."summary_maternal_outcomes" (
@@ -56,7 +61,7 @@ def summary_maternal_outcomes_query():
         DATE(derived.maternal_outcomes."DateAdmission.value")
         END AS "Birth Date",
         derived.maternal_outcomes."SexDis.label" AS "Gender",
-        derived.maternal_outcomes."TypeBirth.label" AS "Type of Birth",
+        {type_of_birth} AS "Type of Birth",
         derived.maternal_outcomes."Gestation.value" AS "Gestation",
         derived.maternal_outcomes."NeoTreeOutcome.label" AS "Neonate Outcome",
         derived.maternal_outcomes."BWTDis.value" AS "Birth Weight(g)",
