@@ -15,6 +15,10 @@ Available Functions:
 10. rebuild_table_to_remove_dropped_columns(table, schema) - Reclaim dropped columns
 11. fix_column_limit_error(table, schema, auto_rebuild) - Diagnose/fix 1600 column limit
 12. purge_uid_records(uid, ...) - Scan/delete a test UID or NUID across database tables
+13. backfill_renamed_keys(table, renames, schema) - Move already-processed data from a renamed key's old columns to its new columns
+14. backfill_all_legacy_key_renames(schema) - Run backfill_renamed_keys() for every table in LEGACY_KEY_RENAMES
+15. backfill_clean_table_renamed_keys(clean_table, base_table, renames, match_columns, schema) - Repair a clean_* table's lowercase columns from its base table
+16. backfill_all_legacy_key_renames_in_clean_tables(schema) - Run backfill_clean_table_renamed_keys() for every table in CLEAN_TABLE_SOURCES
 """
 
 import logging
@@ -28,6 +32,7 @@ from conf.common.sql_functions import (
 from data_pipeline.constants import KNOWN_TEST_UIDS, SOURCE_UID_CLEANUP_TABLES
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.field_info import get_script_field_schemas, load_json_for_comparison
+from data_pipeline.pipelines.data_engineering.utils.key_change import LEGACY_KEY_RENAMES
 import re
 
 
@@ -2639,3 +2644,319 @@ def fix_column_limit_error(table_name: str, schema: str = 'derived', auto_rebuil
         logging.warning("  3. Using JSONB for semi-structured data")
 
     return col_info['dropped'] > 0
+
+
+def backfill_renamed_keys(table_name: str, renames: list, schema: str = 'derived') -> int:
+    """
+    Move already-processed raw field data from a renamed key's old .value/.label
+    columns into the new key's columns, wherever the new key is still empty.
+
+    This is the historical counterpart to coalesce_renamed_keys(): that function
+    fixes up a dataframe as it's being ingested, but rows written to `table_name`
+    in earlier pipeline runs (before a rename existed, or before the new key's
+    column was even created) never went through it and are left with the value
+    sitting only under the old key. This walks `table_name` directly and moves it.
+
+    Idempotent and safe to call on every pipeline run: it only fills rows where
+    the new key is NULL, so re-running it after the data has already moved (or
+    before the new column exists at all) is a no-op. Once a table is fully
+    migrated, each rename/suffix costs one cheap EXISTS check (no write, no
+    lock escalation) instead of an unconditional UPDATE every run.
+
+    Args:
+        table_name: Table to fix, e.g. 'discharges'
+        renames: list of (old_key, new_key) base-key pairs (without .value/.label)
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Number of (old_key, new_key, suffix) columns actually backfilled
+    """
+    if not table_exists(schema, table_name):
+        return 0
+
+    backfilled = 0
+
+    for old_key, new_key in renames:
+        for suffix in ('value', 'label'):
+            old_col = f'{old_key}.{suffix}'
+            new_col = f'{new_key}.{suffix}'
+
+            column_check_query = f"""
+                SELECT
+                    bool_or(column_name = '{_escape_sql_literal(old_col)}') AS has_old,
+                    bool_or(column_name = '{_escape_sql_literal(new_col)}') AS has_new
+                FROM information_schema.columns
+                WHERE table_schema = '{_escape_sql_literal(schema)}'
+                AND table_name = '{_escape_sql_literal(table_name)}'
+                AND column_name IN ('{_escape_sql_literal(old_col)}', '{_escape_sql_literal(new_col)}');
+            """
+            try:
+                result = inject_sql_with_return(column_check_query)
+            except Exception as ex:
+                logging.warning(
+                    "Could not check columns for %s -> %s on %s.%s: %s",
+                    old_col, new_col, schema, table_name, ex,
+                )
+                continue
+
+            has_old, has_new = result[0] if result else (False, False)
+            if not (has_old and has_new):
+                continue
+
+            needs_backfill_query = f'''
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM {schema}.{_quote_identifier(table_name)}
+                    WHERE {_quote_identifier(new_col)} IS NULL
+                      AND {_quote_identifier(old_col)} IS NOT NULL
+                );
+            '''
+            try:
+                needs_result = inject_sql_with_return(needs_backfill_query)
+            except Exception as ex:
+                logging.warning(
+                    "Could not check whether %s.%s needs backfilling %s -> %s: %s",
+                    schema, table_name, old_col, new_col, ex,
+                )
+                continue
+
+            if not (needs_result and needs_result[0][0]):
+                continue
+
+            update_query = f'''
+                UPDATE {schema}.{_quote_identifier(table_name)}
+                SET {_quote_identifier(new_col)} = {_quote_identifier(old_col)}
+                WHERE {_quote_identifier(new_col)} IS NULL
+                  AND {_quote_identifier(old_col)} IS NOT NULL;;
+            '''
+            try:
+                inject_sql(update_query, f'backfill-renamed-key-{table_name}-{new_key}-{suffix}')
+                backfilled += 1
+                logging.info(
+                    "Backfilled %s.%s.\"%s\" from \"%s\" for already-processed rows",
+                    schema, table_name, new_col, old_col,
+                )
+            except Exception as ex:
+                logging.warning(
+                    "Failed to backfill \"%s\" -> \"%s\" on %s.%s: %s",
+                    old_col, new_col, schema, table_name, ex,
+                )
+
+    return backfilled
+
+
+def backfill_all_legacy_key_renames(schema: str = 'derived') -> int:
+    """
+    Run backfill_renamed_keys() for every table registered in LEGACY_KEY_RENAMES.
+
+    Intended to run once per pipeline invocation, as early as possible (before
+    tidy_data/join/clean steps read these tables), so that legacy-keyed data
+    from prior runs is uniformly available under the current key by the time
+    everything downstream reads it.
+
+    Returns:
+        Total number of (table, old_key, new_key, suffix) columns backfilled
+    """
+    total_backfilled = 0
+    for table_name, renames in LEGACY_KEY_RENAMES.items():
+        try:
+            total_backfilled += backfill_renamed_keys(table_name, renames, schema)
+        except Exception as ex:
+            logging.warning("Legacy key backfill failed for %s.%s: %s", schema, table_name, ex)
+
+    if total_backfilled:
+        logging.info("Legacy key backfill: %s column(s) updated across %s table(s)",
+                      total_backfilled, len(LEGACY_KEY_RENAMES))
+
+    return total_backfilled
+
+
+# clean_* table -> the base derived table process_dataframe_with_types() built it from.
+CLEAN_TABLE_SOURCES = {
+    'clean_discharges': 'discharges',
+    'clean_baseline': 'baseline',
+    'clean_maternal_outcomes': 'maternal_outcomes',
+}
+
+
+def backfill_clean_table_renamed_keys(
+    clean_table: str,
+    base_table: str,
+    renames: list,
+    match_columns=('uid', 'facility', 'unique_key'),
+    schema: str = 'derived',
+) -> int:
+    """
+    Move already-processed data into a clean_* table's lowercase columns,
+    sourced from its base derived table, for rows a prior run left NULL.
+
+    process_dataframe_with_types() (conf/common/scripts.py) builds clean_*
+    tables by lowercasing raw base keys, so two differently-cased raw keys for
+    the same field (e.g. "NeoTreeOutcome"/"NeotreeOutcome") land on the same
+    clean column. Before that function was fixed to coalesce instead of
+    overwrite, whichever key was processed last silently clobbered the other's
+    data -- and because clean_* tables are only ever appended to incrementally
+    (never reprocessed), those rows are stuck with a wrong/NULL value forever
+    unless repaired directly. This does that repair, matching rows between the
+    two tables on `match_columns`.
+
+    For each (old_key, new_key) rename, the source value is
+    COALESCE(base."<new_key>.<suffix>", base."<old_key>.<suffix>"), so this is
+    correct whether or not backfill_renamed_keys() has already filled the base
+    table's new-key column. The clean column is only touched where it is
+    currently NULL, so this is idempotent and safe to run every pipeline run.
+    Once fully migrated, each rename/suffix costs one cheap EXISTS check
+    instead of an unconditional UPDATE every run.
+
+    The source subquery is deduplicated (DISTINCT ON match_columns, tie-broken
+    by ctid) before the join: match_columns isn't a DB-enforced unique key on
+    the base table, only a best-effort periodic dedup, so without this an
+    UPDATE...FROM join could match a clean row to more than one base row and
+    silently pick an arbitrary one.
+
+    Args:
+        clean_table: e.g. 'clean_discharges'
+        base_table: e.g. 'discharges'
+        renames: list of (old_key, new_key) base-key pairs (without .value/.label)
+        match_columns: columns identifying the same record in both tables
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Number of clean columns actually backfilled
+    """
+    if not (table_exists(schema, clean_table) and table_exists(schema, base_table)):
+        return 0
+
+    backfilled = 0
+
+    for old_key, new_key in renames:
+        for suffix, clean_suffix in (('value', ''), ('label', '_label')):
+            old_col = f'{old_key}.{suffix}'
+            new_col = f'{new_key}.{suffix}'
+            clean_col = f'{new_key.lower()}{clean_suffix}'
+
+            column_check_query = f"""
+                SELECT
+                    bool_or(table_name = '{_escape_sql_literal(base_table)}' AND column_name = '{_escape_sql_literal(old_col)}') AS has_old,
+                    bool_or(table_name = '{_escape_sql_literal(base_table)}' AND column_name = '{_escape_sql_literal(new_col)}') AS has_new,
+                    bool_or(table_name = '{_escape_sql_literal(clean_table)}' AND column_name = '{_escape_sql_literal(clean_col)}') AS has_clean
+                FROM information_schema.columns
+                WHERE table_schema = '{_escape_sql_literal(schema)}'
+                AND table_name IN ('{_escape_sql_literal(base_table)}', '{_escape_sql_literal(clean_table)}')
+                AND column_name IN ('{_escape_sql_literal(old_col)}', '{_escape_sql_literal(new_col)}', '{_escape_sql_literal(clean_col)}');
+            """
+            try:
+                result = inject_sql_with_return(column_check_query)
+            except Exception as ex:
+                logging.warning(
+                    "Could not check columns for %s.%s -> %s.%s: %s",
+                    base_table, old_key, clean_table, clean_col, ex,
+                )
+                continue
+
+            has_old, has_new, has_clean = result[0] if result else (False, False, False)
+            if not has_clean or not (has_old or has_new):
+                continue
+
+            source_cols = [col for col, present in ((new_col, has_new), (old_col, has_old)) if present]
+            source_expr = (
+                f'b.{_quote_identifier(source_cols[0])}' if len(source_cols) == 1
+                else 'COALESCE(' + ', '.join(f'b.{_quote_identifier(c)}' for c in source_cols) + ')'
+            )
+
+            target_type_query = f"""
+                SELECT data_type FROM information_schema.columns
+                WHERE table_schema = '{_escape_sql_literal(schema)}' AND table_name = '{_escape_sql_literal(clean_table)}'
+                AND column_name = '{_escape_sql_literal(clean_col)}' LIMIT 1;
+            """
+            try:
+                type_result = inject_sql_with_return(target_type_query)
+            except Exception as ex:
+                logging.warning("Could not determine type of %s.%s: %s", clean_table, clean_col, ex)
+                continue
+            target_type = type_result[0][0] if type_result else 'text'
+
+            match_clause = ' AND '.join(
+                f'c.{_quote_identifier(col)} = s.{_quote_identifier(col)}' for col in match_columns
+            )
+            select_match_cols = ', '.join(f'b.{_quote_identifier(col)}' for col in match_columns)
+            distinct_on_cols = ', '.join(f'b.{_quote_identifier(col)}' for col in match_columns)
+            join_clause = ' AND '.join(
+                f'c.{_quote_identifier(col)} = b.{_quote_identifier(col)}' for col in match_columns
+            )
+
+            needs_backfill_query = f'''
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM {schema}.{_quote_identifier(clean_table)} c
+                    JOIN {schema}.{_quote_identifier(base_table)} b ON {join_clause}
+                    WHERE c.{_quote_identifier(clean_col)} IS NULL
+                      AND {source_expr} IS NOT NULL
+                );
+            '''
+            try:
+                needs_result = inject_sql_with_return(needs_backfill_query)
+            except Exception as ex:
+                logging.warning(
+                    "Could not check whether %s.%s needs backfilling from %s: %s",
+                    clean_table, clean_col, base_table, ex,
+                )
+                continue
+
+            if not (needs_result and needs_result[0][0]):
+                continue
+
+            update_query = f'''
+                UPDATE {schema}.{_quote_identifier(clean_table)} c
+                SET {_quote_identifier(clean_col)} = s.src_val::{target_type}
+                FROM (
+                    SELECT DISTINCT ON ({distinct_on_cols})
+                        {select_match_cols}, {source_expr} AS src_val
+                    FROM {schema}.{_quote_identifier(base_table)} b
+                    WHERE {source_expr} IS NOT NULL
+                    ORDER BY {distinct_on_cols}, b.ctid DESC
+                ) s
+                WHERE {match_clause}
+                  AND c.{_quote_identifier(clean_col)} IS NULL
+                  AND s.src_val IS NOT NULL;;
+            '''
+            try:
+                inject_sql(update_query, f'backfill-clean-{clean_table}-{clean_col}')
+                backfilled += 1
+                logging.info(
+                    "Backfilled %s.%s.%s from %s.%s (already-processed rows)",
+                    schema, clean_table, clean_col, base_table, source_cols,
+                )
+            except Exception as ex:
+                logging.warning(
+                    "Failed to backfill %s.%s from %s.%s: %s",
+                    clean_table, clean_col, base_table, source_cols, ex,
+                )
+
+    return backfilled
+
+
+def backfill_all_legacy_key_renames_in_clean_tables(schema: str = 'derived') -> int:
+    """
+    Run backfill_clean_table_renamed_keys() for every clean_* table registered
+    in CLEAN_TABLE_SOURCES, using the renames registered for its base table in
+    LEGACY_KEY_RENAMES.
+
+    Returns:
+        Total number of clean columns backfilled across all clean_* tables
+    """
+    total_backfilled = 0
+    for clean_table, base_table in CLEAN_TABLE_SOURCES.items():
+        renames = LEGACY_KEY_RENAMES.get(base_table, [])
+        if not renames:
+            continue
+        try:
+            total_backfilled += backfill_clean_table_renamed_keys(clean_table, base_table, renames, schema=schema)
+        except Exception as ex:
+            logging.warning("Legacy key backfill failed for %s.%s: %s", schema, clean_table, ex)
+
+    if total_backfilled:
+        logging.info("Legacy key backfill (clean tables): %s column(s) updated across %s table(s)",
+                      total_backfilled, len(CLEAN_TABLE_SOURCES))
+
+    return total_backfilled

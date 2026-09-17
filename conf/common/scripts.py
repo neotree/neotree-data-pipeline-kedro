@@ -278,6 +278,21 @@ def process_dataframe_with_types(
     column_order = []  # Track order explicitly for final DataFrame
     columns_to_drop = set()
 
+    def _coalesce_into(key, series):
+        # Two differently-cased raw keys (e.g. "NeoTreeOutcome" and "NeotreeOutcome"
+        # after a survey/script rename) both lower() onto the same clean column name.
+        # merged_data can legitimately contain both (some hospitals renamed, some
+        # haven't yet), so combine rather than let iteration order silently clobber
+        # whichever key was extracted first. "Missing" mirrors the rest of this
+        # module's convention (NaN, or the literal strings 'nan'/'None'/''), since the
+        # string/dropdown branches above stringify NaN to 'nan' before we ever see it.
+        if key not in columns_to_process:
+            columns_to_process[key] = series
+            return
+        existing = columns_to_process[key]
+        existing_missing = existing.isna() | existing.astype(str).isin(['nan', 'None', ''])
+        columns_to_process[key] = existing.where(~existing_missing, series)
+
     for col in processed_df.columns:
         if '.' in col:
             base_key, suffix = col.split('.', 1)
@@ -296,20 +311,21 @@ def process_dataframe_with_types(
                 extracted_values = processed_df[col].apply(extract_value_from_json)
 
                 if data_type in ['dropdown', 'single_select_option', 'period']:
-                    columns_to_process[new_key] = extracted_values.astype(str)
+                    _coalesce_into(new_key, extracted_values.astype(str))
                 elif data_type == 'multi_select_option':
-                    columns_to_process[new_key] = extracted_values.astype(str).apply(clean_to_jsonb_array)
+                    _coalesce_into(new_key, extracted_values.astype(str).apply(clean_to_jsonb_array))
 
                 elif data_type == 'boolean':
                     bool_map = {
                         'y': True, 'yes': True, 'true': True, '1': True, True: True,
                         'n': False, 'no': False, 'false': False, '0': False, False: False
                     }
-                    columns_to_process[new_key] = (
-                        extracted_values.astype(str).str.strip().str.lower().map(bool_map).fillna(False)
+                    _coalesce_into(
+                        new_key,
+                        extracted_values.astype(str).str.strip().str.lower().map(bool_map).fillna(False),
                     )
                 elif data_type in ['number', 'integer', 'float']:
-                    columns_to_process[new_key] = pd.to_numeric(extracted_values, errors='coerce')
+                    _coalesce_into(new_key, pd.to_numeric(extracted_values, errors='coerce'))
                 elif data_type in ['datetime', 'timestamp', 'date']:
                     # Normalize timezone to avoid tz-naive/tz-aware errors
                     dt_series = pd.to_datetime(extracted_values, errors="coerce")
@@ -320,10 +336,10 @@ def process_dataframe_with_types(
                     ):
                         dt_series = dt_series.dt.tz_localize(None)  # type: ignore[attr-defined]
 
-                    columns_to_process[new_key] = dt_series
+                    _coalesce_into(new_key, dt_series)
 
                 else:
-                    columns_to_process[new_key] = extracted_values.astype(str)
+                    _coalesce_into(new_key, extracted_values.astype(str))
 
                 # Track column order
                 if new_key not in column_order:
@@ -336,9 +352,9 @@ def process_dataframe_with_types(
 
                 label_key = f"{new_key}_label"
                 if data_type == 'multi_select_option':
-                    columns_to_process[label_key] = extracted_labels.astype(str).apply(clean_to_jsonb_array)
+                    _coalesce_into(label_key, extracted_labels.astype(str).apply(clean_to_jsonb_array))
                 else:
-                    columns_to_process[label_key] = extracted_labels.astype(str)
+                    _coalesce_into(label_key, extracted_labels.astype(str))
 
                 # Track column order
                 if label_key not in column_order:

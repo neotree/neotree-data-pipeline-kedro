@@ -30,6 +30,29 @@ def get_script_metadata_details(metadata, script_id):
     return metadata_by_script.get(str(script_id).strip(), {})
 
 
+def script_field_exists(script: str, field_key: str) -> bool:
+    """
+    Check whether `field_key` exists in `script`'s CURRENT live metadata
+    (conf/local/scripts/<script>.json, refreshed once per run by update_fields_info()).
+
+    Used to gate key-rename/coalesce transforms so they only fire once a script's
+    definition has actually adopted a renamed key -- applying the rename before
+    that happens would fabricate a column for a script that never sent it.
+    """
+    metadata = load_json_for_comparison(script)
+    if metadata is None:
+        return False
+
+    if _is_field_schema(metadata):
+        return field_key in metadata
+
+    script_schemas = get_script_field_schemas(metadata)
+    return any(
+        isinstance(schema, dict) and field_key in schema
+        for schema in script_schemas.values()
+    )
+
+
 def _is_field_schema(schema) -> bool:
     if not isinstance(schema, dict) or not schema:
         return False

@@ -25,7 +25,7 @@ from conf.base.catalog import catalog
 from data_pipeline.pipelines.data_engineering.utils.assorted_fixes import extract_years
 from data_pipeline.pipelines.data_engineering.utils.field_info import update_fields_info, transform_matching_labels
 from data_pipeline.pipelines.data_engineering.utils.custom_date_formatter import format_date, format_date_without_timezone
-from data_pipeline.pipelines.data_engineering.utils.key_change import key_change
+from data_pipeline.pipelines.data_engineering.utils.key_change import key_change, coalesce_renamed_keys, LEGACY_KEY_RENAMES
 from data_pipeline.pipelines.data_engineering.utils.set_key_to_none import set_key_to_none
 from data_pipeline.pipelines.data_engineering.utils.data_label_fixes import format_column_as_numeric, convert_false_numbers_to_text
 from .neolab_data_cleanup import neolab_cleanup
@@ -638,6 +638,9 @@ def process_discharges_dataframe(dis_raw: pd.DataFrame, dis_new_entries: Any, di
     ]
     dis_df = apply_key_mappings(dis_df, key_mappings)
 
+    # Coalesce renamed raw keys (old->new), gated on live script metadata
+    dis_df = coalesce_renamed_keys(dis_df, 'discharges', LEGACY_KEY_RENAMES.get('discharges', []))
+
     # Create derived columns and filter
     dis_df = create_columns(dis_df)
     if dis_df is not None and not dis_df.empty:
@@ -683,6 +686,11 @@ def process_maternal_outcomes_dataframe(mat_outcomes_raw: pd.DataFrame, mat_outc
     logging.info("Processing maternal outcomes dataframe")
     update_fields_info("maternal_outcomes")
     mat_outcomes_df.set_index(['unique_key'])
+
+    # Coalesce renamed raw keys (old->new), gated on live script metadata
+    mat_outcomes_df = coalesce_renamed_keys(
+        mat_outcomes_df, 'maternal_outcomes', LEGACY_KEY_RENAMES.get('maternal_outcomes', [])
+    )
 
     # Format dates
     mat_dates = ['started_at', 'completed_at', 'DateAdmission.value']
@@ -888,6 +896,9 @@ def process_baseline_dataframe(baseline_new_entries: Any, baseline_mcl: Any) -> 
 
     logging.info("Processing baseline dataframe")
     update_fields_info("baseline")
+
+    # Coalesce renamed raw keys (old->new), gated on live script metadata
+    baseline_df = coalesce_renamed_keys(baseline_df, 'baseline', LEGACY_KEY_RENAMES.get('baseline', []))
 
     # Format dates
     date_column_types = first_column_values(get_date_column_names('baseline', 'derived'))
