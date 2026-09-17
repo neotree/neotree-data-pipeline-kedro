@@ -19,6 +19,8 @@ Available Functions:
 14. backfill_all_legacy_key_renames(schema) - Run backfill_renamed_keys() for every table in LEGACY_KEY_RENAMES
 15. backfill_clean_table_renamed_keys(clean_table, base_table, renames, match_columns, schema) - Repair a clean_* table's lowercase columns from its base table
 16. backfill_all_legacy_key_renames_in_clean_tables(schema) - Run backfill_clean_table_renamed_keys() for every table in CLEAN_TABLE_SOURCES
+17. fix_discharge_death_date_conflict(table, schema) - Clear a conflicting DateTimeDischarge/DateTimeDeath pair based on NeotreeOutcome
+18. fix_all_discharge_death_date_conflicts(schema) - Run fix_discharge_death_date_conflict() for every table in DISCHARGE_DEATH_DATE_CONFLICT_TABLES
 """
 
 import logging
@@ -2960,3 +2962,150 @@ def backfill_all_legacy_key_renames_in_clean_tables(schema: str = 'derived') -> 
                       total_backfilled, len(CLEAN_TABLE_SOURCES))
 
     return total_backfilled
+
+
+# Tables carrying both DateTimeDischarge and DateTimeDeath columns that a missed
+# conditional could have let both get set on. Run fix_all_discharge_death_date_conflicts()
+# after backfill_all_legacy_key_renames[_in_clean_tables]() so "NeotreeOutcome.value"
+# reflects the coalesced outcome for every record, not just whichever raw key it was
+# originally submitted under.
+DISCHARGE_DEATH_DATE_CONFLICT_TABLES = ['discharges', 'joined_admissions_discharges']
+
+
+def fix_discharge_death_date_conflict(table_name: str, schema: str = 'derived') -> int:
+    """
+    Clear a conflicting DateTimeDischarge/DateTimeDeath pair: a missed
+    conditional upstream let some records end up with both a discharge date
+    and a death date set, which shouldn't be possible for the same record.
+
+    Only touches rows where "NeotreeOutcome.value" is not null and BOTH
+    "DateTimeDischarge.value" and "DateTimeDeath.value" are not null:
+      - Outcome starts with "Died" or "NND" (case-insensitive): the death is
+        the real outcome, so DateTimeDischarge.value/.label are cleared.
+      - Any other outcome: the discharge is the real outcome, so
+        DateTimeDeath.value/.label are cleared.
+
+    Counts affected rows first and skips entirely when the count is zero, so
+    a table with no conflicts costs one read-only COUNT per run, not two
+    UPDATEs.
+
+    Args:
+        table_name: Table to fix, e.g. 'discharges' or 'joined_admissions_discharges'
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Number of affected rows found (0 if none, or if the table/columns don't exist)
+    """
+    if not table_exists(schema, table_name):
+        return 0
+
+    discharge_value_col = 'DateTimeDischarge.value'
+    discharge_label_col = 'DateTimeDischarge.label'
+    death_value_col = 'DateTimeDeath.value'
+    death_label_col = 'DateTimeDeath.label'
+    outcome_value_col = 'NeotreeOutcome.value'
+
+    column_check_query = f"""
+        SELECT
+            bool_or(column_name = '{_escape_sql_literal(discharge_value_col)}') AS has_discharge_value,
+            bool_or(column_name = '{_escape_sql_literal(discharge_label_col)}') AS has_discharge_label,
+            bool_or(column_name = '{_escape_sql_literal(death_value_col)}') AS has_death_value,
+            bool_or(column_name = '{_escape_sql_literal(death_label_col)}') AS has_death_label,
+            bool_or(column_name = '{_escape_sql_literal(outcome_value_col)}') AS has_outcome_value
+        FROM information_schema.columns
+        WHERE table_schema = '{_escape_sql_literal(schema)}'
+        AND table_name = '{_escape_sql_literal(table_name)}'
+        AND column_name IN (
+            '{_escape_sql_literal(discharge_value_col)}',
+            '{_escape_sql_literal(discharge_label_col)}',
+            '{_escape_sql_literal(death_value_col)}',
+            '{_escape_sql_literal(death_label_col)}',
+            '{_escape_sql_literal(outcome_value_col)}'
+        );
+    """
+    try:
+        column_result = inject_sql_with_return(column_check_query)
+    except Exception as ex:
+        logging.warning(
+            "Could not check discharge/death date columns on %s.%s: %s",
+            schema, table_name, ex,
+        )
+        return 0
+
+    flags = column_result[0] if column_result else (False, False, False, False, False)
+    if not all(flags):
+        return 0
+
+    table_ref = f'{schema}.{_quote_identifier(table_name)}'
+    discharge_value = _quote_identifier(discharge_value_col)
+    discharge_label = _quote_identifier(discharge_label_col)
+    death_value = _quote_identifier(death_value_col)
+    death_label = _quote_identifier(death_label_col)
+    outcome_value = _quote_identifier(outcome_value_col)
+
+    conflict_where = f'''
+        {discharge_value} IS NOT NULL
+        AND {death_value} IS NOT NULL
+        AND {outcome_value} IS NOT NULL
+    '''
+
+    count_query = f'SELECT COUNT(*) FROM {table_ref} WHERE {conflict_where};'
+    try:
+        count_result = inject_sql_with_return(count_query)
+    except Exception as ex:
+        logging.warning("Could not count discharge/death date conflicts on %s: %s", table_ref, ex)
+        return 0
+
+    affected = count_result[0][0] if count_result else 0
+    if not affected:
+        return 0
+
+    logging.info("Found %s row(s) with conflicting discharge/death dates on %s", affected, table_ref)
+
+    death_outcome_clause = f"({outcome_value} ILIKE 'Died%' OR {outcome_value} ILIKE 'NND%')"
+
+    clear_discharge_query = f'''
+        UPDATE {table_ref}
+        SET {discharge_value} = NULL,
+            {discharge_label} = NULL
+        WHERE {conflict_where}
+          AND {death_outcome_clause};;
+    '''
+    clear_death_query = f'''
+        UPDATE {table_ref}
+        SET {death_value} = NULL,
+            {death_label} = NULL
+        WHERE {conflict_where}
+          AND NOT {death_outcome_clause};;
+    '''
+
+    try:
+        inject_sql(clear_discharge_query, f'fix-discharge-death-conflict-discharge-{table_name}')
+        inject_sql(clear_death_query, f'fix-discharge-death-conflict-death-{table_name}')
+        logging.info("Resolved %s discharge/death date conflict(s) on %s", affected, table_ref)
+    except Exception as ex:
+        logging.warning("Failed to resolve discharge/death date conflicts on %s: %s", table_ref, ex)
+
+    return affected
+
+
+def fix_all_discharge_death_date_conflicts(schema: str = 'derived') -> int:
+    """
+    Run fix_discharge_death_date_conflict() for every table registered in
+    DISCHARGE_DEATH_DATE_CONFLICT_TABLES.
+
+    Must run after backfill_all_legacy_key_renames()/
+    backfill_all_legacy_key_renames_in_clean_tables() so "NeotreeOutcome.value"
+    is already coalesced for every record.
+
+    Returns:
+        Total number of affected rows found/fixed across all registered tables
+    """
+    total_affected = 0
+    for table_name in DISCHARGE_DEATH_DATE_CONFLICT_TABLES:
+        try:
+            total_affected += fix_discharge_death_date_conflict(table_name, schema)
+        except Exception as ex:
+            logging.warning("Discharge/death date conflict fix failed for %s.%s: %s", schema, table_name, ex)
+
+    return total_affected
