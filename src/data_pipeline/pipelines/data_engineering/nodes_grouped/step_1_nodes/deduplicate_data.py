@@ -12,6 +12,7 @@ from data_pipeline.pipelines.data_engineering.queries.data_fix import (
     purge_uid_records,
     backfill_all_legacy_key_renames,
     backfill_all_legacy_key_renames_in_clean_tables,
+    backfill_all_confidential_hashed_keys,
     fix_all_discharge_death_date_conflicts,
 )
 from conf.common.config import config
@@ -91,6 +92,11 @@ def deduplicate_data(data_import_output):
                 backfill_all_legacy_key_renames_in_clean_tables()
             except Exception as ex:
                 logging.warning("Legacy key backfill for clean tables did not complete: %s", ex)
+            logging.info("******BACKFILLING CONFIDENTIAL HASHED KEYS*********")
+            try:
+                backfill_all_confidential_hashed_keys()
+            except Exception as ex:
+                logging.warning("Confidential hash backfill did not complete: %s", ex)
             logging.info("******FIXING CONFLICTING DISCHARGE/DEATH DATES*********")
             try:
                 fix_all_discharge_death_date_conflicts()

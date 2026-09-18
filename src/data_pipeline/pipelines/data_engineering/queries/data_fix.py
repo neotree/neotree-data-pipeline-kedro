@@ -21,15 +21,22 @@ Available Functions:
 16. backfill_all_legacy_key_renames_in_clean_tables(schema) - Run backfill_clean_table_renamed_keys() for every table in CLEAN_TABLE_SOURCES
 17. fix_discharge_death_date_conflict(table, schema) - Clear a conflicting DateTimeDischarge/DateTimeDeath pair based on NeotreeOutcome
 18. fix_all_discharge_death_date_conflicts(schema) - Run fix_discharge_death_date_conflict() for every table in DISCHARGE_DEATH_DATE_CONFLICT_TABLES
+19. backfill_hash_confidential_key_columns(table, value_col, label_col, schema) - Shared core: hash a confidential_label_only field's historic value data and null its label, tracked so a fully-migrated column is never rescanned
+20. backfill_hash_confidential_key(table, key, schema) - Backfill a script derived table's raw "<key>.value"/"<key>.label" columns
+21. backfill_clean_table_hash_confidential_key(clean_table, key, schema) - Backfill a clean_* table's lowercased "<key>"/"<key>_label" columns
+22. backfill_all_confidential_hashed_keys(schema) - Run the confidential-hash backfill for every derived and clean_* table/key carrying a CONFIDENTIAL_HASHED_KEYS column
 """
 
 import logging
 from conf.common.sql_functions import (
     engine,
+    execute_values,
+    hash_confidential_value,
     inject_sql,
     inject_sql_procedure,
     inject_sql_with_return,
     text,
+    CONFIDENTIAL_HASHED_KEYS,
 )
 from data_pipeline.constants import KNOWN_TEST_UIDS, SOURCE_UID_CLEANUP_TABLES
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
@@ -2960,6 +2967,408 @@ def backfill_all_legacy_key_renames_in_clean_tables(schema: str = 'derived') -> 
     if total_backfilled:
         logging.info("Legacy key backfill (clean tables): %s column(s) updated across %s table(s)",
                       total_backfilled, len(CLEAN_TABLE_SOURCES))
+
+    return total_backfilled
+
+
+def _run_values_update(update_sql: str, mapping: list) -> None:
+    """Run an `UPDATE ... FROM (VALUES %s) AS v(...)` statement via execute_values."""
+    if not engine or not execute_values:
+        raise RuntimeError("Database engine and psycopg2 not initialized")
+
+    raw_conn = engine.raw_connection()  # type: ignore[union-attr]
+    try:
+        cur = raw_conn.cursor()  # type: ignore[union-attr]
+        try:
+            execute_values(cur, update_sql, mapping)
+            raw_conn.commit()  # type: ignore[union-attr]
+        except Exception:
+            raw_conn.rollback()  # type: ignore[union-attr]
+            raise
+        finally:
+            cur.close()
+    finally:
+        raw_conn.close()  # type: ignore[union-attr]
+
+
+CONFIDENTIAL_HASH_BACKFILL_TRACKING_TABLE = "confidential_hash_backfill_tracker"
+
+
+def _ensure_confidential_hash_backfill_tracking_table():
+    inject_sql(
+        f"""
+        CREATE SCHEMA IF NOT EXISTS scratch;;
+        CREATE TABLE IF NOT EXISTS scratch.{CONFIDENTIAL_HASH_BACKFILL_TRACKING_TABLE} (
+            table_schema TEXT NOT NULL,
+            table_name TEXT NOT NULL,
+            value_column TEXT NOT NULL,
+            done_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (table_schema, table_name, value_column)
+        );;
+        """,
+        "ENSURE CONFIDENTIAL HASH BACKFILL TRACKING TABLE",
+    )
+
+
+def _is_confidential_hash_backfill_done(schema: str, table_name: str, value_col: str) -> bool:
+    try:
+        result = inject_sql_with_return(
+            f"""
+            SELECT EXISTS (
+                SELECT 1 FROM scratch.{CONFIDENTIAL_HASH_BACKFILL_TRACKING_TABLE}
+                WHERE table_schema = '{_escape_sql_literal(schema)}'
+                AND table_name = '{_escape_sql_literal(table_name)}'
+                AND value_column = '{_escape_sql_literal(value_col)}'
+            );
+            """
+        )
+        return bool(result and result[0][0])
+    except Exception:
+        # Tracking table doesn't exist yet (fresh database) -- nothing is done.
+        return False
+
+
+def _mark_confidential_hash_backfill_done(schema: str, table_name: str, value_col: str) -> None:
+    _ensure_confidential_hash_backfill_tracking_table()
+    inject_sql(
+        f"""
+        INSERT INTO scratch.{CONFIDENTIAL_HASH_BACKFILL_TRACKING_TABLE}
+            (table_schema, table_name, value_column, done_at)
+        VALUES (
+            '{_escape_sql_literal(schema)}',
+            '{_escape_sql_literal(table_name)}',
+            '{_escape_sql_literal(value_col)}',
+            CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (table_schema, table_name, value_column)
+        DO UPDATE SET done_at = CURRENT_TIMESTAMP;;
+        """,
+        f'mark-confidential-hash-backfill-done-{table_name}-{value_col}',
+    )
+
+
+def backfill_hash_confidential_key_columns(
+    table_name: str,
+    value_col: str,
+    label_col: str,
+    schema: str = 'derived',
+) -> int:
+    """
+    Migrate one confidential_label_only field's already-persisted data to the
+    representation hash_confidential_value() (conf/common/sql_functions.py)
+    produces on ingest: `value_col` hashed with SHA256, `label_col` NULL.
+
+    Shared core for both the raw exploded "<Key>.value"/"<Key>.label" columns
+    on a script's derived table (see backfill_hash_confidential_key()) and
+    the lowercased "<key>"/"<key>_label" columns process_dataframe_with_types()
+    (conf/common/scripts.py) copies them into on that script's clean_* table
+    (see backfill_clean_table_hash_confidential_key()) -- clean_* tables are
+    only ever appended to incrementally (read_derived_data_query()'s NOT
+    EXISTS condition skips rows already present), so a row copied in before
+    hash_confidential_value() existed is never revisited by the normal
+    pipeline flow and needs this same fix applied directly to it too.
+
+    Idempotent and safe to call on every pipeline run: the value is re-hashed
+    only where it isn't already a 64-character SHA256 hex digest (whether the
+    mobile app hashed it itself or a prior run of this backfill already did),
+    and the label is only touched while still non-NULL.
+
+    Once a (schema, table_name, value_col) is confirmed to need no more work,
+    it's recorded in scratch.confidential_hash_backfill_tracker and every
+    later call returns immediately without issuing a single query against the
+    (potentially huge) target table -- without this, even after every row is
+    hashed, each pipeline run would still pay for a full scan of `value_col`
+    forever just to confirm there's nothing left to do.
+
+    The value backfill re-hashes each *distinct* not-yet-hashed value once
+    (via hash_confidential_value(), so the same input always produces the
+    same digest) and joins that mapping back on the value itself, rather than
+    hashing per row -- these keys are heavily duplicated (repeat clinician
+    IDs/signatures), so this is typically a small mapping applied to a much
+    larger set of rows.
+
+    Args:
+        table_name: Table to fix, e.g. 'discharges' or 'clean_discharges'
+        value_col: Column holding the confidential value, e.g. 'HCWID.value' or 'hcwid'
+        label_col: Column holding its label, e.g. 'HCWID.label' or 'hcwid_label'
+        schema: Schema name (default: 'derived')
+
+    Returns:
+        Number of columns actually backfilled (0, 1, or 2)
+    """
+    if _is_confidential_hash_backfill_done(schema, table_name, value_col):
+        return 0
+
+    if not table_exists(schema, table_name):
+        return 0
+
+    qualified_table_name = f'{schema}.{_quote_identifier(table_name)}'
+    backfilled = 0
+
+    column_check_query = f"""
+        SELECT
+            bool_or(column_name = '{_escape_sql_literal(value_col)}') AS has_value,
+            bool_or(column_name = '{_escape_sql_literal(label_col)}') AS has_label
+        FROM information_schema.columns
+        WHERE table_schema = '{_escape_sql_literal(schema)}'
+        AND table_name = '{_escape_sql_literal(table_name)}'
+        AND column_name IN ('{_escape_sql_literal(value_col)}', '{_escape_sql_literal(label_col)}');
+    """
+    try:
+        result = inject_sql_with_return(column_check_query)
+    except Exception as ex:
+        logging.warning(
+            "Could not check columns \"%s\"/\"%s\" on %s.%s: %s",
+            value_col, label_col, schema, table_name, ex,
+        )
+        return 0
+
+    has_value, has_label = result[0] if result else (False, False)
+
+    # Tracked so a fully-clean table/column gets marked done below even when
+    # this run found nothing to fix -- not just when it successfully fixed something.
+    value_clean = True
+    if has_value:
+        value_clean = False
+        needs_hash_query = f'''
+            SELECT EXISTS (
+                SELECT 1 FROM {qualified_table_name}
+                WHERE {_quote_identifier(value_col)} IS NOT NULL
+                  AND {_quote_identifier(value_col)} !~* '^[0-9a-f]{{64}}$'
+            );
+        '''
+        try:
+            needs_result = inject_sql_with_return(needs_hash_query)
+        except Exception as ex:
+            logging.warning(
+                "Could not check whether %s.%s.\"%s\" needs hashing: %s",
+                schema, table_name, value_col, ex,
+            )
+            needs_result = None
+
+        if not (needs_result and needs_result[0][0]):
+            value_clean = True
+        else:
+            unhashed_values_query = f'''
+                SELECT DISTINCT {_quote_identifier(value_col)}
+                FROM {qualified_table_name}
+                WHERE {_quote_identifier(value_col)} IS NOT NULL
+                  AND {_quote_identifier(value_col)} !~* '^[0-9a-f]{{64}}$';
+            '''
+            try:
+                unhashed_rows = inject_sql_with_return(unhashed_values_query)
+            except Exception as ex:
+                logging.warning(
+                    "Could not scan %s.%s.\"%s\" for confidential hash backfill: %s",
+                    schema, table_name, value_col, ex,
+                )
+                unhashed_rows = None
+
+            if unhashed_rows:
+                mapping = [
+                    (str(raw_value), hash_confidential_value(raw_value))
+                    for (raw_value,) in unhashed_rows
+                ]
+                update_query = f'''
+                    UPDATE {qualified_table_name} AS t
+                    SET {_quote_identifier(value_col)} = v.new_val
+                    FROM (VALUES %s) AS v(old_val, new_val)
+                    WHERE t.{_quote_identifier(value_col)} = v.old_val;
+                '''
+                try:
+                    _run_values_update(update_query, mapping)
+                    backfilled += 1
+                    value_clean = True
+                    logging.info(
+                        "Re-hashed %s distinct value(s) for %s.%s.\"%s\"",
+                        len(mapping), schema, table_name, value_col,
+                    )
+                except Exception as ex:
+                    logging.warning(
+                        "Failed to re-hash \"%s\" on %s.%s: %s",
+                        value_col, schema, table_name, ex,
+                    )
+
+    label_clean = True
+    if has_label:
+        label_clean = False
+        needs_null_query = f'''
+            SELECT EXISTS (
+                SELECT 1 FROM {qualified_table_name}
+                WHERE {_quote_identifier(label_col)} IS NOT NULL
+            );
+        '''
+        try:
+            needs_result = inject_sql_with_return(needs_null_query)
+        except Exception as ex:
+            logging.warning(
+                "Could not check whether %s.%s.\"%s\" needs nulling: %s",
+                schema, table_name, label_col, ex,
+            )
+            needs_result = None
+
+        if not (needs_result and needs_result[0][0]):
+            label_clean = True
+        else:
+            null_query = f'''
+                UPDATE {qualified_table_name}
+                SET {_quote_identifier(label_col)} = NULL
+                WHERE {_quote_identifier(label_col)} IS NOT NULL;;
+            '''
+            try:
+                inject_sql(null_query, f'backfill-hash-null-label-{table_name}-{label_col}')
+                backfilled += 1
+                label_clean = True
+                logging.info(
+                    "Nulled confidential_label_only label %s.%s.\"%s\"",
+                    schema, table_name, label_col,
+                )
+            except Exception as ex:
+                logging.warning(
+                    "Failed to null \"%s\" on %s.%s: %s",
+                    label_col, schema, table_name, ex,
+                )
+
+    if value_clean and label_clean:
+        try:
+            _mark_confidential_hash_backfill_done(schema, table_name, value_col)
+        except Exception as ex:
+            logging.warning(
+                "Could not record confidential hash backfill completion for %s.%s.\"%s\": %s",
+                schema, table_name, value_col, ex,
+            )
+
+    return backfilled
+
+
+def backfill_hash_confidential_key(table_name: str, key: str, schema: str = 'derived') -> int:
+    """
+    Backfill a script derived table's raw exploded "<key>.value"/"<key>.label"
+    columns for one confidential_label_only key. See
+    backfill_hash_confidential_key_columns() for the shared implementation,
+    idempotency and completion-tracking details.
+
+    Args:
+        table_name: Table to fix, e.g. 'discharges'
+        key: Base field key (without .value/.label), e.g. 'HCWID'
+        schema: Schema name (default: 'derived')
+    """
+    return backfill_hash_confidential_key_columns(table_name, f'{key}.value', f'{key}.label', schema)
+
+
+def backfill_clean_table_hash_confidential_key(clean_table: str, key: str, schema: str = 'derived') -> int:
+    """
+    Backfill a clean_* table's lowercased "<key>"/"<key>_label" columns for
+    one confidential_label_only key -- the columns
+    process_dataframe_with_types() (conf/common/scripts.py) copies a script
+    derived table's "<Key>.value"/"<Key>.label" into. Rows already copied
+    into a clean_* table are never reprocessed by the normal pipeline flow
+    (see backfill_hash_confidential_key_columns()'s docstring), so this
+    dedicated backfill is what fixes them up. See
+    backfill_hash_confidential_key_columns() for the shared implementation.
+
+    Args:
+        clean_table: Table to fix, e.g. 'clean_discharges'
+        key: Base field key (without .value/.label), e.g. 'HCWID'
+        schema: Schema name (default: 'derived')
+    """
+    lower_key = key.lower()
+    return backfill_hash_confidential_key_columns(clean_table, lower_key, f'{lower_key}_label', schema)
+
+
+def _find_confidential_hashed_key_columns(schema: str = 'derived'):
+    """
+    Discover every (table_name, key) pair in `schema` carrying a raw
+    CONFIDENTIAL_HASHED_KEYS "<Key>.value" column on a script derived table.
+
+    Unlike LEGACY_KEY_RENAMES, these confidential keys (HCWID/HCWSig/
+    HCWIDDIS) aren't tied to a fixed set of tables -- they can appear on any
+    script's derived table -- so the backfill discovers its targets from the
+    database instead of a hardcoded registry.
+    """
+    value_columns = [f"{key}.value" for key in CONFIDENTIAL_HASHED_KEYS]
+    column_sql = ", ".join(f"'{_escape_sql_literal(col)}'" for col in value_columns)
+    query = f"""
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = '{_escape_sql_literal(schema)}'
+        AND column_name IN ({column_sql});
+    """
+    try:
+        rows = inject_sql_with_return(query)
+    except Exception as ex:
+        logging.warning("Could not discover confidential hashed key columns in %s: %s", schema, ex)
+        return []
+
+    return [(table_name, column_name.rsplit('.', 1)[0]) for table_name, column_name in rows]
+
+
+def _find_clean_table_confidential_hashed_key_columns(schema: str = 'derived'):
+    """
+    Discover every (clean_table_name, key) pair in `schema` carrying a
+    lowercased CONFIDENTIAL_HASHED_KEYS "<key>" column on a clean_* table --
+    the column process_dataframe_with_types() copies "<Key>.value" into.
+
+    Like _find_confidential_hashed_key_columns(), these confidential keys
+    aren't tied to a fixed set of clean_* tables the way CLEAN_TABLE_SOURCES
+    is for renamed keys, so targets are discovered from the database instead
+    of a hardcoded registry.
+    """
+    lower_key_to_key = {key.lower(): key for key in CONFIDENTIAL_HASHED_KEYS}
+    column_sql = ", ".join(f"'{_escape_sql_literal(col)}'" for col in lower_key_to_key)
+    query = f"""
+        SELECT table_name, column_name
+        FROM information_schema.columns
+        WHERE table_schema = '{_escape_sql_literal(schema)}'
+        AND table_name LIKE 'clean\\_%'
+        AND column_name IN ({column_sql});
+    """
+    try:
+        rows = inject_sql_with_return(query)
+    except Exception as ex:
+        logging.warning("Could not discover clean-table confidential hashed key columns in %s: %s", schema, ex)
+        return []
+
+    return [(table_name, lower_key_to_key[column_name]) for table_name, column_name in rows]
+
+
+def backfill_all_confidential_hashed_keys(schema: str = 'derived') -> int:
+    """
+    Run the confidential-hash backfill for every column CONFIDENTIAL_HASHED_KEYS
+    can appear under in `schema`: the raw "<Key>.value"/"<Key>.label" columns
+    on script derived tables, and the lowercased "<key>"/"<key>_label" columns
+    on their clean_* tables.
+
+    Intended to run once per pipeline invocation, alongside
+    backfill_all_legacy_key_renames()/backfill_all_legacy_key_renames_in_clean_tables(),
+    so historic rows written before hash_confidential_value() existed end up
+    in the same representation as freshly ingested rows before anything
+    downstream reads these tables. See
+    backfill_hash_confidential_key_columns() for how this stays cheap once a
+    table/column is fully migrated.
+
+    Returns:
+        Total number of (table, column) updates actually applied
+    """
+    total_backfilled = 0
+
+    for table_name, key in _find_confidential_hashed_key_columns(schema):
+        try:
+            total_backfilled += backfill_hash_confidential_key(table_name, key, schema)
+        except Exception as ex:
+            logging.warning("Confidential hash backfill failed for %s.%s.%s: %s", schema, table_name, key, ex)
+
+    for table_name, key in _find_clean_table_confidential_hashed_key_columns(schema):
+        try:
+            total_backfilled += backfill_clean_table_hash_confidential_key(table_name, key, schema)
+        except Exception as ex:
+            logging.warning(
+                "Confidential hash backfill (clean table) failed for %s.%s.%s: %s",
+                schema, table_name, key, ex,
+            )
+
+    if total_backfilled:
+        logging.info("Confidential hash backfill: %s column(s) updated", total_backfilled)
 
     return total_backfilled
 

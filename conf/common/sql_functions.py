@@ -56,20 +56,32 @@ except ImportError:
     sql = None  # type: ignore
     execute_values = None  # type: ignore
 
-# Columns shortened via limit_key_length before being written to the database.
-LENGTH_LIMITED_KEYS = [
-    "HCWID.value",
-    "HCWID.label",
-    "HCWSig.label",
-    "HCWSig.value",
-    "HCWIDDIS.value",
-    "HCWIDDIS.value",
+# Base field keys (without .value/.label suffix) marked confidential_label_only
+# in the (eventual) script metadata. Their raw ".value" now arrives from the
+# mobile app already hashed with CryptoJS SHA256; limit_key_length() below
+# passes that through untouched, and only shortens+hashes it itself for
+# legacy clients/historic data that haven't been hashed yet. The ".label" is
+# always nulled for these keys -- a confidential_label_only field must never
+# carry a persisted label.
+CONFIDENTIAL_HASHED_KEYS = [
+    "HCWID",
+    "HCWSig",
+    "HCWIDDIS",
 ]
 
+SHA256_HEX_RE = re.compile(r'^[0-9a-f]{64}$', re.IGNORECASE)
 
-def limit_key_length(df: pd.DataFrame, keys):
+
+def is_sha256_hex(value) -> bool:
+    """True when value already looks like a 64-character SHA256 hex digest."""
+    if pd.isna(value):
+        return False
+    return bool(SHA256_HEX_RE.match(str(value).strip()))
+
+
+def shorten_key_value(value):
     """
-    Shortens each value of the given dataframe columns to 4 characters or less.
+    Shortens a value to 4 characters or less.
 
     - Single word, <=4 chars: kept as is.
     - Single word, >=5 chars: first 4 characters.
@@ -77,26 +89,57 @@ def limit_key_length(df: pd.DataFrame, keys):
       characters of the second word.
     Result is uppercased.
     """
-    def format_value(value):
-        if pd.isna(value):
-            return value
+    if pd.isna(value):
+        return value
 
-        words = str(value).strip().split()
-        if not words:
-            return value
+    words = str(value).strip().split()
+    if not words:
+        return value
 
-        if len(words) >= 2:
-            formatted = words[0][:2] + words[1][:2]
-        else:
-            formatted = words[0][:4]
+    if len(words) >= 2:
+        formatted = words[0][:2] + words[1][:2]
+    else:
+        formatted = words[0][:4]
 
-        return formatted.upper()
+    return formatted.upper()
 
+
+def hash_confidential_value(value):
+    """
+    Normalizes a confidential_label_only ".value": a value already hashed by
+    the mobile app (SHA256 via CryptoJS) is passed through unchanged;
+    anything else is shortened via shorten_key_value() and hashed here with
+    plain SHA256 (no salt), so the same input string always produces the same
+    digest. That reproducibility is what lets this run against already-hashed
+    data (from a prior pipeline run, or from the mobile app itself) as a no-op.
+    """
+    if pd.isna(value):
+        return value
+
+    text_value = str(value).strip()
+    if is_sha256_hex(text_value):
+        return text_value
+
+    shortened = shorten_key_value(text_value)
+    return hashlib.sha256(str(shortened).encode('utf-8')).hexdigest()
+
+
+def limit_key_length(df: pd.DataFrame, keys):
+    """
+    For each base key (e.g. "HCWID"), normalizes "<key>.value" into a SHA256
+    hash via hash_confidential_value() and nulls "<key>.label", since these
+    keys are confidential_label_only.
+    """
     column_lookup = {col.lower(): col for col in df.columns}
     for key in keys:
-        actual_col = column_lookup.get(str(key).lower())
-        if actual_col is not None:
-            df[actual_col] = df[actual_col].apply(format_value)
+        value_col = column_lookup.get(f"{str(key).lower()}.value")
+        label_col = column_lookup.get(f"{str(key).lower()}.label")
+
+        if value_col is not None:
+            df[value_col] = df[value_col].apply(hash_confidential_value)
+
+        if label_col is not None:
+            df[label_col] = None
 
     return df
 
@@ -1235,7 +1278,7 @@ def generate_upsert_queries_and_create_table(table_name: str, df: pd.DataFrame):
 
     validate_sql_dataframe_columns(df, table_name)
 
-    df = limit_key_length(df, LENGTH_LIMITED_KEYS)
+    df = limit_key_length(df, CONFIDENTIAL_HASHED_KEYS)
 
     schema = 'derived'
 
@@ -2162,7 +2205,7 @@ def generate_create_insert_sql(df,schema, table_name):
 
         logging.info(f"Column filtering: {original_columns} -> {len(df.columns)} columns for {table_name}")
 
-        df = limit_key_length(df, LENGTH_LIMITED_KEYS)
+        df = limit_key_length(df, CONFIDENTIAL_HASHED_KEYS)
 
         # STEP 2: Add 'transformed' column BEFORE table creation
         df['transformed'] = False
