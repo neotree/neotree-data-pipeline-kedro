@@ -3285,14 +3285,22 @@ def _find_confidential_hashed_key_columns(schema: str = 'derived'):
     HCWIDDIS) aren't tied to a fixed set of tables -- they can appear on any
     script's derived table -- so the backfill discovers its targets from the
     database instead of a hardcoded registry.
+
+    Matched case-insensitively: `column_name IN (...)` is an exact match in
+    Postgres, and different script versions have persisted these keys under
+    different casings (e.g. "HCWIDDis.value" vs. the "HCWIDDIS.value" listed
+    in CONFIDENTIAL_HASHED_KEYS) -- same as limit_key_length() (conf/common/
+    sql_functions.py) already handles on ingest via its lowercased column
+    lookup. The actual on-disk column_name (not the CONFIDENTIAL_HASHED_KEYS
+    casing) is returned so the backfill targets the real column.
     """
-    value_columns = [f"{key}.value" for key in CONFIDENTIAL_HASHED_KEYS]
+    value_columns = [f"{key}.value".lower() for key in CONFIDENTIAL_HASHED_KEYS]
     column_sql = ", ".join(f"'{_escape_sql_literal(col)}'" for col in value_columns)
     query = f"""
         SELECT table_name, column_name
         FROM information_schema.columns
         WHERE table_schema = '{_escape_sql_literal(schema)}'
-        AND column_name IN ({column_sql});
+        AND lower(column_name) IN ({column_sql});
     """
     try:
         rows = inject_sql_with_return(query)
