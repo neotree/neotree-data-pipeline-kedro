@@ -17,6 +17,43 @@ LEGACY_KEY_RENAMES = {
 }
 
 
+# Raw field VALUES changed upstream (e.g. a script option's stored value was
+# renamed), keyed by the script/derived-table they land in, then by base key:
+#   {table: {key: {'value': {old: new}, 'label': {old: new}}}}
+# 'value' maps "<key>.value" (and the clean_* column "<key>".lower()); 'label' maps
+# "<key>.label" (and the clean_* column "<key>_label".lower()); either may be omitted.
+# Matching is exact and on the text form of the stored value. Applied on ingest via
+# apply_value_changes() and to rows already in the database via
+# data_fix.backfill_all_legacy_value_changes(). Both are idempotent, so entries can
+# stay registered indefinitely.
+LEGACY_VALUE_CHANGES = {
+    'eq_tips_3l': {'EQStudySite': {'value': {'EQStudySiteKDH': 'KDH'}}},
+    'eq_tips_5l': {'EQStudySite': {'value': {'EQStudySiteKDH': 'KDH'}}},
+}
+
+
+def apply_value_changes(df: pd.DataFrame, table: str, changes: dict) -> pd.DataFrame:
+    """
+    Rewrite historic values to their current form in a dataframe being ingested.
+
+    Args:
+        df: dataframe holding exploded ``Key.value``/``Key.label`` columns for one script
+        table: script/table name, used only for logging
+        changes: ``LEGACY_VALUE_CHANGES[table]`` -- {key: {'value'|'label': {old: new}}}
+    """
+    for key, by_suffix in (changes or {}).items():
+        for suffix, mapping in by_suffix.items():
+            col = f'{key}.{suffix}'
+            if col not in df.columns or not mapping:
+                continue
+            as_text = df[col].astype(str)
+            mask = as_text.isin(mapping.keys())
+            if mask.any():
+                df.loc[mask, col] = as_text[mask].map(mapping)
+                logging.info("Applied value changes to %s.%s on %s row(s)", table, col, int(mask.sum()))
+    return df
+
+
 def key_change(df: pd.DataFrame,row,position,old_key,new_key):
     try:
         if old_key in row and (str(df.at[position,old_key])!= 'nan' or df.at[position,old_key] is not None or str(df.at[position,old_key])!='None'):
@@ -63,3 +100,20 @@ def coalesce_renamed_keys(df: pd.DataFrame, script: str, renames: list) -> pd.Da
             missing_mask = df[new_col].isna() | df[new_col].astype(str).isin(['nan', 'None'])
             df.loc[missing_mask, new_col] = df.loc[missing_mask, old_col]
     return df
+
+
+def apply_legacy_changes(df: pd.DataFrame, script: str) -> pd.DataFrame:
+    """
+    Single ingest entry point for every script/table: apply whatever registered
+    key renames and value changes that script has. Each transform decides for
+    itself whether it applies, so calling this on any dataframe is safe:
+
+    - renames fire only if the old column is in ``df`` AND the script's live
+      metadata has adopted the new key (coalesce_renamed_keys);
+    - value changes fire only for registered columns present in ``df`` that
+      actually hold an old value (apply_value_changes).
+
+    Scripts with no registry entries are returned untouched.
+    """
+    df = coalesce_renamed_keys(df, script, LEGACY_KEY_RENAMES.get(script, []))
+    return apply_value_changes(df, script, LEGACY_VALUE_CHANGES.get(script, {}))

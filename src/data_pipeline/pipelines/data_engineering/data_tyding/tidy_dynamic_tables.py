@@ -6,6 +6,7 @@ from typing import Optional
 from conf.common.format_error import formatError
 from .extract_key_values import get_key_values, format_repeatables_to_rows
 from .explode_mcl_columns import explode_column
+from data_pipeline.pipelines.data_engineering.utils.key_change import apply_legacy_changes
 from conf.base.catalog import catalog, new_scripts
 from conf.common.sql_functions import (
     create_new_columns,
@@ -332,6 +333,9 @@ def process_single_script(script: str) -> bool:
 
         # Update field info
         update_fields_info(script)
+
+        # Apply registered key renames / value changes (no-op for unregistered scripts)
+        script_df = apply_legacy_changes(script_df, script)
 
         # Set index
         if 'uid' in script_df.columns:

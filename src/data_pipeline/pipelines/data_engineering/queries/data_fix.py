@@ -25,6 +25,8 @@ Available Functions:
 20. backfill_hash_confidential_key(table, key, schema) - Backfill a script derived table's raw "<key>.value"/"<key>.label" columns
 21. backfill_clean_table_hash_confidential_key(clean_table, key, schema) - Backfill a clean_* table's lowercased "<key>"/"<key>_label" columns
 22. backfill_all_confidential_hashed_keys(schema) - Run the confidential-hash backfill for every derived and clean_* table/key carrying a CONFIDENTIAL_HASHED_KEYS column
+23. backfill_value_changes(table, column, mapping, schema) - Rewrite historic old->new values in one column
+24. backfill_all_legacy_value_changes(schema) - Run backfill_value_changes() for every derived and clean_* table/column in LEGACY_VALUE_CHANGES
 """
 
 import logging
@@ -41,7 +43,7 @@ from conf.common.sql_functions import (
 from data_pipeline.constants import KNOWN_TEST_UIDS, SOURCE_UID_CLEANUP_TABLES
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 from data_pipeline.pipelines.data_engineering.utils.field_info import get_script_field_schemas, load_json_for_comparison
-from data_pipeline.pipelines.data_engineering.utils.key_change import LEGACY_KEY_RENAMES
+from data_pipeline.pipelines.data_engineering.utils.key_change import LEGACY_KEY_RENAMES, LEGACY_VALUE_CHANGES
 import re
 
 
@@ -2969,6 +2971,100 @@ def backfill_all_legacy_key_renames_in_clean_tables(schema: str = 'derived') -> 
                       total_backfilled, len(CLEAN_TABLE_SOURCES))
 
     return total_backfilled
+
+
+def backfill_value_changes(table_name: str, column: str, mapping: dict, schema: str = 'derived') -> int:
+    """
+    Rewrite already-persisted values in one column from their old to their new
+    form (mapping = {old: new}), matching on the column's text form.
+
+    Historical counterpart to apply_value_changes(): rows written in earlier
+    runs never went through it. Naturally idempotent -- once rewritten, no row
+    holds an old value any more -- and gated on a cheap EXISTS so a fully
+    migrated column costs one read, not a write. Missing tables/columns are
+    skipped.
+
+    Returns:
+        Number of rows' worth of columns backfilled (1 if an UPDATE ran, else 0)
+    """
+    if not mapping or not table_exists(schema, table_name):
+        return 0
+
+    try:
+        type_result = inject_sql_with_return(f"""
+            SELECT data_type FROM information_schema.columns
+            WHERE table_schema = '{_escape_sql_literal(schema)}'
+            AND table_name = '{_escape_sql_literal(table_name)}'
+            AND column_name = '{_escape_sql_literal(column)}' LIMIT 1;
+        """)
+    except Exception as ex:
+        logging.warning("Could not check column %s.%s.%s: %s", schema, table_name, column, ex)
+        return 0
+    if not type_result:
+        return 0
+    target_type = type_result[0][0]
+
+    col = _quote_identifier(column)
+    qualified = f'{schema}.{_quote_identifier(table_name)}'
+    old_list = ', '.join(f"'{_escape_sql_literal(str(old))}'" for old in mapping)
+    case_expr = 'CASE ' + ' '.join(
+        f"WHEN {col}::text = '{_escape_sql_literal(str(old))}' THEN '{_escape_sql_literal(str(new))}'"
+        for old, new in mapping.items()
+    ) + f' END::{target_type}'
+
+    try:
+        needs_result = inject_sql_with_return(
+            f"SELECT EXISTS (SELECT 1 FROM {qualified} WHERE {col}::text IN ({old_list}));"
+        )
+    except Exception as ex:
+        logging.warning("Could not check whether %s.%s.%s needs value changes: %s", schema, table_name, column, ex)
+        return 0
+    if not (needs_result and needs_result[0][0]):
+        return 0
+
+    try:
+        inject_sql(
+            f"UPDATE {qualified} SET {col} = {case_expr} WHERE {col}::text IN ({old_list});;",
+            f'backfill-value-changes-{table_name}-{column}',
+        )
+        logging.info("Backfilled value changes on %s.%s.\"%s\"", schema, table_name, column)
+        return 1
+    except Exception as ex:
+        logging.warning("Failed to backfill value changes on %s.%s.%s: %s", schema, table_name, column, ex)
+        return 0
+
+
+def backfill_all_legacy_value_changes(schema: str = 'derived') -> int:
+    """
+    Run backfill_value_changes() for every table/key registered in
+    LEGACY_VALUE_CHANGES: the base table's "<key>.value"/"<key>.label" columns
+    and the matching lowercase "<key>"/"<key>_label" columns of any clean_*
+    table built from it (CLEAN_TABLE_SOURCES).
+
+    Returns:
+        Total number of columns backfilled
+    """
+    total = 0
+    clean_tables_by_base = {}
+    for clean_table, base_table in CLEAN_TABLE_SOURCES.items():
+        clean_tables_by_base.setdefault(base_table, []).append(clean_table)
+
+    for table_name, keys in LEGACY_VALUE_CHANGES.items():
+        for key, by_suffix in keys.items():
+            for suffix, mapping in by_suffix.items():
+                targets = [(table_name, f'{key}.{suffix}')]
+                clean_col = key.lower() + ('_label' if suffix == 'label' else '')
+                targets += [(clean, clean_col) for clean in clean_tables_by_base.get(table_name, [])]
+                for target_table, target_col in targets:
+                    try:
+                        total += backfill_value_changes(target_table, target_col, mapping, schema)
+                    except Exception as ex:
+                        logging.warning("Value change backfill failed for %s.%s.%s: %s",
+                                        schema, target_table, target_col, ex)
+
+    if total:
+        logging.info("Legacy value change backfill: %s column(s) updated", total)
+    return total
 
 
 def _run_values_update(update_sql: str, mapping: list) -> None:
