@@ -14,6 +14,12 @@ LEGACY_KEY_RENAMES = {
     'baseline': [('NeoTreeOutcome', 'NeotreeOutcome')],
     'maternal_outcomes': [('NeoTreeOutcome', 'NeotreeOutcome')],
     'joined_admissions_discharges': [('NeoTreeOutcome', 'NeotreeOutcome')],
+    'discharges': [('DateTimeDeathMother', 'DateDeathMother')],
+    'peads_admissions': [('DateTimeDeathMother', 'DateDeathMother')],
+    'peads_discharges': [('DateTimeDeathMother', 'DateDeathMother')],
+    'joined_peads_admissions_discharges': [('DateTimeDeathMother', 'DateDeathMother')],
+    'joined_admissions_discharges': [('DateTimeDeathMother', 'DateDeathMother')],
+
 }
 
 
