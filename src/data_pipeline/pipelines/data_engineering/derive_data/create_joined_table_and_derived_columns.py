@@ -838,32 +838,7 @@ def calculate_date_differences_vectorized(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def index_exists(schema: str, index_name: str) -> bool:
-    query = (
-        "SELECT 1 FROM pg_indexes "
-        f"WHERE schemaname = '{schema}' AND indexname = '{index_name}' LIMIT 1;"
-    )
-    result = inject_sql_with_return(query)
-    return bool(result)
-
-
-def ensure_index(schema: str, table: str, columns: List[str], index_name: str) -> None:
-    if not table_exists(schema, table):
-        return
-
-    for col in columns:
-        if not column_exists(schema, table, col):
-            logging.warning(
-                f"Skipping index {schema}.{index_name}: column '{col}' missing on {schema}.{table}"
-            )
-            return
-
-    if index_exists(schema, index_name):
-        return
-
-    cols_sql = ", ".join([f'"{c}"' for c in columns])
-    create_index = f'CREATE INDEX IF NOT EXISTS "{index_name}" ON "{schema}"."{table}" ({cols_sql});;'
-    inject_sql(create_index, f"CREATE INDEX {schema}.{index_name}")
+from data_pipeline.index_management import ensure_index
 
 
 def create_and_write_joined_table(

@@ -260,17 +260,6 @@ def ensure_validation_tracking_tables():
             created_at TIMESTAMP NOT NULL DEFAULT now()
         );;
 
-        CREATE INDEX IF NOT EXISTS idx_validation_issues_date
-        ON derived.validation_issues (identified_date);;
-
-        CREATE INDEX IF NOT EXISTS idx_validation_issues_category_script
-        ON derived.validation_issues (category, script_name, scriptid);;
-
-        CREATE INDEX IF NOT EXISTS idx_validation_issues_type_field
-        ON derived.validation_issues (issue_type, field_key);;
-
-        CREATE INDEX IF NOT EXISTS idx_validation_issues_run
-        ON derived.validation_issues (run_id);;
 
         CREATE TABLE IF NOT EXISTS derived.validation_logged_records (
             id BIGSERIAL PRIMARY KEY,
@@ -289,8 +278,6 @@ def ensure_validation_tracking_tables():
         ALTER COLUMN scriptid SET DEFAULT '',
         ALTER COLUMN facility SET DEFAULT '';;
 
-        CREATE INDEX IF NOT EXISTS idx_validation_logged_records_lookup
-        ON derived.validation_logged_records (uid, scriptid, facility);;
 
         CREATE TABLE IF NOT EXISTS derived.validation_maintenance_state (
             state_key TEXT PRIMARY KEY,
@@ -335,7 +322,19 @@ def ensure_validation_tracking_tables():
     """
     try:
         from conf.common.sql_functions import inject_sql
+        from data_pipeline.index_management import ensure_index
         inject_sql(create_sql, "CREATE validation tracking tables")
+        for table, columns, name in (
+            ('validation_issues', ['identified_date'], 'idx_validation_issues_date'),
+            ('validation_issues', ['category', 'script_name', 'scriptid'],
+             'idx_validation_issues_category_script'),
+            ('validation_issues', ['issue_type', 'field_key'],
+             'idx_validation_issues_type_field'),
+            ('validation_issues', ['run_id'], 'idx_validation_issues_run'),
+            ('validation_logged_records', ['uid', 'scriptid', 'facility'],
+             'idx_validation_logged_records_lookup'),
+        ):
+            ensure_index('derived', table, columns, name)
     except Exception as exc:
         logging.error(f"Failed to create validation tracking tables: {exc}")
 

@@ -109,6 +109,10 @@ def deduplicate_data(data_import_output):
             except Exception as ex:
                 logging.warning("Discharge/death date conflict fix did not complete: %s", ex)
             inject_sql(insert_sessions_data(),"Sessions Data")
+            from data_pipeline.index_management import ensure_index
+            for table in ("sessions", "clean_sessions"):
+                for column in ("pii_cleaned", "pii_cleaned_version"):
+                    ensure_index("public", table, [column], f"idx_{table}_{column}")
             logging.info("******CLEANING AND REDACTING PII ON CLEAN SESSIONS*********")
             inject_sql(
                 clean_known_confidential_and_pii_columns("public","clean_sessions"),

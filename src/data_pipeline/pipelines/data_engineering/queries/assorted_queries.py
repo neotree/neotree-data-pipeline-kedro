@@ -1090,11 +1090,6 @@ def insert_sessions_data():
                 WHERE COALESCE(pii_cleaned, FALSE) = TRUE
                 AND COALESCE(pii_cleaned_version, 0) = 0;;
 
-                CREATE INDEX IF NOT EXISTS idx_sessions_pii_cleaned
-                ON {sessions} (pii_cleaned);;
-
-                CREATE INDEX IF NOT EXISTS idx_sessions_pii_cleaned_version
-                ON {sessions} (pii_cleaned_version);;
 
                 CREATE TABLE IF NOT EXISTS public.clean_sessions (
                 id INTEGER PRIMARY KEY,
@@ -1119,11 +1114,6 @@ def insert_sessions_data():
                 WHERE COALESCE(pii_cleaned, FALSE) = TRUE
                 AND COALESCE(pii_cleaned_version, 0) = 0;;
 
-                CREATE INDEX IF NOT EXISTS idx_clean_sessions_pii_cleaned
-                ON {clean_sessions} (pii_cleaned);;
-
-                CREATE INDEX IF NOT EXISTS idx_clean_sessions_pii_cleaned_version
-                ON {clean_sessions} (pii_cleaned_version);;
         
         INSERT INTO {clean_sessions} 
         (id, uid, ingested_at, data, scriptid, unique_key, cleaned, pii_cleaned, pii_cleaned_version)
@@ -1528,11 +1518,6 @@ def clean_known_confidential_columns(schema: str, table: str):
     WHERE COALESCE(pii_cleaned, FALSE) = TRUE
     AND COALESCE(pii_cleaned_version, 0) = 0;;
 
-    CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned
-    ON {fq} (pii_cleaned);;
-
-    CREATE INDEX IF NOT EXISTS idx_{schema}_{table}_pii_cleaned_version
-    ON {fq} (pii_cleaned_version);;
 
     DROP TABLE IF EXISTS pii_cleanup_targets;;
 
