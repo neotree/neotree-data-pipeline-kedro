@@ -35,6 +35,7 @@ from conf.common.sql_functions import (
     execute_values,
     hash_confidential_value,
     inject_sql,
+    execute_rows_with_fallback,
     inject_sql_procedure,
     inject_sql_with_return,
     text,
@@ -2754,9 +2755,47 @@ def backfill_renamed_keys(table_name: str, renames: list, schema: str = 'derived
                     schema, table_name, new_col, old_col,
                 )
             except Exception as ex:
+                if old_type == 'text' and new_type in ('timestamp without time zone', 'timestamp with time zone', 'date'):
+                    try:
+                        pending_rows = inject_sql_with_return(f'''
+                            SELECT ctid::text FROM {schema}.{_quote_identifier(table_name)}
+                            WHERE {_quote_identifier(new_col)} IS NULL
+                              AND {_quote_identifier(old_col)} IS NOT NULL;
+                        ''')
+                        row_ids = [row[0] for row in pending_rows if re.fullmatch(r'\(\d+,\d+\)', row[0])]
+
+                        def update_rows(subset):
+                            tids = ', '.join(f"'{tid}'::tid" for tid in subset)
+                            return f'''
+                                UPDATE {schema}.{_quote_identifier(table_name)}
+                                SET {_quote_identifier(new_col)} = {source_expr}
+                                WHERE ctid IN ({tids})
+                                  AND {_quote_identifier(new_col)} IS NULL
+                                  AND {_quote_identifier(old_col)} IS NOT NULL;;
+                            '''
+
+                        written = failed = 0
+                        for start in range(0, len(row_ids), 1000):
+                            batch_written, batch_failed = execute_rows_with_fallback(
+                                row_ids[start:start + 1000], update_rows,
+                                f'backfill-renamed-key-{table_name}-{new_key}-{suffix}',
+                                row_ids[start:start + 1000],
+                            )
+                            written += batch_written
+                            failed += batch_failed
+                        if written:
+                            backfilled += 1
+                        logging.warning('Backfill %s.%s.%s: %s row(s) updated, %s row(s) skipped',
+                                        schema, table_name, new_col, written, failed)
+                        continue
+                    except Exception as retry_error:
+                        logging.warning('Row-level backfill retry failed for %s.%s.%s: %s (SQLSTATE %s)',
+                                        schema, table_name, new_col, type(retry_error).__name__,
+                                        getattr(retry_error, 'pgcode', None))
                 logging.warning(
-                    "Failed to backfill \"%s\" -> \"%s\" on %s.%s: %s",
-                    old_col, new_col, schema, table_name, ex,
+                    "Failed to backfill \"%s\" -> \"%s\" on %s.%s: %s (SQLSTATE %s)",
+                    old_col, new_col, schema, table_name, type(ex).__name__,
+                    getattr(ex, 'pgcode', None),
                 )
 
     return backfilled

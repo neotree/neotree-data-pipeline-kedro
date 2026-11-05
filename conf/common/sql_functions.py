@@ -291,10 +291,10 @@ def inject_sql(sql_script, file_name):
                     logging.error(f"Error executing command in {file_name}")
                     logging.error(f"Command {idx + 1}/{len(sql_commands)}")
                     logging.error(f"Error type: {type(e)}")
-                    # These queries interpolate values (including patient data) directly
-                    # into the SQL text rather than binding them, so both the error
-                    # message and the failed command are redacted before logging.
-                    logging.error(f"Full error: {_redact_sql_for_log(str(e))}")
+                    # PostgreSQL error details can echo patient values in double
+                    # quotes. Log only the error class and SQLSTATE.
+                    logging.error("Full error: %s (SQLSTATE %s)",
+                                  type(e).__name__, getattr(e, 'pgcode', None))
                     logging.error(f"Failed SQL: {_redact_sql_for_log(command)}")
 
                     logging.error(f"Note: Previously executed commands were already committed")
@@ -303,6 +303,39 @@ def inject_sql(sql_script, file_name):
             cur.close()
     finally:
         raw_conn.close()  # type: ignore[union-attr]
+
+
+def execute_rows_with_fallback(rows, build_query, operation, row_ids=None):
+    """Write a batch atomically, retrying smaller batches to isolate bad rows.
+
+    Successful sub-batches commit. A row that still fails alone is left
+    unwritten and logged by a hash of its supplied identifier. Schema/SQL errors
+    cannot be fixed by splitting rows, so they are raised immediately.
+    Returns (written_rows, failed_rows).
+    """
+    if not rows:
+        return 0, 0
+
+    def write_range(start, stop):
+        try:
+            inject_sql(build_query(rows[start:stop]), operation)
+            return stop - start, 0
+        except Exception as exc:
+            sqlstate = getattr(exc, 'pgcode', None) or getattr(getattr(exc, 'orig', None), 'pgcode', None)
+            if sqlstate and sqlstate.startswith('42'):
+                raise
+            if stop - start == 1:
+                uid = row_ids[start] if row_ids is not None else None
+                uid_hash = hashlib.sha256(str(uid).encode()).hexdigest()[:12] if uid is not None else 'unknown'
+                logging.error('Skipped failed row in %s (row identifier hash %s): %s (SQLSTATE %s)',
+                              operation, uid_hash, type(exc).__name__, sqlstate)
+                return 0, 1
+            middle = (start + stop) // 2
+            left_written, left_failed = write_range(start, middle)
+            right_written, right_failed = write_range(middle, stop)
+            return left_written + right_written, left_failed + right_failed
+
+    return write_range(0, len(rows))
 
 def generate_timestamp_conversion_query(table_name, columns):
     """
@@ -478,8 +511,8 @@ def append_data(df: pd.DataFrame, table_name):
         
         # Use the existing generate_postgres_insert function for proper type handling
         try:
-            generate_postgres_insert(batch, schema, table_name)
-            total_inserted += len(batch)
+            failed_rows = generate_postgres_insert(batch, schema, table_name)
+            total_inserted += len(batch) - (failed_rows or 0)
         except Exception as e:
             logging.error(f"Error appending batch {i//batch_size + 1} to {table_name}: {e}")
             raise
@@ -1559,8 +1592,7 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
         # Build SET clause for all columns except WHERE clause columns
         update_cols = [
             col for col in df.columns
-            if col not in ['uid', 'facility', 'unique_key', 'facility_dis']
-            and (col != 'unique_key_dis' or has_unique_key_dis)
+            if col not in ['uid', 'facility', 'unique_key', 'unique_key_dis', 'facility_dis']
         ]
 
         set_clauses = []
@@ -1575,10 +1607,12 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
             else:
                 set_clauses.append(f'"{col}" = v."{col}"')
 
-        value_columns = ['uid', 'facility', 'unique_key'] + update_cols
+        value_columns = ['uid', 'facility', 'unique_key']
+        if has_unique_key_dis:
+            value_columns.append('unique_key_dis')
+        value_columns.extend(update_cols)
         columns_str = ', '.join([f'"{col}"' for col in value_columns])
 
-        values_str = ',\n'.join(values_rows)
         match_clauses = [
             '(t."unique_key" IS NOT NULL AND t."unique_key" = v."unique_key")'
         ]
@@ -1588,24 +1622,34 @@ def generateAndRunUpdateQuery(table: str, df: pd.DataFrame,disharge:bool=False):
                 'AND t."unique_key_dis" = v."unique_key_dis")'
             )
 
-        update_query = f"""
-            UPDATE {table} AS t
-            SET {', '.join(set_clauses)}
-            FROM (VALUES
-                {values_str}
-            ) AS v({columns_str})
-            WHERE t.uid = v.uid
-            AND t.facility = v.facility
-            AND (
-                {' OR '.join(match_clauses)}
-            );;
-        """
-        inject_sql(update_query, f"BULK UPDATE {table}")
-        logging.info(f"Successfully bulk updated {len(values_rows)} rows in {table}")
+        def update_query(rows):
+            return f"""
+                UPDATE {table} AS t
+                SET {', '.join(set_clauses)}
+                FROM (VALUES {', '.join(rows)}) AS v({columns_str})
+                WHERE t.uid = v.uid
+                AND t.facility = v.facility
+                AND ({' OR '.join(match_clauses)});;
+            """
+
+        written_rows = 0
+        failed_rows = 0
+        row_ids = df['uid'].tolist()
+        for start in range(0, len(values_rows), 1000):
+            written, failed = execute_rows_with_fallback(
+                values_rows[start:start + 1000], update_query,
+                f'BULK UPDATE {table}', row_ids[start:start + 1000],
+            )
+            written_rows += written
+            failed_rows += failed
+        logging.info('Updated %s row(s) in %s; %s row(s) failed', written_rows, table, failed_rows)
+        if failed_rows:
+            raise RuntimeError(f'{failed_rows} row(s) failed updating {table}')
 
     except Exception as ex:
         logging.error("!!! An error occurred whilst JOINING DATA THAT WAS UNJOINED")
         logging.error(formatError(ex))
+        raise
 
 def is_date_prefix(s):
     if not isinstance(s, str):
@@ -1933,84 +1977,28 @@ def generate_postgres_insert(df, schema, table_name):
     if not values_rows:
         return
 
-    # OPTIMIZATION 3: Use batch inserts for very large datasets
+    # A bad value in one row must not roll back every valid row in its batch.
     batch_size = 1000
+    written_rows = 0
+    failed_rows = 0
+    row_ids = df['uid'].tolist() if 'uid' in df.columns else None
     for i in range(0, len(values_rows), batch_size):
         batch = values_rows[i:i + batch_size]
-        values_str = ',\n'.join(batch)
-        insert_query = f'INSERT INTO {schema}."{table_name}" ({columns_str}) VALUES\n{values_str};;'
+        written, failed = execute_rows_with_fallback(
+            batch,
+            lambda subset: f'INSERT INTO {schema}."{table_name}" ({columns_str}) VALUES\n{", ".join(subset)};;',
+            f'INSERTING BATCH {i//batch_size + 1} INTO {table_name}',
+            row_ids[i:i + batch_size] if row_ids is not None else None,
+        )
+        written_rows += written
+        failed_rows += failed
 
-        try:
-            inject_sql(insert_query, f"INSERTING BATCH {i//batch_size + 1} INTO {table_name}")
-        except Exception as insert_error:
-            # Log detailed information about the failed insert
-            error_msg = str(insert_error)
-
-            # Extract invalid value and column type from error message
-            import re
-
-            # Try to extract the problematic value and type from error
-            type_match = re.search(r'invalid input syntax for type (\w+(?:\s+\w+)?): "([^"]+)"', error_msg)
-
-            if type_match:
-                error_type = type_match.group(1)
-                invalid_value = type_match.group(2)
-
-                logging.error("\n" + "="*80)
-                logging.error(f"🚨 COLUMN MISMATCH DETECTED - INSERTING INTO WRONG COLUMN 🚨")
-                logging.error("="*80)
-                logging.error(f"Table: {schema}.{table_name}")
-                logging.error(f"Error Type: {error_type}")
-                # The invalid value is patient data pulled straight out of the
-                # dataframe -- log only its shape, never its content.
-                logging.error(f"Invalid value length: {len(invalid_value)} chars (value redacted)")
-                logging.error("="*80)
-
-                # Find which columns are the problematic type
-                problem_columns = [col for col, dtype in column_types.items() if error_type.lower() in dtype.lower()]
-                logging.error(f"Columns with type '{error_type}': {problem_columns}")
-
-                # Search through the batch rows to find which row has this value
-                logging.error(f"\nSearching batch rows for the invalid value (redacted)...")
-                for batch_idx, row_str in enumerate(batch):
-                    if invalid_value in row_str:
-                        logging.error(f"\n>>> FOUND IN BATCH ROW {batch_idx + i//batch_size}")
-
-                        # Try to extract uid from the row if it exists
-                        try:
-                            # Find uid in the corresponding dataframe row
-                            actual_row_idx = i + batch_idx
-                            if actual_row_idx < len(df):
-                                actual_row = df.iloc[actual_row_idx]
-                                uid = actual_row.get('uid', 'NOT FOUND')
-                                uid_hash = (
-                                    hashlib.sha256(str(uid).encode()).hexdigest()[:12]
-                                    if uid != 'NOT FOUND' else 'NOT FOUND'
-                                )
-                                logging.error(f"    Record uid hash: {uid_hash}")
-                                logging.error(f"\n    Column shapes (values redacted):")
-
-                                # Print column names with type/length only -- never the value
-                                for col_idx, col_name in enumerate(valid_columns):
-                                    col_value = actual_row.get(col_name, 'NOT FOUND')
-                                    marker = " ⚠️ MATCHES ERROR VALUE" if str(col_value) == invalid_value else ""
-                                    logging.error(
-                                        f"      [{col_idx}] {col_name}: type={type(col_value).__name__}, "
-                                        f"len={len(str(col_value))}{marker}"
-                                    )
-                        except Exception as detail_err:
-                            logging.error(f"    Could not extract full row details: {detail_err}")
-
-                logging.error("\n" + "="*80)
-                logging.error("INTERPRETATION: The value in the dataframe does NOT match its")
-                logging.error("intended column position. Check if columns are shifted or if")
-                logging.error("data is being placed in the wrong column during transformation.")
-                logging.error("="*80 + "\n")
-
-            # Re-raise the exception after logging
-            raise
-
-    logging.info(f"Successfully inserted {len(values_rows)} rows into {schema}.{table_name}")
+    logging.info('Inserted %s row(s) into %s.%s; %s row(s) failed',
+                 written_rows, schema, table_name, failed_rows)
+    if failed_rows:
+        logging.error('%s row(s) were not inserted into %s.%s; remaining table processing will continue',
+                      failed_rows, schema, table_name)
+    return failed_rows
 
 
 
@@ -2244,9 +2232,10 @@ def generate_create_insert_sql(df,schema, table_name):
             logging.info(f"Created table {schema}.{table_name} with intelligent date type detection")
 
         # STEP 4: Insert data
-        generate_postgres_insert(df,schema,table_name)
+        return generate_postgres_insert(df,schema,table_name)
     except Exception as ex:
-       logging.info(f"FAILED TO INSERT {formatError(ex)}")
+       logging.error("FAILED TO INSERT %s", formatError(ex))
+       raise
 
 
 def escape_special_characters(input_string): 
