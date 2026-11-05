@@ -1194,12 +1194,12 @@ def create_pii_redaction_functions():
 
         trimmed := btrim(input_text);
 
-        IF trimmed ~ '^[A-Z][A-Z0-9]{7}$' THEN
+        IF trimmed ~ '^[A-Za-z][A-Za-z0-9]{{7}}$' AND trimmed ~ '[0-9]' THEN
             RETURN TRUE;
         END IF;
 
         IF scratch.contains_identity_context(input_text)
-           AND input_text ~ '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{7}(?=[^[:alnum:]-]|$)'
+           AND input_text ~ '(^|[^[:alnum:]-])[A-Za-z](?=[A-Za-z0-9]{{0,6}}[0-9])[A-Za-z0-9]{{7}}(?=[^[:alnum:]-]|$)'
         THEN
             RETURN TRUE;
         END IF;
@@ -1249,7 +1249,7 @@ def create_pii_redaction_functions():
         redaction_pass integer := 0;
         patterns text[] := ARRAY[
             -- Zimbabwe national ID: DD-NNNNNN-L-DD or DD-NNNNNNN-L-DD.
-            '(^|[^[:alnum:]])[0-9]{2}[ -]?[0-9]{6,7}[ -]?[A-Za-z][ -]?[0-9]{2}(?=[^[:alnum:]]|$)',
+            '(^|[^[:alnum:]])[0-9]{{2}}[ -]?[0-9]{{6,7}}[ -]?[A-Za-z][ -]?[0-9]{{2}}(?=[^[:alnum:]]|$)',
             -- Malawi phone numbers stay mobile-focused to avoid matching date/time fragments.
             '(^|[^[:alnum:]])\+?265([ -]?[0-9]){9}(?=[^[:alnum:]]|$)',
             '(^|[^[:alnum:]])0[89]([ -]?[0-9]){8}(?=[^[:alnum:]]|$)',
@@ -1277,7 +1277,7 @@ def create_pii_redaction_functions():
             RETURN '[PII_REMOVED]';
         END IF;
 
-        IF btrim(redacted) ~ '^[A-Z][A-Z0-9]{7}$' THEN
+        IF btrim(redacted) ~ '^[A-Za-z][A-Za-z0-9]{{7}}$' AND btrim(redacted) ~ '[0-9]' THEN
             RETURN '[PII_REMOVED]';
         END IF;
 
@@ -1292,7 +1292,7 @@ def create_pii_redaction_functions():
             IF scratch.contains_identity_context(redacted) THEN
                 redacted := regexp_replace(
                     redacted,
-                    '(^|[^[:alnum:]-])[A-Z][A-Z0-9]{7}(?=[^[:alnum:]-]|$)',
+                    '(^|[^[:alnum:]-])[A-Za-z](?=[A-Za-z0-9]{{0,6}}[0-9])[A-Za-z0-9]{{7}}(?=[^[:alnum:]-]|$)',
                     '\1[PII_REMOVED]',
                     'g'
                 );

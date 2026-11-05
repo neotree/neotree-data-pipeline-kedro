@@ -146,7 +146,7 @@ CORRUPTED_SESSIONS_FIXTURE = (
 def redact(value: str) -> str:
     redacted = value
     normalized = redacted.strip()
-    if re.fuopenai modelllmatch(r"[A-Z][A-Z0-9]{7}", normalized):
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9]{7}", normalized) and re.search(r"[0-9]", normalized):
         return "[PII_REMOVED]"
     for _ in range(10):
         previous = redacted
@@ -157,7 +157,7 @@ def redact(value: str) -> str:
             redacted.lower(),
         ):
             redacted = re.sub(
-                r"(^|[^A-Za-z0-9-])[A-Z][A-Z0-9]{7}(?=[^A-Za-z0-9-]|$)",
+                r"(^|[^A-Za-z0-9-])[A-Za-z](?=[A-Za-z0-9]{0,6}[0-9])[A-Za-z0-9]{7}(?=[^A-Za-z0-9-]|$)",
                 r"\1[PII_REMOVED]",
                 redacted,
             )
@@ -302,6 +302,19 @@ def test_preserves_generic_malawi_nrn_like_tokens_without_identity_context():
 
     for example in examples:
         assert redact(example) == example
+
+
+def test_redacts_lowercase_and_mixed_case_malawi_nrn():
+    assert redact("a1b2c3d4") == "[PII_REMOVED]"
+    assert redact("Ab12Cd34") == "[PII_REMOVED]"
+    assert redact("nrn a1b2c3d4 done") == "nrn [PII_REMOVED] done"
+    assert redact("national id: z9999999.") == "national id: [PII_REMOVED]."
+
+
+def test_preserves_eight_letter_words_without_digits():
+    for word in ["CESAREAN", "delivery", "Negative"]:
+        assert redact(word) == word
+        assert redact(f"id {word}") == f"id {word}"
 
 
 def test_preserves_hyphenated_neotree_uids():
