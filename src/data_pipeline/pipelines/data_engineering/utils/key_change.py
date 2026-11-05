@@ -10,15 +10,13 @@ from data_pipeline.pipelines.data_engineering.utils.field_info import script_fie
 # Shared with data_fix.backfill_all_legacy_key_renames(), which applies the same
 # renames to rows already sitting in the database.
 LEGACY_KEY_RENAMES = {
-    'discharges': [('NeoTreeOutcome', 'NeotreeOutcome')],
+    'discharges': [('NeoTreeOutcome', 'NeotreeOutcome'), ('DateTimeDeathMother', 'DateDeathMother')],
     'baseline': [('NeoTreeOutcome', 'NeotreeOutcome')],
     'maternal_outcomes': [('NeoTreeOutcome', 'NeotreeOutcome')],
-    'joined_admissions_discharges': [('NeoTreeOutcome', 'NeotreeOutcome')],
-    'discharges': [('DateTimeDeathMother', 'DateDeathMother')],
+    'joined_admissions_discharges': [('NeoTreeOutcome', 'NeotreeOutcome'), ('DateTimeDeathMother', 'DateDeathMother')],
     'peads_admissions': [('DateTimeDeathMother', 'DateDeathMother')],
     'peads_discharges': [('DateTimeDeathMother', 'DateDeathMother')],
     'joined_peads_admissions_discharges': [('DateTimeDeathMother', 'DateDeathMother')],
-    'joined_admissions_discharges': [('DateTimeDeathMother', 'DateDeathMother')],
 
 }
 

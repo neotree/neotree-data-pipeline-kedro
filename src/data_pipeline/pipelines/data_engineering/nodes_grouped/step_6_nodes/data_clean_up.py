@@ -248,21 +248,35 @@ def clean_data_for_research(create_summary_counts_output):
 
         # Process all script types
         all_script_types = get_all_script_types(hospital_scripts)
+        failed_scripts = []
         for script in all_script_types:
-            process_single_script(script, hospital_scripts)
+            try:
+                process_single_script(script, hospital_scripts)
+            except Exception as ex:
+                failed_scripts.append(script)
+                logging.error("Failed cleaning script %s; continuing with other tables: %s", script, formatError(ex))
 
-        # Process admissions and discharges joins
-        process_joined_admissions_discharges()
-
-        # Process unmatched discharges
-        process_unmatched_discharges()
+        for name, operation in (
+            ('joined_admissions_discharges', process_joined_admissions_discharges),
+            ('unmatched_discharges', process_unmatched_discharges),
+        ):
+            try:
+                operation()
+            except Exception as ex:
+                failed_scripts.append(name)
+                logging.error("Failed cleaning %s; continuing: %s", name, formatError(ex))
 
         #Clean Dirty Dates
         clean_all_dates()
         #Remove All Singe Letter Cols
         drop_single_letter_columns_all_tables()
 
-        return dict(status='Success', message="Data Cleanup Complete")
+        if failed_scripts:
+            logging.error("Clean tables failed: %s", ', '.join(sorted(failed_scripts)))
+        return dict(
+            status='Partial Success' if failed_scripts else 'Success',
+            message="Data Cleanup Complete" if not failed_scripts else f"Failed clean tables: {', '.join(sorted(failed_scripts))}",
+        )
 
     except Exception as e:
         logging.error("!!! An error occurred Cleaning Derived Data: ")

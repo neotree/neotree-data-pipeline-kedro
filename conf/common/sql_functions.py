@@ -224,7 +224,7 @@ def inject_sql_procedure(sql_script, file_name):
             logging.error(e)
             logging.error('Something went wrong with the SQL file')
             logging.error(sql_script)
-            sys.exit()
+            raise
         finally:
             cur.close()
     finally:
@@ -285,6 +285,9 @@ def inject_sql(sql_script, file_name):
                     cur.execute(command)
                     raw_conn.commit()  # type: ignore[union-attr]  # Commit after each successful command
                 except Exception as e:
+                    # A failed PostgreSQL statement leaves the transaction aborted.
+                    # Clear it before returning this pooled connection to other tables.
+                    raw_conn.rollback()  # type: ignore[union-attr]
                     logging.error(f"Error executing command in {file_name}")
                     logging.error(f"Command {idx + 1}/{len(sql_commands)}")
                     logging.error(f"Error type: {type(e)}")

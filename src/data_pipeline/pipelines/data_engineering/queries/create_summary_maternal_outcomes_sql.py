@@ -1,17 +1,27 @@
 import logging
+import re
 
 from conf.base.catalog import params
-from conf.common.sql_functions import column_exists
+from conf.common.sql_functions import get_table_column_names
 from data_pipeline.pipelines.data_engineering.queries.check_table_exists_sql import table_exists
 #Query to create summary_maternala_outcomes table
 def summary_maternal_outcomes_query():
+    source_columns = {row[0] for row in get_table_column_names('maternal_outcomes', 'derived')}
+    if not {'uid', 'facility'}.issubset(source_columns):
+        raise ValueError('maternal_outcomes is missing a required uid or facility column')
     prefix = f''' DROP TABLE IF EXISTS derived.summary_maternal_outcomes;;
                 CREATE TABLE derived.summary_maternal_outcomes AS   '''
     where = ''
 
     type_of_birth = 'NULL'
-    if column_exists('derived', 'maternal_outcomes', 'TypeBirth.label'):
+    if 'TypeBirth.label' in source_columns:
         type_of_birth = 'derived.maternal_outcomes."TypeBirth.label"'
+    outcome_column = next(
+        (column for column in ('NeotreeOutcome.label', 'NeoTreeOutcome.label') if column in source_columns),
+        None,
+    )
+    neonate_outcome = (f'derived.maternal_outcomes."{outcome_column}"'
+                       if outcome_column else 'NULL::text')
     #Defaulting to Malawi Case 
     if(table_exists("derived","summary_maternal_outcomes")):
         prefix= f'''INSERT INTO "derived"."summary_maternal_outcomes" (
@@ -63,7 +73,7 @@ def summary_maternal_outcomes_query():
         derived.maternal_outcomes."SexDis.label" AS "Gender",
         {type_of_birth} AS "Type of Birth",
         derived.maternal_outcomes."Gestation.value" AS "Gestation",
-        derived.maternal_outcomes."NeoTreeOutcome.label" AS "Neonate Outcome",
+        {neonate_outcome} AS "Neonate Outcome",
         derived.maternal_outcomes."BWTDis.value" AS "Birth Weight(g)",
         derived.maternal_outcomes."MatOutcome.label" AS "Maternal Outcome",
         derived.maternal_outcomes."Presentation.label" AS "Presentation",
@@ -107,4 +117,20 @@ def summary_maternal_outcomes_query():
         END AS "BirthWeightGroupSort"
         FROM derived.maternal_outcomes {where};; '''
            
+    # Scripts evolve independently of historical derived tables. Optional source
+    # fields absent from this installation should produce NULLs, not abort the
+    # entire summary (or every later summary table).
+    missing = set()
+    def replace_missing(match):
+        column = match.group(1)
+        if column in source_columns:
+            return match.group(0)
+        missing.add(column)
+        data_type = ('timestamp' if column == 'DateAdmission.value' else
+                     'numeric' if column in ('Gestation.value', 'BWTDis.value') else 'text')
+        return f'NULL::{data_type}'
+
+    sql = re.sub(r'derived\.maternal_outcomes\."([^"]+)"', replace_missing, sql)
+    if missing:
+        logging.warning('Maternal outcomes summary: missing optional columns %s; using NULL', sorted(missing))
     return sql

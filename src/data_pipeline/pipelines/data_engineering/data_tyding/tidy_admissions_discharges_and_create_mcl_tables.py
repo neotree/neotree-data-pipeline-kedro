@@ -1001,86 +1001,61 @@ def tidy_tables():
         except Exception as finalize_error:
             logging.error("!!! An error occurred finalizing validation")
             logging.error(formatError(finalize_error))
-        return
+        return ['loading datasets']
 
     logging.info("Extracting keys from raw data")
-    try:
-        adm_new_entries, adm_mcl = get_key_values(adm_raw)
-        dis_new_entries, dis_mcl = get_key_values(dis_raw)
-        mat_outcomes_new_entries, mat_outcomes_mcl = get_key_values(mat_outcomes_raw)
-        vit_signs_new_entries, vit_signs_mcl = get_key_values(vit_signs_raw)
-        baseline_new_entries, baseline_mcl = get_key_values(baseline_raw)
-        diagnoses_new_entries = get_diagnoses_key_values(diagnoses_raw)
-        mat_completeness_new_entries, mat_completeness_mcl = get_key_values(mat_completeness_raw)
-        neolab_new_entries, neolab_mcl = get_key_values(neolab_raw)
-        drugs_new_entries = get_drugs_key_values(drugs_raw)
-        fluids_new_entries = get_fluids_key_values(fluids_raw)
-
-    except Exception as e:
-        logging.error("!!! An error occurred extracting keys")
-        logging.error(formatError(e))
+    failures = []
+    def extract_table(name, operation, fallback):
         try:
-            finalize_validation()
-        except Exception as finalize_error:
-            logging.error("!!! An error occurred finalizing validation")
-            logging.error(formatError(finalize_error))
-        return
+            return operation()
+        except Exception as ex:
+            failures.append(name)
+            logging.error("Failed extracting %s; continuing with other tables: %s", name, formatError(ex))
+            return fallback
 
-    # Process all data tables using helper functions
-    logging.info("Processing all data tables")
+    adm_new_entries, adm_mcl = extract_table('admissions', lambda: get_key_values(adm_raw), ([], []))
+    dis_new_entries, dis_mcl = extract_table('discharges', lambda: get_key_values(dis_raw), ([], []))
+    mat_outcomes_new_entries, mat_outcomes_mcl = extract_table('maternal_outcomes', lambda: get_key_values(mat_outcomes_raw), ([], []))
+    vit_signs_new_entries, vit_signs_mcl = extract_table('vitalsigns', lambda: get_key_values(vit_signs_raw), ([], []))
+    baseline_new_entries, baseline_mcl = extract_table('baseline', lambda: get_key_values(baseline_raw), ([], []))
+    diagnoses_new_entries = extract_table('diagnoses', lambda: get_diagnoses_key_values(diagnoses_raw), [])
+    mat_completeness_new_entries, mat_completeness_mcl = extract_table('maternity_completeness', lambda: get_key_values(mat_completeness_raw), ([], []))
+    neolab_new_entries, neolab_mcl = extract_table('neolab', lambda: get_key_values(neolab_raw), ([], []))
+    drugs_new_entries = extract_table('drugs', lambda: get_drugs_key_values(drugs_raw), [])
+    fluids_new_entries = extract_table('fluids', lambda: get_fluids_key_values(fluids_raw), [])
 
-    try:
-        # Process admissions
-        logging.info("Processing admissions data")
-        process_admissions_dataframe(adm_raw, adm_new_entries, adm_mcl)
+    # Each table has its own failure boundary so a bad field cannot suppress
+    # processing of unrelated tables in this run.
+    def process_table(name, operation):
+        if name in failures:
+            return None
+        try:
+            logging.info("Processing %s data", name)
+            return operation()
+        except Exception as ex:
+            failures.append(name)
+            logging.error("Failed processing %s; continuing with other tables: %s", name, formatError(ex))
+            return None
 
-        # Process discharges
-        logging.info("Processing discharges data")
-        process_discharges_dataframe(dis_raw, dis_new_entries, dis_mcl)
+    process_table('admissions', lambda: process_admissions_dataframe(adm_raw, adm_new_entries, adm_mcl))
+    process_table('discharges', lambda: process_discharges_dataframe(dis_raw, dis_new_entries, dis_mcl))
+    mat_outcomes_df = process_table('maternal_outcomes', lambda: process_maternal_outcomes_dataframe(mat_outcomes_raw, mat_outcomes_new_entries, mat_outcomes_mcl))
+    process_table('vitalsigns', lambda: process_vitalsigns_dataframe(vit_signs_new_entries, vit_signs_mcl))
+    process_table('neolab', lambda: process_neolab_dataframe(neolab_raw, neolab_new_entries))
+    process_table('baseline', lambda: process_baseline_dataframe(baseline_new_entries, baseline_mcl))
 
-        # Process maternal outcomes
-        logging.info("Processing maternal outcomes data")
-        mat_outcomes_df = process_maternal_outcomes_dataframe(mat_outcomes_raw, mat_outcomes_new_entries, mat_outcomes_mcl)
+    def save_simple_table(name, entries):
+        df = pd.json_normalize(entries)
+        if not df.empty:
+            if 'uid' in df:
+                df = df[df['uid'] != 'Unknown']
+            catalog.save(f'create_derived_{name}', df)
 
-        # Process vital signs
-        logging.info("Processing vital signs data")
-        process_vitalsigns_dataframe(vit_signs_new_entries, vit_signs_mcl)
+    process_table('diagnoses', lambda: save_simple_table('diagnoses', diagnoses_new_entries))
+    process_table('fluids', lambda: save_simple_table('fluids', fluids_new_entries))
+    process_table('drugs', lambda: save_simple_table('drugs', drugs_new_entries))
 
-        # Process neolab
-        logging.info("Processing neolab data")
-        process_neolab_dataframe(neolab_raw, neolab_new_entries)
-
-        # Process baseline
-        logging.info("Processing baseline data")
-        process_baseline_dataframe(baseline_new_entries, baseline_mcl)
-
-        # Process diagnoses
-        logging.info("Processing diagnoses data")
-        diagnoses_df = pd.json_normalize(diagnoses_new_entries)
-        if not diagnoses_df.empty:
-            if 'uid' in diagnoses_df:
-                diagnoses_df = diagnoses_df[diagnoses_df['uid'] != 'Unknown']
-            catalog.save('create_derived_diagnoses', diagnoses_df)
-
-        #Process Fluids
-        logging.info("Processing fluids data")
-        fluids_df = pd.json_normalize(fluids_new_entries)
-        if not fluids_df.empty:
-            if 'uid' in fluids_df:
-                fluids_df = fluids_df[fluids_df['uid'] != 'Unknown']
-            catalog.save('create_derived_fluids', fluids_df)
-
-         #Process Drugs
-        logging.info("Processing drugs data")
-        drugs_df = pd.json_normalize(drugs_new_entries)
-        if not drugs_df.empty:
-            if 'uid' in drugs_df:
-                drugs_df = drugs_df[drugs_df['uid'] != 'Unknown']
-            catalog.save('create_derived_drugs', drugs_df)
-
-
-        # Process maternity completeness
-        logging.info("Processing maternity completeness data")
+    def process_maternity_completeness():
         mat_completeness_df = pd.json_normalize(mat_completeness_new_entries)
         if not mat_completeness_df.empty:
             update_fields_info("maternity_completeness")
@@ -1089,7 +1064,7 @@ def tidy_tables():
                 mat_completeness_df = result
 
             # Join Maternal Completeness and Maternal Outcomes (Malawi-specific case)
-            if not mat_outcomes_df.empty:
+            if mat_outcomes_df is not None and not mat_outcomes_df.empty:
                 previous_mat_outcomes_df = mat_outcomes_df[pd.to_datetime(mat_outcomes_df['DateAdmission.value'], errors='coerce') >= '2021-10-01']
                 latest_mat_outcomes_df = mat_completeness_df[pd.to_datetime(mat_completeness_df['DateAdmission.value'], errors='coerce') >= '2021-09-30']
                 previous_mat_outcomes_df = previous_mat_outcomes_df.reset_index(drop=True)
@@ -1106,14 +1081,15 @@ def tidy_tables():
             deduplicate_table('maternity_completeness')
             explode_column(mat_completeness_df, mat_completeness_mcl, "matcomp_")
 
+    process_table('maternity_completeness', process_maternity_completeness)
+    if failures:
+        logging.error("Data tables failed: %s", ', '.join(failures))
+    else:
         logging.info("All data tables processed successfully")
-
-    except Exception as ex:
-        logging.error("!!! An error occurred processing data tables")
-        logging.error(formatError(ex))
 
     try:
         finalize_validation()
     except Exception as e:
         logging.error("!!! An error occurred finalizing validation")
         logging.error(formatError(e))
+    return failures

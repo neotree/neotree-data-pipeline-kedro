@@ -23,30 +23,35 @@ def create_summary_tables(manually_Fix_admissions_output,manually_fix_discharges
             )
         
         elif manually_Fix_admissions_output is not None and manually_fix_discharges_output is not None:
-            create_summary_vitalsigns()
-            logging.info("******DONE PROCESSING SUMMARY VITALS************")
-            create_summary_joined_vitalsigns() 
-            logging.info("******DONE PROCESSING SUMMARY JOINED VITALS************")
-            create_summary_maternal_outcomes()
-            logging.info("******DONE PROCESSING MATERNAL OUTCOMES VITALS************")
-            create_summary_neolabs()
-            logging.info("******DONE PROCESSING NEOLABS************")
+            failures = []
+
+            def run_summary(name, operation):
+                try:
+                    operation()
+                    logging.info("Completed summary %s", name)
+                except (Exception, SystemExit) as exc:
+                    # Legacy summary functions call sys.exit on SQL errors. Keep
+                    # that failure local to this table, while preserving its log.
+                    failures.append(name)
+                    logging.error("Summary %s failed; continuing with other summaries: %s", name, exc)
+
+            run_summary("vitalsigns", create_summary_vitalsigns)
+            run_summary("joined_vitalsigns", create_summary_joined_vitalsigns)
+            run_summary("maternal_outcomes", create_summary_maternal_outcomes)
+            run_summary("neolabs", create_summary_neolabs)
             if('country' in params and str(params['country']).lower() =='malawi' and env=='prod'):
-                create_maternal_completeness_summary() 
-                logging.info("******DONE PROCESSINGS MATERNAL COMPLETENESS************")
-                create_summary_admissions()
-                logging.info("******DONE PROCESSINGS SUMMARY ADMISSIONS************")
-                create_summary_discharges()
-                logging.info("******DONE PROCESSINGS SUMMARY DISCHARGES************")
+                run_summary("maternal_completeness", create_maternal_completeness_summary)
+                run_summary("admissions", create_summary_admissions)
+                run_summary("discharges", create_summary_discharges)
 
             exploded_Diagnoses_exists = table_exists("derived","exploded_Diagnoses.label")
             diagnoses_exists = table_exists("derived","diagnoses")
             if exploded_Diagnoses_exists and diagnoses_exists:
-                create_combined_diagnoses()
+                run_summary("combined_diagnoses", create_combined_diagnoses)
 
             return dict(
-                status='Success',
-                message="Summary Tables Complete"
+                status='Partial Success' if failures else 'Success',
+                message="Summary Tables Complete" if not failures else f"Failed summaries: {', '.join(failures)}"
             )
         else:
             logging.error(

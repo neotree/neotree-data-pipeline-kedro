@@ -19,22 +19,20 @@ def create_summary_vitalsigns():
                 vital_signs_count = table_data_count('derived','vitalsigns')
 
         if (vital_signs_count> 0):
-           
-            summary_vitals_script = summary_vital_signs_query()
-            summary_vitals_day1_script = summary_day_one_vitals_query()
-            summary_vitals_day2_script = summary_day_two_vitals_query()
-            summary_vitals_day3_script = summary_day_three_vitals_query()
-               
-                # Run Summary Vital Signs Query
-            inject_sql(summary_vitals_script, "create-summary-vital-signs")
-                # Run Day1 Summary Vital Signs Query
-            inject_sql(summary_vitals_day1_script, "create-summary-day1-vital-signs")
-
-                    # Run Day2 Summary Vital Signs Query
-            inject_sql(summary_vitals_day2_script, "create-summary-day2-vital-signs")
-
-                    # Run Day3 Summary Vital Signs Query
-            inject_sql(summary_vitals_day3_script, "create-summary-day3-vital-signs")
+            failures = []
+            for name, query_builder in (
+                ('vital-signs', summary_vital_signs_query),
+                ('day1-vital-signs', summary_day_one_vitals_query),
+                ('day2-vital-signs', summary_day_two_vitals_query),
+                ('day3-vital-signs', summary_day_three_vitals_query),
+            ):
+                try:
+                    inject_sql(query_builder(), f'create-summary-{name}')
+                except Exception as ex:
+                    failures.append(name)
+                    logging.error('Failed summary %s; continuing with other vital summaries: %s', name, ex)
+            if failures:
+                raise RuntimeError(f"Failed vital summaries: {', '.join(failures)}")
         else:
             pass;
 
@@ -45,4 +43,4 @@ def create_summary_vitalsigns():
         cron_log.close()
         logging.error(formatError(e))
         sys.exit(1)
- 
+

@@ -9,12 +9,13 @@ def tidy_data(deduplicate_data_output):
     try:
         #Test If Previous Node Has Completed Successfully
         if (deduplicate_data_output is not None):
-            tidy_tables()
+            failed_tables = tidy_tables()
             
             #Add Return Value For Kedro Not To Throw Data Error
             return dict(
-            status='Success',
-            message = "Tidying Admissions and Discharges Complete"
+            status='Partial Success' if failed_tables else 'Success',
+            message = ("Tidying Admissions and Discharges Complete" if not failed_tables
+                       else f"Failed tables: {', '.join(failed_tables)}")
              )
         else:
             logging.error(
@@ -28,4 +29,4 @@ def tidy_data(deduplicate_data_output):
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Tyding Data ".format(cron_time,env))
         cron_log.close()
-        sys.exit
+        raise

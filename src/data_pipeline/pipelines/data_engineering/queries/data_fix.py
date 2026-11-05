@@ -2695,7 +2695,9 @@ def backfill_renamed_keys(table_name: str, renames: list, schema: str = 'derived
             column_check_query = f"""
                 SELECT
                     bool_or(column_name = '{_escape_sql_literal(old_col)}') AS has_old,
-                    bool_or(column_name = '{_escape_sql_literal(new_col)}') AS has_new
+                    bool_or(column_name = '{_escape_sql_literal(new_col)}') AS has_new,
+                    max(data_type) FILTER (WHERE column_name = '{_escape_sql_literal(old_col)}') AS old_type,
+                    max(data_type) FILTER (WHERE column_name = '{_escape_sql_literal(new_col)}') AS new_type
                 FROM information_schema.columns
                 WHERE table_schema = '{_escape_sql_literal(schema)}'
                 AND table_name = '{_escape_sql_literal(table_name)}'
@@ -2710,7 +2712,7 @@ def backfill_renamed_keys(table_name: str, renames: list, schema: str = 'derived
                 )
                 continue
 
-            has_old, has_new = result[0] if result else (False, False)
+            has_old, has_new, old_type, new_type = result[0] if result else (False, False, None, None)
             if not (has_old and has_new):
                 continue
 
@@ -2734,9 +2736,13 @@ def backfill_renamed_keys(table_name: str, renames: list, schema: str = 'derived
             if not (needs_result and needs_result[0][0]):
                 continue
 
+            source_expr = _quote_identifier(old_col)
+            if old_type == 'text' and new_type in ('timestamp without time zone', 'timestamp with time zone', 'date'):
+                source_expr += f'::{new_type}'
+
             update_query = f'''
                 UPDATE {schema}.{_quote_identifier(table_name)}
-                SET {_quote_identifier(new_col)} = {_quote_identifier(old_col)}
+                SET {_quote_identifier(new_col)} = {source_expr}
                 WHERE {_quote_identifier(new_col)} IS NULL
                   AND {_quote_identifier(old_col)} IS NOT NULL;;
             '''
