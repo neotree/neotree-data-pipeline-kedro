@@ -46,7 +46,7 @@ JOIN pg_namespace n ON n.oid = t.relnamespace
 JOIN pg_am am ON am.oid = ic.relam
 LEFT JOIN pg_stat_user_indexes s ON s.indexrelid = i.indexrelid
 WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
-  AND n.nspname NOT LIKE 'pg_toast%'
+  AND n.nspname NOT LIKE 'pg_toast%%'
 """
 
 

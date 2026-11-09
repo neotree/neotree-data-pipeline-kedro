@@ -29,20 +29,21 @@ class IndexManagementTests(unittest.TestCase):
     def test_ensure_index_escapes_postgres_format_tokens_for_psycopg(self):
         cursor = MagicMock()
         cursor.__enter__.return_value = cursor
-        cursor.fetchall.side_effect = [[('pii_cleaned',)], [('pii_cleaned',)]]
+        cursor.fetchall.side_effect = [[('pii_cleaned',)], [('pii_cleaned',)], []]
         cursor.fetchone.side_effect = [('public.sessions',), None]
+        cursor.description = [('index_name',)]
         cursor.execute.side_effect = lambda sql, params=(): sql % tuple(map(str, params))
         connection = MagicMock()
         connection.cursor.return_value = cursor
 
-        with patch('data_pipeline.index_management._connection', return_value=connection), \
-             patch('data_pipeline.index_management._rows', return_value=[]):
+        with patch('data_pipeline.index_management._connection', return_value=connection):
             ensure_index('public', 'sessions', ['pii_cleaned'], 'idx_sessions_pii_cleaned')
 
-        self.assertEqual(cursor.execute.call_count, 5)
+        self.assertEqual(cursor.execute.call_count, 6)
         self.assertIn("format('%%I.%%I'", cursor.execute.call_args_list[0].args[0])
         self.assertIn("format('%%I.%%I'", cursor.execute.call_args_list[1].args[0])
         self.assertIn("format('%%I'", cursor.execute.call_args_list[2].args[0])
+        self.assertIn("pg_toast%%", cursor.execute.call_args_list[3].args[0])
         connection.close.assert_called_once()
 
     def test_signature_ignores_name_but_detects_structural_differences(self):
