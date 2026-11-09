@@ -108,12 +108,12 @@ def ensure_index(schema, table, columns, index_name):
     connection = _connection()
     try:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT to_regclass(format('%I.%I', %s, %s))", (schema, table))
+            cursor.execute("SELECT to_regclass(format('%%I.%%I', %s, %s))", (schema, table))
             if cursor.fetchone()[0] is None:
                 LOG.warning('Skipping index %s.%s: table is absent', schema, index_name)
                 return
             cursor.execute("""SELECT attname FROM pg_attribute
-                WHERE attrelid = to_regclass(format('%I.%I', %s, %s))
+                WHERE attrelid = to_regclass(format('%%I.%%I', %s, %s))
                   AND attname = ANY(%s) AND attnum > 0 AND NOT attisdropped""",
                 (schema, table, columns))
             found = {row[0] for row in cursor.fetchall()}

@@ -4,10 +4,11 @@ import sys
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from data_pipeline.index_management import _fingerprint, _retention_reason, _signature
+from data_pipeline.index_management import _fingerprint, _retention_reason, _signature, ensure_index
 
 
 def index(**changes):
@@ -25,6 +26,23 @@ def index(**changes):
 
 
 class IndexManagementTests(unittest.TestCase):
+    def test_ensure_index_escapes_postgres_format_tokens_for_psycopg(self):
+        cursor = MagicMock()
+        cursor.__enter__.return_value = cursor
+        cursor.fetchone.return_value = ('public.sessions',)
+        cursor.fetchall.return_value = []
+        cursor.execute.side_effect = lambda sql, params: sql % tuple(map(str, params))
+        connection = MagicMock()
+        connection.cursor.return_value = cursor
+
+        with patch('data_pipeline.index_management._connection', return_value=connection):
+            ensure_index('public', 'sessions', ['pii_cleaned'], 'idx_sessions_pii_cleaned')
+
+        self.assertEqual(cursor.execute.call_count, 2)
+        for call in cursor.execute.call_args_list:
+            self.assertIn("format('%%I.%%I'", call.args[0])
+        connection.close.assert_called_once()
+
     def test_signature_ignores_name_but_detects_structural_differences(self):
         base = index(index_name='first')
         self.assertEqual(_signature(base), _signature(index(index_name='second')))
