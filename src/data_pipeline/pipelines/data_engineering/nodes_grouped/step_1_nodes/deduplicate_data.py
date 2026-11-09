@@ -80,6 +80,7 @@ def log_pii_skip_summary(schema: str, table: str):
 #Not passing any Input To Allow Concurrent running of independent Nodes
 def deduplicate_data(data_import_output):
     params = config()
+    stage = 'initialization'
     try:
         
         if data_import_output is not None:
@@ -108,11 +109,14 @@ def deduplicate_data(data_import_output):
                 fix_all_discharge_death_date_conflicts()
             except Exception as ex:
                 logging.warning("Discharge/death date conflict fix did not complete: %s", ex)
+            stage = 'copy sessions into clean_sessions'
             inject_sql(insert_sessions_data(),"Sessions Data")
             from data_pipeline.index_management import ensure_index
             for table in ("sessions", "clean_sessions"):
                 for column in ("pii_cleaned", "pii_cleaned_version"):
+                    stage = f'ensure index on public.{table}.{column}'
                     ensure_index("public", table, [column], f"idx_{table}_{column}")
+            stage = 'clean and redact clean_sessions'
             logging.info("******CLEANING AND REDACTING PII ON CLEAN SESSIONS*********")
             inject_sql(
                 clean_known_confidential_and_pii_columns("public","clean_sessions"),
@@ -120,11 +124,14 @@ def deduplicate_data(data_import_output):
             )
             log_pii_skip_summary("public", "clean_sessions")
             logging.info("******DONE INSERTING INTO CLEAN SESSIONS*********") 
+            stage = 'purge configured UIDs'
             purge_configured_uids(params)
+            stage = 'regenerate unique keys'
             regenerate_unique_key()
             ###DEDUPLICATE DYNAMICALLY
             for index,dedup_query in enumerate(generic_dedup_queries):  
                 current_dedup = f'''deduplicate-generic_{index}'''  
+                stage = current_dedup
                 inject_sql(dedup_query, current_dedup)
             #Add Return Value For Kedro Not To Throw Data Error And To Be Used As Input For Step 2
             logging.info("*****************DONE DEDUPLICATING ALL DATA************************")
@@ -139,11 +146,9 @@ def deduplicate_data(data_import_output):
             return None
             
     except Exception as e:
-        logging.error(
-            "!!! An error occured deduplicating data: ")
+        logging.exception("Error deduplicating data during %s", stage)
         cron_log = open(cron_log_file,"a+")
         #cron_log = open("C:\/Users\/morris\/Documents\/BRTI\/logs\/data_pipeline_cron.log","a+")
         cron_log.write("StartTime: {0}   Instance: {1}   Status: Failed Stage: Deduplicating Data ".format(cron_time,env))
         cron_log.close()
-        logging.error(e)
         sys.exit(1)

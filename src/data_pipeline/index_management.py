@@ -121,7 +121,7 @@ def ensure_index(schema, table, columns, index_name):
                 LOG.warning('Skipping index %s.%s: missing columns %s',
                             schema, index_name, set(columns) - found)
                 return
-            cursor.execute('SELECT format(\'%I\', name) FROM unnest(%s::text[]) name',
+            cursor.execute('SELECT format(\'%%I\', name) FROM unnest(%s::text[]) name',
                            (columns,))
             expected = [record[0] for record in cursor.fetchall()]
             for row in _rows(cursor, schema, table):
